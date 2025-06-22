@@ -1,0 +1,1 @@
+export const deepClonePages = pages => pages.map(page => [...page]);

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="245" height="342" xmlns="http://www.w3.org/2000/svg">
+  <rect width="245" height="342" rx="15" fill="#f0f0f0" stroke="#cccccc" stroke-width="2"/>
+  <rect x="20" y="20" width="205" height="150" rx="5" fill="#e0e0e0"/>
+  <rect x="20" y="190" width="205" height="20" rx="5" fill="#e0e0e0"/>
+  <rect x="20" y="230" width="150" height="15" rx="5" fill="#e0e0e0"/>
+  <rect x="20" y="260" width="100" height="15" rx="5" fill="#e0e0e0"/>
+  <rect x="20" y="290" width="180" height="15" rx="5" fill="#e0e0e0"/>
+  <text x="122.5" y="95" font-family="Arial, sans-serif" font-size="16" text-anchor="middle" fill="#999999">Card Image</text>
+  <text x="122.5" y="115" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#999999">Not Available</text>
+</svg>

@@ -1,0 +1,204 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
+:root {
+  --color-primary: #2963FF;
+  --color-secondary: #548dff;
+  --color-background: #f6f6fb;
+  --color-surface: #ffffff;
+  --color-alt: #ececf1;
+  --color-text: #181822;
+  --color-text-secondary: #464d6b;
+  --color-text-muted: #7d8ca7;
+  --color-border: #e4e4ee;
+  --color-accent: #2963FF;
+  --color-accent-light: #548dff;
+}
+
+.dark {
+  --color-primary: #2963FF;
+  --color-secondary: #548dff;
+  --color-background: #181822;
+  --color-surface: #232346;
+  --color-alt: #1e1e2c;
+  --color-text: #ffffff;
+  --color-text-secondary: #b9bedd;
+  --color-text-muted: #8792b0;
+  --color-border: #282844;
+  --color-accent: #2963FF;
+  --color-accent-light: #548dff;
+}
+
+
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  @apply bg-[var(--color-background)] text-[var(--color-text)];
+  transition: background-color var(--transition-duration) var(--transition-timing),
+              color var(--transition-duration) var(--transition-timing);
+}
+
+.dark body {
+  @apply bg-[var(--color-background)] text-[var(--color-text)];
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Raleway', sans-serif;
+  @apply font-semibold;
+}
+
+/* Links */
+a {
+  @apply transition-colors duration-300;
+  color: var(--color-primary);
+}
+
+.dark a {
+  color: var(--color-primary);
+}
+
+a:hover {
+  color: var(--color-secondary);
+}
+
+.dark a:hover {
+  color: var(--color-secondary);
+}
+
+/* Buttons */
+button {
+  @apply transition-all duration-300;
+}
+
+/* Cards and Surfaces */
+.card {
+  @apply rounded-lg shadow-sm border;
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
+  transition: background-color var(--transition-duration) var(--transition-timing),
+              border-color var(--transition-duration) var(--transition-timing);
+}
+
+.dark .card {
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+/* Form Elements */
+input, textarea, select {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  @apply rounded-md px-3 py-2;
+  transition: background-color var(--transition-duration) var(--transition-timing),
+              border-color var(--transition-duration) var(--transition-timing);
+}
+
+.dark input, .dark textarea, .dark select {
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+/* Focus States */
+*:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.dark *:focus {
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: var(--color-surface);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+}
+
+.loading-slide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  background: white;
+  border: 4px solid black;
+  border-radius: 50%;
+  position: relative;
+  animation: spin 1s linear infinite;
+  box-shadow: inset 0 -24px red;
+}
+
+.spinner::before {
+  content: "";
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  width: 12px;
+  height: 12px;
+  background: white;
+  border: 3px solid black;
+  border-radius: 50%;
+  z-index: 2;
+}
+
+.spinner::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: black;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer::after {
+  content: "";
+  display: block;
+  position: absolute;
+  top: 0; left: -100%; height: 100%; width: 100%;
+  background: linear-gradient(90deg, transparent 0%, #fff5 50%, transparent 100%);
+  animation: shimmer 1.5s infinite;
+}
+@keyframes shimmer {
+  100% { left: 100%; }
+}

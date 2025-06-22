@@ -8,7 +8,7 @@ import Portal from "@/components/UI/Portal";
 import CardSkeleton from "@/components/UI/CardSkeleton";
 import BinderCover from "../Binder/BinderCover";
 
-const WP_GRAPHQL_URL = "http://tcg.local/graphql";
+const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
 
 // Helper: Fills first row to 5 with skeletons (for grid parity)
 const fillFirstRowSkeletons = (cardCount, isOwnProfile) => {

@@ -1,4 +1,5 @@
 import { gql, useQuery } from '@apollo/client';
+import useRequireAdmin from '../../hooks/useRequireAdmin';
 
 const LOGS = gql`
   query AllLogs {
@@ -12,8 +13,10 @@ const LOGS = gql`
 `;
 
 export default function Logs() {
-  const { data, loading, error } = useQuery(LOGS);
+  const { loading: authLoading } = useRequireAdmin();
+  const { data, loading, error } = useQuery(LOGS, { skip: authLoading });
 
+  if (authLoading) return <p>Loading...</p>;
   if (loading) return <p>Loading...</p>;
   if (error) return <p>Error loading logs</p>;
 

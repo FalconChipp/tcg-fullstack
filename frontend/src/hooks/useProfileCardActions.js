@@ -1,5 +1,5 @@
-const WP_GRAPHQL_URL = "http://tcg.local/graphql";
-const TCG_GRAPHQL_URL = "http://tcg.local/graphql";
+const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
+const TCG_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
 
 export default function useProfileCardActions({
   isOwnProfile,

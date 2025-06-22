@@ -91,7 +91,7 @@ export default function ProfileHeader({
     : "";
 
   // GraphQL update
-  const WP_GRAPHQL_URL = "http://tcg.local/graphql";
+  const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
   const updateProfileTextAndFinalAvatar = async (avatarUrlForUpdate) => {
     const updateMutation = `
       mutation UpdateProfile($bio: String, $favoritePokemon: String, $avatarUrl: String, $socialLinks: JSON) {

@@ -1,7 +1,8 @@
 // src/utils/apiClient.js
+const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || 'http://localhost:4000/graphql';
+
 export async function apiClient(query, variables = {}, token) {
   console.log("apiClient: Called with query:", query, "variables:", variables, "token:", token);
-  const WP_GRAPHQL_URL = "http://tcg.local/graphql";
   const headers = {
     "Content-Type": "application/json",
   };
@@ -10,7 +11,7 @@ export async function apiClient(query, variables = {}, token) {
   } else {
     null
   }
-  const res = await fetch(WP_GRAPHQL_URL, {
+  const res = await fetch(GRAPHQL_URL, {
     method: "POST",
     headers,
     body: JSON.stringify({ query, variables }),

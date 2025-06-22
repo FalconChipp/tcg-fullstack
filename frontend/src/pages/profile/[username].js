@@ -17,10 +17,9 @@ import ProfileWishlistPanel from "@/components/UserProfile/ProfileWishlistPanel"
 import ProfileAchievements from "@/components/UserProfile/ProfileAchievements";
 // ...other imports as needed
 
-// New node backend (user profile, moving modules here)
-const API_GRAPHQL_URL = "http://localhost:4000/graphql";
-// Old WP backend (collections, wishlist, binders, achievements etc.)
-const WP_GRAPHQL_URL = "https://tcg.local/graphql"; // Change to your real endpoint
+// GraphQL endpoints
+const API_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
+const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
 
 // --- SSR user fetch from Node backend ---
 export async function getServerSideProps({ params, res }) {

@@ -83,7 +83,8 @@ export default function BinderCardSearch({
     }
 
     try {
-      const res = await fetch('http://tcg.local/graphql', {
+      const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || 'http://localhost:4000/graphql';
+      const res = await fetch(GRAPHQL_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

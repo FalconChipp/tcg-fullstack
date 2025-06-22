@@ -1,4 +1,5 @@
 import { gql, useQuery, useMutation } from '@apollo/client';
+import useRequireAdmin from '../../hooks/useRequireAdmin';
 
 const LISTINGS = gql`
   query AdminListings {
@@ -19,11 +20,13 @@ const DELETE_LISTING = gql`
 `;
 
 export default function Listings() {
-  const { data, loading, error, refetch } = useQuery(LISTINGS);
+  const { loading: authLoading } = useRequireAdmin();
+  const { data, loading, error, refetch } = useQuery(LISTINGS, { skip: authLoading });
   const [del] = useMutation(DELETE_LISTING, {
     onCompleted: () => refetch()
   });
 
+  if (authLoading) return <p>Loading...</p>;
   if (loading) return <p>Loading...</p>;
   if (error) return <p>Error loading listings</p>;
 

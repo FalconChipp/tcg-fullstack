@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useRouter } from 'next/router';
 import { gql, useMutation } from '@apollo/client';
 
 const LOGIN = gql`
@@ -12,10 +13,12 @@ const LOGIN = gql`
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const router = useRouter();
   const [login, { error }] = useMutation(LOGIN, {
     onCompleted: (data) => {
       if (typeof window !== 'undefined') {
         localStorage.setItem('token', data.adminLogin.token);
+        router.replace('/');
       }
     }
   });

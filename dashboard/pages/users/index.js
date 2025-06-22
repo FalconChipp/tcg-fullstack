@@ -1,4 +1,5 @@
 import { gql, useQuery, useMutation } from '@apollo/client';
+import useRequireAdmin from '../../hooks/useRequireAdmin';
 
 const USERS = gql`
   query AdminUsers {
@@ -17,9 +18,11 @@ const DELETE_USER = gql`
 `;
 
 export default function Users() {
-  const { data, loading, error, refetch } = useQuery(USERS);
+  const { loading: authLoading } = useRequireAdmin();
+  const { data, loading, error, refetch } = useQuery(USERS, { skip: authLoading });
   const [del] = useMutation(DELETE_USER, { onCompleted: () => refetch() });
 
+  if (authLoading) return <p>Loading...</p>;
   if (loading) return <p>Loading...</p>;
   if (error) return <p>Error loading users</p>;
 

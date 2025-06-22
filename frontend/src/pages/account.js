@@ -14,7 +14,7 @@ import {
 } from "@heroicons/react/24/outline";
 
 // --- GraphQL Helper ---
-const GRAPHQL_URL = "http://tcg.local/graphql";
+const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
 async function graphqlRequest(query, variables, token) {
   try {
     const res = await fetch(GRAPHQL_URL, {

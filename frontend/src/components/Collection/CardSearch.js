@@ -17,7 +17,7 @@ const FALLBACK_CARD_IMAGE = "https://cdn.pidgi.net/images/f/f6/Card_back_INTL_-_
 const FALLBACK_SYMBOL_IMAGE = "https://placehold.co/50x50/webp?text=Icon";
 const DEFAULT_IMAGE_QUALITY = "low";
 const DEFAULT_IMAGE_EXTENSION = "webp";
-const WP_GRAPHQL_URL = "http://tcg.local/graphql";
+const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
 const PER_PAGE = 25;
 
 export default function CardSearch() {

@@ -7,7 +7,7 @@ function deleteCookie(name) {
   document.cookie = `${name}=; Max-Age=-99999999; path=/;`;
 }
 
-const API_GRAPHQL_URL = "http://localhost:4000/graphql";
+const API_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
 
 export const AuthContext = createContext();
 

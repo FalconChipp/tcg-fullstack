@@ -57,8 +57,9 @@ export const COLLECTION_MUTATIONS = {
  * @param {string} token - Authentication token
  * @returns {Promise<Object>} The response data or error
  */
+const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || 'http://localhost:4000/graphql';
+
 export async function executeMutation(mutation, variables, token) {
-  const GRAPHQL_URL = 'http://tcg.local/graphql';
   try {
     const response = await fetch(GRAPHQL_URL, {
       method: 'POST',

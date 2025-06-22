@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import useRequireAdmin from '../hooks/useRequireAdmin';
 
 const DEFAULT_MODULES = ['users', 'cards', 'binders', 'listings', 'logs'];
 
 export default function ModulesPage() {
+  const { loading } = useRequireAdmin();
   const [modules, setModules] = useState(DEFAULT_MODULES);
 
   useEffect(() => {
@@ -28,6 +30,7 @@ export default function ModulesPage() {
     });
   };
 
+  if (loading) return <p>Loading...</p>;
   return (
     <div className="space-y-4 max-w-md">
       <h1 className="text-2xl font-semibold">Enabled Modules</h1>

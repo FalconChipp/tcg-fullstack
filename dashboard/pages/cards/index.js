@@ -1,4 +1,5 @@
 import { gql, useQuery, useMutation } from '@apollo/client';
+import useRequireAdmin from '../../hooks/useRequireAdmin';
 
 const CARDS = gql`
   query AdminCards {
@@ -17,9 +18,11 @@ const DELETE_CARD = gql`
 `;
 
 export default function Cards() {
-  const { data, loading, error, refetch } = useQuery(CARDS);
+  const { loading: authLoading } = useRequireAdmin();
+  const { data, loading, error, refetch } = useQuery(CARDS, { skip: authLoading });
   const [del] = useMutation(DELETE_CARD, { onCompleted: () => refetch() });
 
+  if (authLoading) return <p>Loading...</p>;
   if (loading) return <p>Loading...</p>;
   if (error) return <p>Error loading cards</p>;
 

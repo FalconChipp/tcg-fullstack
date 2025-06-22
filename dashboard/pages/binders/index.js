@@ -1,4 +1,5 @@
 import { gql, useQuery, useMutation } from '@apollo/client';
+import useRequireAdmin from '../../hooks/useRequireAdmin';
 
 const BINDERS = gql`
   query AdminBinders {
@@ -16,9 +17,11 @@ const DELETE_BINDER = gql`
 `;
 
 export default function Binders() {
-  const { data, loading, error, refetch } = useQuery(BINDERS);
+  const { loading: authLoading } = useRequireAdmin();
+  const { data, loading, error, refetch } = useQuery(BINDERS, { skip: authLoading });
   const [del] = useMutation(DELETE_BINDER, { onCompleted: () => refetch() });
 
+  if (authLoading) return <p>Loading...</p>;
   if (loading) return <p>Loading...</p>;
   if (error) return <p>Error loading binders</p>;
 

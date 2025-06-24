@@ -1,6 +1,7 @@
 # TCG Collection Manager
 
 A modern web application for managing and organizing trading card game collections, built with Next.js and React.
+This app communicates with the GraphQL backend located in `../backend`.
 
 ## Features
 
@@ -100,6 +101,7 @@ NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=your-secret-key
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
+NEXT_PUBLIC_GRAPHQL_ENDPOINT=http://localhost:4000/graphql
 ```
 
 4. Run the development server:

@@ -111,7 +111,7 @@ export async function executeMutation(mutation, variables, token) {
  */
 export function formatCardForCollection(card) {
   return {
-    externalId: card.externalId || card.id || '',
+    cardId: card.cardId || card.externalId || card.id || '',
     name: card.name || card.tcgName || '',
     setName: card.setName || card.tcgSetName || '',
     image: card.image || card.tcgImageUrl || '',

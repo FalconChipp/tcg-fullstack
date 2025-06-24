@@ -66,14 +66,14 @@ export default function AddToCollectionPanel({ cardDetail, onClose }) {
       showStatus("error", "Authentication token not found. Please log in.");
       return;
     }
-    if (!cardDetail || !cardDetail.externalId) {
+    if (!cardDetail || !cardDetail.cardId) {
       showStatus("error", "Card details are missing. Cannot add to collection.");
       return;
     }
     setIsSubmitting(true);
 
     const inputVariables = {
-      cardId: cardDetail.externalId,
+      cardId: cardDetail.cardId,
       quantity,
       condition,
       variation: variation || "normal",

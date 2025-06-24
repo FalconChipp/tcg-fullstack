@@ -1,7 +1,8 @@
-// src/modules/userProfiles/typeDefs.js
 const gql = require('graphql-tag');
 
 module.exports = gql`
+  scalar Upload
+
   type User {
     id: ID!
     email: String!
@@ -10,7 +11,8 @@ module.exports = gql`
     isVerified: Boolean!
     createdAt: String
     updatedAt: String
-    # Add more public profile fields as needed
+    bio: String
+    favouritePokemon: String
   }
 
   type Query {
@@ -19,6 +21,7 @@ module.exports = gql`
   }
 
   type Mutation {
-    updateProfile(username: String, avatarUrl: String): User!
+    updateProfile(username: String, avatarUrl: String, bio: String, favouritePokemon: String): User!
+    uploadAvatar(file: Upload!): User!
   }
 `;

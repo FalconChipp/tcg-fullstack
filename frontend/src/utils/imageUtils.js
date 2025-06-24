@@ -1,3 +1,4 @@
+// utils/imageUtils.js
 // Default image settings.
 const FALLBACK_CARD_IMAGE = "https://cdn.pidgi.net/images/f/f6/Card_back_INTL_-_Pokemon_Trading_Card_Game.png";
 const FALLBACK_SYMBOL_IMAGE = "/images/set-symbol-placeholder.svg"; // Use local SVG fallback image

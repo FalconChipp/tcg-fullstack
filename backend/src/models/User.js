@@ -72,6 +72,16 @@ const User = sequelize.define('User', {
     type: DataTypes.DATE,
     field: 'last_login_at',
     defaultValue: null,
+  },
+  bio: {
+    type: DataTypes.STRING,
+    field: 'bio',
+    defaultValue: null,
+  }, 
+  favouritePokemon: {
+    type: DataTypes.STRING, 
+    field: 'favourite_pokemon',
+    defaultValue: null, 
   }
 }, {
   tableName: 'Users',

@@ -3,9 +3,10 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const db = require('./config/db');
-const schema = require('./schema'); // Should export typeDefs and resolvers
+const schema = require('./schema');
 const { expressMiddleware } = require('@apollo/server/express4');
 const { ApolloServer } = require('@apollo/server');
+const { graphqlUploadExpress } = require('graphql-upload');
 
 const stripe = require('./stripe/stripe');
 const { syncModels } = require('./models');
@@ -14,7 +15,10 @@ const authHelpers = require('./modules/auth/helpers');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(graphqlUploadExpress({ maxFileSize: 2 * 1024 * 1024, maxFiles: 1 }));
+// app.use(express.json());
+
+app.use('/uploads/avatars', express.static('uploads/avatars'));
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
@@ -60,14 +64,14 @@ app.post('/stripe/webhook', bodyParser.raw({ type: 'application/json' }), async 
   res.json({ received: true });
 });
 
+app.use(express.json());
+
 // Connect to DB (Sequelize)
 db.authenticate()
   .then(async () => {
     console.log('DB connected');
-    // Sync all models to create tables if they don't exist
     await syncModels();
     console.log('DB models synced');
-    // Now you can start your server
     startServer();
   })
   .catch((err) => console.error('DB connection error:', err));
@@ -82,7 +86,7 @@ async function startServer() {
   // Use Apollo express middleware at /graphql
   app.use(
     '/graphql',
-    express.json(),
+    // express.json(),
     expressMiddleware(apolloServer, {
       context: async ({ req }) => {
         const token = req.headers.authorization || '';

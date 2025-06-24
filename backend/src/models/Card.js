@@ -1,23 +1,44 @@
 // models/Card.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
-const { v4: uuidv4 } = require('uuid');
 
 const Card = sequelize.define('Card', {
   id: {
-    type: DataTypes.STRING(255), // Cards often use string IDs (not UUID), adjust if needed
+    type: DataTypes.STRING(255), // TCGdex and PokemonTCG use string IDs
     primaryKey: true,
   },
   name: {
     type: DataTypes.STRING(255),
     allowNull: false,
   },
-  set: {
-    type: DataTypes.STRING(255),
-    field: 'set',
+  number: {
+    type: DataTypes.STRING(50),
     allowNull: true,
   },
-  number: {
+  set: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  setName: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    field: 'set_name',
+  },
+  setLogo: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    field: 'set_logo',
+  },
+  setSymbol: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    field: 'set_symbol',
+  },
+  edition: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+  },
+  image: {
     type: DataTypes.STRING(255),
     allowNull: true,
   },
@@ -25,12 +46,27 @@ const Card = sequelize.define('Card', {
     type: DataTypes.STRING(50),
     allowNull: true,
   },
-  imageUrl: {
-    type: DataTypes.STRING(255),
-    field: 'image_url',
+  variations: {
+    type: DataTypes.JSON,
     allowNull: true,
   },
-  // --- Pricing fields (from TCGPlayer/Cardmarket, can be null) ---
+  // --- Pricing: Rollup (for quick filters) ---
+  pricing: {
+    type: DataTypes.JSON, // stores { updated_at, tcgplayer, cardmarket }
+    allowNull: true,
+  },
+  // --- Full TCGplayer/CMKT Variations ---
+  tcgplayerVariations: {
+    type: DataTypes.JSON, // { normal, reverseHolofoil, holofoil }
+    allowNull: true,
+    field: 'tcgplayer_variations',
+  },
+  cardmarketVariations: {
+    type: DataTypes.JSON, // { normal, reverseHolofoil, holofoil }
+    allowNull: true,
+    field: 'cardmarket_variations',
+  },
+  // --- Legacy quick price fields, kept for backward compatibility ---
   tcgplayerLow: {
     type: DataTypes.FLOAT,
     field: 'tcgplayer_low',
@@ -70,12 +106,11 @@ const Card = sequelize.define('Card', {
     type: DataTypes.FLOAT,
     field: 'cardmarket_trend_price',
     defaultValue: null,
-  },
-  // Add more card fields as needed, e.g. for expansion/edition/etc.
+  }
 }, {
   tableName: 'Cards',
   timestamps: true,
-  underscored: true, // creates created_at, updated_at fields
+  underscored: true,
 });
 
 module.exports = Card;

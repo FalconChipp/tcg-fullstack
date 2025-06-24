@@ -29,18 +29,16 @@ export async function getServerSideProps({ params, res }) {
   res.setHeader("Cache-Control", "no-store");
   const userQuery = `
     query GetUser($username: String!) {
-      user(username: $username) {
+      userProfile(username: $username) {
         id
         username
         email
-        emailVerified
+        avatarUrl
+        isVerified
         createdAt
         updatedAt
-        userProfile {
-          bio
-          avatarUrl
-          favouritePokemon
-        }
+        bio
+        favouritePokemon
       }
     }
   `;
@@ -51,12 +49,12 @@ export async function getServerSideProps({ params, res }) {
       body: JSON.stringify({ query: userQuery, variables: { username } }),
     });
     const { data, errors } = await r.json();
-    if (errors || !data?.user) {
+    if (errors || !data?.userProfile) {
       return errors
         ? { props: { error: errors[0].message } }
         : { notFound: true };
     }
-    return { props: { user: data.user } };
+    return { props: { user: data.userProfile } };
   } catch (err) {
     return { props: { error: "Remote server error" } };
   }
@@ -93,19 +91,21 @@ export default function ProfilePage({ user, error }) {
           body: JSON.stringify({
             query: `
               query GetUserAchievements($userId: ID!) {
-                userAchievements(userId: $userId) {
-                  achievementKey
-                  title
-                  isComplete
-                  assetUrl
-                  current
-                  goal
-                  tier
-                  category
+              userAchievements(userId: $userId) {
+                id
+                earnedAt
+                achievement {
+                  id
+                  code
+                  name
                   description
-                  earnedAt
+                  tier
+                  imageUrl
+                  createdAt
+                  updatedAt
                 }
               }
+            }
             `,
             variables: { userId: user.id }
           }),

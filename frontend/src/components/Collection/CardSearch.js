@@ -12,11 +12,11 @@ import SetAutocomplete from "./SearchComponents/SetAutocomplete";
 import CardDetailsModal from "../UserProfile/CardDetailsModal";
 import { mapCardToDetail } from "@/utils/mapData";
 import CardSkeleton from "../UI/CardSkeleton";
+import { getCardImageUrl } from "@/utils/imageUtils";
 
+// --- CONSTANTS ---
 const FALLBACK_CARD_IMAGE = "https://cdn.pidgi.net/images/f/f6/Card_back_INTL_-_Pokemon_Trading_Card_Game.png";
 const FALLBACK_SYMBOL_IMAGE = "https://placehold.co/50x50/webp?text=Icon";
-const DEFAULT_IMAGE_QUALITY = "low";
-const DEFAULT_IMAGE_EXTENSION = "webp";
 const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
 const PER_PAGE = 25;
 
@@ -44,25 +44,26 @@ export default function CardSearch() {
 
   const isExactCardSearch = Boolean(setCode && number);
 
+  // --- Fetch cards with GraphQL query ---
   const fetchCards = async (pageToFetch = 1) => {
     const query = `
       query SearchCards(
         $name: String,
         $set: String,
         $number: String,
-        $language: String,
-        $page: Int,
-        $perPage: Int
+        $rarity: String,
+        $limit: Int,
+        $offset: Int
       ) {
-        pokemonCards(
+        searchCards(
           name: $name,
           set: $set,
           number: $number,
-          language: $language,
-          page: $page,
-          perPage: $perPage
+          rarity: $rarity,
+          limit: $limit,
+          offset: $offset
         ) {
-          externalId
+          id
           name
           number
           edition
@@ -94,9 +95,8 @@ export default function CardSearch() {
       name,
       set: setCode,
       number,
-      language,
-      page: pageToFetch,
-      perPage: PER_PAGE
+      limit: PER_PAGE,
+      offset: (pageToFetch - 1) * PER_PAGE
     };
 
     const res = await fetch(WP_GRAPHQL_URL, {
@@ -106,9 +106,10 @@ export default function CardSearch() {
     });
     const json = await res.json();
     if (json.errors) throw new Error(json.errors[0].message);
-    return json.data.pokemonCards;
+    return json.data.searchCards;
   };
 
+  // --- Main search handler ---
   const handleSearch = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -129,6 +130,7 @@ export default function CardSearch() {
     }
   };
 
+  // --- Infinite scroll load ---
   const loadMoreResults = useCallback(async () => {
     if (isExactCardSearch || isLoadingMore || !hasMore) return;
     setIsLoadingMore(true);
@@ -146,21 +148,13 @@ export default function CardSearch() {
     }
   }, [page, hasMore, isLoadingMore, isExactCardSearch, name, setCode, number, language]);
 
-  const getCardImageUrl = (baseUrl) =>
-    baseUrl
-      ? `${baseUrl}/${DEFAULT_IMAGE_QUALITY}.${DEFAULT_IMAGE_EXTENSION}`
-      : FALLBACK_CARD_IMAGE;
-
-  const handleAddClick = (card) => {
-    setSelectedCardDetail(card);
-    setPanelOpen(true);
-  };
-
+  // --- Show status message for add-to-wishlist etc ---
   const showStatusMessage = (type, message) => {
     setStatusMessage({ type, message });
     setTimeout(() => setStatusMessage(null), 5000);
   };
 
+  // --- Add card to wishlist ---
   const handleAddToWishlist = async (card) => {
     const token = getCookie("authToken");
     if (!token) {
@@ -182,7 +176,7 @@ export default function CardSearch() {
         }
       }
     `;
-    const variables = { cardId: card.externalId };
+    const variables = { cardId: card.id };
 
     try {
       const res = await fetch(WP_GRAPHQL_URL, {
@@ -204,6 +198,7 @@ export default function CardSearch() {
     }
   };
 
+  // --- Infinite scroll event listener ---
   useEffect(() => {
     if (!hasMore || isExactCardSearch || loading) return;
     const handleScroll = () => {
@@ -216,10 +211,12 @@ export default function CardSearch() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [hasMore, isExactCardSearch, isLoadingMore, loadMoreResults, loading]);
 
+  // --- Handle card detail modal open ---
   function handleCardDetail(card) {
     setCardDetailData(mapCardToDetail(card));
     setShowCardDetail(true);
   }
+
   // --- JSX ---
   return (
     <div className={`min-h-screen bg-light-background text-light-text dark:bg-dark-background dark:text-dark-text transition-colors`}>
@@ -392,14 +389,16 @@ export default function CardSearch() {
           <div>
             <h2 className="text-xl font-bold mb-6 ml-1">Search Results</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {results.map(card => (
+              {results.map(cardRaw => {
+                const card = mapCardToDetail(cardRaw)
+                return (
                 <div
                   className="
                     bg-light-surface dark:bg-dark-surface
                     rounded-2xl shadow hover:shadow-2xl flex flex-col p-3 min-h-[320px] transition
                     border border-light-border dark:border-dark-border
                   "
-                  key={card.externalId}
+                  key={card.id}
                   onClick={() => handleCardDetail(card)}
                   tabIndex={0}
                   onKeyDown={e => { if (e.key === "Enter" || e.key === " ") handleCardDetail(card); }}
@@ -408,9 +407,10 @@ export default function CardSearch() {
                 >
                   <div className="relative w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-xl mb-3 overflow-hidden">
                     <Image
-                      src={getCardImageUrl(card.image)}
+                      src={card.tcgImageUrl}
                       alt={card.name}
                       fill
+                      unoptimized
                       className="object-contain object-center rounded-xl"
                     />
                   </div>
@@ -435,19 +435,19 @@ export default function CardSearch() {
                       <div>
                         <span className="font-bold text-light-accent dark:text-dark-accent">TCGP</span>
                         <span className="font-semibold ml-1 text-light-text dark:text-dark-text">
-                          {card.pricing?.tcgplayer?.market ? `£${card.pricing.tcgplayer.market.toFixed(2)}` : '—'}
+                          {card.tcgplayerMarket ? `£${card.tcgplayerMarket.toFixed(2)}` : '—'}
                         </span>
                       </div>
                       <div>
                         <span className="font-bold text-light-accent dark:text-dark-accent">CMKT</span>
                         <span className="font-semibold ml-1 text-light-text dark:text-dark-text">
-                          {card.pricing?.cardmarket?.average_sell ? `£${card.pricing.cardmarket.average_sell.toFixed(2)}` : '—'}
+                          {card.cardmarketAverageSell ? `£${card.cardmarketAverageSell.toFixed(2)}` : '—'}
                         </span>
                       </div>
                     </div>
                     <div className="flex gap-2 mt-2">
                       <button
-                        onClick={e => { e.stopPropagation(); handleAddClick(card); }}
+                        onClick={e => { e.stopPropagation(); setSelectedCardDetail(card); setPanelOpen(true); }}
                         className="
                           rounded-lg px-4 py-2
                           bg-light-accent dark:bg-dark-accent
@@ -473,7 +473,7 @@ export default function CardSearch() {
                     </div>
                   </div>
                 </div>
-              ))}
+              )})}
               {isLoadingMore &&
                 Array.from({ length: 4 }).map((_, idx) => (
                   <div className="bg-light-surface dark:bg-dark-surface rounded-2xl shadow flex flex-col p-3 min-h-[300px] pointer-events-none" key={`load-${idx}`}>

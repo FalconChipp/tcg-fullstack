@@ -6,10 +6,12 @@ const nextConfig = {
     domains: [
       'placehold.co',
       'assets.tcgdex.net',
-      'images.tcgdex.net', // if you use this domain elsewhere
-      'images.pokemontcg.io', // if you use this domain elsewhere
+      'cdn.tcgdex.net',
+      'images.tcgdex.net', 
+      'images.pokemontcg.io', 
       'cdn.pidgi.net',
-      'tcg.sixbyfive.com'
+      'tcg.sixbyfive.com',
+      'localhost'
     ],
   },
   webpack: (config, { isServer }) => {

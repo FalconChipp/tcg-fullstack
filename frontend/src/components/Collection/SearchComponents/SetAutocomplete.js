@@ -157,9 +157,9 @@ export default function SetAutocomplete({ value, onChange, onSelect }) {
               <img
                 src={opt.logo}
                 alt={opt.name}
-                width={28}
-                height={28}
-                className="rounded bg-light-alt dark:bg-dark-alt border border-light-border dark:border-dark-border"
+                width={56}
+                height={56}
+                // className="rounded bg-light-alt dark:bg-dark-alt border border-light-border dark:border-dark-border"
                 style={{ objectFit: "contain" }}
               />
               <span className="min-w-[40px] font-bold">

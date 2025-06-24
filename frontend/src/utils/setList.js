@@ -4,11 +4,10 @@
 const setList = [
   // Scarlet & Violet era
   { abbr: "SVP", code: "svp", name: "Scarlet & Violet Promos", logo: "/assets/set-logos/scarlet-violet-promos-logo.png" },
-  { abbr: "SVI", code: "sv01", name: "Scarlet & Violet Base Set", logo: "/assets/set-logos/scarlet-violet-base-set-logo.png" },
-  { abbr: "SVE", code: "sve", name: "Scarlet & Violet Energy", logo: "/assets/set-logos/scarlet-violet-energy-logo.png" },
+  { abbr: "SVI", code: "sv01", name: "Scarlet & Violet Base Set", logo: "/assets/set-logos/scarlet-violet-base-logo.png" },
   { abbr: "PAL", code: "sv02", name: "Paldea Evolved", logo: "/assets/set-logos/paldea-evolved-logo.png" },
   { abbr: "OBF", code: "sv03", name: "Obsidian Flames", logo: "/assets/set-logos/obsidian-flames-logo.png" },
-  { abbr: "M23", code: "mcd23", name: "McDonald's Match Battle 2023", logo: "/assets/set-logos/mcdonalds-match-battle-2023-logo.png" },
+  { abbr: "M23", code: "mcd23", name: "McDonald's Match Battle 2023", logo: "/assets/set-logos/mcdonalds-2023-logo.png" },
   { abbr: "MEW", code: "sv03.5", name: "151", logo: "/assets/set-logos/151-logo.png" },
   { abbr: "PAR", code: "sv04", name: "Paradox Rift", logo: "/assets/set-logos/paradox-rift-logo.png" },
   { abbr: "PAF", code: "sv04.5", name: "Paldean Fates", logo: "/assets/set-logos/paldean-fates-logo.png" },
@@ -66,8 +65,8 @@ const setList = [
 
   // XY era
   { abbr: "XYP", code: "xyp", name: "XY Black Star Promos", logo: "/assets/set-logos/xy-black-star-promos-logo.png" },
-  { abbr: "KSS", code: "xy0", name: "Kalos Starter Set", logo: "/assets/set-logos/kalos-starter-set-logo.png" },
-  { abbr: "XY", code: "xy1", name: "XY Base Set", logo: "/assets/set-logos/xy-base-set-logo.png" },
+  { abbr: "KSS", code: "xy0", name: "Kalos Starter Set", logo: "/assets/set-logos/kalos-starter-logo.png" },
+  { abbr: "XY", code: "xy1", name: "XY Base Set", logo: "/assets/set-logos/xy-logo.png" },
   { abbr: "FLF", code: "xy2", name: "Flashfire", logo: "/assets/set-logos/flashfire-logo.png" },
   { abbr: "FFI", code: "xy3", name: "Furious Fists", logo: "/assets/set-logos/furious-fists-logo.png" },
   { abbr: "PHF", code: "xy4", name: "Phantom Forces", logo: "/assets/set-logos/phantom-forces-logo.png" },
@@ -121,7 +120,7 @@ const setList = [
   { abbr: "RS", code: "ex1", name: "Ruby & Sapphire", logo: "/assets/set-logos/ruby-sapphire-logo.png" },
   { abbr: "SS", code: "ex2", name: "Sandstorm", logo: "/assets/set-logos/sandstorm-logo.png" },
   { abbr: "DR", code: "ex3", name: "Dragon", logo: "/assets/set-logos/dragon-logo.png" },
-  { abbr: "MA", code: "ex4", name: "Team Magma vs Team Aqua", logo: "/assets/set-logos/team-magma-vs-team-aqua-logo.png" },
+  { abbr: "MA", code: "ex4", name: "Team Magma vs Team Aqua", logo: "/assets/set-logos/magma-aqua-logo.png" },
   { abbr: "HL", code: "ex5", name: "Hidden Legends", logo: "/assets/set-logos/hidden-legends-logo.png" },
   { abbr: "RG", code: "ex6", name: "FireRed & LeafGreen", logo: "/assets/set-logos/firered-leafgreen-logo.png" },
   { abbr: "TRR", code: "ex7", name: "Team Rocket Returns", logo: "/assets/set-logos/team-rocket-returns-logo.png" },

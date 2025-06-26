@@ -17,6 +17,8 @@ import { Server as SocketIOServer } from 'socket.io';
 import fs from 'fs';
 import path from 'path';
 import jwt from 'jsonwebtoken';
+import { startExpiredMessageCleanup } from './src/jobs/messageCleanup.js';
+import { startUnreadReminderJob } from './src/jobs/unreadReminder.js';
 
 import { typeDefs, resolvers } from './src/schema.js';
 import { sequelize, User } from './src/models/index.js';
@@ -202,6 +204,8 @@ try {
   await sequelize.authenticate();
   logger.info('Database connection established.');
   await sequelize.sync(); // For production, use migrations!
+  startExpiredMessageCleanup(logger);
+  startUnreadReminderJob(logger);
 } catch (err) {
   logger.error('Database connection failed:', err);
   process.exit(1);

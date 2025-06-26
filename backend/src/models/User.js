@@ -47,6 +47,10 @@ export default (sequelize) => {
         type: DataTypes.BOOLEAN,
         defaultValue: false,
       },
+      chatBanned: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+      },
       reputation: {
         type: DataTypes.INTEGER,
         defaultValue: 0,

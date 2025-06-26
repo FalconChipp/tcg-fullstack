@@ -47,6 +47,8 @@ import ListingFactory from './Listing.js';
 import TradeFactory from './Trade.js';
 import UserReputationFactory from './UserReputation.js';
 import MessageFactory from './Message.js';
+import ChatAgreementFactory from './ChatAgreement.js';
+import ReportedUserFactory from './ReportedUser.js';
 import NotificationFactory from './Notification.js';
 import AuditLogFactory from './AuditLog.js';
 import AchievementFactory from './Achievement.js';
@@ -68,6 +70,8 @@ const Listing = ListingFactory(sequelize);
 const { Trade, TradeCard } = TradeFactory(sequelize);
 const UserReputation = UserReputationFactory(sequelize);
 const Message = MessageFactory(sequelize);
+const ChatAgreement = ChatAgreementFactory(sequelize);
+const ReportedUser = ReportedUserFactory(sequelize);
 const Notification = NotificationFactory(sequelize);
 const AuditLog = AuditLogFactory(sequelize);
 const Achievement = AchievementFactory(sequelize);
@@ -121,6 +125,15 @@ User.hasMany(Message, { foreignKey: 'senderId', as: 'sentMessages' });
 User.hasMany(Message, { foreignKey: 'receiverId', as: 'receivedMessages' });
 Message.belongsTo(User, { foreignKey: 'senderId', as: 'sender' });
 Message.belongsTo(User, { foreignKey: 'receiverId', as: 'receiver' });
+Message.belongsTo(User, { foreignKey: 'flaggedById', as: 'flaggedBy' });
+
+User.hasOne(ChatAgreement, { foreignKey: 'userId', onDelete: 'CASCADE' });
+ChatAgreement.belongsTo(User, { foreignKey: 'userId' });
+
+User.hasMany(ReportedUser, { foreignKey: 'userId', as: 'reportsAgainst' });
+User.hasMany(ReportedUser, { foreignKey: 'reporterId', as: 'reportsMade' });
+ReportedUser.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+ReportedUser.belongsTo(User, { foreignKey: 'reporterId', as: 'reporter' });
 
 // Notifications
 User.hasMany(Notification, { foreignKey: 'userId', onDelete: 'CASCADE' });
@@ -181,5 +194,6 @@ export {
   Trade, TradeCard, UserReputation, Message,
   Notification, AuditLog, Achievement, Subscription,
   SubscriptionTier, Transaction, ShippingLabel, CardPriceCache,
-  AdminAction, UserAchievement
+  AdminAction, UserAchievement,
+  ChatAgreement, ReportedUser
 };

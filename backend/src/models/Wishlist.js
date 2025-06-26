@@ -39,7 +39,12 @@ export default (sequelize) => {
       timestamps: true,
       indexes: [
         { fields: ['userId'] },
-        { fields: ['cardId'] }
+        { fields: ['cardId'] },
+        {
+          fields: ['userId', 'cardId', 'variation'],
+          unique: true,
+          name: 'unique_user_card_variation'
+        }
       ]
     }
   );

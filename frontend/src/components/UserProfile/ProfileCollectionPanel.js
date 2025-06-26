@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useContext } from "react";
+import React, { useState, useMemo, useContext } from "react";
 import Image from "next/image";
 import { getSetLogo } from "@/utils/setLogos";
 import EditCollectionCardModal from "@/components/Collection/EditCollectionCardModal";
-import CardDetailsModal from '@/components/UserProfile/CardDetailsModal';
+import CardDetailsModal from "@/components/UserProfile/CardDetailsModal";
 import { formatCondition, getConditionClass } from "@/utils/formatCondition";
 import { formatRelativeTime } from "@/utils/formatDate";
 import { AuthContext } from "@/components/Auth/AuthProvider";
@@ -12,6 +12,10 @@ import QuantitySelectorModal from "@/components/UI/QuantitySelectorModal";
 import { getCardImageUrl } from "@/utils/imageUtils";
 import CardSkeleton from "@/components/UI/CardSkeleton";
 
+// --- Use the enriched data hook, NOT direct fetch ---
+import useProfileCollection from "@/hooks/useProfileCollection"; // <<==== Path as needed
+
+// --- CONSTANTS AND HELPERS ---
 const SORT_OPTIONS = [
   { value: 'name-asc', label: 'Name (A-Z)' },
   { value: 'name-desc', label: 'Name (Z-A)' },
@@ -25,26 +29,35 @@ const SORT_OPTIONS = [
   { value: 'quantity-desc', label: 'Quantity (High to Low)' },
 ];
 
+// Format number as GBP currency
 const formatCurrency = value =>
   new Intl.NumberFormat("en-GB", {
     style: "currency", currency: "GBP",
     minimumFractionDigits: 2, maximumFractionDigits: 2
   }).format(value);
 
+// Unified price extractor (always available if hook is used!)
 const getCardPrice = (card) => {
   if (!card) return null;
-  const toNumber = (value) => {
-    if (value === null || value === undefined) return null;
-    const num = typeof value === 'string' ? parseFloat(value) : value;
-    return isNaN(num) ? null : num;
-  };
-  const tcgPrice = toNumber(card.tcgplayerMarket);
-  if (tcgPrice !== null) return tcgPrice;
-  const cmPrice = toNumber(card.cardmarketAverageSell);
-  if (cmPrice !== null) return cmPrice;
-  return null;
+  // Prioritise TCGplayer, then Cardmarket
+  return (
+    card?.tcgplayerVariations?.normal?.market ||
+    card?.tcgplayerVariations?.holofoil?.market ||
+    card?.tcgplayerVariations?.reverseHolofoil?.market ||
+    card?.pricing?.tcgplayer?.market ||
+    card?.pricing?.tcgplayer?.mid ||
+    card?.cardmarketVariations?.normal?.average_sell ||
+    card?.cardmarketVariations?.holofoil?.average_sell ||
+    card?.pricing?.cardmarket?.average_sell ||
+    null
+  );
 };
 
+// Always parse createdAt properly (milliseconds as string/number)
+const getDate = (date) =>
+  date ? new Date(typeof date === 'string' ? parseInt(date, 10) : date) : null;
+
+// Skeletons for loading
 function CollectionSkeletonGrid({ count = 10 }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 mt-6">
@@ -55,18 +68,26 @@ function CollectionSkeletonGrid({ count = 10 }) {
   );
 }
 
+// --- MAIN COMPONENT ---
 export default function ProfileCollectionPanel({
   userId,
-  cards,
   isOwnProfile,
   onAddToCollection,
   onCardUpdated,
   onCardRemoved,
   dark,
-  loading = false,
 }) {
   const { token } = useContext(AuthContext);
 
+  // === Use the enriched hook instead of direct fetch! ===
+  // If you need to display wishlist as well, use .wishlist.value
+  const {
+    collection,
+    loading,
+    refresh,
+  } = useProfileCollection({ user: { id: userId }, token });
+
+  // UI State
   const [setFilter, setSetFilter] = useState("");
   const [rarityFilter, setRarityFilter] = useState("");
   const [search, setSearch] = useState("");
@@ -76,26 +97,15 @@ export default function ProfileCollectionPanel({
   const [confirmRemoveId, setConfirmRemoveId] = useState(null);
   const [showQuantityModal, setShowQuantityModal] = useState(false);
   const [removeCard, setRemoveCard] = useState(null);
-  const [localCards, setLocalCards] = useState(cards || []);
 
-  useEffect(() => {
-    if (!cards) return;
-    const normalized = cards.map(card => ({
-      ...card,
-      id: card.id || card.cardId || card._id || Math.random().toString(36).slice(2),
-    }));
-    setLocalCards(normalized);
-  }, [cards]);
-
+  // --- Filtering and sorting logic ---
   const filteredCards = useMemo(() => {
-    return localCards.filter(card =>
-      (!setFilter || card.setName === setFilter || card.tcgSetName === setFilter) &&
+    return (collection.value || []).filter(card =>
+      (!setFilter || card.setName === setFilter) &&
       (!rarityFilter || card.rarity === rarityFilter) &&
-      (!search || (card.tcgName || card.name || "")
-        .toLowerCase()
-        .includes(search.toLowerCase()))
+      (!search || (card.name || "").toLowerCase().includes(search.toLowerCase()))
     );
-  }, [localCards, setFilter, rarityFilter, search]);
+  }, [collection.value, setFilter, rarityFilter, search]);
 
   const sortedCards = useMemo(() => {
     if (!filteredCards.length) return [];
@@ -104,66 +114,25 @@ export default function ProfileCollectionPanel({
     const multiplier = direction === 'asc' ? 1 : -1;
     switch (sortBy) {
       case 'name':
-        return collectionCopy.sort((a, b) => multiplier * ((a.tcgName || a.name || '').localeCompare(b.tcgName || b.name || '')));
+        return collectionCopy.sort((a, b) => multiplier * ((a.name || '').localeCompare(b.name || '')));
       case 'set':
-        return collectionCopy.sort((a, b) => multiplier * ((a.tcgSetName || a.setName || '').localeCompare(b.tcgSetName || b.setName || '')));
-      case 'price':
-        return collectionCopy.sort((a, b) => {
-          const priceA = getCardPrice(a) ?? 0, priceB = getCardPrice(b) ?? 0;
-          if (priceA === 0 && priceB === 0) return (a.tcgName || a.name || '').localeCompare(b.tcgName || b.name || '');
-          return multiplier * (priceA - priceB);
-        });
+        return collectionCopy.sort((a, b) => multiplier * ((a.setName || '').localeCompare(b.setName || '')));
+      case 'price': {
+        const priceA = getCardPrice(a) ?? 0, priceB = getCardPrice(b) ?? 0;
+        if (priceA === 0 && priceB === 0) return (a.name || '').localeCompare(b.name || '');
+        return multiplier * (priceA - priceB);
+      }
       case 'quantity':
         return collectionCopy.sort((a, b) => multiplier * ((a.quantity || 0) - (b.quantity || 0)));
       case 'date':
-        const getTime = c => c.createdAt ? new Date(c.createdAt).getTime() : c.dateAdded ? new Date(c.dateAdded).getTime() : 0;
+        const getTime = c => c.createdAt ? new Date(typeof c.createdAt === 'string' ? parseInt(c.createdAt, 10) : c.createdAt).getTime() : 0;
         return collectionCopy.sort((a, b) => multiplier * (getTime(a) - getTime(b)));
       default:
         return collectionCopy;
     }
   }, [filteredCards, sortOption]);
 
-  const openEditModal = (card) => {
-    setEditingCard(card);
-    setSelectedCard(null);
-  };
-
-  const triggerRemove = (card) => {
-    if (!isOwnProfile || !card || !card.id) return;
-    if (card.quantity > 1) {
-      setRemoveCard(card);
-      setShowQuantityModal(true);
-      setConfirmRemoveId(null);
-    } else if (confirmRemoveId === card.id) {
-      onCardRemoved(card.id, 1);
-      setConfirmRemoveId(null);
-    } else {
-      setConfirmRemoveId(card.id);
-    }
-  };
-  const confirmQuantityRemove = (quantity) => {
-    if (removeCard) onCardRemoved(removeCard.id, quantity);
-    setShowQuantityModal(false);
-    setRemoveCard(null);
-  };
-
-  const handleCardDetailsEdit = card => openEditModal(card);
-  const handleCardDetailsRemove = card => triggerRemove(card);
-
-  const handleEditModalClose = () => setEditingCard(null);
-
-  const handleModalCardUpdated = (updatedCard) => {
-    setEditingCard(null);
-    if (onCardUpdated) onCardUpdated(updatedCard);
-  };
-  const handleModalCardRemoved = (removedCardId) => {
-    setEditingCard(null);
-    if (onCardRemoved) onCardRemoved(removedCardId);
-  };
-
-  const allSets = Array.from(new Set(localCards.map(card => card.tcgSetName || card.setName).filter(Boolean)));
-  const allRarities = Array.from(new Set(localCards.map(card => card.rarity).filter(Boolean)));
-
+  // Skeletons for incomplete rows (optional aesthetic)
   const fillFirstRowSkeletons = (cardCount) => {
     if (cardCount >= 5) return null;
     return Array.from({ length: 5 - cardCount }).map((_, idx) => (
@@ -171,7 +140,8 @@ export default function ProfileCollectionPanel({
     ));
   };
 
-  if (loading) {
+  // --- Render states ---
+  if (loading.value) {
     return (
       <section className="w-full max-w-8xl mx-auto mt-6">
         <CollectionSkeletonGrid count={10} />
@@ -179,7 +149,7 @@ export default function ProfileCollectionPanel({
     );
   }
 
-  if ((localCards?.length ?? 0) === 0) {
+  if ((collection.value?.length ?? 0) === 0) {
     return (
       <section className="w-full max-w-8xl mx-auto mt-6">
         <div className="text-center py-8">
@@ -212,27 +182,57 @@ export default function ProfileCollectionPanel({
     );
   }
 
+  // All sets/rarities for filters (unchanged)
+  const allSets = Array.from(new Set((collection.value || []).map(card => card.setName).filter(Boolean)));
+  const allRarities = Array.from(new Set((collection.value || []).map(card => card.rarity).filter(Boolean)));
+
+  // --- Actions/handlers ---
+  const openEditModal = (card) => {
+    setEditingCard(card);
+    setSelectedCard(null);
+  };
+  const triggerRemove = (card) => {
+    if (!isOwnProfile || !card || !card.id) return;
+    if (card.quantity > 1) {
+      setRemoveCard(card);
+      setShowQuantityModal(true);
+      setConfirmRemoveId(null);
+    } else if (confirmRemoveId === card.id) {
+      onCardRemoved(card.id, 1);
+      setConfirmRemoveId(null);
+    } else {
+      setConfirmRemoveId(card.id);
+    }
+  };
+  const confirmQuantityRemove = (quantity) => {
+    if (removeCard) onCardRemoved(removeCard.id, quantity);
+    setShowQuantityModal(false);
+    setRemoveCard(null);
+  };
+  const handleCardDetailsEdit = card => openEditModal(card);
+  const handleCardDetailsRemove = card => triggerRemove(card);
+  const handleEditModalClose = () => setEditingCard(null);
+  const handleModalCardUpdated = (updatedCard) => {
+    setEditingCard(null);
+    if (onCardUpdated) onCardUpdated(updatedCard);
+    refresh(); // re-fetch after update
+  };
+  const handleModalCardRemoved = (removedCardId) => {
+    setEditingCard(null);
+    if (onCardRemoved) onCardRemoved(removedCardId);
+    refresh(); // re-fetch after remove
+  };
+
+  // --- MAIN RENDER ---
   return (
     <section className="w-full max-w-8xl mx-auto mt-6">
-      <div
-        className="
-          max-w-3xl
-          flex flex-wrap justify-start gap-2
-          items-center
-          px-4 py-2 mb-6
-          transition-all
-        "
-      >
-        {/* Search Input First */}
+      {/* --- Filter/Search/Sort Bar --- */}
+      <div className="max-w-3xl flex flex-wrap justify-start gap-2 items-center px-4 py-2 mb-6 transition-all">
         <div className="relative w-[250px]">
           <input
             type="text"
             placeholder="Search"
-            className="
-              w-full bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 pl-8 py-1.5 border border-light-border dark:border-dark-border
-              focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm transition
-              h-9 font-semibold
-            "
+            className="w-full bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 pl-8 py-1.5 border border-light-border dark:border-dark-border focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm transition h-9 font-semibold"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -243,54 +243,38 @@ export default function ProfileCollectionPanel({
             </svg>
           </span>
         </div>
-
         {/* Set Filter */}
         <select
           value={setFilter}
           onChange={e => setSetFilter(e.target.value)}
-          className="
-            w-[110px] bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 py-1.5 border border-light-border dark:border-dark-border
-            focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm transition h-9 font-semibold
-          "
+          className="w-[110px] bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 py-1.5 border border-light-border dark:border-dark-border focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm transition h-9 font-semibold"
         >
           <option value="">Set</option>
           {allSets.map(set => <option key={set} value={set}>{set}</option>)}
         </select>
-
         {/* Rarity Filter */}
         <select
           value={rarityFilter}
           onChange={e => setRarityFilter(e.target.value)}
-          className="
-            w-[110px] bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 py-1.5 border border-light-border dark:border-dark-border
-            focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm transition h-9 font-semibold
-          "
+          className="w-[110px] bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 py-1.5 border border-light-border dark:border-dark-border focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm transition h-9 font-semibold"
         >
           <option value="">Rarity</option>
           {allRarities.map(rarity => <option key={rarity} value={rarity}>{rarity}</option>)}
         </select>
-
         {/* Sort Option */}
         <select
           value={sortOption}
           onChange={e => setSortOption(e.target.value)}
-          className="
-            w-[130px] bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 py-1.5 border border-light-border dark:border-dark-border
-            focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm transition h-9 font-semibold
-          "
+          className="w-[130px] bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 py-1.5 border border-light-border dark:border-dark-border focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm transition h-9 font-semibold"
         >
           {SORT_OPTIONS.map(opt => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
-
         {/* Add Button */}
         {isOwnProfile && (
           <button
-            className="
-              bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white rounded-md px-3 py-1.5 text-sm shadow flex items-center h-9 ml-1
-              focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent transition font-semibold
-            "
+            className="bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white rounded-md px-3 py-1.5 text-sm shadow flex items-center h-9 ml-1 focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent transition font-semibold"
             onClick={onAddToCollection}
             title="Add Card"
           >
@@ -301,20 +285,19 @@ export default function ProfileCollectionPanel({
           </button>
         )}
       </div>
-
-      {/* Card Grid */}
+      {/* --- Card Grid --- */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
         {sortedCards.map(card => (
           <div key={card.id} className="bg-light-surface dark:bg-dark-surface rounded-xl shadow p-3 flex flex-col items-center hover:shadow-xl transition group">
             <div className="relative w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-lg mb-2 overflow-hidden cursor-pointer"
                  onClick={() => setSelectedCard(card)}>
               <Image
-                src={getCardImageUrl(card.image || card.tcgImageUrl)}
-                alt={card.tcgName || card.name}
+                src={getCardImageUrl(card.image)}
+                alt={card.name}
                 fill
+                unoptimized
                 className="object-contain rounded-lg group-hover:scale-105 transition-transform duration-300"
               />
-              {/* Quantity/Condition badges */}
               {card.quantity > 1 && (
                 <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded-full text-xs font-bold">
                   x{card.quantity}
@@ -328,47 +311,38 @@ export default function ProfileCollectionPanel({
             </div>
             <div className="w-full flex flex-col items-start mt-1">
               <div className="flex justify-between items-center w-full mb-1">
-                <span className="text-base font-bold truncate text-light-text dark:text-dark-text" title={card.tcgName || card.name}>{card.tcgName || card.name}</span>
-                {(card.setName || card.tcgSetName) && (
+                <span className="text-base font-bold truncate text-light-text dark:text-dark-text" title={card.name}>{card.name}</span>
+                {(card.setName) && (
                   <img
-                    src={getSetLogo(card.setName || card.tcgSetName)}
-                    alt={card.setName || card.tcgSetName}
+                    src={getSetLogo(card.setName)}
+                    alt={card.setName}
                     className="w-6 h-4 rounded ml-2"
                   />
                 )}
               </div>
               <span className="text-sm text-light-textMuted dark:text-dark-textMuted">#{card.number || card.cardId}</span>
-              {/* Price */}
-              {getCardPrice(card) !== null && (
-                <span className="text-xs text-green-600 dark:text-green-400 font-bold mt-1">{formatCurrency(getCardPrice(card))}</span>
-              )}
-              {/* Added date */}
-              {(card.createdAt || card.dateAdded) && (
+              {getCardPrice(card) !== null
+                ? <span className="text-xs text-green-600 dark:text-green-400 font-bold mt-1">
+                    {formatCurrency(getCardPrice(card))}
+                  </span>
+                : <span className="text-xs text-light-textMuted dark:text-dark-textMuted mt-1">
+                    —
+                  </span>
+              }
+              {(card.createdAt) && (
                 <span className="text-xs text-light-textMuted dark:text-dark-textMuted mt-1">
-                  Added: {formatRelativeTime(card.createdAt || card.dateAdded)}
+                  Added: {formatRelativeTime(getDate(card.createdAt))}
                 </span>
               )}
             </div>
-            {/* Actions */}
             {isOwnProfile && (
               <div className="mt-3 w-full flex justify-center">
-                <div
-                  className="flex flex-row flex-nowrap gap-2 items-center"
-                  onMouseLeave={() => {
-                    if (confirmRemoveId === card.id) setConfirmRemoveId(null);
-                  }}
+                <div className="flex flex-row flex-nowrap gap-2 items-center"
+                  onMouseLeave={() => { if (confirmRemoveId === card.id) setConfirmRemoveId(null); }}
                 >
                   <button
                     onClick={e => { e.stopPropagation(); openEditModal(card); }}
-                    className="
-                      flex items-center gap-1
-                      px-4 py-2 rounded-full text-xs font-semibold
-                      bg-light-secondary hover:bg-light-primary dark:bg-dark-secondary dark:hover:bg-dark-primary
-                      text-white shadow
-                      focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent
-                      transition-all duration-150
-                      active:scale-95
-                    "
+                    className="flex items-center gap-1 px-4 py-2 rounded-full text-xs font-semibold bg-light-secondary hover:bg-light-primary dark:bg-dark-secondary dark:hover:bg-dark-primary text-white shadow focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent transition-all duration-150 active:scale-95"
                     title="Edit card details"
                     tabIndex={0}
                   >
@@ -381,15 +355,7 @@ export default function ProfileCollectionPanel({
                   </button>
                   <button
                     onClick={e => { e.stopPropagation(); setSelectedCard(card); }}
-                    className="
-                      flex items-center gap-1
-                      px-4 py-2 rounded-full text-xs font-semibold
-                      bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight
-                      text-white shadow
-                      focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent
-                      transition-all duration-150
-                      active:scale-95
-                    "
+                    className="flex items-center gap-1 px-4 py-2 rounded-full text-xs font-semibold bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white shadow focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent transition-all duration-150 active:scale-95"
                     title="View card details"
                     tabIndex={0}
                   >
@@ -401,16 +367,7 @@ export default function ProfileCollectionPanel({
                   </button>
                   <button
                     onClick={e => { e.stopPropagation(); triggerRemove(card); }}
-                    className={`
-                      flex items-center gap-1
-                      px-4 py-2 rounded-full text-xs font-semibold
-                      bg-light-error hover:bg-light-error dark:bg-dark-error dark:hover:bg-dark-error
-                      text-white shadow
-                      focus:outline-none focus:ring-2 focus:ring-light-error dark:focus:ring-dark-error
-                      transition-all duration-150
-                      active:scale-95
-                      ${confirmRemoveId === card.id ? "ring-2 ring-light-error dark:ring-dark-error scale-105" : ""}
-                    `}
+                    className={`flex items-center gap-1 px-4 py-2 rounded-full text-xs font-semibold bg-light-error hover:bg-light-error dark:bg-dark-error dark:hover:bg-dark-error text-white shadow focus:outline-none focus:ring-2 focus:ring-light-error dark:focus:ring-dark-error transition-all duration-150 active:scale-95 ${confirmRemoveId === card.id ? "ring-2 ring-light-error dark:ring-dark-error scale-105" : ""}`}
                     title={confirmRemoveId === card.id ? "Click to confirm removal" : "Remove card"}
                     tabIndex={0}
                   >
@@ -451,7 +408,7 @@ export default function ProfileCollectionPanel({
         onClose={() => { setShowQuantityModal(false); setRemoveCard(null); }}
         maxQuantity={removeCard?.quantity || 1}
         onConfirm={confirmQuantityRemove}
-        cardName={removeCard?.tcgName || removeCard?.name || 'card'}
+        cardName={removeCard?.name || 'card'}
       />
     </section>
   );

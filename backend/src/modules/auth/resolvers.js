@@ -1,310 +1,228 @@
 // src/modules/auth/resolvers.js
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const { Op } = require('sequelize');
-const speakeasy = require('speakeasy');
-const qrcode = require('qrcode');
-const { User, UserSession, UserActivityLog } = require('../../models');
-const helpers = require('./helpers');
-const mailer = require('../../email/mailer');
-const { v4: uuidv4 } = require('uuid');
 
-// JSON scalar (if using Apollo Server v3, use GraphQLJSON, v4+ use built-in)
-const { GraphQLScalarType } = require('graphql');
+import { Op } from 'sequelize';
+import { User } from '../../models/index.js';
+import {
+  generateJwt,
+  verifyJwt,
+  hashPassword,
+  comparePassword,
+  generateMfaSecret,
+  verifyMfaToken,
+  randomToken
+} from './helpers.js';
+import winston from 'winston';
 
-// ===== Helper Functions =====
-function createToken(user, jti, expiresIn = '30d') {
-  return jwt.sign(
-    {
-      id: user.id,
-      jti, // Unique JWT ID for session/device management
-      mfa: user.mfaEnabled,
-      isAdmin: user.isAdmin
-    },
-    process.env.JWT_SECRET,
-    { expiresIn }
-  );
-}
+// --- Email templates & sending utility ---
+import { sendMail } from '../../utils/email.js';
+import buildVerificationEmail from '../../emails/buildVerificationEmail.js';
+import buildResetEmail from '../../emails/buildResetEmail.js';
+import buildWelcomeEmail from '../../emails/buildWelcomeEmail.js';
+import buildMfaEmail from '../../emails/buildMfaEmail.js';
 
-async function createSession(user, deviceInfo, ipAddress) {
-  const jwtId = uuidv4();
-  const session = await UserSession.create({
-    userId: user.id,
-    jwtId,
-    deviceInfo,
-    ipAddress,
-    createdAt: new Date(),
-    expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30) // 30 days
-  });
-  return jwtId;
-}
-
-async function logActivity(userId, type, details, ip) {
-  await UserActivityLog.create({
-    userId,
-    type,
-    details,
-    ip,
-    createdAt: new Date()
-  });
-}
-
-// Define the scalar:
-const JSONScalar = new GraphQLScalarType({
-  name: 'JSON',
-  description: 'Arbitrary JSON value',
-  parseValue: value => value,
-  serialize: value => value,
-  parseLiteral(ast) { return ast.value; }
+// Configure logger
+const logger = winston.createLogger({
+  transports: [new winston.transports.Console()],
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.printf(({ level, message, timestamp }) =>
+      `[${timestamp}] [${level}] ${message}`
+    )
+  )
 });
 
-// ===== Resolvers =====
-module.exports = {
-  JSON: JSONScalar,
+const resolvers = {
   Query: {
-    me: async (parent, args, context) => {
-      if (!context.user) return null;
-      return await User.findByPk(context.user.id);
+    me: async (_, __, { token, logger }) => {
+      try {
+        if (!token) return null;
+        const payload = verifyJwt(token);
+        const user = await User.findByPk(payload.id);
+        logger.info(`User [${payload.id}] fetched self`);
+        return user;
+      } catch (err) {
+        logger.warn('JWT verification failed for me query');
+        return null;
+      }
     },
-    activeSessions: async (parent, args, context) => {
-      if (!context.user) throw new Error('Not authenticated');
-      return await UserSession.findAll({
-        where: { userId: context.user.id },
-        order: [['createdAt', 'DESC']]
-      });
-    },
-    myActivityLog: async (parent, { limit }, context) => {
-      if (!context.user) throw new Error('Not authenticated');
-      return await UserActivityLog.findAll({
-        where: { userId: context.user.id },
-        order: [['createdAt', 'DESC']],
-        limit: limit || 20
-      });
-    },
-    allActivityLogs: async (parent, { userId, type, limit, since }, context) => {
-      if (!context.admin) throw new Error('Admin only');
-      const where = {};
-      if (userId) where.userId = userId;
-      if (type) where.type = type;
-      if (since) where.createdAt = { [Op.gte]: new Date(since) };
-      return await UserActivityLog.findAll({
-        where,
-        order: [['createdAt', 'DESC']],
-        limit: limit || 50
-      });
-    }
   },
   Mutation: {
-    // === Register ===
-    register: async (parent, { email, username, password }, context) => {
-      if (await User.findOne({ where: { email } })) throw new Error('Email already in use');
-      if (await User.findOne({ where: { username } })) throw new Error('Username already in use');
-      const hash = await bcrypt.hash(password, 12);
+    register: async (_, { username, email, password }, { logger }) => {
+      logger.info(`[REGISTER] username=${username} email=${email}`);
+      const existing = await User.findOne({ where: { email } });
+      if (existing) throw new Error('Email already registered');
       const user = await User.create({
-        email, username, password: hash, isVerified: false
+        username,
+        email,
+        password: await hashPassword(password),
+        isAdmin: false,
+        isBanned: false,
       });
-      // Send verification email
-      const token = helpers.generateVerificationToken();
-      await helpers.setUserVerificationToken(user.id, token);
-      await mailer.sendMail({
-        to: email,
-        ...mailer.verificationEmail(user, token)
+      // Email verification token
+      user.verifyToken = randomToken();
+      user.verifyTokenExpiry = Date.now() + 24 * 60 * 60 * 1000;
+      await user.save();
+
+      // --- Send verification email (HTML) ---
+      const { subject, html } = buildVerificationEmail({
+        username: user.username,
+        token: user.verifyToken,
       });
-      logActivity(user.id, 'register', { email, username });
+      await sendMail({ to: email, subject, html });
+
+      logger.info(`[REGISTER] Sent verification email to ${email}`);
+
+      // --- Send welcome email separately after verification, or here if you prefer ---
+      const { subject: welcomeSubject, html: welcomeHtml } = buildWelcomeEmail({ username });
+      await sendMail({ to: email, subject: welcomeSubject, html: welcomeHtml });
+
       return {
-        token: createToken(user, await createSession(user, context.deviceInfo, context.ip)),
-        user
+        token: generateJwt(user),
+        user,
       };
     },
-    // === Login ===
-    login: async (parent, { login, password, twoFACode }, context) => {
-      const loginValue = login.trim()
-      const user = await User.findOne({
-        where: {
-            [Op.or]: [
-                { email: loginValue.toLowerCase() }, 
-                { username: loginValue }
-            ]
-        }
-      })
-      if (!user || !user.password) throw new Error('Invalid credentials');
-      // Email verification
-      if (!user.isVerified) throw new Error('Email not verified');
-      // Email change pending block
-      if (user.pendingEmail) throw new Error('Email change pending. Verify your new email.');
-      // Password check
-      const valid = await bcrypt.compare(password, user.password);
-      if (!valid) {
-        await logActivity(user.id, 'login_failed', { reason: 'wrong password' }, context.ip);
-        throw new Error('Invalid credentials');
-      }
-      // If 2FA enabled, check code
-      if (user.mfaEnabled) {
-        if (!twoFACode) {
-          // If no code, tell frontend to prompt
-          return { token: null, user, requires2FA: true };
-        }
-        const verified = speakeasy.totp.verify({
-          secret: user.mfaSecret,
-          encoding: 'base32',
-          token: twoFACode
-        });
-        if (!verified) {
-          await logActivity(user.id, 'login_failed', { reason: 'bad 2fa' }, context.ip);
-          throw new Error('Invalid 2FA code');
-        }
-      }
-      // Set lastLoginAt and create session
-      user.lastLoginAt = new Date();
-      await user.save();
-      await logActivity(user.id, 'login', {}, context.ip);
-      const jwtId = await createSession(user, context.deviceInfo, context.ip);
-      return { token: createToken(user, jwtId), user };
-    },
-    // === Verify Email ===
-    verifyEmail: async (parent, { token }, context) => {
-      const user = await helpers.verifyEmailToken(token);
-      if (!user) throw new Error('Invalid or expired token');
-      user.isVerified = true;
-      await user.save();
-      await logActivity(user.id, 'verify_email', {}, null);
-      return true;
-    },
-    // === Request Password Reset ===
-    requestPasswordReset: async (parent, { email }) => {
+
+    login: async (_, { email, password, mfaToken }, { logger }) => {
+      logger.info(`[LOGIN] email=${email}`);
       const user = await User.findOne({ where: { email } });
-      if (!user) return true; // Never reveal if email exists
-      const token = helpers.generateVerificationToken();
-      await helpers.setPasswordResetToken(user.id, token);
-      await mailer.sendMail({
-        to: email,
-        ...mailer.passwordResetEmail(user, token)
-      });
-      await logActivity(user.id, 'request_password_reset', {}, null);
-      return true;
-    },
-    // === Reset Password ===
-    resetPassword: async (parent, { token, newPassword }) => {
-      const user = await helpers.verifyPasswordResetToken(token);
-      if (!user) throw new Error('Invalid or expired token');
-      user.password = await bcrypt.hash(newPassword, 12);
+      if (!user) throw new Error('No account for this email');
+      if (user.isBanned) throw new Error('User banned');
+      if (!user.password) throw new Error('Set a password via password reset or Google login');
+      const valid = await comparePassword(password, user.password);
+      if (!valid) throw new Error('Invalid password');
+      if (user.mfaEnabled) {
+        if (!mfaToken) throw new Error('MFA token required');
+        if (!verifyMfaToken(user.mfaSecret, mfaToken)) throw new Error('Invalid MFA code');
+      }
+      logger.info(`[LOGIN] User ${user.id} logged in`);
+      user.lastLogin = new Date();
       await user.save();
-      await logActivity(user.id, 'reset_password', {}, null);
-      return true;
+      return {
+        token: generateJwt(user),
+        user,
+      };
     },
-    // === Email Change Flow ===
-    requestEmailChange: async (parent, { newEmail }, context) => {
-      if (!context.user) throw new Error('Not authenticated');
-      const user = await User.findByPk(context.user.id);
-      if (await User.findOne({ where: { email: newEmail } })) throw new Error('Email already in use');
-      const token = helpers.generateVerificationToken();
-      user.pendingEmail = newEmail;
-      user.pendingEmailToken = token;
+
+    loginGoogle: async (_, { googleToken }, { logger }) => {
+      // To be implemented: Google OAuth login flow
+      logger.info(`[LOGIN_GOOGLE] Received Google token`);
+      throw new Error('Not implemented in demo. Implement googleToken verification and user lookup.');
+    },
+
+    // ---- MFA Setup ----
+    enableMFA: async (_, __, { token, logger }) => {
+      const payload = verifyJwt(token);
+      const user = await User.findByPk(payload.id);
+      const { ascii, otpauth_url, qrCodeDataURL } = await generateMfaSecret(user);
+      user.mfaSecret = ascii;
+      user.mfaEnabled = false; // Only enable after verify
       await user.save();
-      await mailer.sendMail({
-        to: newEmail,
-        ...mailer.verificationEmailChange(user, token)
-      });
-      await logActivity(user.id, 'request_email_change', { to: newEmail }, null);
-      return true;
+      logger.info(`[MFA] Generated secret for user ${user.id}`);
+      // If you want to email MFA secret/QR, use a dedicated builder and sendMail here.
+      return { otpauthUrl: otpauth_url, qrCodeDataURL };
     },
-    verifyEmailChange: async (parent, { token }, context) => {
-      const user = await User.findOne({ where: { pendingEmailToken: token } });
-      if (!user || !user.pendingEmail) throw new Error('Invalid token');
-      const oldEmail = user.email;
-      user.email = user.pendingEmail;
-      user.pendingEmail = null;
-      user.pendingEmailToken = null;
-      await user.save();
-      await logActivity(user.id, 'email_changed', { from: oldEmail, to: user.email }, null);
-      return true;
-    },
-    // === 2FA ===
-    enable2FA: async (parent, args, context) => {
-      if (!context.user) throw new Error('Not authenticated');
-      const user = await User.findByPk(context.user.id);
-      if (user.mfaEnabled) throw new Error('2FA already enabled');
-      const secret = speakeasy.generateSecret();
-      user.mfaSecret = secret.base32;
-      await user.save();
-      const qrData = await qrcode.toDataURL(secret.otpauth_url);
-      await logActivity(user.id, 'enable_2fa', {}, null);
-      return qrData;
-    },
-    verify2FA: async (parent, { code }, context) => {
-      if (!context.user) throw new Error('Not authenticated');
-      const user = await User.findByPk(context.user.id);
-      if (!user.mfaSecret) throw new Error('No 2FA setup');
-      const verified = speakeasy.totp.verify({
-        secret: user.mfaSecret,
-        encoding: 'base32',
-        token: code
-      });
-      if (!verified) throw new Error('Invalid 2FA code');
+
+    verifyMFA: async (_, { code }, { token, logger }) => {
+      const payload = verifyJwt(token);
+      const user = await User.findByPk(payload.id);
+      if (!user.mfaSecret) throw new Error('No MFA secret setup');
+      if (!verifyMfaToken(user.mfaSecret, code)) throw new Error('Invalid MFA code');
       user.mfaEnabled = true;
       await user.save();
-      await logActivity(user.id, 'verify_2fa', {}, null);
+
+      // Optionally, send a confirmation email about enabling MFA (if desired)
+      logger.info(`[MFA] Enabled for user ${user.id}`);
       return true;
     },
-    disable2FA: async (parent, args, context) => {
-      if (!context.user) throw new Error('Not authenticated');
-      const user = await User.findByPk(context.user.id);
+
+    disableMFA: async (_, __, { token, logger }) => {
+      const payload = verifyJwt(token);
+      const user = await User.findByPk(payload.id);
       user.mfaEnabled = false;
       user.mfaSecret = null;
       await user.save();
-      await logActivity(user.id, 'disable_2fa', {}, null);
+      logger.info(`[MFA] Disabled for user ${user.id}`);
       return true;
     },
-    // === Session Management ===
-    logoutSession: async (parent, { sessionId }, context) => {
-      if (!context.user) throw new Error('Not authenticated');
-      const session = await UserSession.findOne({ where: { id: sessionId, userId: context.user.id } });
-      if (!session) throw new Error('Session not found');
-      await session.destroy();
-      await logActivity(context.user.id, 'logout_session', { sessionId }, null);
-      return true;
-    },
-    logoutAllSessions: async (parent, args, context) => {
-      if (!context.user) throw new Error('Not authenticated');
-      await UserSession.destroy({ where: { userId: context.user.id } });
-      await logActivity(context.user.id, 'logout_all_sessions', {}, null);
-      return true;
-    },
-    // === Account Deletion / GDPR ===
-    deleteMyAccount: async (parent, { password }, context) => {
-      if (!context.user) throw new Error('Not authenticated');
-      const user = await User.findByPk(context.user.id);
-      if (!user.password) throw new Error('Password login not enabled for your account');
-      const valid = await bcrypt.compare(password, user.password);
-      if (!valid) throw new Error('Incorrect password');
-      // Log before deleting
-      await logActivity(user.id, 'account_deleted', {}, null);
-      // Delete all sessions/logs
-      await UserSession.destroy({ where: { userId: user.id } });
-      await UserActivityLog.destroy({ where: { userId: user.id } });
-      // TODO: Delete or anonymize related data (cards, binders, etc.)
-      await user.destroy();
-      return true;
-    },
-    requestDataExport: async (parent, args, context) => {
-      if (!context.user) throw new Error('Not authenticated');
-      const user = await User.findByPk(context.user.id);
-      // Implement actual data export logic as needed!
-      await mailer.sendMail({
-        to: user.email,
-        subject: 'Your SixByFive TCG Data Export',
-        html: `<p>Your data export request has been received. We'll send you your data soon.</p>`
+
+    // ---- Password Reset ----
+    requestPasswordReset: async (_, { email }, { logger }) => {
+      const user = await User.findOne({ where: { email } });
+      if (!user) return true; // Don't leak user existence
+      user.resetToken = randomToken();
+      user.resetTokenExpiry = Date.now() + 60 * 60 * 1000;
+      await user.save();
+
+      // --- Send password reset email (HTML) ---
+      const { subject, html } = buildResetEmail({
+        username: user.username,
+        token: user.resetToken,
       });
-      await logActivity(user.id, 'request_data_export', {}, null);
+      await sendMail({ to: user.email, subject, html });
+
+      logger.info(`[RESET] Sent reset to ${email}`);
       return true;
     },
-    // === Admin Tools ===
-    adminDeleteUser: async (parent, { userId }, context) => {
-      if (!context.admin) throw new Error('Admin only');
-      const user = await User.findByPk(userId);
-      if (!user) throw new Error('User not found');
-      await user.destroy();
+
+    resetPassword: async (_, { token, newPassword }, { logger }) => {
+      const user = await User.findOne({
+        where: {
+          resetToken: token,
+          resetTokenExpiry: { [Op.gt]: Date.now() },
+        },
+      });
+      if (!user) throw new Error('Invalid or expired reset token');
+      user.password = await hashPassword(newPassword);
+      user.resetToken = null;
+      user.resetTokenExpiry = null;
+      await user.save();
+      logger.info(`[RESET] Password reset for user ${user.id}`);
       return true;
     },
-  }
+
+    // ---- Email Verification ----
+    verifyEmail: async (_, { token }, { logger }) => {
+      const user = await User.findOne({
+        where: {
+          verifyToken: token,
+          verifyTokenExpiry: { [Op.gt]: Date.now() },
+        },
+      });
+      if (!user) throw new Error('Invalid or expired verification token');
+      user.verifyToken = null;
+      user.verifyTokenExpiry = null;
+      user.emailVerified = true;
+      await user.save();
+
+      // --- Send welcome email (HTML) ---
+      const { subject, html } = buildWelcomeEmail({
+        username: user.username
+      });
+      await sendMail({ to: user.email, subject, html });
+
+      logger.info(`[VERIFY] Email verified for user ${user.id}`);
+      return true;
+    },
+
+    resendVerification: async (_, { email }, { logger }) => {
+      const user = await User.findOne({ where: { email } });
+      if (!user) throw new Error('No account found');
+      if (user.emailVerified) throw new Error('Already verified');
+      user.verifyToken = randomToken();
+      user.verifyTokenExpiry = Date.now() + 24 * 60 * 60 * 1000;
+      await user.save();
+
+      // --- Send verification email again (HTML) ---
+      const { subject, html } = buildVerificationEmail({
+        username: user.username,
+        token: user.verifyToken,
+      });
+      await sendMail({ to: user.email, subject, html });
+
+      logger.info(`[VERIFY] Resent verification email to ${email}`);
+      return true;
+    },
+  },
 };
+
+export default resolvers;

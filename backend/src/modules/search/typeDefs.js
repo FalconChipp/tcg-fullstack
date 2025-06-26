@@ -1,66 +1,84 @@
-// src/modules/search/typeDefs.js
-const gql = require('graphql-tag');
+import { gql } from 'graphql-tag';
 
-module.exports = gql`
-  type TCGPlayerVariation {
-    direct_low: Float
-    high: Float
-    low: Float
-    market: Float
-    mid: Float
+export default gql`
+  type CardPriceVariation {
+    variation: String!
+    gbp: Float
+    tcgplayer: Float
+    cardmarket: Float
+    currency: String
+    updatedAt: String
   }
 
-  type CardMarketVariation {
-    average_sell: Float
-    low: Float
-    trend: Float
-  }
-
-  type CardPricing {
-    updated_at: String
-    tcgplayer: TCGPlayerVariation
-    cardmarket: CardMarketVariation
+  type CardListing {
+    id: ID!
+    userId: ID!
+    price: Float!
+    currency: String!
+    condition: String
+    variation: String
+    notes: String
+    status: String
+    createdAt: String
   }
 
   type Card {
     id: String!
     name: String!
-    number: String
-    set: String
+    set: String!
     setName: String
-    setLogo: String
-    setSymbol: String
+    number: String!
     image: String
     rarity: String
-    edition: String
     variations: [String]
-    pricing: CardPricing
-    tcgplayerVariations: TCGRarityVariations
-    cardmarketVariations: CardMarketRarityVariations
+    prices: [CardPriceVariation!]!  # This line changed
+    isListed: Boolean
+    listings: [CardListing]
+    isForTrade: Boolean
+    collectionCount: Int
+    setSize: Int
+    setCompletion: Float
   }
 
-  type TCGRarityVariations {
-    normal: TCGPlayerVariation
-    reverseHolofoil: TCGPlayerVariation
-    holofoil: TCGPlayerVariation
+  type CardSet {
+    code: String!
+    name: String!
+    total: Int!
+    tcgDexCode: String
+    logo: String
+    cards: [Card]
   }
 
-  type CardMarketRarityVariations {
-    normal: CardMarketVariation
-    reverseHolofoil: CardMarketVariation
-    holofoil: CardMarketVariation
+  input SearchInput {
+    name: String
+    set: String
+    number: String
+    forTrade: Boolean
+    listed: Boolean
+    rarity: String
+    page: Int
+    pageSize: Int
+  }
+
+  type CardSearchResult {
+    cards: [Card!]!
+    total: Int!
+    page: Int!
+    pageSize: Int!
+  }
+
+  type SetSearchResult {
+    sets: [CardSet!]!
+    total: Int!
   }
 
   type Query {
-    searchCards(
-      name: String
-      set: String
-      number: String
-      rarity: String
-      limit: Int = 30
-      offset: Int = 0
-      fullData: Boolean = true
-    ): [Card!]!
-    getCard(id: String!): Card
+    searchCards(input: SearchInput!): CardSearchResult!
+    searchSets(query: String): SetSearchResult!
+    cardById(id: String!): Card
+    getSet(code: String!): CardSet
+    cardSetCompletion(userId: ID!, set: String!): Float!
+    getExchangeRates: JSON
+    allRarities: [String!]!
   }
 `;

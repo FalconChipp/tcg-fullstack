@@ -182,7 +182,7 @@ export default function ProfilePage({ user, error }) {
           {/* Tab Panels */}
           {activeTab === "collection" &&
             <ProfileCollectionPanel
-              user={user}
+              userId={user?.id}
               cards={collection.value}
               isOwnProfile={isOwnProfile}
               setStatus={status.set}

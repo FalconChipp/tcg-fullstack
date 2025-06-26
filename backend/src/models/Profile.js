@@ -1,0 +1,66 @@
+// src/models/Profile.js
+import { DataTypes, Model } from 'sequelize';
+
+export const PROFILE_STATUSES = [
+  'Looking to Trade',
+  'Just Collecting',
+  'Open to Chat',
+  'Building a Master Set',
+  'Marketplace Seller',
+  'Inactive',
+];
+
+export default (sequelize) => {
+  class Profile extends Model {}
+
+  Profile.init(
+    {
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true,
+      },
+      userId: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        unique: true,
+      },
+      bio: { type: DataTypes.STRING(400), allowNull: true },
+      favouritePokemon: { type: DataTypes.STRING(64), allowNull: true },
+      country: { type: DataTypes.STRING(64), allowNull: true },
+      showcase: {
+        type: DataTypes.JSON,
+        allowNull: true,
+        defaultValue: {},
+      },
+      status: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: 'Looking to Trade',
+        validate: {
+          isIn: [PROFILE_STATUSES],
+        },
+      },
+      address1: { type: DataTypes.STRING, allowNull: true },
+      address2: { type: DataTypes.STRING, allowNull: true },
+      city: { type: DataTypes.STRING, allowNull: true },
+      postcode: { type: DataTypes.STRING, allowNull: true },
+      state: { type: DataTypes.STRING, allowNull: true },
+      phone: { type: DataTypes.STRING, allowNull: true },
+      discord: { type: DataTypes.STRING, allowNull: true },
+      publicProfile: { type: DataTypes.BOOLEAN, defaultValue: true },
+      wantsTrade: { type: DataTypes.BOOLEAN, defaultValue: true },
+      wantsMarketplace: { type: DataTypes.BOOLEAN, defaultValue: true },
+      createdAt: DataTypes.DATE,
+      updatedAt: DataTypes.DATE,
+    },
+    {
+      sequelize,
+      modelName: 'Profile',
+      tableName: 'profiles',
+      timestamps: true,
+    }
+  );
+
+  return Profile;
+};

@@ -10,3 +10,4 @@ backend/package-lock.json
 /frontend/netlify.toml
 frontend/package-lock.json
 dashboard/package-lock.json
+*.zip

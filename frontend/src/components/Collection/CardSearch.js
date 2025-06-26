@@ -12,7 +12,6 @@ import SetAutocomplete from "./SearchComponents/SetAutocomplete";
 import CardDetailsModal from "../UserProfile/CardDetailsModal";
 import { mapCardToDetail } from "@/utils/mapData";
 import CardSkeleton from "../UI/CardSkeleton";
-import { getCardImageUrl } from "@/utils/imageUtils";
 
 // --- CONSTANTS ---
 const FALLBACK_CARD_IMAGE = "https://cdn.pidgi.net/images/f/f6/Card_back_INTL_-_Pokemon_Trading_Card_Game.png";
@@ -155,48 +154,66 @@ export default function CardSearch() {
   };
 
   // --- Add card to wishlist ---
-  const handleAddToWishlist = async (card) => {
-    const token = getCookie("authToken");
-    if (!token) {
-      showStatusMessage('error', "You must be logged in to add to wishlist.");
-      return;
-    }
+const handleAddToWishlist = async (card) => {
+  const token = getCookie("authToken");
+  if (!token) {
+    showStatusMessage('error', "You must be logged in to add to wishlist.");
+    return;
+  }
 
-    const mutation = `
-      mutation QuickAddWishlist($cardId: String!) {
-        addCardToCollection(input: {
-          cardId: $cardId,
-          quantity: 1,
-          condition: "mint",
-          variation: "",
-          isPublic: true,
-          wishlist: true
-        }) {
-          collectionCard { id cardId wishlist }
-        }
+  // Your backend allows extra args, so set defaults for all:
+  const mutation = `
+    mutation QuickAddWishlist($cardId: String!, $quantity: Int, $condition: String, $variation: String, $wishlist: Boolean) {
+      addToCollection(
+        cardId: $cardId,
+        quantity: $quantity,
+        condition: $condition,
+        variation: $variation,
+        wishlist: $wishlist
+      ) {
+        id
+        cardId
+        quantity
+        condition
+        variation
+        wishlist
+        createdAt
+        updatedAt
       }
-    `;
-    const variables = { cardId: card.id };
-
-    try {
-      const res = await fetch(WP_GRAPHQL_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ query: mutation, variables }),
-      });
-      const json = await res.json();
-      if (json.data?.addCardToCollection?.collectionCard) {
-        showStatusMessage('success', `"${card.name}" was added to your wishlist!`);
-      } else {
-        showStatusMessage('error', json.errors?.[0]?.message || "Failed to add to wishlist.");
-      }
-    } catch (err) {
-      showStatusMessage('error', "Network error. Please try again.");
     }
+  `;
+  const variables = {
+    cardId: card.cardId,                 // or card.cardId if that is the primary key, adjust as needed
+    quantity: 1,
+    condition: "mint",
+    variation: card.variation || (Array.isArray(card.variations) && card.variations.length > 0 ? card.variations[0] : ""),
+    wishlist: true
   };
+
+  try {
+    const res = await fetch(WP_GRAPHQL_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ query: mutation, variables }),
+    });
+    const json = await res.json();
+
+    // CHANGED: check new backend field
+    if (json.data?.addToCollection && json.data.addToCollection.wishlist) {
+      showStatusMessage('success', `"${card.name}" was added to your wishlist!`);
+    } else if (json.errors && json.errors.length > 0) {
+      showStatusMessage('error', json.errors[0].message || "Failed to add to wishlist.");
+    } else {
+      showStatusMessage('error', "Failed to add to wishlist.");
+    }
+  } catch (err) {
+    showStatusMessage('error', "Network error. Please try again.");
+  }
+};
+
 
   // --- Infinite scroll event listener ---
   useEffect(() => {

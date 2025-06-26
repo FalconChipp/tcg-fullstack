@@ -4,19 +4,33 @@
  */
 export const COLLECTION_MUTATIONS = {
   ADD_CARD: `
-    mutation AddCardToCollection($input: AddCardToCollectionInput!) {
-      addCardToCollection(input: $input) {
-        collectionCard {
-          id
-          cardId
-          quantity
-          condition
-          variation
-          isPublic
-          wishlist
-        }
-      }
+    mutation AddToCollection(
+    $cardId: String!,
+    $quantity: Int,
+    $condition: String,
+    $variation: String,
+    $wishlist: Boolean,
+    $isPublic: Boolean
+  ) {
+    addToCollection(
+      cardId: $cardId,
+      quantity: $quantity,
+      condition: $condition,
+      variation: $variation,
+      wishlist: $wishlist,
+      isPublic: $isPublic
+    ) {
+      id
+      cardId
+      quantity
+      condition
+      variation
+      wishlist
+      isPublic
+      createdAt
+      updatedAt
     }
+  }
   `,
   UPDATE_CARD: `
     mutation UpdateCollectionCard($input: UpdateCollectionCardInput!) {

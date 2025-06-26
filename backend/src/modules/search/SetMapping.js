@@ -5,7 +5,7 @@
 // If Mapping.php had two: { tcgdex: arr[0], ptcg: arr[1] }
 // If Mapping.php had empty: { tcgdex: '', ptcg: '' }
 
-const SET_MAPPING = {
+export const SET_MAPPING = {
   // Scarlet & Violet sets:
   'SVP':   { tcgdex: 'svp',    ptcg: 'svp' },            // Scarlet & Violet Promos
   'SVI':   { tcgdex: 'sv01',   ptcg: 'sv1' },            // Scarlet & Violet Base Set
@@ -188,26 +188,19 @@ const SET_MAPPING = {
   'WP':    { tcgdex: 'basep',  ptcg: 'basep' },          // Wizards Black Star Promos 
 };
 
-function getSetCandidates(setInput) {
+export function getSetCandidates(setInput) {
   if (!setInput) return [];
   const code = String(setInput).trim().toUpperCase();
   const mapping = SET_MAPPING[code];
   const candidates = new Set();
 
   if (mapping) {
-    // If tcgdex/ptcg are arrays, add all elements
     [mapping.tcgdex, mapping.ptcg].forEach(val => {
       if (Array.isArray(val)) val.forEach(v => v && candidates.add(v));
       else if (val) candidates.add(val);
     });
   }
-  // Always include user’s entry (raw)
   candidates.add(setInput);
-  // Also include uppercase version (to be safe)
   candidates.add(code);
-
-  // Filter out empty/undefined/null and dedupe via Set
   return Array.from(candidates).filter(x => !!x);
 }
-
-module.exports = { SET_MAPPING, getSetCandidates };

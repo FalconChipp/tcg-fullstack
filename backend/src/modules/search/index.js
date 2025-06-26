@@ -1,8 +1,9 @@
 // src/modules/search/index.js
-const typeDefs = require('./typeDefs');
-const resolvers = require('./resolvers');
 
-module.exports = {
+import typeDefs from './typeDefs.js';
+import resolvers from './resolvers.js';
+
+export default {
   typeDefs,
   resolvers,
 };

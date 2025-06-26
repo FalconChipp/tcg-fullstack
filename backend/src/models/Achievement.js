@@ -1,40 +1,64 @@
-// models/Achievement.js
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/db');
-const { v4: uuidv4 } = require('uuid');
+// src/models/Achievement.js
 
-const Achievement = sequelize.define('Achievement', {
-  id: {
-    type: DataTypes.CHAR(36),
-    defaultValue: uuidv4,
-    primaryKey: true,
-  },
-  code: {
-    type: DataTypes.STRING(255),
-    allowNull: false,
-    unique: true,
-  },
-  name: {
-    type: DataTypes.STRING(255),
-    allowNull: false,
-  },
-  description: {
-    type: DataTypes.STRING(255),
-    allowNull: true,
-  },
-  tier: {
-    type: DataTypes.STRING(50),
-    allowNull: true,
-  },
-  imageUrl: {
-    type: DataTypes.STRING(255),
-    field: 'image_url',
-    allowNull: true,
-  },
-}, {
-  tableName: 'Achievements',
-  timestamps: true,
-  underscored: true,
-});
+import { DataTypes, Model } from 'sequelize';
 
-module.exports = Achievement;
+/**
+ * Factory function for the Achievement model.
+ * This prevents circular import issues and allows model association setup in index.js.
+ * 
+ * @param {Sequelize} sequelize - The sequelize instance
+ * @returns {Model} Achievement model
+ */
+export default (sequelize) => {
+  class Achievement extends Model {}
+
+  Achievement.init(
+    {
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true,
+      },
+      code: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true, // e.g. 'pre_signup', 'first_trade', etc.
+      },
+      name: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      description: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      tier: {
+        type: DataTypes.STRING,
+        allowNull: true, // 'gold', 'silver', 'bronze', etc.
+      },
+      iconUrl: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      points: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+      },
+      isActive: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true,
+      },
+      createdAt: DataTypes.DATE,
+      updatedAt: DataTypes.DATE,
+    },
+    {
+      sequelize,
+      modelName: 'Achievement',
+      tableName: 'achievements',
+      timestamps: true,
+      indexes: [{ fields: ['code'], unique: true }],
+    }
+  );
+
+  return Achievement;
+};

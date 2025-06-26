@@ -1,32 +1,185 @@
-// src/models/index.js
-const sequelize = require('../config/db');
-const User = require('./User');
-const Card = require('./Card');
-const Binder = require('./Binder');
-const Collection = require('./Collection');
-const Achievement = require('./Achievement');
-const UserAchievement = require('./UserAchievement');
-const MarketplaceListing = require('./MarketplaceListing');
-const UserSession = require('./UserSession');
-const UserActivityLog = require('./UserActivityLog');
-const Admin = require('./Admin');
+import { Sequelize } from 'sequelize';
+import path from 'path';
+import process from 'process';
 
-// Call this ONCE on startup to sync models
-const syncModels = async () => {
-  await sequelize.sync({ alter: true });
-};
+// --- DB Connection: MySQL from .env or fallback SQLite ---
+// Use process.env vars for MySQL (preferred)
+let sequelize;
 
-module.exports = {
-  sequelize,
-  User,
-  Card,
-  Binder,
-  Collection,
-  Achievement,
-  UserAchievement,
-  MarketplaceListing,
-  Admin,
-  syncModels,
-  UserSession,
-  UserActivityLog,
+if (
+  process.env.DB_HOST &&
+  process.env.DB_USER &&
+  process.env.DB_PASS &&
+  process.env.DB_NAME
+) {
+  // MySQL
+  sequelize = new Sequelize(
+    process.env.DB_NAME,
+    process.env.DB_USER,
+    process.env.DB_PASS,
+    {
+      host: process.env.DB_HOST,
+      port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306,
+      dialect: 'mysql',
+      logging: (msg) => console.log(`[DB] ${msg}`),
+      dialectOptions: process.env.DB_SSL
+        ? { ssl: { require: true, rejectUnauthorized: false } }
+        : {},
+    }
+  );
+  console.log('[DB] Connecting to MySQL:', process.env.DB_HOST, process.env.DB_NAME);
+} else {
+  // Fallback SQLite for dev
+  const DB_URL = `sqlite:${path.join(process.cwd(), 'sixbyfive-tcg.sqlite')}`;
+  sequelize = new Sequelize(DB_URL, {
+    logging: (msg) => console.log(`[DB] ${msg}`),
+  });
+  console.log('[DB] Connecting to SQLite:', DB_URL);
+}
+
+// --- Import all model factories ---
+import UserFactory from './User.js';
+import ProfileFactory from './Profile.js';
+import CardFactory from './Card.js';
+import CollectionFactory from './Collection.js';
+import WishlistFactory from './Wishlist.js';
+import ListingFactory from './Listing.js';
+import TradeFactory from './Trade.js';
+import UserReputationFactory from './UserReputation.js';
+import MessageFactory from './Message.js';
+import NotificationFactory from './Notification.js';
+import AuditLogFactory from './AuditLog.js';
+import AchievementFactory from './Achievement.js';
+import UserAchievementFactory from './UserAchievement.js';
+import SubscriptionFactory from './Subscription.js';
+import SubscriptionTierFactory from './SubscriptionTier.js';
+import TransactionFactory from './Transaction.js';
+import ShippingLabelFactory from './ShippingLabel.js';
+import CardPriceCacheFactory from './CardPriceCache.js';
+import AdminActionFactory from './AdminAction.js';
+
+// --- Initialize models ---
+const User = UserFactory(sequelize);
+const Profile = ProfileFactory(sequelize);
+const Card = CardFactory(sequelize);
+const Collection = CollectionFactory(sequelize);
+const Wishlist = WishlistFactory(sequelize);
+const Listing = ListingFactory(sequelize);
+const { Trade, TradeCard } = TradeFactory(sequelize);
+const UserReputation = UserReputationFactory(sequelize);
+const Message = MessageFactory(sequelize);
+const Notification = NotificationFactory(sequelize);
+const AuditLog = AuditLogFactory(sequelize);
+const Achievement = AchievementFactory(sequelize);
+const UserAchievement = UserAchievementFactory(sequelize);
+const Subscription = SubscriptionFactory(sequelize);
+const SubscriptionTier = SubscriptionTierFactory(sequelize);
+const Transaction = TransactionFactory(sequelize);
+const ShippingLabel = ShippingLabelFactory(sequelize);
+const CardPriceCache = CardPriceCacheFactory(sequelize);
+const AdminAction = AdminActionFactory(sequelize);
+
+// ---- Associations ----
+
+// User/Profile: 1:1
+User.hasOne(Profile, { foreignKey: 'userId', onDelete: 'CASCADE' });
+Profile.belongsTo(User, { foreignKey: 'userId' });
+
+// User/Collection/Listing/Wishlist
+User.hasMany(Collection, { foreignKey: 'userId', onDelete: 'CASCADE' });
+Collection.belongsTo(User, { foreignKey: 'userId' });
+Card.hasMany(Collection, { foreignKey: 'cardId', onDelete: 'CASCADE' });
+Collection.belongsTo(Card, { foreignKey: 'cardId' });
+
+User.hasMany(Listing, { foreignKey: 'userId', as: 'listings', onDelete: 'CASCADE' });
+Listing.belongsTo(User, { foreignKey: 'userId', as: 'seller' });
+User.hasMany(Listing, { foreignKey: 'buyerId', as: 'purchases' });
+Listing.belongsTo(User, { foreignKey: 'buyerId', as: 'buyer' });
+Card.hasMany(Listing, { foreignKey: 'cardId', onDelete: 'CASCADE' });
+Listing.belongsTo(Card, { foreignKey: 'cardId' });
+
+User.hasMany(Wishlist, { foreignKey: 'userId', onDelete: 'CASCADE' });
+Wishlist.belongsTo(User, { foreignKey: 'userId' });
+Card.hasMany(Wishlist, { foreignKey: 'cardId', onDelete: 'CASCADE' });
+Wishlist.belongsTo(Card, { foreignKey: 'cardId' });
+
+// Trades
+User.hasMany(Trade, { as: 'initiatedTrades', foreignKey: 'initiatorId' });
+User.hasMany(Trade, { as: 'receivedTrades', foreignKey: 'recipientId' });
+Trade.belongsTo(User, { as: 'initiator', foreignKey: 'initiatorId' });
+Trade.belongsTo(User, { as: 'recipient', foreignKey: 'recipientId' });
+
+Trade.hasMany(TradeCard, { foreignKey: 'tradeId', as: 'cards' });
+TradeCard.belongsTo(Trade, { foreignKey: 'tradeId' });
+
+// Reputation (UserReputation: 1:1)
+User.hasOne(UserReputation, { foreignKey: 'userId', onDelete: 'CASCADE' });
+UserReputation.belongsTo(User, { foreignKey: 'userId' });
+
+// Message/Chat (fields: senderId, receiverId)
+User.hasMany(Message, { foreignKey: 'senderId', as: 'sentMessages' });
+User.hasMany(Message, { foreignKey: 'receiverId', as: 'receivedMessages' });
+Message.belongsTo(User, { foreignKey: 'senderId', as: 'sender' });
+Message.belongsTo(User, { foreignKey: 'receiverId', as: 'receiver' });
+
+// Notifications
+User.hasMany(Notification, { foreignKey: 'userId', onDelete: 'CASCADE' });
+Notification.belongsTo(User, { foreignKey: 'userId' });
+
+// Audit Log
+User.hasMany(AuditLog, { foreignKey: 'userId' });
+AuditLog.belongsTo(User, { foreignKey: 'userId' });
+
+// User <-> Achievement (many-to-many through UserAchievement)
+User.belongsToMany(Achievement, {
+  through: UserAchievement,
+  foreignKey: 'userId',
+  otherKey: 'achievementId',
+  as: 'achievements'
+});
+Achievement.belongsToMany(User, {
+  through: UserAchievement,
+  foreignKey: 'achievementId',
+  otherKey: 'userId',
+  as: 'users'
+});
+
+// Also add 1:M for UserAchievement <-> Achievement/User for eager loading
+User.hasMany(UserAchievement, { foreignKey: 'userId' });
+UserAchievement.belongsTo(User, { foreignKey: 'userId' });
+Achievement.hasMany(UserAchievement, { foreignKey: 'achievementId' });
+UserAchievement.belongsTo(Achievement, { foreignKey: 'achievementId' });
+
+// Subscriptions
+User.hasMany(Subscription, { foreignKey: 'userId' });
+Subscription.belongsTo(User, { foreignKey: 'userId' });
+Subscription.belongsTo(SubscriptionTier, { foreignKey: 'tierId' });
+SubscriptionTier.hasMany(Subscription, { foreignKey: 'tierId' });
+
+// Transactions/Payments
+User.hasMany(Transaction, { foreignKey: 'userId', onDelete: 'CASCADE' });
+Transaction.belongsTo(User, { foreignKey: 'userId' });
+
+// Shipping
+User.hasMany(ShippingLabel, { foreignKey: 'userId', onDelete: 'CASCADE' });
+ShippingLabel.belongsTo(User, { foreignKey: 'userId' });
+
+// Card Price Cache
+Card.hasOne(CardPriceCache, { foreignKey: 'cardId', onDelete: 'CASCADE' });
+CardPriceCache.belongsTo(Card, { foreignKey: 'cardId' });
+
+// Admin Actions (AdminAction fields: adminId, targetUserId)
+User.hasMany(AdminAction, { foreignKey: 'adminId', as: 'adminActions' });
+AdminAction.belongsTo(User, { foreignKey: 'adminId', as: 'admin' });
+User.hasMany(AdminAction, { foreignKey: 'targetUserId', as: 'receivedAdminActions' });
+AdminAction.belongsTo(User, { foreignKey: 'targetUserId', as: 'targetUser' });
+
+// ---- Export ----
+export {
+  sequelize, User, Profile, Card,
+  Collection, Wishlist, Listing,
+  Trade, TradeCard, UserReputation, Message,
+  Notification, AuditLog, Achievement, Subscription,
+  SubscriptionTier, Transaction, ShippingLabel, CardPriceCache,
+  AdminAction, UserAchievement
 };

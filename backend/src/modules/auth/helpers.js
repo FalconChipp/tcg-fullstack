@@ -1,84 +1,61 @@
 // src/modules/auth/helpers.js
-const crypto = require('crypto');
-const jwt = require('jsonwebtoken');
-const { User, Admin } = require('../../models');
 
-// Generate a cryptographically secure random token (for email/2FA/etc)
-function generateVerificationToken() {
-  return crypto.randomBytes(32).toString('hex');
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
+import speakeasy from 'speakeasy';
+import qrcode from 'qrcode';
+import { v4 as uuidv4 } from 'uuid';
+import { User } from '../../models/index.js';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_key';
+
+// Generate JWT for a user
+export function generateJwt(user) {
+  return jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      isAdmin: user.isAdmin,
+    },
+    JWT_SECRET,
+    { expiresIn: '14d' }
+  );
 }
 
-// === Email Verification Tokens ===
-
-// Save a verification token on a user (valid for e.g. 1 day)
-async function setUserVerificationToken(userId, token) {
-  const user = await User.findByPk(userId);
-  if (!user) throw new Error('User not found');
-  user.verificationToken = token;
-  user.verificationTokenExpires = new Date(Date.now() + 1000 * 60 * 60 * 24); // 24h
-  await user.save();
+export function verifyJwt(token) {
+  return jwt.verify(token, JWT_SECRET);
 }
 
-// Check and clear verification token
-async function verifyEmailToken(token) {
-  const user = await User.findOne({ where: { verificationToken: token } });
-  if (!user || !user.verificationTokenExpires || user.verificationTokenExpires < new Date()) return null;
-  user.verificationToken = null;
-  user.verificationTokenExpires = null;
-  await user.save();
-  return user;
+// Hash password
+export async function hashPassword(password) {
+  return bcrypt.hash(password, 10);
 }
 
-// === Password Reset Tokens ===
-async function setPasswordResetToken(userId, token) {
-  const user = await User.findByPk(userId);
-  if (!user) throw new Error('User not found');
-  user.passwordResetToken = token;
-  user.passwordResetExpires = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
-  await user.save();
+export async function comparePassword(password, hash) {
+  return bcrypt.compare(password, hash);
 }
 
-async function verifyPasswordResetToken(token) {
-  const user = await User.findOne({ where: { passwordResetToken: token } });
-  if (!user || !user.passwordResetExpires || user.passwordResetExpires < new Date()) return null;
-  user.passwordResetToken = null;
-  user.passwordResetExpires = null;
-  await user.save();
-  return user;
+// MFA TOTP Setup
+export async function generateMfaSecret(user) {
+  const secret = speakeasy.generateSecret({
+    name: `SixByFive TCG (${user.username})`,
+    length: 32,
+  });
+  const qrCodeDataURL = await qrcode.toDataURL(secret.otpauth_url);
+  return { ...secret, qrCodeDataURL };
 }
 
-function verifyJwt(token) {
-  return jwt.verify(token, process.env.JWT_SECRET);
+export function verifyMfaToken(secret, token) {
+  return speakeasy.totp.verify({
+    secret,
+    encoding: 'ascii',
+    token,
+    window: 2,
+  });
 }
 
-// === JWT Validation for context ===
-function getUserFromToken(token) {
-  try {
-    if (!token) return null;
-    const decoded = jwt.verify(token.replace('Bearer ', ''), process.env.JWT_SECRET);
-    return decoded;
-  } catch (e) {
-    return null;
-  }
+// Generate random token (for email verification, reset)
+export function randomToken() {
+  return uuidv4() + uuidv4();
 }
-
-function getAdminFromToken(token) {
-  try {
-    if (!token) return null;
-    const decoded = jwt.verify(token.replace('Bearer ', ''), process.env.JWT_SECRET);
-    return decoded.adminId ? decoded : null;
-  } catch (e) {
-    return null;
-  }
-}
-
-module.exports = {
-  generateVerificationToken,
-  setUserVerificationToken,
-  verifyEmailToken,
-  setPasswordResetToken,
-  verifyPasswordResetToken,
-  verifyJwt,
-  getUserFromToken,
-  getAdminFromToken
-};

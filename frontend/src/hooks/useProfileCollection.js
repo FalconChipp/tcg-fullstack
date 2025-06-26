@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 
 const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
-const TCG_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
 
 // Helper to safely convert to number
 const toNumber = (value) => {
@@ -24,37 +23,54 @@ export default function useProfileCollection({ user, token }) {
   // Helper to refresh data (used after edits)
   const refresh = () => setRefreshTrigger((p) => p + 1);
 
-  // Fetch and enrich collection/wishlist
   useEffect(() => {
     if (!user?.id) return;
     (async () => {
       setLoading(true);
 
-      // 1. Fetch user's collection cards (public, no token required for read)
+      // Fetch collection with nested card data
       const colQ = `
         query GetUserProfileCollection($userId: ID!) {
-            collectionCards(userId: $userId, includeWishlist: true) {
+          collection(userId: $userId) {
+            id
+            cardId
+            quantity
+            condition
+            variation
+            wishlist
+            createdAt
+            updatedAt
+            card {
               id
-              cardId
-              quantity
-              condition
-              variation
-              tcgImageUrl
-              tcgSetName
-              tcgSetSymbolUrl
-              tcgName
-              tcgRarity
-              tcgEdition
-              tags
-              isPublic
-              wishlist
-              tcgplayerMarket
-              cardmarketAverageSell
-              createdAt
-              updatedAt
+              name
+              number
+              edition
+              setName
+              setLogo
+              setSymbol
+              image
+              rarity
+              variations
+              tcgplayerVariations {
+                normal { direct_low high low market mid }
+                reverseHolofoil { direct_low high low market mid }
+                holofoil        { direct_low high low market mid }
+              }
+              cardmarketVariations {
+                normal { average_sell low trend }
+                reverseHolofoil { average_sell low trend }
+                holofoil        { average_sell low trend }
+              }
+              pricing {
+                updated_at
+                tcgplayer { mid market low high direct_low }
+                cardmarket { trend low average_sell }
+              }
             }
+          }
         }
       `;
+
       let rawCollectionData = [];
       try {
         const headers = { "Content-Type": "application/json" };
@@ -65,124 +81,46 @@ export default function useProfileCollection({ user, token }) {
           body: JSON.stringify({ query: colQ, variables: { userId: String(user.id) } }),
         });
         const responseJson = await r.json();
-        if (responseJson.errors) {
-          rawCollectionData = [];
-        } else {
-          rawCollectionData = responseJson.data?.collectionCards || [];
-        }
+        rawCollectionData = responseJson.data?.collection || [];
       } catch (fetchError) {
         rawCollectionData = [];
       }
 
-      // 2. Enrich each card with up-to-date TCG data
-      const searchQ = `
-        query SearchCards($name: String, $set: String, $number: String) {
-          pokemonCards(
-            name: $name
-            set: $set
-            number: $number
-            language: "en"
-            perPage: 1 
-          ) {
-            externalId
-            name
-            number
-            image
-            setName
-            setSymbol
-            setLogo
-            rarity
-            variations
-            edition
-            pricing {
-              cardmarket { average_sell low trend }
-              tcgplayer { low mid high market direct_low }
-            }
-          }
-        }
-      `;
-
-      let detailedCards = [];
-      if (rawCollectionData && rawCollectionData.length > 0) {
-        detailedCards = await Promise.all(
-          rawCollectionData.map(async (item) => {
-            if (!item || !item.cardId) return item || {};
-            const [setCode, numFromCardId] = item.cardId.split("-");
-            const variablesForSearchQ = {
-              name: item.tcgName || "",
-              set: setCode || "",
-              number: numFromCardId,
-            };
-            try {
-              const searchResponse = await fetch(TCG_GRAPHQL_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ query: searchQ, variables: variablesForSearchQ }),
-              });
-              const searchResultJson = await searchResponse.json();
-              const matchedCard = searchResultJson.data?.pokemonCards?.[0];
-              if (matchedCard) {
-                const apiPrices = matchedCard.pricing || {};
-                const now = new Date().toISOString();
-                return {
-                  ...item,
-                  externalId: matchedCard.externalId || item.cardId,
-                  tcgName: matchedCard.name || item.tcgName || "Unknown Card",
-                  tcgImageUrl: matchedCard.image || item.tcgImageUrl || "",
-                  tcgSetName: matchedCard.setName || item.tcgSetName || "Unknown Set",
-                  tcgSetSymbolUrl: matchedCard.setSymbol || item.tcgSetSymbolUrl || "",
-                  tcgSetLogoUrl: matchedCard.setLogo || item.tcgSetLogoUrl || "",
-                  tcgRarity: matchedCard.rarity || item.tcgRarity || "",
-                  cardId: item.cardId || matchedCard.externalId || "",
-                  number: matchedCard.number || item.number || "",
-                  variations: matchedCard.variations || item.variations || "",
-                  edition: matchedCard.edition || item.edition || "",
-                  cardmarketAverageSell: apiPrices.cardmarket?.average_sell ?? item.cardmarketAverageSell ?? null,
-                  cardmarketLowPrice: apiPrices.cardmarket?.low ?? item.cardmarketLowPrice ?? null,
-                  cardmarketTrendPrice: apiPrices.cardmarket?.trend ?? item.cardmarketTrendPrice ?? null,
-                  tcgplayerLow: apiPrices.tcgplayer?.low ?? item.tcgplayerLow ?? null,
-                  tcgplayerMid: apiPrices.tcgplayer?.mid ?? item.tcgplayerMid ?? null,
-                  tcgplayerHigh: apiPrices.tcgplayer?.high ?? item.tcgplayerHigh ?? null,
-                  tcgplayerMarket: apiPrices.tcgplayer?.market ?? item.tcgplayerMarket ?? null,
-                  tcgplayerDirectLow: apiPrices.tcgplayer?.direct_low ?? item.tcgplayerDirectLow ?? null,
-                  updatedAt: now,
-                  createdAt: item.createdAt || now,
-                  dateAdded: item.createdAt || now,
-                  wishlist: item.wishlist
-                };
-              } else {
-                return item;
-              }
-            } catch {
-              return item;
-            }
-          })
-        );
-      } else {
-        detailedCards = rawCollectionData || [];
-      }
-
-      // 3. Split into collection and wishlist
-      const col = [];
-      const wish = [];
-      (detailedCards || []).forEach((c) => {
-        if (!c) return;
-        const isWishlistItem = c.wishlist === true || c.wishlist === 1 || String(c.wishlist).toLowerCase() === "true";
-        if (isWishlistItem) {
-          wish.push(c);
-        } else {
-          col.push(c);
-        }
+      // Split/flatten into collection and wishlist
+      let col = [];
+      let wish = [];
+      (rawCollectionData || []).forEach((entry) => {
+        if (!entry) return;
+        const isWishlistItem = entry.wishlist === true || entry.wishlist === 1 || String(entry.wishlist).toLowerCase() === "true";
+        const card = entry.card || {};
+        const fullEntry = {
+          ...entry,
+          ...card, // flatten card fields for easy access in UI
+          // collection-specific fields take precedence if duplicated
+          cardId: entry.cardId,
+          quantity: entry.quantity,
+          condition: entry.condition,
+          variation: entry.variation,
+          wishlist: entry.wishlist,
+          createdAt: entry.createdAt,
+          updatedAt: entry.updatedAt,
+        };
+        if (isWishlistItem) wish.push(fullEntry);
+        else col.push(fullEntry);
       });
 
-      // 4. Calculate total value
+      // Calculate total value
       const totalValue = col.reduce((sum, card) => {
-        const price = card.tcgplayerMarket || card.tcgplayerMid || 0;
+        // Use nested card pricing
+        const price =
+          toNumber(card?.tcgplayerVariations?.normal?.market) ||
+          toNumber(card?.tcgplayerVariations?.normal?.mid) ||
+          toNumber(card?.cardmarketVariations?.normal?.average_sell) ||
+          0;
         const quantity = card.quantity || 1;
         return sum + (price * quantity);
       }, 0);
 
-      // 5. Update state
       setCollection(col);
       setWishlist(wish);
       setCollectionValue(totalValue);

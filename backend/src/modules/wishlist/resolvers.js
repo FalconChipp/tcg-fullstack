@@ -99,47 +99,7 @@ const resolvers = {
         throw err;
       }
     },
-    moveToCollection: async (_, { cardId, variation }, { token }) => {
-      const payload = requireAuth(token);
-      const t = await sequelize.transaction();
-      try {
-        const entry = await Wishlist.findOne({
-          where: { userId: payload.id, cardId, variation: variation || null },
-          lock: t.LOCK.UPDATE,
-          transaction: t
-        });
-        if (!entry) throw new Error('Entry not found');
-        let collection = await Collection.findOne({
-          where: { userId: payload.id, cardId, variation: variation || null },
-          lock: t.LOCK.UPDATE,
-          transaction: t
-        });
-        if (collection) {
-          collection.quantity += entry.quantity;
-          if (entry.condition) collection.condition = entry.condition;
-          await collection.save({ transaction: t });
-        } else {
-          await Collection.create({
-            userId: payload.id,
-            cardId,
-            quantity: entry.quantity,
-            condition: entry.condition,
-            variation: entry.variation,
-            wishlist: false
-          }, { transaction: t });
-        }
-        await entry.destroy({ transaction: t });
-        await t.commit();
-        const count = await Collection.count({ where: { userId: payload.id, wishlist: false } });
-        if (count === 1) {
-          await maybeGrantAchievement(payload.id, 'first_move_from_wishlist', { cardId });
-        }
-        return true;
-      } catch (err) {
-        await t.rollback();
-        throw err;
-      }
-    },
+    // moveToCollection mutation implemented in collection module
     // ---- Admin mutations ----
     adminAddToWishlist: async (_, { userId, cardId, quantity = 1, condition, variation, notes }, { token }) => {
       requireAdmin(token);

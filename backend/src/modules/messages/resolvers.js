@@ -5,12 +5,12 @@ import {
   ChatAgreement,
   ReportedUser,
   AdminAction,
-  Notification,
 } from '../../models/index.js';
 import { verifyJwt } from '../auth/helpers.js';
 import { requireAdmin } from './helpers.js';
 import { requireChatAgreement, requireNotChatBanned } from './helpers.js';
 import { maybeGrantAchievement } from '../achievements/helpers.js';
+import { notifyUser } from '../../utils/notifications.js';
 
 const DEFAULT_PAGE_SIZE = 20;
 
@@ -136,12 +136,12 @@ const resolvers = {
       if (!receiver) throw new Error('User not found');
       if (receiver.chatBanned || receiver.isBanned) throw new Error('Receiver banned');
       const message = await Message.create({ senderId: user.id, receiverId, content, meta });
-      await Notification.create({
+      await notifyUser({
         userId: receiverId,
         type: 'message',
         title: 'New Message',
         body: content.slice(0, 120),
-        data: { senderId: user.id, messageId: message.id },
+        meta: { senderId: user.id, messageId: message.id },
       });
       // TODO: emit socket.io event or other notification
       const sentCount = await Message.count({ where: { senderId: user.id } });
@@ -260,12 +260,12 @@ const resolvers = {
           meta,
           isSystemMessage: true,
         });
-        await Notification.create({
+        await notifyUser({
           userId: u.id,
           type: 'system',
           title: 'System Message',
           body: content.slice(0, 120),
-          data: { adminId: admin.id, messageId: msg.id },
+          meta: { adminId: admin.id, messageId: msg.id },
         });
         // TODO: emit socket.io event or other notification for system messages
         io?.to(u.id).emit('newMessage', { from: admin.id, system: true });

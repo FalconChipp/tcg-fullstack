@@ -13,7 +13,7 @@ import collectionsTypeDefs from './modules/collection/typeDefs.js';
 import wishlistTypeDefs from './modules/wishlist/typeDefs.js';
 import achievementsTypeDefs from './modules/achievements/typeDefs.js';
 // import reputationTypeDefs from './modules/reputation/typeDefs.js';
-// import messagesTypeDefs from './modules/messages/typeDefs.js';
+import messagesTypeDefs from './modules/messages/typeDefs.js';
 // import notificationsTypeDefs from './modules/notifications/typeDefs.js';
 // import subscriptionsTypeDefs from './modules/subscriptions/typeDefs.js';
 // import transactionsTypeDefs from './modules/transactions/typeDefs.js';
@@ -30,7 +30,7 @@ import collectionsResolvers from './modules/collection/resolvers.js';
 import wishlistResolvers from './modules/wishlist/resolvers.js';
 import achievementsResolvers from './modules/achievements/resolvers.js';
 // import reputationResolvers from './modules/reputation/resolvers.js';
-// import messagesResolvers from './modules/messages/resolvers.js';
+import messagesResolvers from './modules/messages/resolvers.js';
 // import notificationsResolvers from './modules/notifications/resolvers.js';
 // import subscriptionsResolvers from './modules/subscriptions/resolvers.js';
 // import transactionsResolvers from './modules/transactions/resolvers.js';
@@ -48,7 +48,7 @@ export const typeDefs = mergeTypeDefs([
   wishlistTypeDefs,
   achievementsTypeDefs,
 //   reputationTypeDefs,
-//   messagesTypeDefs,
+  messagesTypeDefs,
 //   notificationsTypeDefs,
 //   subscriptionsTypeDefs,
 //   transactionsTypeDefs,
@@ -67,7 +67,7 @@ export const resolvers = mergeResolvers([
   wishlistResolvers,
   achievementsResolvers,
 //   reputationResolvers,
-//   messagesResolvers,
+  messagesResolvers,
 //   notificationsResolvers,
 //   subscriptionsResolvers,
 //   transactionsResolvers,

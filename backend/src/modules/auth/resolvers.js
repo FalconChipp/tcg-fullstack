@@ -2,6 +2,7 @@
 
 import { Op } from 'sequelize';
 import { User } from '../../models/index.js';
+import { OAuth2Client } from 'google-auth-library';
 import {
   generateJwt,
   verifyJwt,
@@ -11,7 +12,6 @@ import {
   verifyMfaToken,
   randomToken
 } from './helpers.js';
-import winston from 'winston';
 
 // --- Email templates & sending utility ---
 import { sendMail } from '../../utils/email.js';
@@ -20,16 +20,8 @@ import buildResetEmail from '../../emails/buildResetEmail.js';
 import buildWelcomeEmail from '../../emails/buildWelcomeEmail.js';
 import buildMfaEmail from '../../emails/buildMfaEmail.js';
 
-// Configure logger
-const logger = winston.createLogger({
-  transports: [new winston.transports.Console()],
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.printf(({ level, message, timestamp }) =>
-      `[${timestamp}] [${level}] ${message}`
-    )
-  )
-});
+const oauthClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 
 const resolvers = {
   Query: {
@@ -104,9 +96,31 @@ const resolvers = {
     },
 
     loginGoogle: async (_, { googleToken }, { logger }) => {
-      // To be implemented: Google OAuth login flow
       logger.info(`[LOGIN_GOOGLE] Received Google token`);
-      throw new Error('Not implemented in demo. Implement googleToken verification and user lookup.');
+      try {
+        const ticket = await oauthClient.verifyIdToken({
+          idToken: googleToken,
+          audience: process.env.GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+        const googleId = payload.sub;
+        let user = await User.findOne({ where: { googleId } });
+        if (!user) {
+          user = await User.create({
+            googleId,
+            email: payload.email,
+            username: payload.email.split('@')[0],
+            emailVerified: payload.email_verified,
+            isAdmin: false,
+          });
+        }
+        user.lastLogin = new Date();
+        await user.save();
+        return { token: generateJwt(user), user };
+      } catch (err) {
+        logger.error(`[LOGIN_GOOGLE] ${err.message}`);
+        throw new Error('Google login failed');
+      }
     },
 
     // ---- MFA Setup ----

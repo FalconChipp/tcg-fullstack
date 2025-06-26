@@ -1,4 +1,3 @@
-import { Op } from 'sequelize';
 import {
   normalizeSetCode,
   isSetBlocked,
@@ -9,12 +8,29 @@ import {
   saveCardPriceCache,
 } from './helpers.js';
 
-import { fetchTCGDexCards, fetchTCGDexCardById, fetchTCGDexSets } from './api/tcgdex.js';
+import { fetchTCGDexCards, fetchTCGDexCardById } from './api/tcgdex.js';
 import { fetchPTCGCardById, fetchPTCGCardPrices } from './api/pokemontcg.js';
 import { getExchangeRates } from './api/exchangeRates.js';
 
 import { SET_MAPPING } from './SetMapping.js';
 import { Card, Listing, Collection } from '../../models/index.js';
+
+// Simple in-memory cache for search results to reduce external API calls
+const searchCache = new Map();
+
+function getCachedSearch(key) {
+  const entry = searchCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiry) {
+    searchCache.delete(key);
+    return null;
+  }
+  return entry.value;
+}
+
+function setCachedSearch(key, value, ttl = 60 * 60 * 1000) {
+  searchCache.set(key, { value, expiry: Date.now() + ttl });
+}
 
 // Helper: Enrich cards with prices, images, listing, forTrade, etc.
 async function enrichCards(cards, { listed, forTrade, rarity }) {
@@ -96,8 +112,13 @@ async function searchCardsResolver(_, { input }, context) {
   let setCode = set ? normalizeSetCode(set) : null;
   if (setCode && isSetBlocked(setCode)) return { cards: [], total: 0, page, pageSize };
 
-  // TCGDex fetch (exact match only)
-  let cards = await fetchTCGDexCards({ name, set: setCode, number });
+  const cacheKey = JSON.stringify({ name, set: setCode, number });
+  let cards = getCachedSearch(cacheKey);
+  if (!cards) {
+    // TCGDex fetch (exact match only)
+    cards = await fetchTCGDexCards({ name, set: setCode, number });
+    setCachedSearch(cacheKey, cards);
+  }
   // Remove any from blocked sets
   cards = cards.filter(card => !isSetBlocked(card.set));
   const total = cards.length;

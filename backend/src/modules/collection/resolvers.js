@@ -1,6 +1,6 @@
 // src/modules/collections/resolvers.js
 
-import { Collection, Card } from '../../models/index.js';
+import { Collection, Card, sequelize } from '../../models/index.js';
 import { requireAuth } from './helpers.js';
 
 const resolvers = {
@@ -35,25 +35,33 @@ const resolvers = {
   Mutation: {
     addToCollection: async (_, { cardId, quantity = 1, condition, variation }, { token }) => {
       const payload = requireAuth(token);
-
-      let entry = await Collection.findOne({
-        where: { userId: payload.id, cardId, variation: variation || null, wishlist: false }
-      });
-      if (entry) {
-        entry.quantity += quantity;
-        if (condition !== undefined) entry.condition = condition;
-        await entry.save();
-      } else {
-        entry = await Collection.create({
-          userId: payload.id,
-          cardId,
-          quantity,
-          condition,
-          variation,
-          wishlist: false
+      const t = await sequelize.transaction();
+      try {
+        let entry = await Collection.findOne({
+          where: { userId: payload.id, cardId, variation: variation || null, wishlist: false },
+          transaction: t,
+          lock: t.LOCK.UPDATE
         });
+        if (entry) {
+          entry.quantity += quantity;
+          if (condition !== undefined) entry.condition = condition;
+          await entry.save({ transaction: t });
+        } else {
+          entry = await Collection.create({
+            userId: payload.id,
+            cardId,
+            quantity,
+            condition,
+            variation,
+            wishlist: false
+          }, { transaction: t });
+        }
+        await t.commit();
+        return entry;
+      } catch (err) {
+        await t.rollback();
+        throw err;
       }
-      return entry;
     },
 
     removeFromCollection: async (_, { cardId, variation }, { token }) => {
@@ -68,36 +76,63 @@ const resolvers = {
 
     updateCollectionEntry: async (_, { cardId, quantity, condition, variation }, { token }) => {
       const payload = requireAuth(token);
-      const entry = await Collection.findOne({
-        where: { userId: payload.id, cardId, variation: variation || null, wishlist: false }
-      });
-      if (!entry) throw new Error('Entry not found');
-      if (quantity !== undefined) entry.quantity = quantity;
-      if (condition !== undefined) entry.condition = condition;
-      await entry.save();
-      return entry;
+      const t = await sequelize.transaction();
+      try {
+        const entry = await Collection.findOne({
+          where: { userId: payload.id, cardId, variation: variation || null, wishlist: false },
+          transaction: t,
+          lock: t.LOCK.UPDATE
+        });
+        if (!entry) throw new Error('Entry not found');
+        if (quantity !== undefined) entry.quantity = quantity;
+        if (condition !== undefined) entry.condition = condition;
+        await entry.save({ transaction: t });
+        await t.commit();
+        return entry;
+      } catch (err) {
+        await t.rollback();
+        throw err;
+      }
     },
 
     moveToWishlist: async (_, { cardId, variation }, { token }) => {
       const payload = requireAuth(token);
-      const entry = await Collection.findOne({
-        where: { userId: payload.id, cardId, variation: variation || null, wishlist: false }
-      });
-      if (!entry) throw new Error('Entry not found');
-      entry.wishlist = true;
-      await entry.save();
-      return entry;
+      const t = await sequelize.transaction();
+      try {
+        const entry = await Collection.findOne({
+          where: { userId: payload.id, cardId, variation: variation || null, wishlist: false },
+          transaction: t,
+          lock: t.LOCK.UPDATE
+        });
+        if (!entry) throw new Error('Entry not found');
+        entry.wishlist = true;
+        await entry.save({ transaction: t });
+        await t.commit();
+        return entry;
+      } catch (err) {
+        await t.rollback();
+        throw err;
+      }
     },
 
     moveToCollection: async (_, { cardId, variation }, { token }) => {
       const payload = requireAuth(token);
-      const entry = await Collection.findOne({
-        where: { userId: payload.id, cardId, variation: variation || null, wishlist: true }
-      });
-      if (!entry) throw new Error('Entry not found in wishlist');
-      entry.wishlist = false;
-      await entry.save();
-      return entry;
+      const t = await sequelize.transaction();
+      try {
+        const entry = await Collection.findOne({
+          where: { userId: payload.id, cardId, variation: variation || null, wishlist: true },
+          transaction: t,
+          lock: t.LOCK.UPDATE
+        });
+        if (!entry) throw new Error('Entry not found in wishlist');
+        entry.wishlist = false;
+        await entry.save({ transaction: t });
+        await t.commit();
+        return entry;
+      } catch (err) {
+        await t.rollback();
+        throw err;
+      }
     },
   },
 

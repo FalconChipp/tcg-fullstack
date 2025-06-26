@@ -7,7 +7,10 @@ import qrcode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
 import { User } from '../../models/index.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_key';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET not set');
+}
 
 // Generate JWT for a user
 export function generateJwt(user) {

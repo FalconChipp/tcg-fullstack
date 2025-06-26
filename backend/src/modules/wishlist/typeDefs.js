@@ -46,7 +46,7 @@ export default gql`
     addToWishlist(cardId: String!, quantity: Int, condition: String, variation: String, notes: String): WishlistEntry!
     removeFromWishlist(cardId: String!, variation: String): Boolean!
     updateWishlistEntry(cardId: String!, variation: String, quantity: Int, condition: String, notes: String): WishlistEntry!
-    moveToCollection(cardId: String!, variation: String): Boolean!
+    # moveToCollection mutation is defined in the collection module
 
     adminAddToWishlist(userId: ID!, cardId: String!, quantity: Int, condition: String, variation: String, notes: String): WishlistEntry!
     adminRemoveFromWishlist(userId: ID!, cardId: String!, variation: String): Boolean!

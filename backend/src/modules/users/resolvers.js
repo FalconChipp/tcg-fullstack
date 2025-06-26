@@ -1,9 +1,9 @@
-import { User, Profile } from '../../models/index.js';
+import { User, Profile, sequelize } from '../../models/index.js';
 import { Op } from 'sequelize';
 import winston from 'winston';
 import { verifyJwt } from '../auth/helpers.js';
 import { PROFILE_STATUSES } from '../../models/Profile.js';
-import fetch from 'node-fetch';
+import { requireAdmin } from './helpers.js';
 
 // --- Logger ---
 const logger = winston.createLogger({
@@ -23,11 +23,11 @@ const resolvers = {
       if (!token) return null;
       try {
         const payload = verifyJwt(token);
-        const profile = await Profile.findOne({ where: { userId: payload.id } });
-        logger.info(`[PROFILE] User ${payload.id} fetched own profile`);
-        return profile;
+        const user = await User.findByPk(payload.id, { include: [{ model: Profile }] });
+        logger.info(`[USER] Fetched self ${payload.id}`);
+        return user;
       } catch (err) {
-        logger.warn(`[PROFILE] JWT verification failed for me query`);
+        logger.warn(`[USER] JWT verification failed for me query`);
         return null;
       }
     },
@@ -48,7 +48,10 @@ const resolvers = {
 
     searchUsers: async (_, { query, limit = 10 }) => {
       const users = await User.findAll({
-        where: { username: { [Op.iLike]: `%${query}%` } },
+        where: sequelize.where(
+          sequelize.fn('LOWER', sequelize.col('username')),
+          { [Op.like]: `%${query.toLowerCase()}%` }
+        ),
         limit,
         include: [{ model: Profile }],
       });
@@ -57,9 +60,7 @@ const resolvers = {
     },
 
     allUsers: async (_, { limit = 100 }, { token }) => {
-      const payload = verifyJwt(token);
-      const user = await User.findByPk(payload.id);
-      if (!user?.isAdmin) throw new Error('Forbidden');
+      requireAdmin(token);
       const users = await User.findAll({ limit, include: Profile });
       logger.info(`[ADMIN] allUsers queried`);
       return users;
@@ -77,12 +78,28 @@ const resolvers = {
         profile = await Profile.create({ userId: payload.id });
       }
 
-      // Update only supplied fields
-      Object.entries(args).forEach(([key, value]) => {
-        if (value !== undefined && key in profile) profile[key] = value;
-      });
-      if (args.status && PROFILE_STATUSES.includes(args.status)) {
-        profile.status = args.status;
+      const allowed = [
+        'bio',
+        'favouritePokemon',
+        'country',
+        'showcase',
+        'status',
+        'address1',
+        'address2',
+        'city',
+        'postcode',
+        'state',
+        'phone',
+        'discord',
+        'publicProfile',
+        'wantsTrade',
+        'wantsMarketplace',
+      ];
+
+      for (const field of allowed) {
+        if (args[field] === undefined) continue;
+        if (field === 'status' && !PROFILE_STATUSES.includes(args.status)) continue;
+        profile[field] = args[field];
       }
 
       await profile.save();
@@ -91,9 +108,7 @@ const resolvers = {
     },
 
     adminBanUser: async (_, { userId }, { token }) => {
-      const payload = verifyJwt(token);
-      const admin = await User.findByPk(payload.id);
-      if (!admin?.isAdmin) throw new Error('Forbidden');
+      requireAdmin(token);
       const user = await User.findByPk(userId);
       if (!user) throw new Error('Not found');
       user.isBanned = true;
@@ -103,9 +118,7 @@ const resolvers = {
     },
 
     adminUnbanUser: async (_, { userId }, { token }) => {
-      const payload = verifyJwt(token);
-      const admin = await User.findByPk(payload.id);
-      if (!admin?.isAdmin) throw new Error('Forbidden');
+      requireAdmin(token);
       const user = await User.findByPk(userId);
       if (!user) throw new Error('Not found');
       user.isBanned = false;
@@ -115,9 +128,7 @@ const resolvers = {
     },
 
     adminDeleteUser: async (_, { userId }, { token }) => {
-      const payload = verifyJwt(token);
-      const admin = await User.findByPk(payload.id);
-      if (!admin?.isAdmin) throw new Error('Forbidden');
+      requireAdmin(token);
       await User.destroy({ where: { id: userId } });
       logger.info(`[ADMIN] Deleted user ${userId}`);
       return true;

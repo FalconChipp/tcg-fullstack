@@ -63,6 +63,18 @@ export default (sequelize) => {
         type: DataTypes.DATE,
         allowNull: true,
       },
+      verifyToken: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      verifyTokenExpiry: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+      emailVerified: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+      },
       createdAt: DataTypes.DATE,
       updatedAt: DataTypes.DATE,
     },

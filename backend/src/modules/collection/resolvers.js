@@ -2,6 +2,7 @@
 
 import { Collection, Card, sequelize } from '../../models/index.js';
 import { requireAuth } from './helpers.js';
+import { maybeGrantAchievement } from '../achievements/helpers.js';
 
 const resolvers = {
   Query: {
@@ -57,6 +58,10 @@ const resolvers = {
           }, { transaction: t });
         }
         await t.commit();
+        const count = await Collection.count({ where: { userId: payload.id, wishlist: false } });
+        if (count === 1) {
+          await maybeGrantAchievement(payload.id, 'first_collection_entry', { cardId });
+        }
         return entry;
       } catch (err) {
         await t.rollback();

@@ -31,3 +31,34 @@ Seed initial data (achievements and subscription tiers) with:
 ```bash
 npm run seed
 ```
+
+### Example: Adding a new achievement
+
+Use the `addAchievement` mutation (admin only) to create achievements:
+
+```graphql
+mutation {
+  addAchievement(input: {
+    code: "first_collection_entry"
+    name: "First Card!"
+    description: "Add your first card to your collection"
+    tier: "Bronze"
+    iconUrl: "/achievements/first_card.png"
+    points: 10
+    isActive: true
+    criteria: "{ \"type\": \"collection_entry\", \"count\": 1 }"
+    isHidden: false
+  }) { id code name }
+}
+```
+
+### Example: Auto-grant trigger
+
+Use `maybeGrantAchievement` in backend code when an action might earn an achievement:
+
+```javascript
+import { maybeGrantAchievement } from './modules/achievements/helpers.js';
+
+// After a user action succeeds
+await maybeGrantAchievement(userId, 'first_collection_entry', { cardId });
+```

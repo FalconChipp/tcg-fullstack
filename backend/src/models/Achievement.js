@@ -40,9 +40,17 @@ export default (sequelize) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
+      criteria: {
+        type: DataTypes.JSON,
+        allowNull: true,
+      },
       points: {
         type: DataTypes.INTEGER,
         defaultValue: 0,
+      },
+      isHidden: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
       },
       isActive: {
         type: DataTypes.BOOLEAN,

@@ -19,6 +19,7 @@ import path from 'path';
 import jwt from 'jsonwebtoken';
 import { startExpiredMessageCleanup } from './src/jobs/messageCleanup.js';
 import { startUnreadReminderJob } from './src/jobs/unreadReminder.js';
+import { startNotificationCleanup } from './src/jobs/notificationCleanup.js';
 
 import { typeDefs, resolvers } from './src/schema.js';
 import { sequelize, User } from './src/models/index.js';
@@ -206,6 +207,7 @@ try {
   await sequelize.sync(); // For production, use migrations!
   startExpiredMessageCleanup(logger);
   startUnreadReminderJob(logger);
+  startNotificationCleanup(logger);
 } catch (err) {
   logger.error('Database connection failed:', err);
   process.exit(1);

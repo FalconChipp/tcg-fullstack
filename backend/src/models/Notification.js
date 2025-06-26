@@ -19,12 +19,12 @@ export default (sequelize, models) => {
         primaryKey: true,
       },
       userId: {
-        // Who the notification is for
+        // Optional if broadcast notification
         type: DataTypes.UUID,
-        allowNull: false,
+        allowNull: true,
       },
       type: {
-        // 'trade', 'purchase', 'admin', 'message', 'system', etc
+        // 'system', 'trade_offer', 'trade_complete', 'message', etc
         type: DataTypes.STRING,
         allowNull: false,
       },
@@ -33,17 +33,45 @@ export default (sequelize, models) => {
         allowNull: false,
       },
       body: {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: false,
       },
-      data: {
-        // Extra info as JSON (e.g. tradeId, listingId)
-        type: DataTypes.JSON,
+      iconUrl: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      linkUrl: {
+        type: DataTypes.STRING,
         allowNull: true,
       },
       isRead: {
         type: DataTypes.BOOLEAN,
         defaultValue: false,
+      },
+      isDismissed: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+      },
+      meta: {
+        // Extra info as JSON (e.g. tradeId, listingId)
+        type: DataTypes.JSON,
+        allowNull: true,
+      },
+      expiresAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+      isSilent: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+      },
+      isBroadcast: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+      },
+      emailSentAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
       },
       createdAt: DataTypes.DATE,
       updatedAt: DataTypes.DATE,
@@ -57,6 +85,8 @@ export default (sequelize, models) => {
         { fields: ['userId'] },
         { fields: ['type'] },
         { fields: ['isRead'] },
+        { fields: ['isDismissed'] },
+        { fields: ['expiresAt'] },
       ],
     }
   );

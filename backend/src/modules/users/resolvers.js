@@ -144,6 +144,10 @@ const resolvers = {
   User: {
     profile: async (user) => {
       return Profile.findOne({ where: { userId: user.id } });
+    },
+    referrer: async (user) => {
+      if (!user.referrerId) return null;
+      return User.findByPk(user.referrerId);
     }
   },
   Profile: {

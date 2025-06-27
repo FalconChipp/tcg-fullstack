@@ -61,6 +61,7 @@ import ShippingLabelFactory from './ShippingLabel.js';
 import CardPriceCacheFactory from './CardPriceCache.js';
 import SubscriptionAddOnFactory from "./SubscriptionAddOn.js";
 import AdminActionFactory from './AdminAction.js';
+import RewardFactory from './Reward.js';
 
 // --- Initialize models ---
 const User = UserFactory(sequelize);
@@ -86,12 +87,17 @@ const ShippingLabel = ShippingLabelFactory(sequelize);
 const CardPriceCache = CardPriceCacheFactory(sequelize);
 const AdminAction = AdminActionFactory(sequelize);
 const SubscriptionAddOn = SubscriptionAddOnFactory(sequelize);
+const Reward = RewardFactory(sequelize);
 
 // ---- Associations ----
 
 // User/Profile: 1:1
 User.hasOne(Profile, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Profile.belongsTo(User, { foreignKey: 'userId' });
+
+// Referrals: User -> Referrer (self-reference)
+User.belongsTo(User, { as: 'referrer', foreignKey: 'referrerId' });
+User.hasMany(User, { as: 'referrals', foreignKey: 'referrerId' });
 
 // User/Collection/Listing/Wishlist
 User.hasMany(Collection, { foreignKey: 'userId', onDelete: 'CASCADE' });
@@ -187,6 +193,12 @@ UserAchievement.belongsTo(User, { foreignKey: 'userId' });
 Achievement.hasMany(UserAchievement, { foreignKey: 'achievementId' });
 UserAchievement.belongsTo(Achievement, { foreignKey: 'achievementId' });
 
+// Rewards
+User.hasMany(Reward, { foreignKey: 'userId', onDelete: 'CASCADE' });
+Reward.belongsTo(User, { foreignKey: 'userId' });
+Reward.belongsTo(Achievement, { foreignKey: 'achievementId' });
+Achievement.hasMany(Reward, { foreignKey: 'achievementId' });
+
 // Subscriptions
 User.hasMany(Subscription, { foreignKey: 'userId' });
 Subscription.belongsTo(User, { foreignKey: 'userId' });
@@ -221,6 +233,7 @@ export {
   UserReputation, Message,
   Notification, AuditLog, Achievement, Subscription,
   SubscriptionTier, Transaction, ShippingLabel, CardPriceCache,
-  AdminAction, UserAchievement, Offer, SubscriptionAddOn
+  AdminAction, UserAchievement, Offer, SubscriptionAddOn,
+  Reward,
   ChatAgreement, ReportedUser
 };

@@ -57,6 +57,7 @@ const resolvers = {
       const listing = await Listing.create({
         userId: payload.id,
         ...input,
+        allowOffers: input.allowOffers !== false,
         proofCode,
         proofImage: `/uploads/proofs/${path.basename(filePath)}`,
         proofUploadedAt: new Date(),
@@ -69,6 +70,9 @@ const resolvers = {
       const listing = await Listing.findByPk(id);
       if (!listing || listing.userId !== payload.id) throw new Error('Not found');
       Object.assign(listing, input);
+      if ('allowOffers' in input) {
+        listing.allowOffers = input.allowOffers !== false;
+      }
       await listing.save();
       return listing;
     },
@@ -84,19 +88,33 @@ const resolvers = {
       const payload = requireAuth(token);
       const listing = await Listing.findByPk(input.listingId);
       if (!listing || listing.status !== 'active') throw new Error('Listing not available');
+      if (!listing.allowOffers) throw new Error('Seller is not accepting offers');
+      const offerCount = await Offer.count({ where: { listingId: input.listingId, buyerId: payload.id } });
+      if (offerCount >= 3) throw new Error('Offer limit reached for this listing');
       const offer = await Offer.create({ buyerId: payload.id, ...input });
       return offer;
     },
-    respondOffer: async (_, { id, accept }, { token }) => {
+    respondOffer: async (_, { id, accept, counterPrice }, { token }) => {
       const payload = requireAuth(token);
       const offer = await Offer.findByPk(id);
       if (!offer) throw new Error('Offer not found');
       const listing = await Listing.findByPk(offer.listingId);
       if (!listing || listing.userId !== payload.id) throw new Error('Not authorized');
-      offer.status = accept ? 'accepted' : 'declined';
+      if (counterPrice != null) {
+        offer.counterPrice = counterPrice;
+        offer.status = 'countered';
+        await offer.save();
+        return offer;
+      }
+      if (accept === true) {
+        offer.status = 'accepted';
+        await offer.save();
+        listing.status = 'sold';
+        await listing.save();
+        return offer;
+      }
+      offer.status = 'declined';
       await offer.save();
-      if (accept) listing.status = 'sold';
-      await listing.save();
       return offer;
     },
   },

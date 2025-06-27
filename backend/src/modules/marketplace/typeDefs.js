@@ -11,6 +11,7 @@ export default gql`
     condition: String
     variation: String
     notes: String
+    allowOffers: Boolean
     status: String
     proofImage: String
     proofUploadedAt: String
@@ -25,6 +26,7 @@ export default gql`
     listingId: ID!
     buyerId: ID!
     price: Float!
+    counterPrice: Float
     status: String!
     createdAt: String
     updatedAt: String
@@ -46,6 +48,7 @@ export default gql`
     condition: String
     variation: String
     notes: String
+    allowOffers: Boolean
   }
 
   input OfferInput {
@@ -65,6 +68,6 @@ export default gql`
     updateMarketplaceListing(id: ID!, input: ListingInput!): MarketplaceListing!
     delistMarketplaceListing(id: ID!): Boolean!
     makeOffer(input: OfferInput!): Offer!
-    respondOffer(id: ID!, accept: Boolean!): Offer!
+    respondOffer(id: ID!, accept: Boolean, counterPrice: Float): Offer!
   }
 `;

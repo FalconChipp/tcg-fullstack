@@ -44,6 +44,7 @@ import CardFactory from './Card.js';
 import CollectionFactory from './Collection.js';
 import WishlistFactory from './Wishlist.js';
 import ListingFactory from './Listing.js';
+import OfferFactory from './Offer.js';
 import TradeFactory from './Trade.js';
 import UserReputationFactory from './UserReputation.js';
 import MessageFactory from './Message.js';
@@ -67,6 +68,7 @@ const Card = CardFactory(sequelize);
 const Collection = CollectionFactory(sequelize);
 const Wishlist = WishlistFactory(sequelize);
 const Listing = ListingFactory(sequelize);
+const Offer = OfferFactory(sequelize);
 const { Trade, TradeCard } = TradeFactory(sequelize);
 const UserReputation = UserReputationFactory(sequelize);
 const Message = MessageFactory(sequelize);
@@ -101,6 +103,10 @@ User.hasMany(Listing, { foreignKey: 'buyerId', as: 'purchases' });
 Listing.belongsTo(User, { foreignKey: 'buyerId', as: 'buyer' });
 Card.hasMany(Listing, { foreignKey: 'cardId', onDelete: 'CASCADE' });
 Listing.belongsTo(Card, { foreignKey: 'cardId' });
+Listing.hasMany(Offer, { foreignKey: 'listingId', as: 'offers', onDelete: 'CASCADE' });
+Offer.belongsTo(Listing, { foreignKey: 'listingId' });
+Offer.belongsTo(User, { foreignKey: 'buyerId', as: 'buyer' });
+User.hasMany(Offer, { foreignKey: 'buyerId', as: 'offers' });
 
 User.hasMany(Wishlist, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Wishlist.belongsTo(User, { foreignKey: 'userId' });
@@ -194,6 +200,6 @@ export {
   Trade, TradeCard, UserReputation, Message,
   Notification, AuditLog, Achievement, Subscription,
   SubscriptionTier, Transaction, ShippingLabel, CardPriceCache,
-  AdminAction, UserAchievement,
+  AdminAction, UserAchievement, Offer,
   ChatAgreement, ReportedUser
 };

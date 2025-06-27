@@ -32,6 +32,7 @@ export default (sequelize, models) => {
       condition: { type: DataTypes.STRING, allowNull: true },
       variation: { type: DataTypes.STRING, allowNull: true },
       notes: { type: DataTypes.TEXT, allowNull: true },
+      allowOffers: { type: DataTypes.BOOLEAN, defaultValue: true },
       status: {
         type: DataTypes.STRING,
         defaultValue: 'active', // active, sold, removed, cancelled, etc.
@@ -49,6 +50,9 @@ export default (sequelize, models) => {
       cancelledReason: { type: DataTypes.STRING, allowNull: true },
       rating: { type: DataTypes.INTEGER, allowNull: true },
       review: { type: DataTypes.STRING, allowNull: true },
+      proofCode: { type: DataTypes.STRING, allowNull: true },
+      proofImage: { type: DataTypes.STRING, allowNull: true },
+      proofUploadedAt: { type: DataTypes.DATE, allowNull: true },
       createdAt: DataTypes.DATE,
       updatedAt: DataTypes.DATE,
     },

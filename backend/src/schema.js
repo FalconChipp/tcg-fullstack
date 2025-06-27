@@ -12,6 +12,7 @@ import collectionsTypeDefs from './modules/collection/typeDefs.js';
 // import tradesTypeDefs from './modules/trades/typeDefs.js';
 import wishlistTypeDefs from './modules/wishlist/typeDefs.js';
 import achievementsTypeDefs from './modules/achievements/typeDefs.js';
+import marketplaceTypeDefs from './modules/marketplace/typeDefs.js';
 // import reputationTypeDefs from './modules/reputation/typeDefs.js';
 import messagesTypeDefs from './modules/messages/typeDefs.js';
 import notificationsTypeDefs from './modules/notifications/typeDefs.js';
@@ -29,6 +30,7 @@ import collectionsResolvers from './modules/collection/resolvers.js';
 // import tradesResolvers from './modules/trades/resolvers.js';
 import wishlistResolvers from './modules/wishlist/resolvers.js';
 import achievementsResolvers from './modules/achievements/resolvers.js';
+import marketplaceResolvers from './modules/marketplace/resolvers.js';
 // import reputationResolvers from './modules/reputation/resolvers.js';
 import messagesResolvers from './modules/messages/resolvers.js';
 import notificationsResolvers from './modules/notifications/resolvers.js';
@@ -43,6 +45,7 @@ export const typeDefs = mergeTypeDefs([
   usersTypeDefs,
   searchTypeDefs,
   collectionsTypeDefs,
+  marketplaceTypeDefs,
 //   listingsTypeDefs,
 //   tradesTypeDefs,
   wishlistTypeDefs,
@@ -62,6 +65,7 @@ export const resolvers = mergeResolvers([
   usersResolvers,
   searchResolvers,
   collectionsResolvers,
+  marketplaceResolvers,
 // listingsResolvers,
 //   tradesResolvers,
   wishlistResolvers,

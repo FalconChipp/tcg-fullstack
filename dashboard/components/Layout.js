@@ -1,7 +1,18 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-const DEFAULT_MODULES = ['users', 'cards', 'binders', 'listings', 'logs'];
+const DEFAULT_MODULES = [
+  'users',
+  'cards',
+  'binders',
+  'listings',
+  'logs',
+  'messages',
+  'notifications',
+  'wishlist',
+  'rewards',
+  'trades',
+];
 
 export default function Layout({ children }) {
   const [modules, setModules] = useState(DEFAULT_MODULES);
@@ -35,6 +46,11 @@ export default function Layout({ children }) {
           {link('/binders', 'Binders', 'binders')}
           {link('/listings', 'Listings', 'listings')}
           {link('/logs', 'Logs', 'logs')}
+          {link('/messages', 'Messages', 'messages')}
+          {link('/notifications', 'Notifications', 'notifications')}
+          {link('/wishlist', 'Wishlist', 'wishlist')}
+          {link('/rewards', 'Rewards', 'rewards')}
+          {link('/trades', 'Trades', 'trades')}
           <Link className="hover:text-white" href="/modules">Modules</Link>
           <Link className="hover:text-white" href="/login">Login</Link>
         </nav>

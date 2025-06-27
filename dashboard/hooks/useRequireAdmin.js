@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { gql, useQuery } from '@apollo/client';
 
 const CHECK_QUERY = gql`
-  query __AdminCheck { adminUsers(limit: 1) { id } }
+  query __AdminCheck { allUsers(limit: 1) { id } }
 `;
 
 export default function useRequireAdmin() {

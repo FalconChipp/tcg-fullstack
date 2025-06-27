@@ -137,45 +137,40 @@ export default function ProfileBindersPanel({
   async function handleSaveBinder(data) {
     setStatusMessage({ type: "info", message: "Saving binder..." });
     try {
-      const mutation = `
-        mutation SaveBinder($input: BinderInput!) {
-          saveBinder(input: $input) {
-            id name layout slotsPerPage coverColor accentColor
-            pages { cardId owned page position externalId name imageUrl setName setSymbolUrl rarity tcgplayerMarket tcgplayerMid cardmarketTrendPrice cardmarketAverageSell }
+      const isUpdate = !!data.id;
+      const mutation = isUpdate
+        ? `
+        mutation UpdateBinder($id: ID!, $input: BinderInput!) {
+          updateBinder(id: $id, input: $input) {
+            id
+            name
+            description
+            accentColor
+            visibility
+            slug
+            createdAt
+            updatedAt
+          }
+        }
+      `
+        : `
+        mutation CreateBinder($input: BinderInput!) {
+          createBinder(input: $input) {
+            id
+            name
+            description
+            accentColor
+            visibility
+            slug
+            createdAt
+            updatedAt
           }
         }
       `;
 
-      const [rows, cols] = data.layout.split("x").map(Number);
-      const slotsPerPage = rows * cols;
-
-      const variables = {
-        input: {
-          userId,
-          id: data.id,
-          name: data.name,
-          layout: data.layout,
-          slotsPerPage,
-          coverColor: data.coverColor,               
-          accentColor: data.accentColor,
-          pages: (data.pages || []).map(s => ({
-            cardId: s.cardId,
-            owned: !!s.owned,
-            page: s.page,
-            position: s.position,
-            externalId: s.externalId,
-            name: s.name,
-            imageUrl: s.imageUrl,
-            setName: s.setName,
-            setSymbolUrl: s.setSymbolUrl,
-            rarity: s.rarity,
-            tcgplayerMarket: s.tcgplayerMarket,
-            tcgplayerMid: s.tcgplayerMid,
-            cardmarketTrendPrice: s.cardmarketTrendPrice,
-            cardmarketAverageSell: s.cardmarketAverageSell
-          }))
-        }
-      };
+      const variables = isUpdate
+        ? { id: data.id, input: { name: data.name, description: data.description, accentColor: data.accentColor, visibility: data.visibility || "public" } }
+        : { input: { name: data.name, description: data.description, accentColor: data.accentColor, visibility: data.visibility || "public" } };
 
       const res = await fetch(WP_GRAPHQL_URL, {
         method: "POST",
@@ -184,7 +179,8 @@ export default function ProfileBindersPanel({
       });
 
       const { data: result, errors } = await res.json();
-      if (errors || !result?.saveBinder) {
+      const key = isUpdate ? "updateBinder" : "createBinder";
+      if (errors || !result?.[key]) {
         setStatusMessage({ type: "error", message: "Failed to save binder." });
         return false;
       }

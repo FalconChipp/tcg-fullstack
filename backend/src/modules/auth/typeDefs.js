@@ -22,7 +22,8 @@ const typeDefs = gql`
     ): AuthPayload!
 
     login(
-      email: String!
+      email: String
+      username: String
       password: String!
       mfaToken: String
     ): AuthPayload!

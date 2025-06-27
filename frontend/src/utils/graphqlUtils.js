@@ -48,17 +48,31 @@ export const COLLECTION_MUTATIONS = {
     }
   `,
 
-  SAVE_BINDER: `
-    mutation SaveBinder($input: BinderInput!) {
-      saveBinder(input: $input) {
+  CREATE_BINDER: `
+    mutation CreateBinder($input: BinderInput!) {
+      createBinder(input: $input) {
         id
         name
-        layout
-        pages {
-          page
-          position
-          cardId
-        }
+        description
+        accentColor
+        visibility
+        slug
+        createdAt
+        updatedAt
+      }
+    }
+  `,
+  UPDATE_BINDER: `
+    mutation UpdateBinder($id: ID!, $input: BinderInput!) {
+      updateBinder(id: $id, input: $input) {
+        id
+        name
+        description
+        accentColor
+        visibility
+        slug
+        createdAt
+        updatedAt
       }
     }
   `

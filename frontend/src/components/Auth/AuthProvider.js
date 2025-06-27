@@ -110,10 +110,6 @@ export function AuthProvider({ children }) {
       const key = Object.keys(json.data || {})[0];
       const payload = json.data?.[key];
       if (!payload) throw new Error(json.errors?.[0]?.message || "Unknown error");
-      // If requires2FA is true, inform the UI and do NOT update token/user yet
-      if (payload.requires2FA) {
-        return { requires2FA: true, user: payload.user };
-      }
       if (payload.token && payload.user) {
         updateToken(payload.token);
         setUser(payload.user);
@@ -156,13 +152,12 @@ export function AuthProvider({ children }) {
         updateToken,
         logout,
         loading,
-        login: async (email, password, twoFACode) =>
+        login: async (identifier, password, mfaToken) =>
           authMutation(
             `
-              mutation Login($email: String!, $password: String!, $twoFACode: String) {
-                login(email: $email, password: $password, twoFACode: $twoFACode) {
+              mutation Login($email: String, $username: String, $password: String!, $mfaToken: String) {
+                login(email: $email, username: $username, password: $password, mfaToken: $mfaToken) {
                   token
-                  requires2FA
                   user {
                     id
                     username
@@ -179,7 +174,9 @@ export function AuthProvider({ children }) {
                 }
               }
             `,
-            { email, password, twoFACode }
+            identifier.includes('@')
+              ? { email: identifier, password, mfaToken }
+              : { username: identifier, password, mfaToken }
           ),
         register: async (email, username, password) =>
           authMutation(
@@ -187,7 +184,6 @@ export function AuthProvider({ children }) {
               mutation Register($email: String!, $username: String!, $password: String!) {
                 register(email: $email, username: $username, password: $password) {
                   token
-                  requires2FA
                   user {
                     id
                     username

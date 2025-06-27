@@ -85,10 +85,12 @@ const resolvers = {
       };
     },
 
-    login: async (_, { email, password, mfaToken }, { logger }) => {
-      logger.info(`[LOGIN] email=${email}`);
-      const user = await User.findOne({ where: { email } });
-      if (!user) throw new Error('No account for this email');
+    login: async (_, { email, username, password, mfaToken }, { logger }) => {
+      const identifier = email || username;
+      logger.info(`[LOGIN] identifier=${identifier}`);
+      const where = email ? { email } : { username };
+      const user = await User.findOne({ where });
+      if (!user) throw new Error('No account found');
       if (user.isBanned) throw new Error('User banned');
       if (!user.password) throw new Error('Set a password via password reset or Google login');
       const valid = await comparePassword(password, user.password);

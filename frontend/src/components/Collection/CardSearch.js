@@ -46,56 +46,37 @@ export default function CardSearch() {
   // --- Fetch cards with GraphQL query ---
   const fetchCards = async (pageToFetch = 1) => {
     const query = `
-      query SearchCards(
-        $name: String,
-        $set: String,
-        $number: String,
-        $rarity: String,
-        $limit: Int,
-        $offset: Int
-      ) {
-        searchCards(
-          name: $name,
-          set: $set,
-          number: $number,
-          rarity: $rarity,
-          limit: $limit,
-          offset: $offset
-        ) {
-          id
-          name
-          number
-          edition
-          setName
-          setLogo
-          setSymbol
-          image
-          rarity
-          variations
-          tcgplayerVariations {
-            normal { direct_low high low market mid }
-            reverseHolofoil { direct_low high low market mid }
-            holofoil        { direct_low high low market mid }
+      query SearchCards($input: SearchInput!) {
+        searchCards(input: $input) {
+          cards {
+            id
+            name
+            number
+            setName
+            image
+            rarity
+            variations
+            prices {
+              variation
+              tcgplayer
+              cardmarket
+              updatedAt
+            }
           }
-          cardmarketVariations {
-            normal { average_sell low trend }
-            reverseHolofoil { average_sell low trend }
-            holofoil        { average_sell low trend }
-          }
-          pricing {
-            updated_at
-            tcgplayer { mid market low high direct_low }
-            cardmarket { trend low average_sell }
-          }
+          total
+          page
+          pageSize
         }
       }
     `;
     const variables = {
-      name,
-      set: setCode,
-      number,
-      limit: PER_PAGE,
-      offset: (pageToFetch - 1) * PER_PAGE
+      input: {
+        name,
+        set: setCode,
+        number,
+        page: pageToFetch,
+        pageSize: PER_PAGE,
+      }
     };
 
     const res = await fetch(WP_GRAPHQL_URL, {
@@ -105,7 +86,7 @@ export default function CardSearch() {
     });
     const json = await res.json();
     if (json.errors) throw new Error(json.errors[0].message);
-    return json.data.searchCards;
+    return json.data.searchCards.cards;
   };
 
   // --- Main search handler ---

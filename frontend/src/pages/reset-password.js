@@ -78,17 +78,13 @@ export default function ResetPasswordPage() {
 
     // Correct GraphQL mutation and variables
     const query = `
-      mutation ResetPassword($input: ResetPasswordInput!) {
-        resetPassword(input: $input) {
-          ok
-        }
+      mutation ResetPassword($token: String!, $newPassword: String!) {
+        resetPassword(token: $token, newPassword: $newPassword)
       }
     `
     const variables = {
-      input: {
-        token: resetToken,
-        newPassword: newPassword,
-      },
+      token: resetToken,
+      newPassword: newPassword,
     }
 
     try {
@@ -99,7 +95,7 @@ export default function ResetPasswordPage() {
       })
       const json = await res.json()
 
-      if (json?.data?.resetPassword?.ok) {
+      if (json?.data?.resetPassword) {
         setStatus("Password has been reset! You can now log in with your new password.")
       } else {
         setStatus("Error resetting password. Token may be invalid or expired.")

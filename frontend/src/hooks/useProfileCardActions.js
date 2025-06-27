@@ -26,21 +26,15 @@ export default function useProfileCardActions({
 
     try {
       const mutation = `
-        mutation UpdateCollectionCard($collectionId: ID!, $wishlist: Boolean!) {
-          updateCollectionCard(
-            input: { collectionId: $collectionId, wishlist: $wishlist }
-          ) {
-            collectionCard {
-              id
-              wishlist
-              tcgName 
-              tcgImageUrl
-              tcgSetName
-              tcgSetSymbolUrl
-              tcgRarity
-              tcgplayerMarket
-              cardmarketAverageSell
-            }
+        mutation MoveToCollection($cardId: String!, $variation: String) {
+          moveToCollection(cardId: $cardId, variation: $variation) {
+            id
+            cardId
+            quantity
+            condition
+            variation
+            wishlist
+            card { id name image setName }
           }
         }
       `;
@@ -52,7 +46,7 @@ export default function useProfileCardActions({
         },
         body: JSON.stringify({
           query: mutation,
-          variables: { collectionId: card.id, wishlist: false },
+          variables: { cardId: card.cardId || card.id, variation: card.variation || null },
         }),
       });
       const { data, errors } = await response.json();
@@ -62,9 +56,9 @@ export default function useProfileCardActions({
         setCollection(prev => prev.filter(x => x.id !== card.id));
         return;
       }
-      const { updateCollectionCard } = data;
-      if (updateCollectionCard?.collectionCard) {
-        const serverCard = updateCollectionCard.collectionCard;
+      const { moveToCollection } = data;
+      if (moveToCollection) {
+        const serverCard = moveToCollection;
         setWishlist(prev => prev.filter(x => x.id !== card.id));
         setCollection(prev => {
           const exists = prev.some(x => x.id === card.id);
@@ -108,17 +102,13 @@ export default function useProfileCardActions({
     );
     try {
       const mutation = `
-        mutation RemoveCollectionCard($input: RemoveCollectionCardInput!) {
-          removeCollectionCard(input: $input) { 
-            deleted
-            removedCollectionId
-          }
+        mutation RemoveFromCollection($cardId: String!, $variation: String) {
+          removeFromCollection(cardId: $cardId, variation: $variation)
         }
       `;
       const variables = {
-        input: {
-          collectionId: collectionId.toString()
-        },
+        cardId: collectionId.toString(),
+        variation: null
       };
       const response = await fetch(TCG_GRAPHQL_URL, {
         method: "POST",
@@ -132,7 +122,7 @@ export default function useProfileCardActions({
         }),
       });
       const { data, errors } = await response.json();
-      if (errors || !data?.removeCollectionCard?.deleted) {
+      if (errors || !data?.removeFromCollection) {
         setStatus({ type: "error", msg: "Failed to remove card from collection." });
         refresh();
       } else {
@@ -154,15 +144,8 @@ async function handleRemoveFromWishlist(cardId) {
   }
   try {
     const mutation = `
-      mutation RemoveFromWishlist($collectionId: ID!) {
-        updateCollectionCard(
-          input: { collectionId: $collectionId, wishlist: false }
-        ) {
-          collectionCard {
-            id
-            wishlist
-          }
-        }
+      mutation RemoveFromWishlist($cardId: String!, $variation: String) {
+        removeFromWishlist(cardId: $cardId, variation: $variation)
       }
     `;
     const response = await fetch(WP_GRAPHQL_URL, {
@@ -173,15 +156,15 @@ async function handleRemoveFromWishlist(cardId) {
       },
       body: JSON.stringify({
         query: mutation,
-        variables: { collectionId: cardId },
+        variables: { cardId, variation: null },
       }),
     });
     const { data, errors } = await response.json();
-    if (errors) {
+    if (errors || !data?.removeFromWishlist) {
       setStatus({ type: "error", msg: "Failed to remove from wishlist" });
       return;
     }
-    if (data?.updateCollectionCard?.collectionCard) {
+    if (data.removeFromWishlist) {
       setWishlist(prev => prev.filter(card => card.id !== cardId));
       setStatus({ type: "success", msg: "Removed from wishlist" });
     }
@@ -196,17 +179,9 @@ async function handleRemoveFromWishlist(cardId) {
     if (!isOwnProfile) return;
     try {
       const mutation = `
-        mutation AddToWishlist($cardId: String!, $name: String!, $setName: String!, $tcgName: String!, $tcgSetName: String!) {
-          createCollectionCard(
-            data: {
-              cardId: $cardId
-              name: $name
-              setName: $setName
-              tcgName: $tcgName
-              tcgSetName: $tcgSetName
-              wishlist: true
-            }
-          ) {
+        mutation AddToWishlist($cardId: String!, $variation: String) {
+          addToWishlist(cardId: $cardId, variation: $variation)
+          {
             id
             wishlist
           }
@@ -222,10 +197,7 @@ async function handleRemoveFromWishlist(cardId) {
           query: mutation,
           variables: {
             cardId: card.cardId,
-            name: card.name,
-            setName: card.setName,
-            tcgName: card.tcgName,
-            tcgSetName: card.tcgSetName
+            variation: card.variation || null
           },
         }),
       });
@@ -234,8 +206,8 @@ async function handleRemoveFromWishlist(cardId) {
         setStatus({ type: "error", msg: "Failed to add to wishlist" });
         return;
       }
-      if (data?.createCollectionCard) {
-        setWishlist(prev => [...prev, data.createCollectionCard]);
+      if (data?.addToWishlist) {
+        setWishlist(prev => [...prev, data.addToWishlist]);
         setStatus({ type: "success", msg: "Added to wishlist" });
       }
     } catch (error) {

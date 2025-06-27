@@ -89,22 +89,20 @@ export default function BinderCardSearch({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query: `
-            query SearchCards($name: String, $language: String, $page: Int, $perPage: Int) {
-              pokemonCards(name: $name, language: $language, page: $page, perPage: $perPage) {
-                externalId
-                name
-                image
-                setName
-                setSymbol
-                rarity
+            query SearchCards($input: SearchInput!) {
+              searchCards(input: $input) {
+                cards {
+                  externalId: id
+                  name
+                  image
+                  setName
+                  rarity
+                }
               }
             }
           `,
           variables: {
-            name: searchTerm,
-            language: 'en',
-            page: currentPage,
-            perPage: 28
+            input: { name: searchTerm, page: currentPage, pageSize: 28 }
           },
         }),
       });
@@ -114,7 +112,7 @@ export default function BinderCardSearch({
       }
 
       const response = await res.json();
-      const serverCards = response.data?.pokemonCards || [];
+      const serverCards = response.data?.searchCards?.cards || [];
       const filteredCards = serverCards.filter(card => !isPocketCard(card));
 
       // If API returned less than 28, this was the last page.

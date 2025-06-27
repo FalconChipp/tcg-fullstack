@@ -47,24 +47,14 @@ export default function useProfileCollection({ user, token }) {
               edition
               setName
               setLogo
-              setSymbol
               image
               rarity
               variations
-              tcgplayerVariations {
-                normal { direct_low high low market mid }
-                reverseHolofoil { direct_low high low market mid }
-                holofoil        { direct_low high low market mid }
-              }
-              cardmarketVariations {
-                normal { average_sell low trend }
-                reverseHolofoil { average_sell low trend }
-                holofoil        { average_sell low trend }
-              }
-              pricing {
-                updated_at
-                tcgplayer { mid market low high direct_low }
-                cardmarket { trend low average_sell }
+              prices {
+                variation
+                tcgplayer
+                cardmarket
+                updatedAt
               }
             }
           }

@@ -155,13 +155,11 @@ export default function VerifyPage() {
       setStatus(null);
 
       const query = `
-        mutation VerifyEmail($input: VerifyEmailInput!) {
-          verifyEmail(input: $input) {
-            ok
-          }
+        mutation VerifyEmail($token: String!) {
+          verifyEmail(token: $token)
         }
       `;
-      const variables = { input: { token } };
+      const variables = { token };
 
       try {
         const res = await fetch(WP_GRAPHQL_URL, {
@@ -171,7 +169,7 @@ export default function VerifyPage() {
         });
         const json = await res.json();
         const out = json?.data?.verifyEmail;
-        if (out?.ok) {
+        if (out) {
           setStatus({
             type: "success",
             msg: "Your email has been verified! Your account is now confirmed.",

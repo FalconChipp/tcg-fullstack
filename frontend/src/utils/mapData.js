@@ -8,6 +8,25 @@ import { getCardImageUrl } from "./imageUtils";
 export function mapCardToDetail(card) {
   if (!card) return {};
 
+  // If new backend prices array provided, convert to legacy fields
+  if (Array.isArray(card.prices) && !card.tcgplayerVariations) {
+    card.tcgplayerVariations = {};
+    card.cardmarketVariations = {};
+    for (const p of card.prices) {
+      const key = p.variation || "normal";
+      if (!card.tcgplayerVariations[key]) card.tcgplayerVariations[key] = {};
+      if (!card.cardmarketVariations[key]) card.cardmarketVariations[key] = {};
+      if (p.tcgplayer !== undefined) card.tcgplayerVariations[key].market = p.tcgplayer;
+      if (p.cardmarket !== undefined) card.cardmarketVariations[key].average_sell = p.cardmarket;
+      if (!card.pricing) card.pricing = { tcgplayer: {}, cardmarket: {}, updated_at: p.updatedAt };
+      if (key === "normal") {
+        if (p.tcgplayer !== undefined) card.pricing.tcgplayer.market = p.tcgplayer;
+        if (p.cardmarket !== undefined) card.pricing.cardmarket.average_sell = p.cardmarket;
+        card.pricing.updated_at = p.updatedAt;
+      }
+    }
+  }
+
   // Fallbacks
   const fallbackImage = "https://cdn.pidgi.net/images/f/f6/Card_back_INTL_-_Pokemon_Trading_Card_Game.png";
   const fallbackSetLogo = "https://placehold.co/50x50/webp?text=Set";

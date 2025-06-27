@@ -96,26 +96,14 @@ export default function EditCollectionCardModal({
       return;
     }
     const mutation = `
-      mutation UpdateCollectionCard($input: UpdateCollectionCardInput!) {
-        updateCollectionCard(input: $input) {
-          collectionCard {
-            id
-            cardId
-            quantity
-            condition
-            variation
-            notes
-            tags
-            isPublic
-            wishlist
-            tcgName
-            tcgSetName
-            tcgImageUrl
-            tcgSetSymbolUrl
-            tcgRarity
-            tcgplayerMarket
-            cardmarketAverageSell
-          }
+      mutation UpdateCollectionEntry($cardId: String!, $quantity: Int, $condition: String, $variation: String) {
+        updateCollectionEntry(cardId: $cardId, quantity: $quantity, condition: $condition, variation: $variation) {
+          id
+          cardId
+          quantity
+          condition
+          variation
+          wishlist
         }
       }
     `;
@@ -131,23 +119,10 @@ export default function EditCollectionCardModal({
       return isNaN(n) ? null : n;
     };
     const variables = {
-      input: {
-        collectionId: card.id,
-        quantity,
-        condition,
-        variation,
-        notes,
-        tags,
-        isPublic,
-        wishlist,
-        tcgName: formatTcgData(enrichedCard.tcgName || card.tcgName),
-        tcgSetName: formatTcgData(enrichedCard.tcgSetName || card.tcgSetName),
-        tcgImageUrl: formatUrlField(enrichedCard.tcgImageUrl || card.tcgImageUrl),
-        tcgSetSymbolUrl: formatUrlField(enrichedCard.tcgSetSymbolUrl || card.tcgSetSymbolUrl),
-        tcgRarity: formatTcgData(enrichedCard.tcgRarity || card.tcgRarity),
-        tcgplayerMarket: formatNumericValue(enrichedCard.tcgplayerMarket || card.tcgplayerMarket),
-        cardmarketAverageSell: formatNumericValue(enrichedCard.cardmarketAverageSell || card.cardmarketAverageSell),
-      },
+      cardId: card.cardId || card.id,
+      quantity,
+      condition,
+      variation,
     };
 
     try {
@@ -157,8 +132,8 @@ export default function EditCollectionCardModal({
         body: JSON.stringify({ query: mutation, variables }),
       });
       const json = await res.json();
-      if (json?.data?.updateCollectionCard?.collectionCard) {
-        onUpdated(json.data.updateCollectionCard.collectionCard);
+      if (json?.data?.updateCollectionEntry) {
+        onUpdated(json.data.updateCollectionEntry);
         onClose();
       } else {
         setError(json?.errors?.[0]?.message || "Update failed");
@@ -182,13 +157,11 @@ export default function EditCollectionCardModal({
       return;
     }
     const mutation = `
-      mutation RemoveCard($input: RemoveCardFromCollectionInput!) {
-        removeCardFromCollection(input: $input) {
-          success
-        }
+      mutation RemoveFromCollection($cardId: String!, $variation: String) {
+        removeFromCollection(cardId: $cardId, variation: $variation)
       }
     `;
-    const variables = { input: { collectionId: card.id } };
+    const variables = { cardId: card.cardId || card.id, variation: card.variation || null };
     try {
       const res = await fetch(WP_GRAPHQL_URL, {
         method: "POST",
@@ -196,7 +169,7 @@ export default function EditCollectionCardModal({
         body: JSON.stringify({ query: mutation, variables }),
       });
       const json = await res.json();
-      if (json?.data?.removeCardFromCollection?.success) {
+      if (json?.data?.removeFromCollection) {
         onRemoved(card.id);
         onClose();
       } else {

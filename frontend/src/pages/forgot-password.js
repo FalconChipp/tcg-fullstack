@@ -15,15 +15,11 @@ export default function ForgotPasswordPage() {
     setStatus(null);
 
     const query = `
-      mutation requestPasswordReset($input: RequestPasswordResetInput!) {
-        requestPasswordReset(input: $input) {
-          ok
-        }
+      mutation RequestPasswordReset($email: String!) {
+        requestPasswordReset(email: $email)
       }
     `;
-    const variables = {
-      input: { email },
-    };
+    const variables = { email };
 
     try {
       const res = await fetch(WP_GRAPHQL_URL, {
@@ -33,7 +29,7 @@ export default function ForgotPasswordPage() {
       });
       const json = await res.json();
 
-      if (json?.data?.startCustomUserPasswordReset?.success) {
+      if (json?.data?.requestPasswordReset) {
         setStatus({
           type: "success",
           msg: "If an account with that email exists, a reset email has been sent. Please check your inbox and spam folder.",

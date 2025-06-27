@@ -1,7 +1,18 @@
 import { useEffect, useState } from 'react';
 import useRequireAdmin from '../hooks/useRequireAdmin';
 
-const DEFAULT_MODULES = ['users', 'cards', 'binders', 'listings', 'logs'];
+const DEFAULT_MODULES = [
+  'users',
+  'cards',
+  'binders',
+  'listings',
+  'logs',
+  'messages',
+  'notifications',
+  'wishlist',
+  'rewards',
+  'trades',
+];
 
 export default function ModulesPage() {
   const { loading } = useRequireAdmin();

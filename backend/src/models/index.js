@@ -62,6 +62,9 @@ import CardPriceCacheFactory from './CardPriceCache.js';
 import SubscriptionAddOnFactory from "./SubscriptionAddOn.js";
 import AdminActionFactory from './AdminAction.js';
 import RewardFactory from './Reward.js';
+import BinderFactory from './Binder.js';
+import BinderPageFactory from './BinderPage.js';
+import BinderSlotFactory from './BinderSlot.js';
 
 // --- Initialize models ---
 const User = UserFactory(sequelize);
@@ -88,6 +91,9 @@ const CardPriceCache = CardPriceCacheFactory(sequelize);
 const AdminAction = AdminActionFactory(sequelize);
 const SubscriptionAddOn = SubscriptionAddOnFactory(sequelize);
 const Reward = RewardFactory(sequelize);
+const Binder = BinderFactory(sequelize);
+const BinderPage = BinderPageFactory(sequelize);
+const BinderSlot = BinderSlotFactory(sequelize);
 
 // ---- Associations ----
 
@@ -120,6 +126,15 @@ User.hasMany(Wishlist, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Wishlist.belongsTo(User, { foreignKey: 'userId' });
 Card.hasMany(Wishlist, { foreignKey: 'cardId', onDelete: 'CASCADE' });
 Wishlist.belongsTo(Card, { foreignKey: 'cardId' });
+
+User.hasMany(Binder, { foreignKey: 'userId', onDelete: 'CASCADE' });
+Binder.belongsTo(User, { foreignKey: 'userId' });
+Binder.hasMany(BinderPage, { foreignKey: 'binderId', as: 'pages', onDelete: 'CASCADE' });
+BinderPage.belongsTo(Binder, { foreignKey: 'binderId' });
+BinderPage.hasMany(BinderSlot, { foreignKey: 'pageId', as: 'slots', onDelete: 'CASCADE' });
+BinderSlot.belongsTo(BinderPage, { foreignKey: 'pageId' });
+Card.hasMany(BinderSlot, { foreignKey: 'cardId' });
+BinderSlot.belongsTo(Card, { foreignKey: 'cardId' });
 
 // Trades
 User.hasMany(Trade, { as: 'partyATrades', foreignKey: 'partyAId' });
@@ -235,5 +250,6 @@ export {
   SubscriptionTier, Transaction, ShippingLabel, CardPriceCache,
   AdminAction, UserAchievement, Offer, SubscriptionAddOn,
   Reward,
-  ChatAgreement, ReportedUser
+  ChatAgreement, ReportedUser,
+  Binder, BinderPage, BinderSlot
 };

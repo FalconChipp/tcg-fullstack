@@ -59,6 +59,7 @@ import SubscriptionTierFactory from './SubscriptionTier.js';
 import TransactionFactory from './Transaction.js';
 import ShippingLabelFactory from './ShippingLabel.js';
 import CardPriceCacheFactory from './CardPriceCache.js';
+import SubscriptionAddOnFactory from "./SubscriptionAddOn.js";
 import AdminActionFactory from './AdminAction.js';
 
 // --- Initialize models ---
@@ -84,6 +85,7 @@ const Transaction = TransactionFactory(sequelize);
 const ShippingLabel = ShippingLabelFactory(sequelize);
 const CardPriceCache = CardPriceCacheFactory(sequelize);
 const AdminAction = AdminActionFactory(sequelize);
+const SubscriptionAddOn = SubscriptionAddOnFactory(sequelize);
 
 // ---- Associations ----
 
@@ -191,6 +193,8 @@ Subscription.belongsTo(User, { foreignKey: 'userId' });
 Subscription.belongsTo(SubscriptionTier, { foreignKey: 'tierId' });
 SubscriptionTier.hasMany(Subscription, { foreignKey: 'tierId' });
 
+User.hasMany(SubscriptionAddOn, { foreignKey: "userId" });
+SubscriptionAddOn.belongsTo(User, { foreignKey: "userId" });
 // Transactions/Payments
 User.hasMany(Transaction, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Transaction.belongsTo(User, { foreignKey: 'userId' });
@@ -217,6 +221,6 @@ export {
   UserReputation, Message,
   Notification, AuditLog, Achievement, Subscription,
   SubscriptionTier, Transaction, ShippingLabel, CardPriceCache,
-  AdminAction, UserAchievement, Offer,
+  AdminAction, UserAchievement, Offer, SubscriptionAddOn
   ChatAgreement, ReportedUser
 };

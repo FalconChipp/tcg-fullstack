@@ -167,6 +167,16 @@ app.post('/upload/avatar', upload.single('avatar'), async (req, res) => {
 // --- Serve avatar images statically ---
 app.use('/uploads/avatars', express.static(AVATAR_DIR));
 
+// --- Stripe Webhooks ---
+app.post("/webhooks/stripe", express.raw({ type: "application/json" }), async (req, res) => {
+  try {
+    await handleStripeWebhook(JSON.parse(req.body.toString()));
+    res.json({ received: true });
+  } catch (err) {
+    logger.error("Stripe webhook error", err);
+    res.status(400).send("Webhook Error");
+  }
+});
 // --- Health Check Route ---
 app.get('/health', (req, res) => {
   logger.info('Health check requested');
@@ -217,3 +227,4 @@ httpServer.listen(PORT, () => {
 });
 
 export { app, io, apolloServer, logger };
+});

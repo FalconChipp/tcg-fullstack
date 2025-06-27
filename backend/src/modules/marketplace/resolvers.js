@@ -4,6 +4,7 @@ import { Listing, Offer, User } from '../../models/index.js';
 import { requireAuth } from '../collection/helpers.js';
 import { generateProofCode, moderateProofImage, saveBase64Image } from './helpers.js';
 
+import { getUserTier } from "../../utils/getUserTier.js";
 const proofCodes = new Map();
 const PROOF_DIR = path.join(process.cwd(), 'uploads', 'proofs');
 
@@ -50,6 +51,8 @@ const resolvers = {
       }
       const filePath = saveBase64Image(proofImage, PROOF_DIR);
       const passed = await moderateProofImage(filePath, proofCode).catch(() => false);
+      const sub = await getUserTier(payload.id);
+      if (sub.limits.listings && (await Listing.count({ where: { userId: payload.id } })) >= sub.limits.listings) throw new Error("Listing limit reached");
       if (!passed) {
         fs.unlinkSync(filePath);
         throw new Error('Proof image failed moderation');

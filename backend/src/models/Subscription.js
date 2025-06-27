@@ -3,7 +3,7 @@
 import { DataTypes, Model } from 'sequelize';
 
 /**
- * Factory for Subscription model.
+ * Factory for Subscription model matching Stripe billing details.
  * @param {Sequelize} sequelize
  * @returns {typeof Model}
  */
@@ -26,18 +26,20 @@ export default (sequelize) => {
         allowNull: false,
       },
       status: {
-        // 'active', 'canceled', 'trialing', 'past_due', etc.
+        // 'active', 'canceled', 'trialing', 'past_due'
         type: DataTypes.STRING,
         allowNull: false,
         defaultValue: 'active',
       },
-      startedAt: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
-      expiresAt: { type: DataTypes.DATE, allowNull: true },
-      stripeSubscriptionId: { type: DataTypes.STRING, allowNull: true },
+      stripeSubId: {
+        // Stripe subscription ID
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      periodEnd: { type: DataTypes.DATE, allowNull: true },
       cancelledAt: { type: DataTypes.DATE, allowNull: true },
-      renewalAttemptedAt: { type: DataTypes.DATE, allowNull: true },
       meta: {
-        // JSON: for Stripe response, reason for cancellation, etc.
+        // JSON payload from Stripe or notes
         type: DataTypes.JSON,
         allowNull: true,
       },
@@ -52,12 +54,11 @@ export default (sequelize) => {
       indexes: [
         { fields: ['userId'] },
         { fields: ['tierId'] },
-        { fields: ['status'] }
-      ]
+        { fields: ['status'] },
+      ],
     }
   );
 
-  // Set up associations in a separate step
   Subscription.associate = (models) => {
     Subscription.belongsTo(models.User, { foreignKey: 'userId' });
     models.User.hasMany(Subscription, { foreignKey: 'userId' });

@@ -3,7 +3,7 @@
 import { DataTypes, Model } from 'sequelize';
 
 /**
- * Factory for SubscriptionTier model.
+ * Factory for SubscriptionTier model describing price and benefits.
  * @param {Sequelize} sequelize
  * @returns {typeof Model}
  */
@@ -17,38 +17,15 @@ export default (sequelize) => {
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
       },
-      name: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        unique: true,
-      },
-      description: { type: DataTypes.TEXT, allowNull: true },
-      price: {
-        type: DataTypes.DECIMAL(12, 2),
-        allowNull: false,
-      },
-      currency: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        defaultValue: 'GBP'
-      },
-      stripeProductId: {
-        // Stripe product ID for this tier (if used)
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      stripePriceId: {
-        // Stripe price ID for recurring billing
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      features: {
-        // JSON array of feature flags (["canCreateMarketplaceListing", ...])
-        type: DataTypes.JSON,
-        allowNull: true,
-        defaultValue: [],
-      },
-      isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
+      name: { type: DataTypes.STRING, allowNull: false, unique: true },
+      price: { type: DataTypes.DECIMAL(12, 2), allowNull: false },
+      interval: { type: DataTypes.STRING, allowNull: false, defaultValue: 'month' },
+      featureFlags: { type: DataTypes.JSON, allowNull: true, defaultValue: [] },
+      limits: { type: DataTypes.JSON, allowNull: true, defaultValue: {} },
+      feeDiscount: { type: DataTypes.DECIMAL(5, 2), allowNull: false, defaultValue: 0 },
+      shippingDiscount: { type: DataTypes.DECIMAL(5, 2), allowNull: false, defaultValue: 0 },
+      stripeProductId: { type: DataTypes.STRING, allowNull: true },
+      stripePriceId: { type: DataTypes.STRING, allowNull: true },
       createdAt: DataTypes.DATE,
       updatedAt: DataTypes.DATE,
     },
@@ -57,15 +34,10 @@ export default (sequelize) => {
       modelName: 'SubscriptionTier',
       tableName: 'subscription_tiers',
       timestamps: true,
-      indexes: [{ fields: ['isActive'] }]
     }
   );
 
-  // Set up associations in a separate step (no associations to define here, but add if needed)
-  SubscriptionTier.associate = (models) => {
-    // Example if needed in future:
-    // SubscriptionTier.hasMany(models.Subscription, { foreignKey: 'tierId' });
-  };
+  SubscriptionTier.associate = () => {};
 
   return SubscriptionTier;
 };

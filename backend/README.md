@@ -62,3 +62,18 @@ import { maybeGrantAchievement } from './modules/achievements/helpers.js';
 // After a user action succeeds
 await maybeGrantAchievement(userId, 'first_collection_entry', { cardId });
 ```
+
+### Subscriptions
+
+Use the `createSubscription` mutation to start a plan:
+
+```graphql
+mutation {
+  createSubscription(tierId: "<tier>", paymentMethodId: "pm_123") {
+    id
+    status
+  }
+}
+```
+
+Active subscriptions can be queried with `mySubscription`.

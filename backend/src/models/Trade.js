@@ -3,11 +3,15 @@
 import { DataTypes, Model } from 'sequelize';
 
 /**
- * Exports a factory function: pass the sequelize instance, returns Trade & TradeCard models.
- * All associations are to be set up in models/index.js after all models are instantiated.
+ * Factory function returning the Trade related models. Associations are
+ * configured in models/index.js once all models are instantiated.
+ *
+ * The Trade model represents the lifecycle of a card trade between two users.
+ * Shipping addresses are stored encrypted (encryption implementation is
+ * application specific and not included here).
  */
 export default (sequelize) => {
-  // --- Trade Model ---
+  // --- Trade ---
   class Trade extends Model {}
   Trade.init(
     {
@@ -16,38 +20,37 @@ export default (sequelize) => {
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
       },
-      initiatorId: {
-        type: DataTypes.UUID,
-        allowNull: false,
-        // association set in index.js
-      },
-      recipientId: {
-        type: DataTypes.UUID,
-        allowNull: false,
-        // association set in index.js
-      },
       status: {
         type: DataTypes.STRING,
-        defaultValue: 'pending',
+        allowNull: false,
+        defaultValue: 'pending', // pending, confirmed, in_transit, completed, cancelled, disputed
+      },
+      partyAId: { // first participant
+        type: DataTypes.UUID,
         allowNull: false,
       },
-      initiatorConfirmed: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: false,
-      },
-      recipientConfirmed: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: false,
-      },
-      cancelledBy: {
+      partyBId: { // second participant
         type: DataTypes.UUID,
-        allowNull: true,
-        // association set in index.js
+        allowNull: false,
       },
-      cancelledReason: { type: DataTypes.STRING, allowNull: true },
+      initiatorId: { // who created the trade
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
+      // Addresses are stored encrypted; actual encryption handled elsewhere
+      addressA: { type: DataTypes.TEXT, allowNull: true },
+      addressB: { type: DataTypes.TEXT, allowNull: true },
+      shippingMethodA: { type: DataTypes.STRING, allowNull: true },
+      shippingMethodB: { type: DataTypes.STRING, allowNull: true },
+      trackingNumberA: { type: DataTypes.STRING, allowNull: true },
+      trackingNumberB: { type: DataTypes.STRING, allowNull: true },
+      valueA: { type: DataTypes.DECIMAL(12, 2), allowNull: true },
+      valueB: { type: DataTypes.DECIMAL(12, 2), allowNull: true },
+      lockedAt: { type: DataTypes.DATE, allowNull: true },
       completedAt: { type: DataTypes.DATE, allowNull: true },
-      trackingNumber: { type: DataTypes.STRING, allowNull: true },
-      shippingLabelUrl: { type: DataTypes.STRING, allowNull: true },
+      cancelledAt: { type: DataTypes.DATE, allowNull: true },
+      disputeId: { type: DataTypes.UUID, allowNull: true },
+      adminNotes: { type: DataTypes.TEXT, allowNull: true },
       createdAt: DataTypes.DATE,
       updatedAt: DataTypes.DATE,
     },
@@ -57,14 +60,15 @@ export default (sequelize) => {
       tableName: 'trades',
       timestamps: true,
       indexes: [
+        { fields: ['partyAId'] },
+        { fields: ['partyBId'] },
         { fields: ['initiatorId'] },
-        { fields: ['recipientId'] },
-        { fields: ['status'] }
-      ]
+        { fields: ['status'] },
+      ],
     }
   );
 
-  // --- TradeCard Model ---
+  // --- TradeCard ---
   class TradeCard extends Model {}
   TradeCard.init(
     {
@@ -76,21 +80,19 @@ export default (sequelize) => {
       tradeId: {
         type: DataTypes.UUID,
         allowNull: false,
-        // association set in index.js
       },
       userId: {
         type: DataTypes.UUID,
         allowNull: false,
-        // association set in index.js
       },
       cardId: {
         type: DataTypes.STRING,
         allowNull: false,
-        // association set in index.js (if needed)
       },
       quantity: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
-      variation: { type: DataTypes.STRING, allowNull: true },
       condition: { type: DataTypes.STRING, allowNull: true },
+      notes: { type: DataTypes.TEXT, allowNull: true },
+      offeredOrWanted: { type: DataTypes.STRING, allowNull: false }, // 'offered' | 'wanted'
       createdAt: DataTypes.DATE,
       updatedAt: DataTypes.DATE,
     },
@@ -102,11 +104,87 @@ export default (sequelize) => {
       indexes: [
         { fields: ['tradeId'] },
         { fields: ['userId'] },
-        { fields: ['cardId'] }
-      ]
+        { fields: ['cardId'] },
+      ],
     }
   );
 
-  // Return both models (named export style in index.js)
-  return { Trade, TradeCard };
+  // --- TradeProof ---
+  class TradeProof extends Model {}
+  TradeProof.init(
+    {
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true,
+      },
+      tradeId: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
+      userId: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
+      proofImage: { type: DataTypes.STRING, allowNull: true },
+      proofCode: { type: DataTypes.STRING, allowNull: true },
+      uploadedAt: { type: DataTypes.DATE, allowNull: true },
+      moderatedAt: { type: DataTypes.DATE, allowNull: true },
+      moderationResult: { type: DataTypes.STRING, allowNull: true },
+      createdAt: DataTypes.DATE,
+      updatedAt: DataTypes.DATE,
+    },
+    {
+      sequelize,
+      modelName: 'TradeProof',
+      tableName: 'trade_proofs',
+      timestamps: true,
+      indexes: [
+        { fields: ['tradeId'] },
+        { fields: ['userId'] },
+      ],
+    }
+  );
+
+  // --- TradeDispute ---
+  class TradeDispute extends Model {}
+  TradeDispute.init(
+    {
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true,
+      },
+      tradeId: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
+      raisedById: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
+      status: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: 'open', // open, reviewing, resolved, rejected
+      },
+      reason: { type: DataTypes.TEXT, allowNull: true },
+      resolution: { type: DataTypes.TEXT, allowNull: true },
+      createdAt: DataTypes.DATE,
+      updatedAt: DataTypes.DATE,
+    },
+    {
+      sequelize,
+      modelName: 'TradeDispute',
+      tableName: 'trade_disputes',
+      timestamps: true,
+      indexes: [
+        { fields: ['tradeId'] },
+        { fields: ['raisedById'] },
+        { fields: ['status'] },
+      ],
+    }
+  );
+
+  return { Trade, TradeCard, TradeProof, TradeDispute };
 };

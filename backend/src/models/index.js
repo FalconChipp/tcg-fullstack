@@ -69,7 +69,7 @@ const Collection = CollectionFactory(sequelize);
 const Wishlist = WishlistFactory(sequelize);
 const Listing = ListingFactory(sequelize);
 const Offer = OfferFactory(sequelize);
-const { Trade, TradeCard } = TradeFactory(sequelize);
+const { Trade, TradeCard, TradeProof, TradeDispute } = TradeFactory(sequelize);
 const UserReputation = UserReputationFactory(sequelize);
 const Message = MessageFactory(sequelize);
 const ChatAgreement = ChatAgreementFactory(sequelize);
@@ -84,7 +84,6 @@ const Transaction = TransactionFactory(sequelize);
 const ShippingLabel = ShippingLabelFactory(sequelize);
 const CardPriceCache = CardPriceCacheFactory(sequelize);
 const AdminAction = AdminActionFactory(sequelize);
-const Offer = OfferFactory(sequelize);
 
 // ---- Associations ----
 
@@ -115,13 +114,29 @@ Card.hasMany(Wishlist, { foreignKey: 'cardId', onDelete: 'CASCADE' });
 Wishlist.belongsTo(Card, { foreignKey: 'cardId' });
 
 // Trades
+User.hasMany(Trade, { as: 'partyATrades', foreignKey: 'partyAId' });
+User.hasMany(Trade, { as: 'partyBTrades', foreignKey: 'partyBId' });
 User.hasMany(Trade, { as: 'initiatedTrades', foreignKey: 'initiatorId' });
-User.hasMany(Trade, { as: 'receivedTrades', foreignKey: 'recipientId' });
+Trade.belongsTo(User, { as: 'partyA', foreignKey: 'partyAId' });
+Trade.belongsTo(User, { as: 'partyB', foreignKey: 'partyBId' });
 Trade.belongsTo(User, { as: 'initiator', foreignKey: 'initiatorId' });
-Trade.belongsTo(User, { as: 'recipient', foreignKey: 'recipientId' });
 
 Trade.hasMany(TradeCard, { foreignKey: 'tradeId', as: 'cards' });
 TradeCard.belongsTo(Trade, { foreignKey: 'tradeId' });
+TradeCard.belongsTo(User, { foreignKey: 'userId' });
+TradeCard.belongsTo(Card, { foreignKey: 'cardId' });
+User.hasMany(TradeCard, { foreignKey: 'userId' });
+Card.hasMany(TradeCard, { foreignKey: 'cardId' });
+
+Trade.hasMany(TradeProof, { foreignKey: 'tradeId', as: 'proofs' });
+TradeProof.belongsTo(Trade, { foreignKey: 'tradeId' });
+TradeProof.belongsTo(User, { foreignKey: 'userId' });
+User.hasMany(TradeProof, { foreignKey: 'userId' });
+
+Trade.hasMany(TradeDispute, { foreignKey: 'tradeId', as: 'disputes' });
+TradeDispute.belongsTo(Trade, { foreignKey: 'tradeId' });
+TradeDispute.belongsTo(User, { foreignKey: 'raisedById', as: 'raisedBy' });
+User.hasMany(TradeDispute, { foreignKey: 'raisedById', as: 'tradeDisputes' });
 
 // Reputation (UserReputation: 1:1)
 User.hasOne(UserReputation, { foreignKey: 'userId', onDelete: 'CASCADE' });
@@ -198,7 +213,8 @@ AdminAction.belongsTo(User, { foreignKey: 'targetUserId', as: 'targetUser' });
 export {
   sequelize, User, Profile, Card,
   Collection, Wishlist, Listing,
-  Trade, TradeCard, UserReputation, Message,
+  Trade, TradeCard, TradeProof, TradeDispute,
+  UserReputation, Message,
   Notification, AuditLog, Achievement, Subscription,
   SubscriptionTier, Transaction, ShippingLabel, CardPriceCache,
   AdminAction, UserAchievement, Offer,

@@ -15,6 +15,8 @@ npm install
 - `DB_NAME`, `DB_USER`, `DB_PASS`, `DB_HOST`, `DB_PORT` – MySQL connection details
 - `PORT` – port for the server (defaults to 4000)
 - `STRIPE_WEBHOOK_SECRET` – secret used for Stripe webhooks
+- `STRIPE_SECRET_KEY` – your Stripe API key
+- `CORS_ORIGINS` – comma-separated list of allowed origins for CORS
 
 ## Development
 
@@ -77,3 +79,9 @@ mutation {
 ```
 
 Active subscriptions can be queried with `mySubscription`.
+
+### Security Notes
+- CORS allowed origins are configurable via `CORS_ORIGINS`.
+- A global rate limiter restricts each IP to 100 requests per 15 minutes.
+- Avatar uploads verify the user ID from the Authorization token.
+- Stripe webhooks are validated using your secret key.

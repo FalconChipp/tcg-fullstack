@@ -84,6 +84,7 @@ const Transaction = TransactionFactory(sequelize);
 const ShippingLabel = ShippingLabelFactory(sequelize);
 const CardPriceCache = CardPriceCacheFactory(sequelize);
 const AdminAction = AdminActionFactory(sequelize);
+const Offer = OfferFactory(sequelize);
 
 // ---- Associations ----
 

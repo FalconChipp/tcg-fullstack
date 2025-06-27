@@ -27,8 +27,8 @@ export default function UserSearchDropdown() {
         setLoading(true);
         setError(null);
         const query = `
-          query SearchCustomUsers($searchTerm: String!) {
-            searchCustomUsers(searchTerm: $searchTerm) {
+          query SearchUsers($query: String!) {
+            searchUsers(query: $query) {
               id
               username
               userProfile {
@@ -37,7 +37,7 @@ export default function UserSearchDropdown() {
             }
           }
         `;
-        const variables = { searchTerm };
+        const variables = { query: searchTerm };
         try {
           const response = await fetch(WP_GRAPHQL_URL, {
             method: "POST",
@@ -49,7 +49,7 @@ export default function UserSearchDropdown() {
             setError(json.errors[0].message);
             setResults([]);
           } else {
-            setResults(json.data.searchCustomUsers || []);
+            setResults(json.data.searchUsers || []);
           }
         } catch (err) {
           setError(err.message);

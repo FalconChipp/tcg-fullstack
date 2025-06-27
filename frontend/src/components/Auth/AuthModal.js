@@ -64,7 +64,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
   };
 
   const onSubmit = async (formData) => {
-    const { username, email, password, terms } = formData;
+    const { username: identifier, email, password, terms } = formData;
     if (!isLogin && !terms) {
       showStatusMessage('error', 'You must agree to the Terms and Privacy Policy.');
       return;
@@ -81,8 +81,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
     // --- Updated mutation structure to match backend schema ---
     const query = isLogin
       ? `
-        mutation Login($login: String!, $password: String!) {
-          login(login: $login, password: $password) {
+        mutation Login($email: String, $username: String, $password: String!) {
+          login(email: $email, username: $username, password: $password) {
             token
             user {
               id
@@ -111,7 +111,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
           }
         }
       `;
-    const variables = isLogin ? { login: username, password } : { username, email, password };
+    const variables = isLogin
+      ? identifier.includes('@')
+        ? { email: identifier, password }
+        : { username: identifier, password }
+      : { username: identifier, email, password };
 
     try {
       const response = await fetch(WP_GRAPHQL_URL, {
@@ -125,7 +129,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
         const errorMsg = json?.errors?.[0]?.extensions?.debugMessage || json?.errors?.[0]?.message;
         if (errorMsg === 'Please verify your email before logging in.') {
           setShowVerifyWarning(true);
-          setLastLoginEmail(username);
+          setLastLoginEmail(identifier.includes('@') ? identifier : '');
           showStatusMessage('warning', errorMsg);
           return;
         }
@@ -169,7 +173,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
     const { credential } = response;
     const query = `
       mutation GoogleLogin($idToken: String!) {
-        loginCustomUser(input: { credentials: { idToken: $idToken } }) {
+        loginGoogle(googleToken: $idToken) {
           token
           user { id username email }
         }
@@ -184,7 +188,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
         body: JSON.stringify({ query, variables }),
       });
       const json = await res.json();
-      const { token, user } = json?.data?.loginCustomUser || {};
+      const { token, user } = json?.data?.loginGoogle || {};
       if (token) {
         setCookie('authToken', token, 7);
         if (onAuthSuccess) onAuthSuccess({ username: user?.username, email: user?.email });
@@ -252,15 +256,21 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
         )}
         <form className="flex flex-col gap-2 mb-3" onSubmit={handleSubmit(onSubmit)} autoComplete="on">
           <div className="flex flex-col gap-1 mb-2">
-            <label htmlFor="username" className="font-semibold text-light-accent dark:text-dark-accent">Username</label>
+            <label htmlFor="username" className="font-semibold text-light-accent dark:text-dark-accent">
+              {isLogin ? "Username or Email" : "Username"}
+            </label>
             <input
               {...register("username", { required: true })}
               id="username"
-              placeholder="Username"
+              placeholder={isLogin ? "Username or Email" : "Username"}
               autoComplete="username"
               className="rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt px-4 py-2 text-base text-light-text dark:text-dark-text focus:border-light-accent dark:focus:border-dark-accent focus:outline-none transition"
             />
-            {errors.username && <p className="text-xs text-light-error dark:text-dark-error">Username is required</p>}
+            {errors.username && (
+              <p className="text-xs text-light-error dark:text-dark-error">
+                {isLogin ? "Username or Email is required" : "Username is required"}
+              </p>
+            )}
           </div>
           {!isLogin && (
             <div className="flex flex-col gap-1 mb-2">

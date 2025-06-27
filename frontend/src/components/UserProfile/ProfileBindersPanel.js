@@ -42,11 +42,10 @@ export default function ProfileBindersPanel({
     setLoading(true);
     setError("");
     const GET_BINDERS = `
-      query GetUserBinders($userId: ID!) {
-        binders(userId: $userId) {
-          id userId name layout slotsPerPage coverColor accentColor createdAt updatedAt
-          pages {
-            id cardId owned page position externalId name imageUrl setName setSymbolUrl rarity tcgplayerMarket tcgplayerMid cardmarketTrendPrice cardmarketAverageSell createdAt updatedAt
+      query GetUserBinders($userId: ID!, $page: Int, $pageSize: Int) {
+        browseBinders(userId: $userId, page: $page, pageSize: $pageSize) {
+          binders {
+            id userId name description coverImage accentColor visibility slug createdAt updatedAt
           }
         }
       }
@@ -54,7 +53,7 @@ export default function ProfileBindersPanel({
     fetch(WP_GRAPHQL_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: GET_BINDERS, variables: { userId: String(userId) } })
+      body: JSON.stringify({ query: GET_BINDERS, variables: { userId: String(userId), page: 1, pageSize: 100 } })
     })
       .then((r) => r.json())
       .then(({ data, errors }) => {
@@ -62,7 +61,7 @@ export default function ProfileBindersPanel({
           setError(errors?.[0]?.message || "Failed to load binders.");
           setBindersWithValues([]);
         } else {
-          const userBinders = data?.binders || [];
+          const userBinders = data?.browseBinders?.binders || [];
           const processed = userBinders.map((binder) => {
             const totalValue = (binder.pages || []).reduce(
               (total, page) => total + (page.tcgplayerMid || page.cardmarketAverageSell || 0),
@@ -112,51 +111,47 @@ export default function ProfileBindersPanel({
   async function handleSaveBinder(data) {
     setStatusMessage({ type: "info", message: "Saving binder..." });
     try {
-      const mutation = `
-        mutation SaveBinder($input: BinderInput!) {
-          saveBinder(input: $input) {
-            id name layout slotsPerPage accentColor coverColor
-            pages { cardId owned page position externalId name imageUrl setName setSymbolUrl rarity tcgplayerMarket tcgplayerMid cardmarketTrendPrice cardmarketAverageSell }
+      const isUpdate = !!data.id;
+      const mutation = isUpdate
+        ? `
+        mutation UpdateBinder($id: ID!, $input: BinderInput!) {
+          updateBinder(id: $id, input: $input) {
+            id
+            name
+            description
+            accentColor
+            visibility
+            slug
+            createdAt
+            updatedAt
+          }
+        }
+      `
+        : `
+        mutation CreateBinder($input: BinderInput!) {
+          createBinder(input: $input) {
+            id
+            name
+            description
+            accentColor
+            visibility
+            slug
+            createdAt
+            updatedAt
           }
         }
       `;
-      const [rows, cols] = data.layout.split("x").map(Number);
-      const slotsPerPage = rows * cols;
-      const variables = {
-        input: {
-          userId,
-          id: data.id,
-          name: data.name,
-          layout: data.layout,
-          slotsPerPage,
-          // --- FIX: Always pass the color values from the current data object
-          coverColor: data.coverColor,
-          accentColor: data.accentColor,
-          pages: (data.pages || []).map(s => ({
-            cardId: s.cardId,
-            owned: !!s.owned,
-            page: s.page,
-            position: s.position,
-            externalId: s.externalId,
-            name: s.name,
-            imageUrl: s.imageUrl,
-            setName: s.setName,
-            setSymbolUrl: s.setSymbolUrl,
-            rarity: s.rarity,
-            tcgplayerMarket: s.tcgplayerMarket,
-            tcgplayerMid: s.tcgplayerMid,
-            cardmarketTrendPrice: s.cardmarketTrendPrice,
-            cardmarketAverageSell: s.cardmarketAverageSell
-          }))
-        }
-      };
+      const variables = isUpdate
+        ? { id: data.id, input: { name: data.name, description: data.description, accentColor: data.accentColor, visibility: data.visibility || "public" } }
+        : { input: { name: data.name, description: data.description, accentColor: data.accentColor, visibility: data.visibility || "public" } };
       const res = await fetch(WP_GRAPHQL_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: mutation, variables }),
       });
       const { data: result, errors } = await res.json();
-      if (errors || !result?.saveBinder) {
+      const key = isUpdate ? "updateBinder" : "createBinder";
+      if (errors || !result?.[key]) {
         setStatusMessage({ type: "error", message: "Failed to save binder." });
         return false;
       }

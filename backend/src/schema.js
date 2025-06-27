@@ -19,7 +19,7 @@ import messagesTypeDefs from './modules/messages/typeDefs.js';
 import notificationsTypeDefs from './modules/notifications/typeDefs.js';
 // import subscriptionsTypeDefs from './modules/subscriptions/typeDefs.js';
 // import transactionsTypeDefs from './modules/transactions/typeDefs.js';
-// import shippingTypeDefs from './modules/shipping/typeDefs.js';
+import shippingTypeDefs from './modules/shipping/typeDefs.js';
 // import adminTypeDefs from './modules/admin/typeDefs.js';
 
 // ---- Import resolvers from all modules ----
@@ -38,7 +38,7 @@ import messagesResolvers from './modules/messages/resolvers.js';
 import notificationsResolvers from './modules/notifications/resolvers.js';
 // import subscriptionsResolvers from './modules/subscriptions/resolvers.js';
 // import transactionsResolvers from './modules/transactions/resolvers.js';
-// import shippingResolvers from './modules/shipping/resolvers.js';
+import shippingResolvers from './modules/shipping/resolvers.js';
 // import adminResolvers from './modules/admin/resolvers.js';
 
 // ---- Merge all typeDefs ----
@@ -58,7 +58,7 @@ export const typeDefs = mergeTypeDefs([
   notificationsTypeDefs,
 //   subscriptionsTypeDefs,
 //   transactionsTypeDefs,
-//   shippingTypeDefs,
+  shippingTypeDefs,
 //   adminTypeDefs,
 ]);
 
@@ -79,6 +79,6 @@ export const resolvers = mergeResolvers([
   notificationsResolvers,
 //   subscriptionsResolvers,
 //   transactionsResolvers,
-//   shippingResolvers,
+  shippingResolvers,
 //   adminResolvers,
 ]);

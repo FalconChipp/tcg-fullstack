@@ -13,6 +13,8 @@ scalar Upload
     createdAt: String
     updatedAt: String
     profile: Profile
+    referrerId: ID
+    referrer: User
   }
 
   type Profile {

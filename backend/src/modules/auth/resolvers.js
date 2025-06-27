@@ -19,6 +19,7 @@ import buildVerificationEmail from '../../emails/buildVerificationEmail.js';
 import buildResetEmail from '../../emails/buildResetEmail.js';
 import buildWelcomeEmail from '../../emails/buildWelcomeEmail.js';
 import buildMfaEmail from '../../emails/buildMfaEmail.js';
+import { grantReward } from '../rewards/helpers.js';
 
 const oauthClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -39,16 +40,21 @@ const resolvers = {
     },
   },
   Mutation: {
-    register: async (_, { username, email, password }, { logger }) => {
+    register: async (_, { username, email, password, referrerId }, { logger }) => {
       logger.info(`[REGISTER] username=${username} email=${email}`);
       const existing = await User.findOne({ where: { email } });
       if (existing) throw new Error('Email already registered');
+      if (referrerId) {
+        const refUser = await User.findByPk(referrerId);
+        if (!refUser) throw new Error('Invalid referrer');
+      }
       const user = await User.create({
         username,
         email,
         password: await hashPassword(password),
         isAdmin: false,
         isBanned: false,
+        referrerId: referrerId || null,
       });
       // Email verification token
       user.verifyToken = randomToken();
@@ -67,6 +73,11 @@ const resolvers = {
       // --- Send welcome email separately after verification, or here if you prefer ---
       const { subject: welcomeSubject, html: welcomeHtml } = buildWelcomeEmail({ username });
       await sendMail({ to: email, subject: welcomeSubject, html: welcomeHtml });
+
+      await grantReward({ userId: user.id, type: 'signup' });
+      if (referrerId) {
+        await grantReward({ userId: referrerId, type: 'referral', data: { referredUserId: user.id } });
+      }
 
       return {
         token: generateJwt(user),

@@ -75,6 +75,10 @@ export default (sequelize) => {
         type: DataTypes.DATE,
         allowNull: true,
       },
+      referrerId: {
+        type: DataTypes.UUID,
+        allowNull: true,
+      },
       emailVerified: {
         type: DataTypes.BOOLEAN,
         defaultValue: false,

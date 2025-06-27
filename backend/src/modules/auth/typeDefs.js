@@ -18,6 +18,7 @@ const typeDefs = gql`
       username: String!
       email: String!
       password: String!
+      referrerId: ID
     ): AuthPayload!
 
     login(

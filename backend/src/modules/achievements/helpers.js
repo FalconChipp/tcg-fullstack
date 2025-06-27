@@ -1,6 +1,7 @@
 // src/modules/achievements/helpers.js
 import { Achievement, UserAchievement } from '../../models/index.js';
 import { notifyUser } from '../../utils/notifications.js';
+import { grantReward } from '../rewards/helpers.js';
 
 /**
  * Grant an achievement to a user if they have not already earned it.
@@ -15,6 +16,7 @@ export async function maybeGrantAchievement(userId, code, meta = {}) {
   const existing = await UserAchievement.findOne({ where: { userId, achievementId: achievement.id } });
   if (existing) return existing;
   const ua = await UserAchievement.create({ userId, achievementId: achievement.id, meta, earnedAt: new Date() });
+  await grantReward({ userId, type: 'achievement', achievementId: achievement.id, data: meta });
   await notifyUser({
     userId,
     type: 'achievement_unlocked',

@@ -227,4 +227,3 @@ httpServer.listen(PORT, () => {
 });
 
 export { app, io, apolloServer, logger };
-});

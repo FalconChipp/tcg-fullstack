@@ -37,6 +37,11 @@ export default (sequelize, models) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
+      serviceLevel: {
+        // Carrier service level, e.g. 'priority', 'express'
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
       status: {
         // 'created', 'purchased', 'shipped', 'delivered', 'cancelled'
         type: DataTypes.STRING,
@@ -46,6 +51,16 @@ export default (sequelize, models) => {
       labelUrl: {
         // URL to download/view the label PDF/image
         type: DataTypes.STRING,
+        allowNull: true,
+      },
+      rate: {
+        // Quoted rate amount for this label
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: true,
+      },
+      apiFee: {
+        // EasyPost API fee charged per label
+        type: DataTypes.DECIMAL(10, 2),
         allowNull: true,
       },
       cost: {
@@ -67,6 +82,22 @@ export default (sequelize, models) => {
         type: DataTypes.UUID,
         allowNull: true,
       },
+      refundedAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+      refundStatus: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      orderId: {
+        type: DataTypes.UUID,
+        allowNull: true,
+      },
+      tradeId: {
+        type: DataTypes.UUID,
+        allowNull: true,
+      },
       createdAt: DataTypes.DATE,
       updatedAt: DataTypes.DATE,
     },
@@ -80,6 +111,8 @@ export default (sequelize, models) => {
         { fields: ['trackingNumber'] },
         { fields: ['status'] },
         { fields: ['externalLabelId'] },
+        { fields: ['orderId'] },
+        { fields: ['tradeId'] },
       ],
     }
   );

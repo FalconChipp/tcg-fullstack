@@ -12,7 +12,9 @@ import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import multer from 'multer';
 import expressStatusMonitor from 'express-status-monitor';
+import rateLimit from 'express-rate-limit';
 import winston from 'winston';
+import Stripe from 'stripe';
 import { Server as SocketIOServer } from 'socket.io';
 import fs from 'fs';
 import path from 'path';
@@ -48,13 +50,34 @@ const io = new SocketIOServer(httpServer, {
 app.set('io', io);
 
 // --- Middleware ---
-app.use(cors({ origin: true, credentials: true }));
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
+  : [];
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+  })
+);
 app.use(helmet());
 app.use(compression());
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 app.use(expressStatusMonitor());
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(limiter);
 app.use(morgan('combined', { stream: { write: (msg) => logger.info(msg.trim()) } }));
 
 // --- AVATAR UPLOAD SETUP ---
@@ -77,9 +100,7 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, AVATAR_DIR),
   filename: async (req, file, cb) => {
     try {
-      let userId =
-        req.body.userId ||
-        getUserIdFromAuthHeader(req.headers.authorization);
+      let userId = getUserIdFromAuthHeader(req.headers.authorization);
 
       // If username not provided, look up by userId
       let username = req.body.username || 'user';
@@ -133,9 +154,7 @@ const upload = multer({
 // --- Avatar Upload API ---
 app.post('/upload/avatar', upload.single('avatar'), async (req, res) => {
   try {
-    const userId =
-      req.body.userId ||
-      getUserIdFromAuthHeader(req.headers.authorization);
+    const userId = getUserIdFromAuthHeader(req.headers.authorization);
 
     if (!userId) {
       return res.status(401).json({ success: false, error: 'No user ID found' });
@@ -168,15 +187,25 @@ app.post('/upload/avatar', upload.single('avatar'), async (req, res) => {
 app.use('/uploads/avatars', express.static(AVATAR_DIR));
 
 // --- Stripe Webhooks ---
-app.post("/webhooks/stripe", express.raw({ type: "application/json" }), async (req, res) => {
-  try {
-    await handleStripeWebhook(JSON.parse(req.body.toString()));
-    res.json({ received: true });
-  } catch (err) {
-    logger.error("Stripe webhook error", err);
-    res.status(400).send("Webhook Error");
+app.post(
+  '/webhooks/stripe',
+  express.raw({ type: 'application/json' }),
+  async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    try {
+      const event = new Stripe(process.env.STRIPE_SECRET_KEY).webhooks.constructEvent(
+        req.body,
+        sig,
+        process.env.STRIPE_WEBHOOK_SECRET
+      );
+      await handleStripeWebhook(event);
+      res.json({ received: true });
+    } catch (err) {
+      logger.error('Stripe webhook error', err);
+      res.status(400).send('Webhook Error');
+    }
   }
-});
+);
 // --- Health Check Route ---
 app.get('/health', (req, res) => {
   logger.info('Health check requested');

@@ -30,3 +30,10 @@ cd ../frontend && npm install
 ```
 
 Refer to the subproject READMEs for environment variables and development commands.
+
+## Security
+
+- Backend CORS allowed origins are set via the `CORS_ORIGINS` environment variable.
+- A global rate limiter restricts clients to 100 requests every 15 minutes.
+- Stripe webhook signatures are verified using `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`.
+- Avatar uploads now require authentication via the Authorization header.

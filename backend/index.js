@@ -10,19 +10,19 @@ import morgan from 'morgan';
 import compression from 'compression';
 import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
-import multer from 'multer';
 import expressStatusMonitor from 'express-status-monitor';
 import winston from 'winston';
 import { Server as SocketIOServer } from 'socket.io';
 import fs from 'fs';
 import path from 'path';
-import jwt from 'jsonwebtoken';
+import { avatarUpload } from './src/utils/avatarUpload.js';
+import { verifyJwt } from './src/modules/auth/helpers.js';
 import { startExpiredMessageCleanup } from './src/jobs/messageCleanup.js';
 import { startUnreadReminderJob } from './src/jobs/unreadReminder.js';
 import { startNotificationCleanup } from './src/jobs/notificationCleanup.js';
 
 import { typeDefs, resolvers } from './src/schema.js';
-import { sequelize, User } from './src/models/index.js';
+import { sequelize, Profile } from './src/models/index.js';
 
 // --- Logger Setup ---
 const logger = winston.createLogger({
@@ -61,108 +61,62 @@ app.use(morgan('combined', { stream: { write: (msg) => logger.info(msg.trim()) }
 const AVATAR_DIR = path.join(process.cwd(), 'uploads', 'avatars');
 fs.mkdirSync(AVATAR_DIR, { recursive: true });
 
-// Helper: Decode JWT to get user ID (safe, only returns id)
-function getUserIdFromAuthHeader(header) {
-  if (!header || !header.startsWith('Bearer ')) return null;
+// Simple authentication middleware using JWT
+function authenticateUser(req, res, next) {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'No token' });
+  }
   try {
     const token = header.replace('Bearer ', '');
-    const decoded = jwt.decode(token);
-    return decoded && decoded.id ? decoded.id : null;
+    req.user = verifyJwt(token);
+    next();
   } catch {
-    return null;
+    return res.status(401).json({ error: 'Invalid token' });
   }
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, AVATAR_DIR),
-  filename: async (req, file, cb) => {
-    try {
-      let userId =
-        req.body.userId ||
-        getUserIdFromAuthHeader(req.headers.authorization);
-
-      // If username not provided, look up by userId
-      let username = req.body.username || 'user';
-      if (userId && (!req.body.username || req.body.username === 'user')) {
-        const user = await User.findByPk(userId);
-        if (user && user.username) username = user.username;
-      }
-      const ext = path.extname(file.originalname).toLowerCase() || '.webp';
-      const base = username.replace(/[^a-zA-Z0-9_-]/g, '_');
-      const newFilename = `${base}_${Date.now()}${ext}`;
-
-      // Remove old avatar (always) if found in DB and is a file (not default URL)
-      if (userId) {
-        const user = await User.findByPk(userId);
-        if (user && user.avatar && !user.avatar.startsWith('http')) {
-          const oldAvatarPath = user.avatar.startsWith('/uploads/')
-            ? path.join(process.cwd(), user.avatar)
-            : path.join(AVATAR_DIR, user.avatar);
-          if (
-            fs.existsSync(oldAvatarPath) &&
-            oldAvatarPath !== path.join(AVATAR_DIR, newFilename)
-          ) {
-            fs.unlinkSync(oldAvatarPath);
-            logger.info(`Old avatar deleted: ${oldAvatarPath}`);
-          }
-        }
-      }
-      cb(null, newFilename);
-    } catch (err) {
-      cb(err, '');
-    }
-  },
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-  fileFilter: (req, file, cb) => {
-    if (
-      file.mimetype === 'image/jpeg' ||
-      file.mimetype === 'image/png' ||
-      file.mimetype === 'image/webp'
-    ) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files (jpeg, png, webp) are allowed!'));
-    }
-  },
-});
-
 // --- Avatar Upload API ---
-app.post('/upload/avatar', upload.single('avatar'), async (req, res) => {
-  try {
-    const userId =
-      req.body.userId ||
-      getUserIdFromAuthHeader(req.headers.authorization);
-
-    if (!userId) {
-      return res.status(401).json({ success: false, error: 'No user ID found' });
+app.post(
+  '/upload/avatar',
+  authenticateUser,
+  avatarUpload.single('avatar'),
+  async (req, res) => {
+    if (!req.file) {
+      return res
+        .status(400)
+        .json({ success: false, error: 'No file uploaded' });
     }
-    if (!req.file?.filename) {
-      return res.status(400).json({ success: false, error: 'No file uploaded' });
+    try {
+      const profile = await Profile.findOne({ where: { userId: req.user.id } });
+      if (!profile) {
+        return res
+          .status(404)
+          .json({ success: false, error: 'Profile not found' });
+      }
+
+      if (profile.avatar && profile.avatar.startsWith('/uploads/avatars/')) {
+        const oldPath = path.join(
+          process.cwd(),
+          profile.avatar.replace(/^\//, '')
+        );
+        try {
+          await fs.promises.unlink(oldPath);
+        } catch {}
+      }
+
+      const newPath = `/uploads/avatars/${req.file.filename}`;
+      profile.avatar = newPath;
+      await profile.save();
+
+      logger.info(`Avatar uploaded: userId=${req.user.id} file=${req.file.filename}`);
+      res.json({ success: true, avatar: newPath });
+    } catch (err) {
+      logger.error('Avatar upload failed:', err);
+      res.status(500).json({ success: false, error: 'Server error' });
     }
-
-    // Update user's avatar field to new file
-    await User.update(
-      { avatar: `/uploads/avatars/${req.file.filename}` },
-      { where: { id: userId } }
-    );
-
-    logger.info(
-      `Avatar uploaded: userId=${userId} file=${req.file.filename}`
-    );
-    res.json({
-      success: true,
-      filename: req.file.filename,
-      url: `/uploads/avatars/${req.file.filename}`,
-    });
-  } catch (err) {
-    logger.error('Avatar upload failed:', err);
-    res.status(500).json({ success: false, error: err.message });
   }
-});
+);
 
 // --- Serve avatar images statically ---
 app.use('/uploads/avatars', express.static(AVATAR_DIR));

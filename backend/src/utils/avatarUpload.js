@@ -1,7 +1,7 @@
 import express from "express";
-import { avatarUpload } from "../utils/avatarUpload.js"; // Your existing util
+import { avatarUpload } from "./avatarUploadMiddleware.js";
 import path from "path";
-import fs from "fs";
+import fs from "fs/promises";
 import { Profile } from "../models/index.js";
 import { verifyJwt } from "../modules/auth/helpers.js";
 
@@ -27,32 +27,33 @@ router.post(
   authenticateUser,
   avatarUpload.single("avatar"),
   async (req, res) => {
-    if (!req.file) return res.status(400).json({ success: false, error: "No file uploaded" });
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: "No file uploaded" });
+    }
 
     try {
-      // Find the user's profile
       const profile = await Profile.findOne({ where: { userId: req.user.id } });
-
-      // Delete the old avatar file, if present and it's a local file (not a URL)
-      if (profile && profile.avatar && profile.avatar.startsWith("/uploads/avatars/")) {
-        const oldAvatarPath = path.join(process.cwd(), profile.avatar.replace(/^\//, "")); // Remove leading slash
-        fs.unlink(oldAvatarPath, (err) => { /* ignore error */ });
+      if (!profile) {
+        return res.status(404).json({ success: false, error: "Profile not found" });
       }
 
-      // Update the profile with the new avatar path
+      if (profile.avatar && profile.avatar.startsWith("/uploads/avatars/")) {
+        const oldAvatarPath = path.join(
+          process.cwd(),
+          profile.avatar.replace(/^\//, "")
+        );
+        try {
+          await fs.unlink(oldAvatarPath);
+        } catch {}
+      }
+
       const newAvatarPath = `/uploads/avatars/${req.file.filename}`;
-      if (profile) {
-        profile.avatar = newAvatarPath;
-        await profile.save();
-      }
+      profile.avatar = newAvatarPath;
+      await profile.save();
 
-      res.json({
-        success: true,
-        avatar: newAvatarPath,
-        filename: req.file.filename,
-        url: newAvatarPath,
-      });
+      res.json({ success: true, avatar: newAvatarPath });
     } catch (error) {
+      console.error("Avatar upload failed", error);
       res.status(500).json({ success: false, error: "Server error" });
     }
   }

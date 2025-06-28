@@ -36,7 +36,7 @@ export default function AvatarUpload({ token, onUploaded }) {
     formData.append("avatar", file);
 
     // Use your actual backend URL if not on the same domain
-    const res = await fetch("localhost:4000/upload/avatar", {
+    const res = await fetch("http://localhost:4000/upload/avatar", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${token}` // IMPORTANT: Only add auth, no content-type header for FormData!

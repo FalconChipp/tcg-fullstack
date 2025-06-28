@@ -24,7 +24,7 @@ import { startUnreadReminderJob } from './src/jobs/unreadReminder.js';
 import { startNotificationCleanup } from './src/jobs/notificationCleanup.js';
 
 import { typeDefs, resolvers } from './src/schema.js';
-import { sequelize, User } from './src/models/index.js';
+import { sequelize, User, Profile } from './src/models/index.js';
 
 // --- Logger Setup ---
 const logger = winston.createLogger({
@@ -112,13 +112,13 @@ const storage = multer.diskStorage({
       const base = username.replace(/[^a-zA-Z0-9_-]/g, '_');
       const newFilename = `${base}_${Date.now()}${ext}`;
 
-      // Remove old avatar (always) if found in DB and is a file (not default URL)
+      // Remove old avatar if the user's profile has one stored
       if (userId) {
-        const user = await User.findByPk(userId);
-        if (user && user.avatar && !user.avatar.startsWith('http')) {
-          const oldAvatarPath = user.avatar.startsWith('/uploads/')
-            ? path.join(process.cwd(), user.avatar)
-            : path.join(AVATAR_DIR, user.avatar);
+        const profile = await Profile.findOne({ where: { userId } });
+        if (profile && profile.avatar && !profile.avatar.startsWith('http')) {
+          const oldAvatarPath = profile.avatar.startsWith('/uploads/')
+            ? path.join(process.cwd(), profile.avatar)
+            : path.join(AVATAR_DIR, profile.avatar);
           if (
             fs.existsSync(oldAvatarPath) &&
             oldAvatarPath !== path.join(AVATAR_DIR, newFilename)
@@ -163,11 +163,13 @@ app.post('/upload/avatar', upload.single('avatar'), async (req, res) => {
       return res.status(400).json({ success: false, error: 'No file uploaded' });
     }
 
-    // Update user's avatar field to new file
-    await User.update(
-      { avatar: `/uploads/avatars/${req.file.filename}` },
-      { where: { id: userId } }
-    );
+    // Update profile avatar field to new file
+    let profile = await Profile.findOne({ where: { userId } });
+    if (!profile) {
+      profile = await Profile.create({ userId });
+    }
+    profile.avatar = `/uploads/avatars/${req.file.filename}`;
+    await profile.save();
 
     logger.info(
       `Avatar uploaded: userId=${userId} file=${req.file.filename}`
@@ -175,7 +177,7 @@ app.post('/upload/avatar', upload.single('avatar'), async (req, res) => {
     res.json({
       success: true,
       filename: req.file.filename,
-      url: `/uploads/avatars/${req.file.filename}`,
+      avatar: `/uploads/avatars/${req.file.filename}`,
     });
   } catch (err) {
     logger.error('Avatar upload failed:', err);

@@ -25,6 +25,10 @@ export default (sequelize) => {
         allowNull: false,
         unique: true,
       },
+      avatar: {
+        type: DataTypes.STRING, 
+        allowNull: true
+      },
       bio: { type: DataTypes.STRING(400), allowNull: true },
       favouritePokemon: { type: DataTypes.STRING(64), allowNull: true },
       country: { type: DataTypes.STRING(64), allowNull: true },

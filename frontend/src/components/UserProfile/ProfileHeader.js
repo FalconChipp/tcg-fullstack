@@ -4,9 +4,8 @@ import React, { useState, useRef, useEffect, useContext } from "react";
 import Image from "next/image";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 import ProfileSocialLinks from "@/components/UserProfile/ProfileSocialLinks";
-import ProfileReputation from "@/components/UserProfile/ProfileReputation";
+// import ProfileReputation from "@/components/UserProfile/ProfileReputation";
 import { FaLink } from "react-icons/fa";
-import { uploadGraphQLFile } from "@/utils/uploadGraphQLFile";
 
 // Currency formatter
 const formatCurrency = (value) =>
@@ -26,17 +25,16 @@ export default function ProfileHeader({
 }) {
   const { token } = useContext(AuthContext);
 
-  // Setup backend URL and avatar resolver
+  // Backend URLs
   const WP_GRAPHQL_URL =
     process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
   const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:4000";
 
-  // ---- Avatar URL resolver ----
-  const resolveAvatarUrl = (avatarUrl) => {
-    if (!avatarUrl) return "https://placehold.co/100/webp";
-    if (avatarUrl.startsWith("http")) return avatarUrl;
-    // Always prepend backend for local file paths
-    return `${BACKEND_URL}${avatarUrl}`;
+  // Avatar URL resolver (to turn DB value into full URL for <Image>)
+  const resolveavatar = (avatar) => {
+    if (!avatar) return "https://placehold.co/100/webp";
+    if (avatar.startsWith("http")) return avatar;
+    return `${BACKEND_URL}${avatar}`;
   };
 
   // Editable State
@@ -47,9 +45,12 @@ export default function ProfileHeader({
   );
   const [newProfileImage, setNewProfileImage] = useState(null);
 
-  // Always use the resolver for the initial value
+  // NEW: Hold avatar *path* (what's in the DB), always a path or null
+  const [currentAvatar, setCurrentAvatar] = useState(profileData?.avatar || null); // CHANGED
+
+  // Preview can be data URI or resolved URL—used only for display
   const [profileImagePreview, setProfileImagePreview] = useState(
-    resolveAvatarUrl(profileData?.avatarUrl)
+    resolveavatar(profileData?.avatar)
   );
 
   const [isEditing, setIsEditing] = useState(false);
@@ -73,12 +74,13 @@ export default function ProfileHeader({
 
   const xpPercent = Math.min(Math.round((xp / xpMax) * 100), 100);
 
-  // Use resolver for all profileData updates
+  // Reset fields when profileData changes
   useEffect(() => {
     setUsername(profileData?.username || "Username");
     setBio(profileData?.bio || "");
     setFavouritePokemon(profileData?.favouritePokemon || "");
-    setProfileImagePreview(resolveAvatarUrl(profileData?.avatarUrl));
+    setProfileImagePreview(resolveavatar(profileData?.avatar));
+    setCurrentAvatar(profileData?.avatar || null); // CHANGED
     setNewProfileImage(null);
   }, [profileData]);
 
@@ -89,7 +91,7 @@ export default function ProfileHeader({
     if (file) {
       setNewProfileImage(file);
       const reader = new FileReader();
-      reader.onloadend = () => setProfileImagePreview(reader.result);
+      reader.onloadend = () => setProfileImagePreview(reader.result); // preview only
       reader.readAsDataURL(file);
     }
   };
@@ -99,37 +101,36 @@ export default function ProfileHeader({
     typeof window !== "undefined" ? window.location.href : "";
 
   // --- Main mutation for updating profile fields ---
-  const updateProfileTextAndFinalAvatar = async (avatarUrlForUpdate) => {
+  // Only ever send the DB value/path for avatar!
+  const updateProfileTextAndFinalAvatar = async (avatarForUpdate) => {
     const updateProfileMutation = `
-      mutation UpdateProfile(
-        $username: String
-        $avatarUrl: String
-        $bio: String
-        $favouritePokemon: String
-      ) {
+      mutation UpdateProfile($bio: String, $favouritePokemon: String, $avatar: String) {
         updateProfile(
-          username: $username
-          avatarUrl: $avatarUrl
           bio: $bio
           favouritePokemon: $favouritePokemon
+          avatar: $avatar
         ) {
           id
-          username
-          avatarUrl
           bio
           favouritePokemon
-          email
-          isVerified
           createdAt
           updatedAt
+          avatar
+          user {
+            id
+            username
+            email
+            avatar
+            emailVerified
+          }
         }
       }
     `;
+
     const variables = {
-      username,
-      avatarUrl: avatarUrlForUpdate,
       bio,
       favouritePokemon,
+      avatar: avatarForUpdate || null, // CHANGED: always a path or null
     };
     const res = await fetch(WP_GRAPHQL_URL, {
       method: "POST",
@@ -142,28 +143,26 @@ export default function ProfileHeader({
     return res.json();
   };
 
-  // --- Avatar upload logic ---
+  // --- Avatar upload logic (REST endpoint) ---
   const performAvatarUpload = async () => {
     if (!newProfileImage) return null;
-    const uploadMutation = `
-      mutation UploadAvatar($file: Upload!) {
-        uploadAvatar(file: $file) {
-          avatarUrl
-        }
-      }
-    `;
-    const json = await uploadGraphQLFile({
-      url: WP_GRAPHQL_URL,
-      mutation: uploadMutation,
-      file: newProfileImage,
-      token,
+
+    const formData = new FormData();
+    formData.append("avatar", newProfileImage);
+
+    const res = await fetch(`${BACKEND_URL}/upload/avatar`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+      },
+      body: formData,
     });
-    if (json?.data?.uploadAvatar?.avatarUrl) {
-      return json.data.uploadAvatar.avatarUrl;
+
+    const data = await res.json();
+    if (data?.success && data?.avatar) {
+      return data.avatar; // <-- e.g. "/uploads/avatars/Foo_12345.png"
     } else {
-      throw new Error(
-        json?.errors?.[0]?.message || "Unknown avatar upload error"
-      );
+      throw new Error(data?.error || "Avatar upload failed");
     }
   };
 
@@ -171,18 +170,18 @@ export default function ProfileHeader({
   const handleSaveAllChanges = async () => {
     if (!isOwnProfile || !token) return;
     setIsSaving(true);
-    let finalAvatarUrlToSave =
-      profileImagePreview.startsWith("data:")
-        ? profileData.avatarUrl
-        : profileImagePreview;
 
-    // If user picked a new file, upload it first
+    // Always start from currentAvatar (DB-safe value)
+    let avatarToSend = currentAvatar; // CHANGED
+
+    // If user picked a new file, upload it first (returns path)
     if (newProfileImage) {
       try {
         const uploadedUrl = await performAvatarUpload();
         if (uploadedUrl) {
-          finalAvatarUrlToSave = uploadedUrl;
-          setProfileImagePreview(resolveAvatarUrl(uploadedUrl)); // PATCHED: always use resolver!
+          avatarToSend = uploadedUrl; // CHANGED
+          setProfileImagePreview(resolveavatar(uploadedUrl)); // for UI
+          setCurrentAvatar(uploadedUrl); // for DB
           setNewProfileImage(null);
         }
       } catch (uploadError) {
@@ -190,19 +189,18 @@ export default function ProfileHeader({
       }
     }
 
-    // Now update text fields
+    // Now update text fields (and avatar path)
     try {
-      const json = await updateProfileTextAndFinalAvatar(finalAvatarUrlToSave);
+      const json = await updateProfileTextAndFinalAvatar(avatarToSend);
       if (json?.data?.updateProfile) {
         const serverProfile = json.data.updateProfile;
-        setUsername(serverProfile.username || "");
         setBio(serverProfile.bio || "");
         setFavouritePokemon(serverProfile.favouritePokemon || "");
-        setProfileImagePreview(resolveAvatarUrl(serverProfile.avatarUrl)); // PATCHED: always use resolver!
+        setProfileImagePreview(resolveavatar(serverProfile.avatar));
+        setCurrentAvatar(serverProfile.avatar);
         setIsEditing(false);
         if (onEdit) onEdit(serverProfile);
       } else {
-        // Log error for debugging if not successful
         console.error("Failed to update profile", json);
         setIsEditing(false);
       }
@@ -369,7 +367,8 @@ export default function ProfileHeader({
                 setBio(profileData.bio || "");
                 setFavouritePokemon(profileData.favouritePokemon || "");
                 setNewProfileImage(null);
-                setProfileImagePreview(resolveAvatarUrl(profileData.avatarUrl)); // PATCHED: use resolver!
+                setProfileImagePreview(resolveavatar(profileData.avatar));
+                setCurrentAvatar(profileData.avatar || null); // ADDED
                 setIsEditing(false);
               }}
               className={`px-6 py-2 rounded-lg font-bold transition-colors
@@ -405,17 +404,7 @@ export default function ProfileHeader({
           </h3>
           {isEditing ? (
             <div className="flex items-center gap-3 flex-wrap">
-              {/* {SOCIAL_KEYS.map((type) => (
-                <input
-                  key={type}
-                  type="text"
-                  value={socialLinks?.[type] || ""}
-                  onChange={e => handleSocialLinkChange(type, e.target.value)}
-                  className="w-44 px-2 py-1 rounded border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text placeholder:text-light-textMuted dark:placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent transition"
-                  placeholder={type.charAt(0).toUpperCase() + type.slice(1)}
-                  disabled={isSaving}
-                />
-              ))} */}
+              {/* Placeholder for social links editing */}
             </div>
           ) : (
             <ProfileSocialLinks

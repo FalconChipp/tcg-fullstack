@@ -31,14 +31,16 @@ export async function getServerSideProps({ params, res }) {
     query GetUser($username: String!) {
       userProfile(username: $username) {
         id
-        username
-        email
-        avatarUrl
-        isVerified
-        createdAt
-        updatedAt
         bio
         favouritePokemon
+        user {
+          username
+          email
+          avatar
+          emailVerified
+          createdAt
+          updatedAt
+        }
       }
     }
   `;
@@ -49,12 +51,20 @@ export async function getServerSideProps({ params, res }) {
       body: JSON.stringify({ query: userQuery, variables: { username } }),
     });
     const { data, errors } = await r.json();
+    console.log({ data, errors })
     if (errors || !data?.userProfile) {
       return errors
         ? { props: { error: errors[0].message } }
         : { notFound: true };
     }
-    return { props: { user: data.userProfile } };
+    const profile = data.userProfile;
+    const mergedUser = {
+      ...profile.user,
+      ...profile
+    };
+    delete mergedUser.user;
+
+    return { props: { user: mergedUser } };
   } catch (err) {
     return { props: { error: "Remote server error" } };
   }
@@ -154,17 +164,17 @@ export default function ProfilePage({ user, error }) {
     <>
       <Head>
         <title>{`${user.username}'s Profile – SixByFive TCG`}</title>
-        <meta name="description" content={user?.userProfile?.bio || "Check out my Pokémon TCG collection!"} />
+        <meta name="description" content={user?.bio || "Check out my Pokémon TCG collection!"} />
         <link rel="canonical" href={`https://tcg.sixbyfive.com/profile/${user.username}`} />
         <meta property="og:title" content={`${user.username}'s Profile – SixByFive TCG`} />
-        <meta property="og:description" content={user?.userProfile?.bio || "Check out my Pokémon TCG collection!"} />
+        <meta property="og:description" content={user?.bio || "Check out my Pokémon TCG collection!"} />
         <meta property="og:url" content={`https://tcg.sixbyfive.com/profile/${user.username}`} />
-        <meta property="og:image" content={user?.userProfile?.avatarUrl || '/default-avatar.png'} />
+        <meta property="og:image" content={user?.avatar || '/default-avatar.png'} />
         <meta property="og:type" content="profile" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={`${user.username}'s Profile – SixByFive TCG`} />
-        <meta name="twitter:description" content={user?.userProfile?.bio || "Check out my Pokémon TCG collection!"} />
-        <meta name="twitter:image" content={user?.userProfile?.avatarUrl || '/default-avatar.png'} />
+        <meta name="twitter:description" content={user?.bio || "Check out my Pokémon TCG collection!"} />
+        <meta name="twitter:image" content={user?.avatar || '/default-avatar.png'} />
       </Head>
       <Layout hideBackTop={isBinderEditorOpen}>
         <div className="w-full px-2 sm:px-4 md:px-8 lg:px-24 xl:px-32 py-6">

@@ -35,9 +35,15 @@ const resolvers = {
     userProfile: async (_, { username }) => {
       const user = await User.findOne({ where: { username } });
       if (!user) return null;
-      const profile = await Profile.findOne({ where: { userId: user.id } });
-      logger.info(`[PROFILE] Fetched profile for user ${username}`);
-      return profile;
+      let profile = await Profile.findOne({ where: { userId: user.id } });
+// If no profile, create a blank one (optional—if this is your desired behavior)
+    if (!profile) {
+    profile = await Profile.create({ userId: user.id });
+    logger.info(`[PROFILE] Created blank profile for user ${username}`);
+    }
+    profile.user = user; // Attach user to profile for your GraphQL resolvers
+    logger.info(`[PROFILE] Fetched profile for user ${username}`);
+    return profile;
     },
 
     userById: async (_, { id }) => {
@@ -81,6 +87,7 @@ const resolvers = {
       const allowed = [
         'bio',
         'favouritePokemon',
+        'avatar',
         'country',
         'showcase',
         'status',
@@ -101,6 +108,7 @@ const resolvers = {
         if (field === 'status' && !PROFILE_STATUSES.includes(args.status)) continue;
         profile[field] = args[field];
       }
+      console.log('Updating profile with:', profile.toJSON());
 
       await profile.save();
       logger.info(`[PROFILE] User ${payload.id} updated profile`);
@@ -132,12 +140,6 @@ const resolvers = {
       await User.destroy({ where: { id: userId } });
       logger.info(`[ADMIN] Deleted user ${userId}`);
       return true;
-    },
-    uploadAvatar: async (_, { file }, { token }) => {
-        throw new Error(
-            'Avatar upload is only supported via the REST endpoint: POST /upload/avatar (multipart/form-data). ' +
-            'GraphQL file uploads are not supported for avatars. Please use the REST endpoint.'
-        );
     },
   },
 

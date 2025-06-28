@@ -6,6 +6,7 @@ scalar Upload
     id: ID!
     username: String!
     email: String!
+    emailVerified: Boolean
     avatar: String
     isAdmin: Boolean!
     isBanned: Boolean!
@@ -15,6 +16,10 @@ scalar Upload
     profile: Profile
     referrerId: ID
     referrer: User
+    mfaEnabled: Boolean
+    googleId: String
+    oauthProvider: String
+    oauthId: String
   }
 
   type Profile {
@@ -22,6 +27,7 @@ scalar Upload
     userId: ID!
     bio: String
     favouritePokemon: String
+    avatar: String
     country: String
     showcase: JSON
     status: String
@@ -69,6 +75,7 @@ scalar Upload
     updateProfile(
       bio: String
       favouritePokemon: String
+      avatar: String
       country: String
       showcase: JSON
       status: String
@@ -83,8 +90,6 @@ scalar Upload
       wantsTrade: Boolean
       wantsMarketplace: Boolean
     ): Profile
-
-    uploadAvatar(file: Upload!): String
 
     adminBanUser(userId: ID!): Boolean
     adminUnbanUser(userId: ID!): Boolean

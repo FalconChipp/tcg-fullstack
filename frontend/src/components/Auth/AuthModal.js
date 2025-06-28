@@ -99,11 +99,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
               id
               username
               email
-              isVerified
-              lastLoginAt
+              emailVerified
+              lastLogin
               createdAt
               updatedAt
-              avatarUrl
+              avatar
               mfaEnabled
               oauthProvider
               oauthId

@@ -38,11 +38,10 @@ export function AuthProvider({ children }) {
                   id
                   username
                   email
-                  isVerified
-                  lastLoginAt
+                  emailVerified
+                  lastLogin
                   createdAt
                   updatedAt
-                  avatarUrl
                   mfaEnabled
                   oauthProvider
                   oauthId
@@ -162,11 +161,11 @@ export function AuthProvider({ children }) {
                     id
                     username
                     email
-                    isVerified
-                    lastLoginAt
+                    emailVerified
+                    lastLogin
                     createdAt
                     updatedAt
-                    avatarUrl
+                    avatar
                     mfaEnabled
                     oauthProvider
                     oauthId
@@ -188,11 +187,11 @@ export function AuthProvider({ children }) {
                     id
                     username
                     email
-                    isVerified
-                    lastLoginAt
+                    emailVerified
+                    lastLogin
                     createdAt
                     updatedAt
-                    avatarUrl
+                    avatar
                     mfaEnabled
                     oauthProvider
                     oauthId

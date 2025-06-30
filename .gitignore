@@ -11,3 +11,4 @@ backend/package-lock.json
 frontend/package-lock.json
 dashboard/package-lock.json
 *.zip
+/backend/uploads/avatars

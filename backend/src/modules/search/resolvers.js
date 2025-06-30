@@ -6,6 +6,8 @@ import {
   getAllRarities,
   getCardPriceCache,
   saveCardPriceCache,
+  tcgdexToPtcgId,
+  convertToGBP,
 } from './helpers.js';
 
 import { fetchTCGDexCards, fetchTCGDexCardById } from './api/tcgdex.js';
@@ -15,7 +17,41 @@ import { getExchangeRates } from './api/exchangeRates.js';
 import { SET_MAPPING } from './SetMapping.js';
 import { Card, Listing, Collection } from '../../models/index.js';
 
-// Simple in-memory cache for search results to reduce external API calls
+// -----------------------------------------------
+// Utility: Normalize set data for a given card
+// Returns consistent { setId, setName, setLogo }
+// -----------------------------------------------
+function normalizeCardSet(card) {
+  let setId = null, setName = null, setLogo = null;
+  if (card.set && typeof card.set === "object") {
+    setId = card.set.id || null;
+    setName = card.set.name || null;
+    setLogo = card.set.logo || null;
+  } else if (card.set && typeof card.set === "string") {
+    setId = card.set;
+    if (SET_MAPPING[setId]) {
+      setName = SET_MAPPING[setId].name || null;
+      setLogo = SET_MAPPING[setId].logo || null;
+    }
+  }
+  if (!setId && typeof card.id === "string") {
+    const m = card.id.match(/^([a-z0-9.]+)[-]/i);
+    if (m) setId = m[1];
+    if (setId && SET_MAPPING[setId]) {
+      setName = SET_MAPPING[setId].name || null;
+      setLogo = SET_MAPPING[setId].logo || null;
+    }
+  }
+  if (setId && SET_MAPPING[setId]) {
+    setName = setName || SET_MAPPING[setId].name || null;
+    setLogo = setLogo || SET_MAPPING[setId].logo || null;
+  }
+  return { setId, setName, setLogo };
+}
+
+// -----------------------------
+// In-memory search result cache
+// -----------------------------
 const searchCache = new Map();
 
 function getCachedSearch(key) {
@@ -32,15 +68,57 @@ function setCachedSearch(key, value, ttl = 60 * 60 * 1000) {
   searchCache.set(key, { value, expiry: Date.now() + ttl });
 }
 
-// Helper: Enrich cards with prices, images, listing, forTrade, etc.
+// -------------------------------------------
+// ENRICH CARDS (price, listing, set info, etc)
+// -------------------------------------------
 async function enrichCards(cards, { listed, forTrade, rarity }) {
   const cardIds = cards.map(c => c.id);
 
-  // Get price cache in one DB call for all
-  const priceCaches = await Promise.all(cardIds.map(getCardPriceCache));
-  const priceMap = Object.fromEntries(cardIds.map((id, i) => [id, priceCaches[i]]));
+  // Step 1: Upsert every card in DB (minimal fields only)
+  for (const card of cards) {
+    let dbCard = await Card.findByPk(card.id);
+    if (!dbCard) {
+      const { setId } = normalizeCardSet(card);
+      await Card.create({
+        id: card.id,
+        name: card.name,
+        set: setId,
+        number: card.number,
+        // Add more fields as needed
+      });
+      // console.log(`[enrichCards] Card upserted into DB: ${card.id} (${card.name})`);
+    }
+  }
 
-  // Marketplace listings
+  // Step 2: Price cache lookup/update per card
+  const priceMap = {};
+  for (const card of cards) {
+    let priceCache = await getCardPriceCache(card.id);
+    let needsLiveUpdate = false;
+
+    // Update if missing or >1 day old
+    if (!priceCache) {
+      needsLiveUpdate = true;
+    } else if (priceCache.updatedAt) {
+      const updated = new Date(priceCache.updatedAt);
+      if (Date.now() - updated.getTime() > 24 * 60 * 60 * 1000) needsLiveUpdate = true;
+    }
+    if (needsLiveUpdate) {
+      const ptcgId = tcgdexToPtcgId(card.id);
+      let livePrice = null;
+      if (ptcgId) {
+        livePrice = await fetchPTCGCardPrices(ptcgId);
+        await saveCardPriceCache(card.id, livePrice);
+        // console.log('[enrichCards] Fetched and cached live prices for', card.id, JSON.stringify(livePrice));
+      } else {
+        console.warn('[enrichCards] Could not convert card ID to ptcgId for pricing:', card.id);
+      }
+      priceCache = livePrice;
+    }
+    priceMap[card.id] = priceCache;
+  }
+
+  // Step 3: Marketplace listings
   let listingsMap = {};
   if (listed) {
     const listings = await Listing.findAll({ where: { cardId: cardIds, status: 'active' } });
@@ -50,7 +128,7 @@ async function enrichCards(cards, { listed, forTrade, rarity }) {
     }
   }
 
-  // For trade
+  // Step 4: For-trade flags
   let forTradeMap = {};
   if (forTrade) {
     const tradeEntries = await Collection.findAll({
@@ -61,41 +139,128 @@ async function enrichCards(cards, { listed, forTrade, rarity }) {
     }
   }
 
-  // Rarity filter
+  // Step 5: Optional rarity filter
   let filtered = cards;
   if (rarity) {
-    filtered = filtered.filter(card => (card.rarity || '').toLowerCase() === rarity.toLowerCase());
+    filtered = filtered.filter(card =>
+      (card.rarity || '').toLowerCase() === rarity.toLowerCase()
+    );
   }
 
-  // Build enriched objects
-  return Promise.all(filtered.map(async card => {
-    const out = { ...card };
+  // Step 6: Build enriched card objects
+  return await Promise.all(filtered.map(async card => {
+    // Always normalize set at the top
+    const { setId, setName, setLogo } = normalizeCardSet(card);
 
-    // Attach image URL
-    out.image = tcgdexImageUrl(card);
+    // Variations + pricing
+    const variations = card.variations || card.variants || {};
+    const variationKeys = Object.keys(variations).filter(k => variations[k]);
+    const priceInfo = priceMap[card.id] || {};
+    let prices = [];
 
-    // Attach set info
-    if (card.set && SET_MAPPING[card.set]) {
-      out.setName = SET_MAPPING[card.set].name;
-      out.setLogo = SET_MAPPING[card.set].logo || null;
+    if (priceInfo && (priceInfo.tcgplayer || priceInfo.cardmarket)) {
+      prices = await Promise.all(variationKeys.map(async varName => {
+        // Map your frontend/app keys to PokémonTCG.io price keys
+        let tcgVarKey = varName;
+        switch (varName) {
+          case 'reverse':    tcgVarKey = 'reverseHolofoil'; break;
+          case 'holo':       tcgVarKey = 'holofoil'; break;
+          case 'normal':     tcgVarKey = 'normal'; break;
+          case 'firstEdition': tcgVarKey = 'firstEdition'; break;
+          case 'wPromo':     tcgVarKey = 'normal'; break;
+          default:           tcgVarKey = varName;
+        }
+
+        // Extract prices for this variation from TCGPlayer and CardMarket
+        const tcg = priceInfo.tcgplayer?.prices?.[tcgVarKey] || {};
+        const cmk = priceInfo.cardmarket?.prices || {};
+
+        // Map CardMarket to best available price for the variation
+        let cardmarket = null;
+        if (tcgVarKey === 'normal') {
+          cardmarket = cmk.trendPrice ?? cmk.averageSellPrice ?? null;
+        }
+        if (tcgVarKey === 'reverseHolofoil') {
+          cardmarket = cmk.reverseHoloTrend ?? cmk.reverseHoloSell ?? null;
+        }
+        if (tcgVarKey === 'holofoil') {
+          cardmarket = cmk.trendPrice ?? cmk.averageSellPrice ?? null;
+        }
+        if (tcgVarKey === 'firstEdition') {
+          cardmarket = cmk.trendPrice ?? null;
+        }
+        if (tcgVarKey === 'wPromo') {
+          cardmarket = cmk.trendPrice ?? cmk.averageSellPrice ?? null;
+        }
+
+        // --- CURRENCY CONVERSION TO GBP ---
+        let tcgplayerGBP = null, cardmarketGBP = null;
+        if (typeof tcg.market === 'number') {
+          try {
+            tcgplayerGBP = await convertToGBP(tcg.market, 'USD');
+          } catch (e) {
+            console.warn('[enrichCards] Failed to convert TCGPlayer USD to GBP:', e);
+            tcgplayerGBP = null;
+          }
+        }
+        if (typeof cardmarket === 'number') {
+          try {
+            cardmarketGBP = await convertToGBP(cardmarket, 'EUR');
+          } catch (e) {
+            console.warn('[enrichCards] Failed to convert CardMarket EUR to GBP:', e);
+            cardmarketGBP = null;
+          }
+        }
+
+        return {
+          variation: varName,
+          tcgplayer: tcg.market ?? null,
+          cardmarket: cardmarket,
+          gbp: Math.max(
+            tcgplayerGBP !== null ? tcgplayerGBP : 0,
+            cardmarketGBP !== null ? cardmarketGBP : 0
+          ) || null, // Show the highest GBP price (or you could average or split if you want)
+          currency: 'GBP',
+          updatedAt: priceInfo.tcgplayer?.updatedAt || priceInfo.cardmarket?.updatedAt || null
+        };
+      }));
+    } else if (variationKeys.length) {
+      // If no price info, create placeholder array
+      prices = variationKeys.map(varName => ({
+        variation: varName,
+        tcgplayer: null,
+        cardmarket: null,
+        gbp: null,
+        currency: null,
+        updatedAt: null
+      }));
     }
 
-    // Attach listings
-    out.listings = listingsMap[card.id] || [];
-    out.isListed = !!out.listings.length;
-    // Attach forTrade
-    out.isForTrade = !!forTradeMap[card.id];
-    // Attach GBP prices from cache if available
-    out.prices = priceMap[card.id] || null;
+    // Defensive: always pass setId to tcgdexImageUrl if needed
+    const imageUrl = card.image || tcgdexImageUrl({ ...card, set: setId });
 
-    // setSize and setCompletion are handled in a separate resolver
-    out.setSize = null;
-    out.setCompletion = null;
-    return out;
+    return {
+      id: card.id,
+      name: card.name,
+      number: card.number,
+      setName,
+      setLogo,
+      image: imageUrl,
+      rarity: card.rarity || null,
+      variations,
+      prices,
+      listings: listingsMap[card.id] || [],
+      isListed: !!(listingsMap[card.id]?.length),
+      isForTrade: !!forTradeMap[card.id],
+      setSize: null,
+      setCompletion: null
+    };
   }));
 }
 
-// Main searchCards resolver
+// ----------------------------------------------------
+// MAIN searchCards RESOLVER (always uses TCGDex cards)
+// ----------------------------------------------------
 async function searchCardsResolver(_, { input }, context) {
   const {
     name,
@@ -105,39 +270,78 @@ async function searchCardsResolver(_, { input }, context) {
     listed,
     rarity,
     page = 1,
-    pageSize = 20
+    pageSize = 25
   } = input;
 
-  // Normalize set code, filter out blocked sets
+  // Step 1: Normalize set code and check blocklist
   let setCode = set ? normalizeSetCode(set) : null;
   if (setCode && isSetBlocked(setCode)) return { cards: [], total: 0, page, pageSize };
 
-  const cacheKey = JSON.stringify({ name, set: setCode, number });
-  let cards = getCachedSearch(cacheKey);
-  if (!cards) {
-    // TCGDex fetch (exact match only)
-    cards = await fetchTCGDexCards({ name, set: setCode, number });
-    setCachedSearch(cacheKey, cards);
-  }
-  // Remove any from blocked sets
-  cards = cards.filter(card => !isSetBlocked(card.set));
-  const total = cards.length;
-  // Pagination
-  const paginated = cards.slice((page - 1) * pageSize, page * pageSize);
+  // Step 2: Fetch paginated results from TCGDex API
+  const { cards, total } = await fetchTCGDexCards({
+    name,
+    set: setCode,
+    number,
+    page,
+    pageSize
+  });
 
-  // Enrich with pricing, listing, images, forTrade, etc.
-  const enriched = await enrichCards(paginated, { listed, forTrade, rarity });
-  return { cards: enriched, total, page, pageSize };
+  // Defensive: Ensure every card has a set field. If not, re-fetch from TCGDex by ID.
+  for (let i = 0; i < cards.length; i++) {
+    if (!cards[i].set) {
+      try {
+        cards[i] = await fetchTCGDexCardById(cards[i].id);
+      } catch (e) {
+        // If it fails, leave the card as-is (shouldn't happen)
+      }
+    }
+  }
+
+  // Remove cards from blocked sets (should be rare)
+  let filtered = cards.filter(card =>
+    card.set && (typeof card.set === "object" ? card.set.id : card.set) &&
+    !isSetBlocked(typeof card.set === "object" ? card.set.id : card.set)
+  );
+
+  // ---- Exact set filter ----
+  if (setCode) {
+    filtered = filtered.filter(card => {
+      // Handle both { set: { id } } and set: '...' cases
+      const cardSetId =
+        typeof card.set === "object" && card.set && card.set.id
+          ? card.set.id
+          : card.set;
+      return cardSetId === setCode;
+    });
+  }
+
+  // Remove cards with missing or empty number (just in case)
+  const numbered = filtered.filter(card =>
+    card && typeof card.number === "string" && card.number.trim() !== ""
+  );
+
+  // Step 3: Enrich with pricing, listing, etc
+  const enriched = await enrichCards(numbered, { listed, forTrade, rarity });
+
+  // Step 4: Return page, pageSize, and the total from TCGDex
+  return {
+    cards: enriched,
+    total: total ?? enriched.length, // fallback to length if total missing
+    page,
+    pageSize,
+  };
 }
 
-// Main searchSets resolver
+// ----------------------
+// searchSets RESOLVER
+// ----------------------
 async function searchSetsResolver(_, { query }) {
   const results = [];
   for (const [code, data] of Object.entries(SET_MAPPING)) {
     if (isSetBlocked(code)) continue;
     if (
       !query ||
-      data.name.toLowerCase().includes(query.toLowerCase()) ||
+      (data.name && data.name.toLowerCase().includes(query.toLowerCase())) ||
       code.toLowerCase().includes(query.toLowerCase())
     ) {
       results.push({
@@ -153,11 +357,12 @@ async function searchSetsResolver(_, { query }) {
   return { sets: results, total: results.length };
 }
 
-// Query: cardById
+// ----------------------
+// cardById RESOLVER
+// ----------------------
 async function cardByIdResolver(_, { id }) {
   let card = await Card.findByPk(id);
-  if (!card) {
-    // Optionally try fetching from TCGDex
+  if (!card || !card.set) {
     card = await fetchTCGDexCardById(id);
     if (!card) return null;
   }
@@ -165,11 +370,13 @@ async function cardByIdResolver(_, { id }) {
   return enrichedArr[0];
 }
 
-// Query: getSet (all cards in set, with size)
+// ----------------------
+// getSet RESOLVER
+// ----------------------
 async function getSetResolver(_, { code }) {
   if (isSetBlocked(code)) return null;
   let cards = await fetchTCGDexCards({ set: code });
-  cards = cards.filter(card => !isSetBlocked(card.set));
+  cards = cards.filter(card => card.set && (typeof card.set === "object" ? card.set.id : card.set) && !isSetBlocked(typeof card.set === "object" ? card.set.id : card.set));
   const total = getSetUniqueCardCount(code, cards, true);
   return {
     code,
@@ -181,7 +388,9 @@ async function getSetResolver(_, { code }) {
   };
 }
 
-// Query: cardSetCompletion (for user/owner, option to display public or not)
+// ----------------------
+// cardSetCompletion RESOLVER
+// ----------------------
 async function cardSetCompletionResolver(_, { userId, set }) {
   const ownedCards = await Collection.findAll({ where: { userId, set } });
   const totalOwned = new Set(ownedCards.map(card => card.cardId)).size;
@@ -190,17 +399,23 @@ async function cardSetCompletionResolver(_, { userId, set }) {
   return total ? +(totalOwned / total * 100).toFixed(2) : 0;
 }
 
-// Query: getExchangeRates
+// ----------------------
+// getExchangeRates RESOLVER
+// ----------------------
 async function getExchangeRatesResolver() {
   return getExchangeRates();
 }
 
-// Query: allRarities
+// ----------------------
+// allRarities RESOLVER
+// ----------------------
 function allRaritiesResolver() {
   return getAllRarities();
 }
 
-// --- Export resolvers ---
+// ----------------------
+// EXPORT RESOLVERS
+// ----------------------
 const resolvers = {
   Query: {
     searchCards: searchCardsResolver,

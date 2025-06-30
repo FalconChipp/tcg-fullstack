@@ -110,3 +110,20 @@ export const RARITIES = [
 export function getAllRarities() {
   return RARITIES.slice().sort();
 }
+
+/**
+ * Convert a TCGDex card ID (sv08-238, sv08.5-028, etc) to PokémonTCG.io ID (sv8-238, sv8pt5-028, etc).
+ * Returns empty string if cannot map.
+ */
+export function tcgdexToPtcgId(tcgdexId) {
+  // Matches formats: sv08-238 or sv08.5-028
+  const match = tcgdexId.match(/^([a-z0-9.]+)[-.](\d+)$/i);
+  if (!match) return "";
+  const [ , tcgdexSet, number ] = match;
+  for (const mapping of Object.values(SET_MAPPING)) {
+    if (mapping.tcgdex === tcgdexSet) {
+      return `${mapping.ptcg}-${parseInt(number, 10)}`;
+    }
+  }
+  return "";
+}

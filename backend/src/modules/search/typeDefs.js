@@ -30,8 +30,8 @@ export default gql`
     number: String!
     image: String
     rarity: String
-    variations: [String]
-    prices: [CardPriceVariation!]!  # This line changed
+    variations: Variants
+    prices: [CardPriceVariation]
     isListed: Boolean
     listings: [CardListing]
     isForTrade: Boolean
@@ -80,5 +80,13 @@ export default gql`
     cardSetCompletion(userId: ID!, set: String!): Float!
     getExchangeRates: JSON
     allRarities: [String!]!
+  }
+
+  type Variants {
+    firstEdition: Boolean
+    holo: Boolean
+    normal: Boolean 
+    reverse: Boolean
+    wPromo: Boolean
   }
 `;

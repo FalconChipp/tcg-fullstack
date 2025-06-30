@@ -37,7 +37,7 @@ export default function CardSearch() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectedCardDetail, setSelectedCardDetail] = useState(null);
   const [statusMessage, setStatusMessage] = useState(null);
-  
+
   const [showCardDetail, setShowCardDetail] = useState(false);
   const [cardDetailData, setCardDetailData] = useState(null);
 
@@ -55,7 +55,13 @@ export default function CardSearch() {
             setName
             image
             rarity
-            variations
+            variations {
+              firstEdition
+              holo
+              reverse
+              normal 
+              wPromo
+            }
             prices {
               variation
               tcgplayer
@@ -86,7 +92,8 @@ export default function CardSearch() {
     });
     const json = await res.json();
     if (json.errors) throw new Error(json.errors[0].message);
-    return json.data.searchCards.cards;
+    // Return the entire response so we can use .total for auto-load logic
+    return json.data.searchCards;
   };
 
   // --- Main search handler ---
@@ -98,9 +105,10 @@ export default function CardSearch() {
     setHasMore(true);
 
     try {
-      const cards = await fetchCards(1);
-      setResults(cards);
-      setHasMore(cards.length === PER_PAGE);
+      const data = await fetchCards(1);
+      setResults(data.cards);
+      setHasMore(data.cards.length === PER_PAGE && !isExactCardSearch);
+      setPage(1);
     } catch (err) {
       setError(err.message);
       setResults([]);
@@ -117,10 +125,10 @@ export default function CardSearch() {
 
     try {
       const nextPage = page + 1;
-      const cards = await fetchCards(nextPage);
-      if (cards.length < PER_PAGE) setHasMore(false);
+      const data = await fetchCards(nextPage);
+      setResults(prev => [...prev, ...data.cards]);
       setPage(nextPage);
-      setResults(prev => [...prev, ...cards]);
+      setHasMore(data.cards.length === PER_PAGE);
     } catch (err) {
       setHasMore(false);
     } finally {
@@ -128,75 +136,22 @@ export default function CardSearch() {
     }
   }, [page, hasMore, isLoadingMore, isExactCardSearch, name, setCode, number, language]);
 
-  // --- Show status message for add-to-wishlist etc ---
-  const showStatusMessage = (type, message) => {
-    setStatusMessage({ type, message });
-    setTimeout(() => setStatusMessage(null), 5000);
-  };
-
-  // --- Add card to wishlist ---
-const handleAddToWishlist = async (card) => {
-  const token = getCookie("authToken");
-  if (!token) {
-    showStatusMessage('error', "You must be logged in to add to wishlist.");
-    return;
-  }
-
-  // Your backend allows extra args, so set defaults for all:
-  const mutation = `
-    mutation QuickAddWishlist($cardId: String!, $quantity: Int, $condition: String, $variation: String, $wishlist: Boolean) {
-      addToCollection(
-        cardId: $cardId,
-        quantity: $quantity,
-        condition: $condition,
-        variation: $variation,
-        wishlist: $wishlist
-      ) {
-        id
-        cardId
-        quantity
-        condition
-        variation
-        wishlist
-        createdAt
-        updatedAt
-      }
+  // --- AUTO-LOAD all pages until complete, except for exact set+number search ---
+  useEffect(() => {
+    if (
+      !loading &&
+      !isExactCardSearch &&
+      hasMore &&
+      results.length > 0 &&
+      !isLoadingMore
+    ) {
+      loadMoreResults();
     }
-  `;
-  const variables = {
-    cardId: card.cardId,                 // or card.cardId if that is the primary key, adjust as needed
-    quantity: 1,
-    condition: "mint",
-    variation: card.variation || (Array.isArray(card.variations) && card.variations.length > 0 ? card.variations[0] : ""),
-    wishlist: true
-  };
+    // Only run when results or hasMore changes (after each fetch)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [results, hasMore]);
 
-  try {
-    const res = await fetch(WP_GRAPHQL_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ query: mutation, variables }),
-    });
-    const json = await res.json();
-
-    // CHANGED: check new backend field
-    if (json.data?.addToCollection && json.data.addToCollection.wishlist) {
-      showStatusMessage('success', `"${card.name}" was added to your wishlist!`);
-    } else if (json.errors && json.errors.length > 0) {
-      showStatusMessage('error', json.errors[0].message || "Failed to add to wishlist.");
-    } else {
-      showStatusMessage('error', "Failed to add to wishlist.");
-    }
-  } catch (err) {
-    showStatusMessage('error', "Network error. Please try again.");
-  }
-};
-
-
-  // --- Infinite scroll event listener ---
+  // --- Infinite scroll event listener for true infinite scroll UX ---
   useEffect(() => {
     if (!hasMore || isExactCardSearch || loading) return;
     const handleScroll = () => {
@@ -208,6 +163,71 @@ const handleAddToWishlist = async (card) => {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, [hasMore, isExactCardSearch, isLoadingMore, loadMoreResults, loading]);
+
+  // --- Show status message for add-to-wishlist etc ---
+  const showStatusMessage = (type, message) => {
+    setStatusMessage({ type, message });
+    setTimeout(() => setStatusMessage(null), 5000);
+  };
+
+  // --- Add card to wishlist ---
+  const handleAddToWishlist = async (card) => {
+    const token = getCookie("authToken");
+    if (!token) {
+      showStatusMessage('error', "You must be logged in to add to wishlist.");
+      return;
+    }
+
+    const mutation = `
+      mutation QuickAddWishlist($cardId: String!, $quantity: Int, $condition: String, $variation: String, $wishlist: Boolean) {
+        addToCollection(
+          cardId: $cardId,
+          quantity: $quantity,
+          condition: $condition,
+          variation: $variation,
+          wishlist: $wishlist
+        ) {
+          id
+          cardId
+          quantity
+          condition
+          variation
+          wishlist
+          createdAt
+          updatedAt
+        }
+      }
+    `;
+    const variables = {
+      cardId: card.cardId,
+      quantity: 1,
+      condition: "mint",
+      variation: card.variation || (Array.isArray(card.variations) && card.variations.length > 0 ? card.variations[0] : ""),
+      wishlist: true
+    };
+
+    try {
+      const res = await fetch(WP_GRAPHQL_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ query: mutation, variables }),
+      });
+      const json = await res.json();
+
+      if (json.data?.addToCollection && json.data.addToCollection.wishlist) {
+        showStatusMessage('success', `"${card.name}" was added to your wishlist!`);
+      } else if (json.errors && json.errors.length > 0) {
+        showStatusMessage('error', json.errors[0].message || "Failed to add to wishlist.");
+      } else {
+        showStatusMessage('error', "Failed to add to wishlist.");
+      }
+    } catch (err) {
+      showStatusMessage('error', "Network error. Please try again.");
+    }
+  };
 
   // --- Handle card detail modal open ---
   function handleCardDetail(card) {
@@ -306,7 +326,6 @@ const handleAddToWishlist = async (card) => {
                   </div>
                 </span>
               </label>
-
               <SetAutocomplete
                 value={setCode}
                 onChange={setSetCode}

@@ -12,20 +12,18 @@ const FALLBACK_CARD_IMAGE =
   "https://cdn.pidgi.net/images/f/f6/Card_back_INTL_-_Pokemon_Trading_Card_Game.png";
 
 export default function AddToCollectionPanel({ cardDetail, onClose }) {
-  console.log('cardDetail passed to AddToCollectionPanel:', cardDetail);
   const { token, loading: authLoading } = useContext(AuthContext);
   const { dark } = useTheme();
 
   const [quantity, setQuantity] = useState(1);
   const [condition, setCondition] = useState("mint");
   const [variation, setVariation] = useState("");
-  const [isPublic, setIsPublic] = useState(false);
   const [wishlist, setWishlist] = useState(false);
   const [variationOptions, setVariationOptions] = useState([]);
   const [statusMessage, setStatusMessage] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // --- Extract variation options ---
+  // Extract variation options (no changes here)
   useEffect(() => {
     let variationsArray = [];
     if (
@@ -71,73 +69,110 @@ export default function AddToCollectionPanel({ cardDetail, onClose }) {
     setTimeout(() => setStatusMessage(null), 3200);
   }
 
+  // --- Main submit handler ---
   async function handleSubmit() {
-    // --- Auth check ---
     if (!token) {
       showStatus("error", "Authentication token not found. Please log in.");
       return;
     }
     if (!cardDetail || !cardDetail.cardId) {
-      showStatus("error", "Card details are missing. Cannot add to collection.");
+      showStatus("error", "Card details are missing. Cannot add.");
       return;
     }
     setIsSubmitting(true);
 
-    // --- Build variables as per backend schema ---
-    const inputVariables = {
-      cardId: cardDetail.cardId,
+    // Prepare variables
+    const variables = {
+      cardId: cardDetail.cardId || cardDetail.id,
       quantity,
       condition,
-      variation: variation || "normal",
-      isPublic,
-      wishlist,
-      tcgName: cardDetail.name || cardDetail.tcgName || "",
-      tcgSetName: cardDetail.setName || cardDetail.tcgSetName || "",
-      tcgImageUrl: cardDetail.image || cardDetail.tcgImageUrl || "",
-      tcgSetSymbolUrl: cardDetail.setLogo || cardDetail.setSymbol || cardDetail.tcgSetSymbolUrl || "",
-      tcgRarity: cardDetail.rarity || cardDetail.tcgRarity || "",
+      variation: variation || null,
+      // wishlist and isPublic are REMOVED -- handled by which mutation is called
     };
 
-    // --- Use the backend's input structure ---
-    const mutation = `
+    // Define both mutations
+    const addToCollectionMutation = `
       mutation AddToCollection(
-    $cardId: String!,
-    $quantity: Int,
-    $condition: String,
-    $variation: String,
-    $wishlist: Boolean,
-  ) {
-    addToCollection(
-      cardId: $cardId,
-      quantity: $quantity,
-      condition: $condition,
-      variation: $variation,
-      wishlist: $wishlist,
-    ) {
-      id
-      cardId
-      quantity
-      condition
-      variation
-      wishlist
-      createdAt
-      updatedAt
-    }
-  }
+        $cardId: String!
+        $quantity: Int
+        $condition: String
+        $variation: String
+      ) {
+        addToCollection(
+          cardId: $cardId
+          quantity: $quantity
+          condition: $condition
+          variation: $variation
+        ) {
+          id
+          cardId
+          quantity
+          condition
+          variation
+          wishlist
+          createdAt
+          updatedAt
+          card {
+            id
+            name
+            image
+            setName
+            number
+            rarity
+          }
+        }
+      }
     `;
-    
+    const addToWishlistMutation = `
+      mutation AddToWishlist(
+        $cardId: String!
+        $quantity: Int
+        $condition: String
+        $variation: String
+      ) {
+        addToWishlist(
+          cardId: $cardId
+          quantity: $quantity
+          condition: $condition
+          variation: $variation
+        ) {
+          id
+          cardId
+          quantity
+          condition
+          variation
+          notes
+          addedAt
+          movedToCollectionAt
+          createdAt
+          updatedAt
+          card {
+            id
+            name
+            image
+            setName
+            number
+            rarity
+          }
+        }
+      }
+    `;
+
     try {
-const finalVariables = {
-  cardId: cardDetail.cardId || cardDetail.id,
-  quantity,
-  condition,
-  variation: variation || "normal",
-  wishlist,
-  isPublic,
-};      const result = await executeMutation(mutation, finalVariables, token);
-      const success = result?.addToCollection;
+      // CHANGED: Select mutation based on wishlist toggle
+      let result, success;
+      if (wishlist) {
+        result = await executeMutation(addToWishlistMutation, variables, token);
+        success = result?.addToWishlist;
+      } else {
+        result = await executeMutation(addToCollectionMutation, variables, token);
+        success = result?.addToCollection;
+      }
       if (success) {
-        showStatus("success", `Card added to your ${wishlist ? "wishlist" : "collection"}!`);
+        showStatus(
+          "success",
+          `Card added to your ${wishlist ? "wishlist" : "collection"}!`
+        );
         setTimeout(() => {
           onClose && onClose();
         }, 1500);

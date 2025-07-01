@@ -1,24 +1,75 @@
 import React from 'react';
 import Image from 'next/image';
-import { getCardImageUrl } from "@/utils/imageUtils";
 import { formatVariation } from "@/utils/formatVariation";
 import { formatCondition, getConditionClass } from "@/utils/formatCondition";
 import { formatDate, formatRelativeTime } from "@/utils/formatDate";
 import { getAverageCardValue } from '@/utils/priceUtil';
 
+const FALLBACK_CARD_IMAGE = "/images/card-placeholder.svg";
+
 export default function CardDetailsModal({ card, onClose, dark }) {
-  // State for image loading
+  const [imgSrc, setImgSrc] = React.useState(card?.modalImage || card?.tcgImageUrl || FALLBACK_CARD_IMAGE);
   const [imageLoading, setImageLoading] = React.useState(true);
 
   if (!card) return null;
 
-  // Calculate total value
-  const averageValue = getAverageCardValue(card); 
+  // --- Get all unique variations present on the card ---
+  const variationKeys = React.useMemo(() => {
+    const keys = new Set();
+    if (Array.isArray(card.variations)) card.variations.forEach(v => keys.add(v));
+    if (card.tcgplayerVariations) Object.keys(card.tcgplayerVariations).forEach(v => keys.add(v));
+    if (card.cardmarketVariations) Object.keys(card.cardmarketVariations).forEach(v => keys.add(v));
+    if (card.variation && !keys.has(card.variation)) keys.add(card.variation);
+    if (keys.size === 0) keys.add("normal");
+    return Array.from(keys);
+  }, [card]);
+
+  // --- Helper: get price for a given variation
+  function getDisplayPriceForVariation(variation) {
+    const tcg =
+      card.tcgplayerVariations?.[variation]?.market ??
+      (card.pricing?.tcgplayer?.market && card.variation === variation ? card.pricing.tcgplayer.market : null);
+    const cmkt =
+      card.cardmarketVariations?.[variation]?.average_sell ??
+      (card.pricing?.cardmarket?.average_sell && card.variation === variation ? card.pricing.cardmarket.average_sell : null);
+    return { tcg, cmkt };
+  }
+
+  // --- Main price logic
+  let mainVariation = null;
+  let tcgplayerMarket = card.tcgplayerMarket;
+  let cardmarketAverageSell = card.cardmarketAverageSell;
+
+  // If only one variation, use its values for the main price area
+  if (variationKeys.length === 1) {
+    mainVariation = variationKeys[0];
+    const { tcg, cmkt } = getDisplayPriceForVariation(mainVariation);
+    tcgplayerMarket = tcg;
+    cardmarketAverageSell = cmkt;
+  } else {
+    // For multiple variations, default to "normal" or first with value
+    mainVariation = "normal";
+    if (tcgplayerMarket == null || cardmarketAverageSell == null) {
+      for (let i = 0; i < variationKeys.length; ++i) {
+        const { tcg, cmkt } = getDisplayPriceForVariation(variationKeys[i]);
+        if (tcgplayerMarket == null && tcg != null) tcgplayerMarket = tcg;
+        if (cardmarketAverageSell == null && cmkt != null) cardmarketAverageSell = cmkt;
+        if (tcgplayerMarket != null && cardmarketAverageSell != null) break;
+      }
+    }
+  }
+
+  // Calculate total value (for "average value" box)
+  const averageValue = getAverageCardValue({
+    ...card,
+    tcgplayerMarket,
+    cardmarketAverageSell,
+  });
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center bg-black/70">
       <div className={`
-        inline-block align-bottom rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all 
+        inline-block align-bottom rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all
         sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full
         ${dark
           ? 'bg-dark-surface border border-dark-border'
@@ -26,7 +77,7 @@ export default function CardDetailsModal({ card, onClose, dark }) {
         }
         relative animate-fade-in
       `}>
-        {/* Close button in top right */}
+        {/* Close Button (top right) */}
         <button
           type="button"
           onClick={onClose}
@@ -41,7 +92,7 @@ export default function CardDetailsModal({ card, onClose, dark }) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
-        
+
         <div className="px-0 pt-7 pb-0 sm:p-0 sm:pb-4">
           <div className="flex flex-col md:flex-row gap-7">
             {/* Card Image */}
@@ -60,19 +111,17 @@ export default function CardDetailsModal({ card, onClose, dark }) {
                   </div>
                 )}
                 <Image
-                  src={getCardImageUrl(card.tcgImageUrl, {
-                    cardName: card.tcgName || card.name,
-                    cardId: card.cardId
-                  })}
-                  alt={card.tcgName || card.name || `Card #${card.id || ""}`}
+                  src={imgSrc}
+                  alt={card.tcgName || card.name || `Card #${card.id || card.cardId || ""}`}
                   fill
                   className="object-contain rounded-xl"
-                  priority={true}
+                  priority
                   onLoadingComplete={() => setImageLoading(false)}
-                  onError={e => {
-                    e.target.src = '/images/card-placeholder.svg';
+                  onError={() => {
+                    if (imgSrc !== FALLBACK_CARD_IMAGE) setImgSrc(FALLBACK_CARD_IMAGE);
                     setImageLoading(false);
                   }}
+                  unoptimized
                 />
               </div>
             </div>
@@ -80,10 +129,10 @@ export default function CardDetailsModal({ card, onClose, dark }) {
             {/* Card Details */}
             <div className="w-full md:w-3/5 flex flex-col gap-0 py-7 pr-8 pl-8">
               <div>
-                {/* Title and number */}
+                {/* Title, Number, Set, Rarity */}
                 <div className="flex items-center gap-3 mb-1">
                   <h2 className={`text-2xl font-extrabold ${dark ? 'text-white' : 'text-light-primary'}`}>
-                    {card.tcgName || card.name || `Card #${card.id || ""}`}
+                    {card.tcgName || card.name || `Card #${card.id || card.cardId || ""}`}
                   </h2>
                   {card.number && (
                     <span className={`
@@ -97,7 +146,6 @@ export default function CardDetailsModal({ card, onClose, dark }) {
                     </span>
                   )}
                 </div>
-                {/* Set, Rarity, Edition */}
                 <div className="flex flex-wrap items-center gap-2 text-sm mb-3">
                   <span className={dark ? 'text-dark-textMuted font-semibold' : 'text-light-textMuted font-semibold'}>
                     {card.tcgSetName || card.setName || "Unknown Set"}
@@ -125,25 +173,19 @@ export default function CardDetailsModal({ card, onClose, dark }) {
                     </span>
                   )}
                 </div>
-
-                {/* Variations */}
-                {(card.variation || card.variations) && (
+                {/* If only 1 variation, show badge */}
+                {variationKeys.length === 1 && (
                   <div className="mb-2">
                     <span className={`
-                      inline-block text-xs px-2 py-1 rounded font-medium
-                      ${dark
-                        ? 'bg-dark-border text-dark-accent'
-                        : 'bg-light-alt text-light-primary'
-                      }
+                      inline-block text-xs px-3 py-1 rounded font-bold uppercase tracking-wide
+                      ${dark ? 'bg-dark-border text-dark-accent' : 'bg-light-alt text-light-primary'}
                     `}>
-                      {formatVariation(card.variation || card.variations)}
+                      {formatVariation(mainVariation)}
                     </span>
                   </div>
                 )}
-
                 {/* Divider */}
                 <div className="border-b border-light-border dark:border-dark-border my-3"/>
-
                 {/* Card Stats */}
                 <div className="flex flex-wrap items-center gap-7 mb-2">
                   <div>
@@ -157,7 +199,6 @@ export default function CardDetailsModal({ card, onClose, dark }) {
                     </span>
                   </div>
                 </div>
-
                 {/* Added / Updated */}
                 <div className="flex flex-wrap items-center gap-5 mb-4">
                   {(card.createdAt || card.dateAdded) && (
@@ -185,84 +226,203 @@ export default function CardDetailsModal({ card, onClose, dark }) {
                 </div>
               </div>
 
-              {/* Pricing Info */}
+              {/* --- Pricing Info (main area) --- */}
               <div className="mb-3">
-                <div className={`
-                  rounded-xl p-4 mb-4 flex flex-wrap gap-8 items-center justify-start
-                  ${dark ? 'bg-dark-background' : 'bg-light-background'}
-                `}>
-                  <div>
-                    <span className={`block text-xs ${dark ? 'text-dark-textMuted' : 'text-light-textMuted'} font-medium`}>TCGplayer Market</span>
-                    <span className="block text-lg text-green-500 font-bold">
-                      {card.tcgplayerMarket !== null && card.tcgplayerMarket !== undefined
-                        ? `£${Number(card.tcgplayerMarket).toFixed(2)}`
-                        : <span className={dark ? 'text-dark-textMuted' : 'text-light-textMuted'}>N/A</span>}
-                    </span>
-                  </div>
-                  <div>
-                    <span className={`block text-xs ${dark ? 'text-dark-textMuted' : 'text-light-textMuted'} font-medium`}>Cardmarket Avg</span>
-                    <span className="block text-lg text-green-500 font-bold">
-                      {card.cardmarketAverageSell !== null && card.cardmarketAverageSell !== undefined
-                        ? `£${Number(card.cardmarketAverageSell).toFixed(2)}`
-                        : <span className={dark ? 'text-dark-textMuted' : 'text-light-textMuted'}>N/A</span>}
-                    </span>
-                  </div>
-                  {averageValue !== null && (
-                    <div className="relative group inline-block">
-                      <span className={`block text-xs ${dark ? 'text-dark-textMuted' : 'text-light-textMuted'} font-medium flex items-center gap-1`}>
-                        Average Value ({card.quantity} cards)
-                        {/* Info icon */}
-                        <button
-                          type="button"
-                          aria-label="Show calculation info"
-                          tabIndex={0}
-                          className={`
-                            ml-1 text-light-accent dark:text-dark-accentLight hover:text-light-primary dark:hover:text-dark-accent p-0 bg-transparent border-0 focus:outline-none
-                          `}
-                        >
-                          <svg width="15" height="15" fill="none" viewBox="0 0 20 20">
-                            <circle cx="10" cy="10" r="9" stroke="currentColor" strokeWidth="2"/>
-                            <text x="10" y="15" textAnchor="middle" fontSize="12" fill="currentColor" fontWeight="bold">i</text>
-                          </svg>
-                        </button>
-                        {/* Tooltip */}
-                        <div
-                          className={`
-                            absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 min-w-[220px] max-w-xs
-                            ${dark
-                              ? 'bg-dark-surface text-dark-text border-dark-border'
-                              : 'bg-white text-light-text border-light-border'
-                            }
-                            px-3 py-2 rounded shadow-lg text-xs border
-                            opacity-0 group-hover:opacity-100 group-focus-within:opacity-100
-                            pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto
-                            transition-opacity duration-200
-                          `}
-                        >
-                          <svg
-                            className="absolute left-1/2 -translate-x-1/2 -top-2"
-                            width="20"
-                            height="12"
-                            viewBox="0 0 20 12"
-                            fill="none"
-                            aria-hidden="true"
-                          >
-                            <polygon
-                              points="0,12 10,0 20,12"
-                              className={dark ? 'fill-dark-surface' : 'fill-white'}
-                            />
-                          </svg>
-                          The average value is calculated as:<br />
-                          <span className="font-semibold">((TCGplayer Market + Cardmarket Avg) / 2) × quantity</span><br />
-                          If only one market value is available, it uses that value.
-                        </div>
+                {variationKeys.length === 1 ? (
+                  <div className={`
+                    rounded-xl p-4 mb-4 flex flex-wrap gap-8 items-center justify-start
+                    ${dark ? 'bg-dark-background' : 'bg-light-background'}
+                  `}>
+                    <div>
+                      <span className={`block text-xs ${dark ? 'text-dark-textMuted' : 'text-light-textMuted'} font-medium`}>
+                        TCGplayer Market <span className="opacity-70">({formatVariation(mainVariation)})</span>
                       </span>
-                      <span className="block text-lg font-extrabold text-light-accent dark:text-dark-accent">
-                        £{averageValue.toFixed(2)}
+                      <span className="block text-lg text-green-500 font-bold">
+                        {tcgplayerMarket !== null && tcgplayerMarket !== undefined
+                          ? `£${Number(tcgplayerMarket).toFixed(2)}`
+                          : <span className={dark ? 'text-dark-textMuted' : 'text-light-textMuted'}>N/A</span>}
                       </span>
                     </div>
-                  )}
-                </div>
+                    <div>
+                      <span className={`block text-xs ${dark ? 'text-dark-textMuted' : 'text-light-textMuted'} font-medium`}>
+                        Cardmarket Avg <span className="opacity-70">({formatVariation(mainVariation)})</span>
+                      </span>
+                      <span className="block text-lg text-green-500 font-bold">
+                        {cardmarketAverageSell !== null && cardmarketAverageSell !== undefined
+                          ? `£${Number(cardmarketAverageSell).toFixed(2)}`
+                          : <span className={dark ? 'text-dark-textMuted' : 'text-light-textMuted'}>N/A</span>}
+                      </span>
+                    </div>
+                    {averageValue !== null && (
+                      <div className="relative group inline-block">
+                        <span className={`block text-xs ${dark ? 'text-dark-textMuted' : 'text-light-textMuted'} font-medium flex items-center gap-1`}>
+                          Average Value ({card.quantity} cards)
+                          {/* Info icon */}
+                          <button
+                            type="button"
+                            aria-label="Show calculation info"
+                            tabIndex={0}
+                            className={`
+                              ml-1 text-light-accent dark:text-dark-accentLight hover:text-light-primary dark:hover:text-dark-accent p-0 bg-transparent border-0 focus:outline-none
+                            `}
+                          >
+                            <svg width="15" height="15" fill="none" viewBox="0 0 20 20">
+                              <circle cx="10" cy="10" r="9" stroke="currentColor" strokeWidth="2"/>
+                              <text x="10" y="15" textAnchor="middle" fontSize="12" fill="currentColor" fontWeight="bold">i</text>
+                            </svg>
+                          </button>
+                          {/* Tooltip */}
+                          <div
+                            className={`
+                              absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 min-w-[220px] max-w-xs
+                              ${dark
+                                ? 'bg-dark-surface text-dark-text border-dark-border'
+                                : 'bg-white text-light-text border-light-border'
+                              }
+                              px-3 py-2 rounded shadow-lg text-xs border
+                              opacity-0 group-hover:opacity-100 group-focus-within:opacity-100
+                              pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto
+                              transition-opacity duration-200
+                            `}
+                          >
+                            <svg
+                              className="absolute left-1/2 -translate-x-1/2 -top-2"
+                              width="20"
+                              height="12"
+                              viewBox="0 0 20 12"
+                              fill="none"
+                              aria-hidden="true"
+                            >
+                              <polygon
+                                points="0,12 10,0 20,12"
+                                className={dark ? 'fill-dark-surface' : 'fill-white'}
+                              />
+                            </svg>
+                            The average value is calculated as:<br />
+                            <span className="font-semibold">((TCGplayer Market + Cardmarket Avg) / 2) × quantity</span><br />
+                            If only one market value is available, it uses that value.
+                          </div>
+                        </span>
+                        <span className="block text-lg font-extrabold text-light-accent dark:text-dark-accent">
+                          £{averageValue.toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <div className={`
+                      rounded-xl p-4 mb-4 flex flex-wrap gap-8 items-center justify-start
+                      ${dark ? 'bg-dark-background' : 'bg-light-background'}
+                    `}>
+                      <div>
+                        <span className={`block text-xs ${dark ? 'text-dark-textMuted' : 'text-light-textMuted'} font-medium`}>TCGplayer Market</span>
+                        <span className="block text-lg text-green-500 font-bold">
+                          {tcgplayerMarket !== null && tcgplayerMarket !== undefined
+                            ? `£${Number(tcgplayerMarket).toFixed(2)}`
+                            : <span className={dark ? 'text-dark-textMuted' : 'text-light-textMuted'}>N/A</span>}
+                        </span>
+                      </div>
+                      <div>
+                        <span className={`block text-xs ${dark ? 'text-dark-textMuted' : 'text-light-textMuted'} font-medium`}>Cardmarket Avg</span>
+                        <span className="block text-lg text-green-500 font-bold">
+                          {cardmarketAverageSell !== null && cardmarketAverageSell !== undefined
+                            ? `£${Number(cardmarketAverageSell).toFixed(2)}`
+                            : <span className={dark ? 'text-dark-textMuted' : 'text-light-textMuted'}>N/A</span>}
+                        </span>
+                      </div>
+                      {averageValue !== null && (
+                        <div className="relative group inline-block">
+                          <span className={`block text-xs ${dark ? 'text-dark-textMuted' : 'text-light-textMuted'} font-medium flex items-center gap-1`}>
+                            Average Value ({card.quantity} cards)
+                            <button
+                              type="button"
+                              aria-label="Show calculation info"
+                              tabIndex={0}
+                              className={`
+                                ml-1 text-light-accent dark:text-dark-accentLight hover:text-light-primary dark:hover:text-dark-accent p-0 bg-transparent border-0 focus:outline-none
+                              `}
+                            >
+                              <svg width="15" height="15" fill="none" viewBox="0 0 20 20">
+                                <circle cx="10" cy="10" r="9" stroke="currentColor" strokeWidth="2"/>
+                                <text x="10" y="15" textAnchor="middle" fontSize="12" fill="currentColor" fontWeight="bold">i</text>
+                              </svg>
+                            </button>
+                            <div
+                              className={`
+                                absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 min-w-[220px] max-w-xs
+                                ${dark
+                                  ? 'bg-dark-surface text-dark-text border-dark-border'
+                                  : 'bg-white text-light-text border-light-border'
+                                }
+                                px-3 py-2 rounded shadow-lg text-xs border
+                                opacity-0 group-hover:opacity-100 group-focus-within:opacity-100
+                                pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto
+                                transition-opacity duration-200
+                              `}
+                            >
+                              <svg
+                                className="absolute left-1/2 -translate-x-1/2 -top-2"
+                                width="20"
+                                height="12"
+                                viewBox="0 0 20 12"
+                                fill="none"
+                                aria-hidden="true"
+                              >
+                                <polygon
+                                  points="0,12 10,0 20,12"
+                                  className={dark ? 'fill-dark-surface' : 'fill-white'}
+                                />
+                              </svg>
+                              The average value is calculated as:<br />
+                              <span className="font-semibold">((TCGplayer Market + Cardmarket Avg) / 2) × quantity</span><br />
+                              If only one market value is available, it uses that value.
+                            </div>
+                          </span>
+                          <span className="block text-lg font-extrabold text-light-accent dark:text-dark-accent">
+                            £{averageValue.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    {/* --- Pricing Table (only for multiple variations) --- */}
+                    <div className="mt-2 mb-1">
+                      <h3 className={`text-base font-bold mb-1 ${dark ? "text-white" : "text-light-primary"}`}>All Market Prices</h3>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-[340px] text-sm border-collapse">
+                          <thead>
+                            <tr>
+                              <th className="px-2 py-1 text-left">Variation</th>
+                              <th className="px-2 py-1 text-left">TCGplayer</th>
+                              <th className="px-2 py-1 text-left">Cardmarket</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {variationKeys.map(variation => {
+                              const { tcg, cmkt } = getDisplayPriceForVariation(variation);
+                              return (
+                                <tr key={variation}>
+                                  <td className="px-2 py-1 font-semibold">{formatVariation(variation)}</td>
+                                  <td className="px-2 py-1">
+                                    {tcg !== null && tcg !== undefined
+                                      ? `£${Number(tcg).toFixed(2)}`
+                                      : <span className={dark ? 'text-dark-textMuted' : 'text-light-textMuted'}>N/A</span>}
+                                  </td>
+                                  <td className="px-2 py-1">
+                                    {cmkt !== null && cmkt !== undefined
+                                      ? `£${Number(cmkt).toFixed(2)}`
+                                      : <span className={dark ? 'text-dark-textMuted' : 'text-light-textMuted'}>N/A</span>}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </>
+                )}
+
                 {/* Notes section if present */}
                 {card.notes && (
                   <div className={`
@@ -277,7 +437,6 @@ export default function CardDetailsModal({ card, onClose, dark }) {
             </div>
           </div>
         </div>
-
         {/* Close Button at Bottom */}
         <div className={`
           ${dark ? 'bg-dark-background border-t border-dark-border' : 'bg-light-background border-t border-light-border'}

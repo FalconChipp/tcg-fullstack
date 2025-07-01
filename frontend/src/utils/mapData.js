@@ -130,5 +130,6 @@ export function mapCardToDetail(card) {
 
     // --- Last updated date (for UI freshness) ---
     updated_at: card.pricing?.updated_at || null,
+    prices: card.prices || [],
   };
 }

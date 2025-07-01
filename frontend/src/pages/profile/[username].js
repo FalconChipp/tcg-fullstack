@@ -139,7 +139,7 @@ export default function ProfilePage({ user, error }) {
     refresh, status,
     showCardDetails, setShowCardDetails, cardDetails
   } = useProfileCollection({ user, token });
-
+  console.log("Current user for collection fetch:", user);
   const {
     handleMoveToCollection, handleRemoveCard,
     handleRemoveFromWishlist

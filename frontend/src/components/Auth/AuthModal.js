@@ -137,7 +137,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
         const { token, user } = json?.data?.login || {};
         if (token) {
           setCookie('authToken', token, 7);
-          if (onAuthSuccess) onAuthSuccess({ username: user?.username, email: user?.email });
+          if (onAuthSuccess) onAuthSuccess({ id: user?.id, username: user?.username, email: user?.email });
           onClose();
         } else {
           showStatusMessage('error', json?.errors?.[0]?.message || 'Login failed');
@@ -191,7 +191,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
       const { token, user } = json?.data?.loginGoogle || {};
       if (token) {
         setCookie('authToken', token, 7);
-        if (onAuthSuccess) onAuthSuccess({ username: user?.username, email: user?.email });
+        if (onAuthSuccess) onAuthSuccess({ id: user?.id, username: user?.username, email: user?.email });
         onClose();
       } else {
         showStatusMessage('error', json?.errors?.[0]?.message || 'Google login failed');

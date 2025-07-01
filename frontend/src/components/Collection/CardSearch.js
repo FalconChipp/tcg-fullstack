@@ -14,10 +14,22 @@ import { mapCardToDetail } from "@/utils/mapData";
 import CardSkeleton from "../UI/CardSkeleton";
 
 // --- CONSTANTS ---
-const FALLBACK_CARD_IMAGE = "https://cdn.pidgi.net/images/f/f6/Card_back_INTL_-_Pokemon_Trading_Card_Game.png";
 const FALLBACK_SYMBOL_IMAGE = "https://placehold.co/50x50/webp?text=Icon";
 const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
 const PER_PAGE = 25;
+
+// --- Helper: Get best available price object (prefers 'normal', falls back to first found) ---
+function getBestPrice(prices, prefer = "normal") {
+  if (!Array.isArray(prices)) return { tcgplayer: null, cardmarket: null, variation: null };
+  // Try preferred variation first
+  const found = prices.find(p => p.variation === prefer);
+  if (found) return found;
+  // Otherwise, pick the first with either price set
+  const next = prices.find(
+    p => (p.tcgplayer != null && !isNaN(p.tcgplayer)) || (p.cardmarket != null && !isNaN(p.cardmarket))
+  );
+  return next || { tcgplayer: null, cardmarket: null, variation: null };
+}
 
 export default function CardSearch() {
   const { dark } = useTheme();
@@ -45,6 +57,15 @@ export default function CardSearch() {
 
   // --- Fetch cards with GraphQL query ---
   const fetchCards = async (pageToFetch = 1) => {
+    if (!name && !setCode && !number ) {
+      return {
+        cards: [], 
+        total: 0, 
+        page: 1,
+        pageSize: PER_PAGE
+      }
+    }
+
     const query = `
       query SearchCards($input: SearchInput!) {
         searchCards(input: $input) {
@@ -171,67 +192,65 @@ export default function CardSearch() {
   };
 
   // --- Add card to wishlist ---
-  const handleAddToWishlist = async (card) => {
-    const token = getCookie("authToken");
-    if (!token) {
-      showStatusMessage('error', "You must be logged in to add to wishlist.");
-      return;
-    }
+const handleAddToWishlist = async (card) => {
+  const token = getCookie("authToken");
+  if (!token) {
+    showStatusMessage('error', "You must be logged in to add to wishlist.");
+    return;
+  }
 
-    const mutation = `
-      mutation QuickAddWishlist($cardId: String!, $quantity: Int, $condition: String, $variation: String, $wishlist: Boolean) {
-        addToCollection(
-          cardId: $cardId,
-          quantity: $quantity,
-          condition: $condition,
-          variation: $variation,
-          wishlist: $wishlist
-        ) {
-          id
-          cardId
-          quantity
-          condition
-          variation
-          wishlist
-          createdAt
-          updatedAt
-        }
+  // --- UPDATED MUTATION! ---
+  const mutation = `
+    mutation AddToWishlist($cardId: String!, $variation: String) {
+      addToWishlist(
+        cardId: $cardId,
+        variation: $variation
+      ) {
+        id
+        cardId
+        variation
+        createdAt
+        updatedAt
       }
-    `;
-    const variables = {
-      cardId: card.cardId,
-      quantity: 1,
-      condition: "mint",
-      variation: card.variation || (Array.isArray(card.variations) && card.variations.length > 0 ? card.variations[0] : ""),
-      wishlist: true
-    };
-
-    try {
-      const res = await fetch(WP_GRAPHQL_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ query: mutation, variables }),
-      });
-      const json = await res.json();
-
-      if (json.data?.addToCollection && json.data.addToCollection.wishlist) {
-        showStatusMessage('success', `"${card.name}" was added to your wishlist!`);
-      } else if (json.errors && json.errors.length > 0) {
-        showStatusMessage('error', json.errors[0].message || "Failed to add to wishlist.");
-      } else {
-        showStatusMessage('error', "Failed to add to wishlist.");
-      }
-    } catch (err) {
-      showStatusMessage('error', "Network error. Please try again.");
     }
+  `;
+  const variables = {
+    cardId: card.cardId || card.id,
+    variation: card.variation || (Array.isArray(card.variations) && card.variations.length > 0 ? card.variations[0] : "")
   };
+
+  try {
+    const res = await fetch(WP_GRAPHQL_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ query: mutation, variables }),
+    });
+    const json = await res.json();
+
+    if (json.data?.addToWishlist) {
+      showStatusMessage('success', `"${card.name}" was added to your wishlist!`);
+    } else if (json.errors && json.errors.length > 0) {
+      showStatusMessage('error', json.errors[0].message || "Failed to add to wishlist.");
+    } else {
+      showStatusMessage('error', "Failed to add to wishlist.");
+    }
+  } catch (err) {
+    showStatusMessage('error', "Network error. Please try again.");
+  }
+};
+
+
 
   // --- Handle card detail modal open ---
   function handleCardDetail(card) {
-    setCardDetailData(mapCardToDetail(card));
+    // Clone, add modalImage
+    setCardDetailData({
+      ...mapCardToDetail(card),
+      modalImage: getBestCardImage(card),
+    });
     setShowCardDetail(true);
   }
 
@@ -407,90 +426,102 @@ export default function CardSearch() {
             <h2 className="text-xl font-bold mb-6 ml-1">Search Results</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {results.map(cardRaw => {
-                const card = mapCardToDetail(cardRaw)
+                const card = mapCardToDetail(cardRaw);
+                const priceObj = getBestPrice(card.prices, "normal"); // <-- New fallback logic
                 return (
-                <div
-                  className="
-                    bg-light-surface dark:bg-dark-surface
-                    rounded-2xl shadow hover:shadow-2xl flex flex-col p-3 min-h-[320px] transition
-                    border border-light-border dark:border-dark-border
-                  "
-                  key={card.id}
-                  onClick={() => handleCardDetail(card)}
-                  tabIndex={0}
-                  onKeyDown={e => { if (e.key === "Enter" || e.key === " ") handleCardDetail(card); }}
-                  role="button"
-                  aria-label={`View details for ${card.name}`}
-                >
-                  <div className="relative w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-xl mb-3 overflow-hidden">
-                    <Image
-                      src={card.tcgImageUrl}
-                      alt={card.name}
-                      fill
-                      unoptimized
-                      className="object-contain object-center rounded-xl"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex justify-between items-start gap-2">
-                      <span className="text-base font-bold flex-1 truncate">{card.name}</span>
-                      <img
-                        src={getSetLogo(card.setName)}
-                        alt={card.setName || "Set logo"}
-                        className="w-8 h-5 rounded bg-light-alt dark:bg-dark-alt"
-                        onError={e => {
-                          e.target.onerror = null;
-                          e.target.src = FALLBACK_SYMBOL_IMAGE;
-                        }}
+                  <div
+                    className="
+                      bg-light-surface dark:bg-dark-surface
+                      rounded-2xl shadow hover:shadow-2xl flex flex-col p-3 min-h-[320px] transition
+                      border border-light-border dark:border-dark-border
+                    "
+                    key={card.id}
+                    onClick={() => handleCardDetail(card)}
+                    tabIndex={0}
+                    onKeyDown={e => { if (e.key === "Enter" || e.key === " ") handleCardDetail(card); }}
+                    role="button"
+                    aria-label={`View details for ${card.name}`}
+                  >
+                    <div className="relative w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-xl mb-3 overflow-hidden">
+                      <Image
+                        src={card.tcgImageUrl}
+                        alt={card.name}
+                        fill
+                        unoptimized
+                        className="object-contain object-center rounded-xl"
                       />
                     </div>
-                    <div className="flex justify-between text-sm text-light-textMuted dark:text-dark-textMuted">
-                      <span className="whitespace-nowrap">{card.setName}</span>
-                      <span className="font-semibold">#{card.number}</span>
-                    </div>
-                    <div className="flex gap-2 text-sm my-1">
-                      <div>
-                        <span className="font-bold text-light-accent dark:text-dark-accent">TCGP</span>
-                        <span className="font-semibold ml-1 text-light-text dark:text-dark-text">
-                          {card.tcgplayerMarket ? `£${card.tcgplayerMarket.toFixed(2)}` : '—'}
-                        </span>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex justify-between items-start gap-2">
+                        <span className="text-base font-bold flex-1 truncate">{card.name}</span>
+                        <img
+                          src={getSetLogo(card.setName)}
+                          alt={card.setName || "Set logo"}
+                          className="w-8 h-5 rounded bg-light-alt dark:bg-dark-alt"
+                          onError={e => {
+                            e.target.onerror = null;
+                            e.target.src = FALLBACK_SYMBOL_IMAGE;
+                          }}
+                        />
                       </div>
-                      <div>
-                        <span className="font-bold text-light-accent dark:text-dark-accent">CMKT</span>
-                        <span className="font-semibold ml-1 text-light-text dark:text-dark-text">
-                          {card.cardmarketAverageSell ? `£${card.cardmarketAverageSell.toFixed(2)}` : '—'}
-                        </span>
+                      <div className="flex justify-between text-sm text-light-textMuted dark:text-dark-textMuted">
+                        <span className="whitespace-nowrap">{card.setName}</span>
+                        <span className="font-semibold">#{card.number}</span>
                       </div>
-                    </div>
-                    <div className="flex gap-2 mt-2">
-                      <button
-                        onClick={e => { e.stopPropagation(); setSelectedCardDetail(card); setPanelOpen(true); }}
-                        className="
-                          rounded-lg px-4 py-2
-                          bg-light-accent dark:bg-dark-accent
-                          text-light-surface dark:text-dark-surface
-                          font-semibold
-                          hover:bg-light-accentLight dark:hover:bg-dark-accentLight
-                          hover:text-light-surface dark:hover:text-dark-surface
-                          transition
-                        "
-                      >Add</button>
-                      <button
-                        onClick={e => { e.stopPropagation(); handleAddToWishlist(card); }}
-                        className="
-                          rounded-lg px-4 py-2
-                          border-2 border-light-accent dark:border-dark-accent
-                          text-light-accent dark:text-dark-accent
-                          font-semibold
-                          hover:bg-light-accent dark:hover:bg-dark-accent
-                          hover:text-light-surface dark:hover:text-dark-surface
-                          transition
-                        "
-                      >Wishlist</button>
+                      <div className="flex gap-2 text-sm my-1">
+                        <div>
+                          <span className="font-bold text-light-accent dark:text-dark-accent">TCGP</span>
+                          <span className="font-semibold ml-1 text-light-text dark:text-dark-text">
+                            {priceObj.tcgplayer !== null && priceObj.tcgplayer !== undefined
+                              ? `£${priceObj.tcgplayer.toFixed(2)}`
+                              : '—'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="font-bold text-light-accent dark:text-dark-accent">CMKT</span>
+                          <span className="font-semibold ml-1 text-light-text dark:text-dark-text">
+                            {priceObj.cardmarket !== null && priceObj.cardmarket !== undefined
+                              ? `£${priceObj.cardmarket.toFixed(2)}`
+                              : '—'}
+                          </span>
+                        </div>
+                        {/* Optional: Show variation name if not "normal" */}
+                        {priceObj.variation && priceObj.variation !== "normal" ? (
+                          <span className="ml-2 text-xs text-light-textMuted">
+                            ({priceObj.variation})
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={e => { e.stopPropagation(); setSelectedCardDetail(card); setPanelOpen(true); }}
+                          className="
+                            rounded-lg px-4 py-2
+                            bg-light-accent dark:bg-dark-accent
+                            text-light-surface dark:text-dark-surface
+                            font-semibold
+                            hover:bg-light-accentLight dark:hover:bg-dark-accentLight
+                            hover:text-light-surface dark:hover:text-dark-surface
+                            transition
+                          "
+                        >Add</button>
+                        <button
+                          onClick={e => { e.stopPropagation(); handleAddToWishlist(card); }}
+                          className="
+                            rounded-lg px-4 py-2
+                            border-2 border-light-accent dark:border-dark-accent
+                            text-light-accent dark:text-dark-accent
+                            font-semibold
+                            hover:bg-light-accent dark:hover:bg-dark-accent
+                            hover:text-light-surface dark:hover:text-dark-surface
+                            transition
+                          "
+                        >Wishlist</button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )})}
+                )
+              })}
               {isLoadingMore &&
                 Array.from({ length: 4 }).map((_, idx) => (
                   <div className="bg-light-surface dark:bg-dark-surface rounded-2xl shadow flex flex-col p-3 min-h-[300px] pointer-events-none" key={`load-${idx}`}>

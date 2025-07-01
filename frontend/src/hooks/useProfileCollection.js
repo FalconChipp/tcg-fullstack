@@ -28,7 +28,7 @@ export default function useProfileCollection({ user, token }) {
     (async () => {
       setLoading(true);
 
-      // Fetch collection with nested card data
+      // ---- FIXED QUERY ----
       const colQ = `
         query GetUserProfileCollection($userId: ID!) {
           collection(userId: $userId) {
@@ -44,12 +44,16 @@ export default function useProfileCollection({ user, token }) {
               id
               name
               number
-              edition
               setName
-              setLogo
               image
               rarity
-              variations
+              variations {
+                normal
+                holo
+                reverse
+                firstEdition
+                wPromo
+              }
               prices {
                 variation
                 tcgplayer
@@ -76,7 +80,7 @@ export default function useProfileCollection({ user, token }) {
         rawCollectionData = [];
       }
 
-      // Split/flatten into collection and wishlist
+      // ---- FLATTEN & SPLIT COLLECTION/WISHLIST ----
       let col = [];
       let wish = [];
       (rawCollectionData || []).forEach((entry) => {
@@ -86,7 +90,6 @@ export default function useProfileCollection({ user, token }) {
         const fullEntry = {
           ...entry,
           ...card, // flatten card fields for easy access in UI
-          // collection-specific fields take precedence if duplicated
           cardId: entry.cardId,
           quantity: entry.quantity,
           condition: entry.condition,
@@ -99,16 +102,19 @@ export default function useProfileCollection({ user, token }) {
         else col.push(fullEntry);
       });
 
-      // Calculate total value
+      // ---- CALCULATE COLLECTION VALUE ----
       const totalValue = col.reduce((sum, card) => {
-        // Use nested card pricing
-        const price =
-          toNumber(card?.tcgplayerVariations?.normal?.market) ||
-          toNumber(card?.tcgplayerVariations?.normal?.mid) ||
-          toNumber(card?.cardmarketVariations?.normal?.average_sell) ||
-          0;
+        // Find "normal" variation price first, fallback to any price
+        const normal = card?.prices?.find?.(p => p.variation === "normal");
+        const firstPrice = normal
+          ? (toNumber(normal.tcgplayer) || toNumber(normal.cardmarket) || 0)
+          : (
+            card?.prices?.length
+              ? (toNumber(card.prices[0].tcgplayer) || toNumber(card.prices[0].cardmarket) || 0)
+              : 0
+          );
         const quantity = card.quantity || 1;
-        return sum + (price * quantity);
+        return sum + (firstPrice * quantity);
       }, 0);
 
       setCollection(col);

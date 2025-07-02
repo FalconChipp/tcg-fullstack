@@ -10,13 +10,13 @@ const resolvers = {
       const payload = requireAuth(token);
       return Collection.findAll({
         where: { userId: payload.id, wishlist: false },
-        include: [{ model: Card }]
+        include: [{ model: Card, as: 'card' }]
       });
     },
     collection: async (_, { userId }) => {
       return Collection.findAll({
         where: { userId, wishlist: false },
-        include: [{ model: Card }]
+        include: [{ model: Card, as: 'card' }]
       });
     },
     collectionEntry: async (_, { cardId, variation }, { token }) => {
@@ -28,7 +28,7 @@ const resolvers = {
           variation: variation || null,
           wishlist: false,
         },
-        include: [{ model: Card }]
+        include: [{ model: Card, as: 'card' }]
       });
     },
   },
@@ -142,9 +142,8 @@ const resolvers = {
   },
 
   Collection: {
-    card: async (col) => {
-      return Card.findByPk(col.cardId);
-    }
+    // Use eager loaded association when available to avoid N+1 queries
+    card: async (col) => col.card || Card.findByPk(col.cardId)
   }
 };
 

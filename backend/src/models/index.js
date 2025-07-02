@@ -108,8 +108,12 @@ User.hasMany(User, { as: 'referrals', foreignKey: 'referrerId' });
 // User/Collection/Listing/Wishlist
 User.hasMany(Collection, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Collection.belongsTo(User, { foreignKey: 'userId' });
-Card.hasMany(Collection, { foreignKey: 'cardId', onDelete: 'CASCADE' });
-Collection.belongsTo(Card, { foreignKey: 'cardId' });
+Card.hasMany(Collection, {
+  foreignKey: 'cardId',
+  as: 'collections',
+  onDelete: 'CASCADE'
+});
+Collection.belongsTo(Card, { foreignKey: 'cardId', as: 'card' });
 
 User.hasMany(Listing, { foreignKey: 'userId', as: 'listings', onDelete: 'CASCADE' });
 Listing.belongsTo(User, { foreignKey: 'userId', as: 'seller' });
@@ -124,8 +128,12 @@ User.hasMany(Offer, { foreignKey: 'buyerId', as: 'offers' });
 
 User.hasMany(Wishlist, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Wishlist.belongsTo(User, { foreignKey: 'userId' });
-Card.hasMany(Wishlist, { foreignKey: 'cardId', onDelete: 'CASCADE' });
-Wishlist.belongsTo(Card, { foreignKey: 'cardId' });
+Card.hasMany(Wishlist, {
+  foreignKey: 'cardId',
+  as: 'wishlists',
+  onDelete: 'CASCADE'
+});
+Wishlist.belongsTo(Card, { foreignKey: 'cardId', as: 'card' });
 
 User.hasMany(Binder, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Binder.belongsTo(User, { foreignKey: 'userId' });

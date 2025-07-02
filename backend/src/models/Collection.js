@@ -51,9 +51,18 @@ export default (sequelize, models) => {
   // Associations (should be set up in your loader, but you can export as a function)
   Collection.associate = (models) => {
     Collection.belongsTo(models.User, { foreignKey: 'userId', onDelete: 'CASCADE' });
-    Collection.belongsTo(models.Card, { foreignKey: 'cardId', onDelete: 'CASCADE' });
+    // Alias as 'card' so eager loaded data is available under collection.card
+    Collection.belongsTo(models.Card, {
+      foreignKey: 'cardId',
+      as: 'card',
+      onDelete: 'CASCADE'
+    });
     models.User.hasMany(Collection, { foreignKey: 'userId', onDelete: 'CASCADE' });
-    models.Card.hasMany(Collection, { foreignKey: 'cardId', onDelete: 'CASCADE' });
+    models.Card.hasMany(Collection, {
+      foreignKey: 'cardId',
+      as: 'collections',
+      onDelete: 'CASCADE'
+    });
   };
 
   return Collection;

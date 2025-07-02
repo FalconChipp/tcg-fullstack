@@ -10,7 +10,7 @@ const resolvers = {
       const payload = requireAuth(token);
       const { count, rows } = await Wishlist.findAndCountAll({
         where: { userId: payload.id },
-        include: [{ model: Card }],
+        include: [{ model: Card, as: 'card' }],
         limit: pageSize,
         offset: (page - 1) * pageSize,
         order: [['addedAt', 'DESC']]
@@ -20,7 +20,7 @@ const resolvers = {
     wishlist: async (_, { userId, page = 1, pageSize = DEFAULT_PAGE_SIZE }) => {
       const { count, rows } = await Wishlist.findAndCountAll({
         where: { userId },
-        include: [{ model: Card }],
+        include: [{ model: Card, as: 'card' }],
         limit: pageSize,
         offset: (page - 1) * pageSize,
         order: [['addedAt', 'DESC']]
@@ -31,7 +31,7 @@ const resolvers = {
       const payload = requireAuth(token);
       return Wishlist.findOne({
         where: { userId: payload.id, cardId, variation: variation || null },
-        include: [{ model: Card }]
+        include: [{ model: Card, as: 'card' }]
       });
     }
   },
@@ -139,7 +139,8 @@ const resolvers = {
     }
   },
   WishlistEntry: {
-    card: async (entry) => Card.findByPk(entry.cardId),
+    // Use eager loaded association when available
+    card: async (entry) => entry.card || Card.findByPk(entry.cardId),
     marketplaceListings: async (entry) => Listing.findAll({ where: { cardId: entry.cardId, status: 'active' } }),
     forTradeUsers: async (entry) => {
       const entries = await Collection.findAll({ where: { cardId: entry.cardId, wishlist: false } });

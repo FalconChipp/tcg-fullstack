@@ -31,10 +31,12 @@ export async function getServerSideProps({ params, res }) {
     query GetUser($username: String!) {
       userProfile(username: $username) {
         id
+        userId
         bio
         favouritePokemon
         avatar
         user {
+          id
           username
           email
           avatar
@@ -60,8 +62,8 @@ export async function getServerSideProps({ params, res }) {
     }
     const profile = data.userProfile;
     const mergedUser = {
-      ...profile.user,
-      ...profile
+      ...profile,
+      ...profile.user
     };
     delete mergedUser.user;
 

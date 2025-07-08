@@ -2,6 +2,49 @@
 
 import { Card } from '../../models/index.js';
 
+// Build pricing array with { variation, tcgplayer, cardmarket, updatedAt }
+function buildPriceArray(cardData, priceData) {
+  const variations = cardData?.variants || cardData?.variations || {};
+  let keys = [];
+  if (Array.isArray(variations)) {
+    keys = variations;
+  } else if (variations && typeof variations === 'object') {
+    keys = Object.keys(variations).filter(k => variations[k]);
+  }
+  if (!keys.length) keys = ['normal'];
+
+  const updatedAt = priceData?.tcgplayer?.updatedAt || priceData?.cardmarket?.updatedAt || null;
+
+  const mapKey = (v) => {
+    switch (v) {
+      case 'reverse': return 'reverseHolofoil';
+      case 'holo': return 'holofoil';
+      case 'firstEdition': return 'firstEdition';
+      case 'wPromo': return 'normal';
+      default: return 'normal';
+    }
+  };
+
+  return keys.map(varName => {
+    const tcgVar = mapKey(varName);
+    const tcg = priceData?.tcgplayer?.prices?.[tcgVar] || {};
+    const cmk = priceData?.cardmarket?.prices || {};
+
+    let cardmarket = null;
+    if (tcgVar === 'normal') cardmarket = cmk.trendPrice ?? cmk.averageSellPrice ?? null;
+    if (tcgVar === 'reverseHolofoil') cardmarket = cmk.reverseHoloTrend ?? cmk.reverseHoloSell ?? null;
+    if (tcgVar === 'holofoil') cardmarket = cmk.trendPrice ?? cmk.averageSellPrice ?? null;
+    if (tcgVar === 'firstEdition') cardmarket = cmk.trendPrice ?? null;
+
+    return {
+      variation: varName,
+      tcgplayer: tcg?.market ?? null,
+      cardmarket,
+      updatedAt,
+    };
+  });
+}
+
 /**
  * Save a card fully on initial discovery.
  * - If card exists, only update pricing.
@@ -28,7 +71,7 @@ export async function saveOrUpdateCard(cardData, priceData) {
     rarity: cardData.rarity,
     edition: cardData.supertype || cardData.edition,
     variations: JSON.stringify(cardData.variants || cardData.variations || []),
-    pricing: JSON.stringify(priceData),
+    pricing: JSON.stringify(buildPriceArray(cardData, priceData)),
     tcgplayerVariations: JSON.stringify(priceData?.tcgplayer?.variants || []),
     cardmarketVariations: JSON.stringify(priceData?.cardmarket?.variants || []),
     tcgplayerLow: priceData?.tcgplayer?.prices?.low,

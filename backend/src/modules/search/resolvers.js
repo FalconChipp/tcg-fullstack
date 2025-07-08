@@ -434,12 +434,12 @@ const resolvers = {
       if (!card.pricing) return [];
       try {
         const parsed = JSON.parse(card.pricing);
-        // If it's already an array (could contain nulls or objects), return as is
-        if (Array.isArray(parsed)) return parsed;
-        // If it's a single object (not null), wrap it in an array; allow null as [null]
-        if (parsed === null) return [null];
-        if (typeof parsed === 'object') return [parsed];
-        // Fallback for any other type (should not occur)
+        if (Array.isArray(parsed)) {
+          return parsed.filter(p => p && typeof p === 'object' && p.variation);
+        }
+        if (parsed && typeof parsed === 'object' && parsed.variation) {
+          return [parsed];
+        }
         return [];
       } catch {
         return [];

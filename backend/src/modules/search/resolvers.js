@@ -8,7 +8,7 @@ import {
   saveCardPriceCache,
   tcgdexToPtcgId,
   convertToGBP,
-  hydrateCard // NEW: Import hydrateCard helper for complete field hydration
+  hydrateCard
 } from './helpers.js';
 
 import { fetchTCGDexCards, fetchTCGDexCardById } from './api/tcgdex.js';
@@ -72,6 +72,7 @@ function setCachedSearch(key, value, ttl = 60 * 60 * 1000) {
 
 // -------------------------------------------
 // ENRICH CARDS (price, listing, set info, etc)
+// NOW FETCHES FINAL FIELDS FROM THE DB!
 // -------------------------------------------
 async function enrichCards(cards, { listed, forTrade, rarity }) {
   const cardIds = cards.map(c => c.id);
@@ -91,34 +92,7 @@ async function enrichCards(cards, { listed, forTrade, rarity }) {
     await saveOrUpdateCard(hydratedCard, priceData);
   }
 
-  // Step 2: Price cache lookup/update per card
-  const priceMap = {};
-  for (const card of cards) {
-    let priceCache = await getCardPriceCache(card.id);
-    let needsLiveUpdate = false;
-
-    // Update if missing or >1 day old
-    if (!priceCache) {
-      needsLiveUpdate = true;
-    } else if (priceCache.updatedAt) {
-      const updated = new Date(priceCache.updatedAt);
-      if (Date.now() - updated.getTime() > 24 * 60 * 60 * 1000) needsLiveUpdate = true;
-    }
-    if (needsLiveUpdate) {
-      const ptcgId = tcgdexToPtcgId(card.id);
-      let livePrice = null;
-      if (ptcgId) {
-        livePrice = await fetchPTCGCardPrices(ptcgId);
-        await saveCardPriceCache(card.id, livePrice);
-      } else {
-        console.warn('[enrichCards] Could not convert card ID to ptcgId for pricing:', card.id);
-      }
-      priceCache = livePrice;
-    }
-    priceMap[card.id] = priceCache;
-  }
-
-  // Step 3: Marketplace listings
+  // Step 2: Marketplace listings
   let listingsMap = {};
   if (listed) {
     const listings = await Listing.findAll({ where: { cardId: cardIds, status: 'active' } });
@@ -128,7 +102,7 @@ async function enrichCards(cards, { listed, forTrade, rarity }) {
     }
   }
 
-  // Step 4: For-trade flags
+  // Step 3: For-trade flags
   let forTradeMap = {};
   if (forTrade) {
     const tradeEntries = await Collection.findAll({
@@ -139,7 +113,7 @@ async function enrichCards(cards, { listed, forTrade, rarity }) {
     }
   }
 
-  // Step 5: Optional rarity filter
+  // Step 4: Optional rarity filter
   let filtered = cards;
   if (rarity) {
     filtered = filtered.filter(card =>
@@ -147,106 +121,22 @@ async function enrichCards(cards, { listed, forTrade, rarity }) {
     );
   }
 
-  // Step 6: Build enriched card objects
+  // Step 5: Always return card fields from the DB
   return await Promise.all(filtered.map(async card => {
-    // Always normalize set at the top
-    const { setId, setName, setLogo } = normalizeCardSet(card);
+    // Read fresh card data from the DB (including updated pricing and variations)
+    let dbCard = await Card.findByPk(card.id);
 
-    // Variations + pricing
-    const variations = card.variations || card.variants || {};
-    const variationKeys = Object.keys(variations).filter(k => variations[k]);
-    const priceInfo = priceMap[card.id] || {};
-    let prices = [];
+    // Defensive fallback: if not in DB, fallback to original card
+    dbCard = dbCard || card;
 
-    if (priceInfo && (priceInfo.tcgplayer || priceInfo.cardmarket)) {
-      prices = await Promise.all(variationKeys.map(async varName => {
-        let tcgVarKey = varName;
-        switch (varName) {
-          case 'reverse':    tcgVarKey = 'reverseHolofoil'; break;
-          case 'holo':       tcgVarKey = 'holofoil'; break;
-          case 'normal':     tcgVarKey = 'normal'; break;
-          case 'firstEdition': tcgVarKey = 'firstEdition'; break;
-          case 'wPromo':     tcgVarKey = 'normal'; break;
-          default:           tcgVarKey = varName;
-        }
-
-        // Extract prices for this variation from TCGPlayer and CardMarket
-        const tcg = priceInfo.tcgplayer?.prices?.[tcgVarKey] || {};
-        const cmk = priceInfo.cardmarket?.prices || {};
-
-        let cardmarket = null;
-        if (tcgVarKey === 'normal') {
-          cardmarket = cmk.trendPrice ?? cmk.averageSellPrice ?? null;
-        }
-        if (tcgVarKey === 'reverseHolofoil') {
-          cardmarket = cmk.reverseHoloTrend ?? cmk.reverseHoloSell ?? null;
-        }
-        if (tcgVarKey === 'holofoil') {
-          cardmarket = cmk.trendPrice ?? cmk.averageSellPrice ?? null;
-        }
-        if (tcgVarKey === 'firstEdition') {
-          cardmarket = cmk.trendPrice ?? null;
-        }
-        if (tcgVarKey === 'wPromo') {
-          cardmarket = cmk.trendPrice ?? cmk.averageSellPrice ?? null;
-        }
-
-        // --- CURRENCY CONVERSION TO GBP ---
-        let tcgplayerGBP = null, cardmarketGBP = null;
-        if (typeof tcg.market === 'number') {
-          try {
-            tcgplayerGBP = await convertToGBP(tcg.market, 'USD');
-          } catch (e) {
-            console.warn('[enrichCards] Failed to convert TCGPlayer USD to GBP:', e);
-            tcgplayerGBP = null;
-          }
-        }
-        if (typeof cardmarket === 'number') {
-          try {
-            cardmarketGBP = await convertToGBP(cardmarket, 'EUR');
-          } catch (e) {
-            console.warn('[enrichCards] Failed to convert CardMarket EUR to GBP:', e);
-            cardmarketGBP = null;
-          }
-        }
-
-        return {
-          variation: varName,
-          tcgplayer: tcg.market ?? null,
-          cardmarket: cardmarket,
-          gbp: Math.max(
-            tcgplayerGBP !== null ? tcgplayerGBP : 0,
-            cardmarketGBP !== null ? cardmarketGBP : 0
-          ) || null,
-          currency: 'GBP',
-          updatedAt: priceInfo.tcgplayer?.updatedAt || priceInfo.cardmarket?.updatedAt || null
-        };
-      }));
-    } else if (variationKeys.length) {
-      // If no price info, create placeholder array
-      prices = variationKeys.map(varName => ({
-        variation: varName,
-        tcgplayer: null,
-        cardmarket: null,
-        gbp: null,
-        currency: null,
-        updatedAt: null
-      }));
-    }
-
-    // Defensive: always pass setId to tcgdexImageUrl if needed
-    const imageUrl = card.image || tcgdexImageUrl({ ...card, set: setId });
+    // Normalize set fields for return
+    const { setId, setName, setLogo } = normalizeCardSet(dbCard);
 
     return {
-      id: card.id,
-      name: card.name,
-      number: card.number,
-      setName,
-      setLogo,
-      image: imageUrl,
-      rarity: card.rarity || null,
-      variations,
-      prices,
+      ...dbCard.dataValues, // All card fields as persisted
+      setName: setName ?? dbCard.setName ?? null,
+      setLogo: setLogo ?? dbCard.setLogo ?? null,
+      image: dbCard.image || tcgdexImageUrl({ ...dbCard, set: setId }),
       listings: listingsMap[card.id] || [],
       isListed: !!(listingsMap[card.id]?.length),
       isForTrade: !!forTradeMap[card.id],
@@ -364,6 +254,7 @@ async function cardByIdResolver(_, { id }) {
     card = await fetchTCGDexCardById(id);
     if (!card) return null;
   }
+  // Read enriched card from DB after update
   const enrichedArr = await enrichCards([card], {}, null);
   return enrichedArr[0];
 }
@@ -428,20 +319,34 @@ const resolvers = {
   Card: {
     variations: (card) => {
       if (!card.variations) return null;
-      try { return JSON.parse(card.variations); } catch { return null; }
+      try { 
+        return typeof card.variations === 'string' 
+          ? JSON.parse(card.variations) 
+          : card.variations; 
+      } catch { 
+        return null; 
+      }
     },
     prices: (card) => {
+      // Return an empty array if nothing stored
       if (!card.pricing) return [];
       try {
-        const parsed = JSON.parse(card.pricing);
+        let parsed = card.pricing;
+        // If it's a string, parse it. If already an array/object, leave as is.
+        if (typeof parsed === "string") parsed = JSON.parse(parsed);
         if (Array.isArray(parsed)) {
-          return parsed.filter(p => p && typeof p === 'object' && p.variation);
+          // Remove nulls and only allow objects with a non-null 'variation' (for GraphQL non-null)
+          return parsed.filter(p => p && typeof p.variation === "string");
         }
-        if (parsed && typeof parsed === 'object' && parsed.variation) {
+        // If it's a single object (not an array), wrap in array if it has a variation
+        if (parsed && typeof parsed === "object" && typeof parsed.variation === "string") {
           return [parsed];
         }
+        // If nothing matches, return empty array
         return [];
-      } catch {
+      } catch (e) {
+        // Log the error to help with debugging (optional)
+        console.error('Failed to parse Card.pricing:', e, card.pricing);
         return [];
       }
     },

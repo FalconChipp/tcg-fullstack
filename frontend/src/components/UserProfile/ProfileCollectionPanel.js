@@ -13,7 +13,7 @@ import { getCardImageUrl } from "@/utils/imageUtils";
 import CardSkeleton from "@/components/UI/CardSkeleton";
 
 // --- Use the enriched data hook, NOT direct fetch ---
-import useProfileCollection from "@/hooks/useProfileCollection"; // <<==== Path as needed
+import useProfileCollection from "@/hooks/useProfileCollection";
 
 // --- CONSTANTS AND HELPERS ---
 const SORT_OPTIONS = [
@@ -36,22 +36,41 @@ const formatCurrency = value =>
     minimumFractionDigits: 2, maximumFractionDigits: 2
   }).format(value);
 
-// Unified price extractor (always available if hook is used!)
-const getCardPrice = (card) => {
-  if (!card) return null;
-  // Prioritise TCGplayer, then Cardmarket
-  return (
-    card?.tcgplayerVariations?.normal?.market ||
-    card?.tcgplayerVariations?.holofoil?.market ||
-    card?.tcgplayerVariations?.reverseHolofoil?.market ||
-    card?.pricing?.tcgplayer?.market ||
-    card?.pricing?.tcgplayer?.mid ||
-    card?.cardmarketVariations?.normal?.average_sell ||
-    card?.cardmarketVariations?.holofoil?.average_sell ||
-    card?.pricing?.cardmarket?.average_sell ||
-    null
+  // --- NEW: Average price extractor between tcgplayer/cardmarket for collection cards ---
+const getCardAveragePrice = (card) => {
+  if (!card || !Array.isArray(card.prices)) return null;
+  const selectedVariation = card.variation || "normal";
+  let priceObj = card.prices.find(
+    (p) => p && (p.variation === selectedVariation)
   );
+  if (!priceObj && card.prices.length) priceObj = card.prices[0];
+
+  if (!priceObj) return null;
+
+  const tcg = typeof priceObj.tcgplayer === "number" ? priceObj.tcgplayer : toNumber(priceObj.tcgplayer);
+  const cmk = typeof priceObj.cardmarket === "number" ? priceObj.cardmarket : toNumber(priceObj.cardmarket);
+
+  if (tcg == null && cmk == null) return null;
+  if (tcg != null && cmk != null) return (tcg + cmk) / 2;
+  return tcg != null ? tcg : cmk;
 };
+
+// Unified price extractor (always available if hook is used!)
+// const getCardPrice = (card) => {
+//   if (!card) return null;
+//   // Prioritise TCGplayer, then Cardmarket
+//   return (
+//     card?.tcgplayerVariations?.normal?.market ||
+//     card?.tcgplayerVariations?.holofoil?.market ||
+//     card?.tcgplayerVariations?.reverseHolofoil?.market ||
+//     card?.pricing?.tcgplayer?.market ||
+//     card?.pricing?.tcgplayer?.mid ||
+//     card?.cardmarketVariations?.normal?.average_sell ||
+//     card?.cardmarketVariations?.holofoil?.average_sell ||
+//     card?.pricing?.cardmarket?.average_sell ||
+//     null
+//   );
+// };
 
 // Always parse createdAt properly (milliseconds as string/number)
 const getDate = (date) =>
@@ -321,9 +340,9 @@ export default function ProfileCollectionPanel({
                 )}
               </div>
               <span className="text-sm text-light-textMuted dark:text-dark-textMuted">#{card.number || card.cardId}</span>
-              {getCardPrice(card) !== null
+              {getCardAveragePrice(card) !== null
                 ? <span className="text-xs text-green-600 dark:text-green-400 font-bold mt-1">
-                    {formatCurrency(getCardPrice(card))}
+                    {formatCurrency(getCardAveragePrice(card))}
                   </span>
                 : <span className="text-xs text-light-textMuted dark:text-dark-textMuted mt-1">
                     —

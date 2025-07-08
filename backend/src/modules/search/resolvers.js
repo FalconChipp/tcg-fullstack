@@ -8,11 +8,13 @@ import {
   saveCardPriceCache,
   tcgdexToPtcgId,
   convertToGBP,
+  hydrateCard // NEW: Import hydrateCard helper for complete field hydration
 } from './helpers.js';
 
 import { fetchTCGDexCards, fetchTCGDexCardById } from './api/tcgdex.js';
 import { fetchPTCGCardById, fetchPTCGCardPrices } from './api/pokemontcg.js';
 import { getExchangeRates } from './api/exchangeRates.js';
+import { saveOrUpdateCard } from './cardPersistence.js';
 
 import { SET_MAPPING } from './SetMapping.js';
 import { Card, Listing, Collection } from '../../models/index.js';
@@ -74,20 +76,19 @@ function setCachedSearch(key, value, ttl = 60 * 60 * 1000) {
 async function enrichCards(cards, { listed, forTrade, rarity }) {
   const cardIds = cards.map(c => c.id);
 
-  // Step 1: Upsert every card in DB (minimal fields only)
+  // Step 1: Hydrate and persist each card in DB with all available data and prices
   for (const card of cards) {
-    let dbCard = await Card.findByPk(card.id);
-    if (!dbCard) {
-      const { setId } = normalizeCardSet(card);
-      await Card.create({
-        id: card.id,
-        name: card.name,
-        set: setId,
-        number: card.number,
-        // Add more fields as needed
-      });
-      // console.log(`[enrichCards] Card upserted into DB: ${card.id} (${card.name})`);
+    // Hydrate the card object before saving
+    const hydratedCard = await hydrateCard(card);
+
+    // Fetch price data for this card from PTCG API
+    let ptcgId = tcgdexToPtcgId(card.id);
+    let priceData = null;
+    if (ptcgId) {
+      priceData = await fetchPTCGCardPrices(ptcgId);
     }
+    // Save or update in DB
+    await saveOrUpdateCard(hydratedCard, priceData);
   }
 
   // Step 2: Price cache lookup/update per card
@@ -109,7 +110,6 @@ async function enrichCards(cards, { listed, forTrade, rarity }) {
       if (ptcgId) {
         livePrice = await fetchPTCGCardPrices(ptcgId);
         await saveCardPriceCache(card.id, livePrice);
-        // console.log('[enrichCards] Fetched and cached live prices for', card.id, JSON.stringify(livePrice));
       } else {
         console.warn('[enrichCards] Could not convert card ID to ptcgId for pricing:', card.id);
       }
@@ -160,7 +160,6 @@ async function enrichCards(cards, { listed, forTrade, rarity }) {
 
     if (priceInfo && (priceInfo.tcgplayer || priceInfo.cardmarket)) {
       prices = await Promise.all(variationKeys.map(async varName => {
-        // Map your frontend/app keys to PokémonTCG.io price keys
         let tcgVarKey = varName;
         switch (varName) {
           case 'reverse':    tcgVarKey = 'reverseHolofoil'; break;
@@ -175,7 +174,6 @@ async function enrichCards(cards, { listed, forTrade, rarity }) {
         const tcg = priceInfo.tcgplayer?.prices?.[tcgVarKey] || {};
         const cmk = priceInfo.cardmarket?.prices || {};
 
-        // Map CardMarket to best available price for the variation
         let cardmarket = null;
         if (tcgVarKey === 'normal') {
           cardmarket = cmk.trendPrice ?? cmk.averageSellPrice ?? null;
@@ -219,7 +217,7 @@ async function enrichCards(cards, { listed, forTrade, rarity }) {
           gbp: Math.max(
             tcgplayerGBP !== null ? tcgplayerGBP : 0,
             cardmarketGBP !== null ? cardmarketGBP : 0
-          ) || null, // Show the highest GBP price (or you could average or split if you want)
+          ) || null,
           currency: 'GBP',
           updatedAt: priceInfo.tcgplayer?.updatedAt || priceInfo.cardmarket?.updatedAt || null
         };
@@ -425,6 +423,31 @@ const resolvers = {
     cardSetCompletion: cardSetCompletionResolver,
     getExchangeRates: getExchangeRatesResolver,
     allRarities: allRaritiesResolver,
+  },
+
+  Card: {
+    variations: (card) => {
+      if (!card.variations) return null;
+      try { return JSON.parse(card.variations); } catch { return null; }
+    },
+    prices: (card) => {
+      if (!card.pricing) return [];
+      try {
+        const parsed = JSON.parse(card.pricing);
+        // If it's already an array (could contain nulls or objects), return as is
+        if (Array.isArray(parsed)) return parsed;
+        // If it's a single object (not null), wrap it in an array; allow null as [null]
+        if (parsed === null) return [null];
+        if (typeof parsed === 'object') return [parsed];
+        // Fallback for any other type (should not occur)
+        return [];
+      } catch {
+        return [];
+      }
+    },
+    setName: (card) => card.setName || null, 
+    image: (card) => card.image || null,
+    rarity: (card) => card.rarity || null, 
   }
 };
 

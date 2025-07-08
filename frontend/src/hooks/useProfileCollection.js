@@ -87,9 +87,18 @@ export default function useProfileCollection({ user, token }) {
         if (!entry) return;
         const isWishlistItem = entry.wishlist === true || entry.wishlist === 1 || String(entry.wishlist).toLowerCase() === "true";
         const card = entry.card || {};
+        // Defensive: filter nulls out of prices/variations if present
+        const prices = Array.isArray(card.prices)
+          ? card.prices.filter(Boolean)
+          : [];
+        const variations = card.variations && typeof card.variations === 'object'
+          ? card.variations
+          : null;
         const fullEntry = {
           ...entry,
           ...card, // flatten card fields for easy access in UI
+          prices,
+          variations,
           cardId: entry.cardId,
           quantity: entry.quantity,
           condition: entry.condition,
@@ -104,13 +113,15 @@ export default function useProfileCollection({ user, token }) {
 
       // ---- CALCULATE COLLECTION VALUE ----
       const totalValue = col.reduce((sum, card) => {
+        // Defensive: filter nulls out of prices
+        const filteredPrices = Array.isArray(card?.prices) ? card.prices.filter(Boolean) : [];
         // Find "normal" variation price first, fallback to any price
-        const normal = card?.prices?.find?.(p => p.variation === "normal");
+        const normal = filteredPrices.find(p => p && p.variation === "normal");
         const firstPrice = normal
           ? (toNumber(normal.tcgplayer) || toNumber(normal.cardmarket) || 0)
           : (
-            card?.prices?.length
-              ? (toNumber(card.prices[0].tcgplayer) || toNumber(card.prices[0].cardmarket) || 0)
+            filteredPrices.length
+              ? (toNumber(filteredPrices[0].tcgplayer) || toNumber(filteredPrices[0].cardmarket) || 0)
               : 0
           );
         const quantity = card.quantity || 1;

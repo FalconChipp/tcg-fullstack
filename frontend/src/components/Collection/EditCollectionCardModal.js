@@ -278,15 +278,6 @@ export default function EditCollectionCardModal({
             <label className="flex items-center gap-2 text-sm text-light-textMuted dark:text-dark-textMuted cursor-pointer select-none">
               <input
                 type="checkbox"
-                checked={isPublic}
-                onChange={() => setIsPublic(!isPublic)}
-                className="form-checkbox h-4 w-4 rounded border-light-border dark:border-dark-border text-light-accent dark:text-dark-accent focus:ring-0"
-              />
-              Public
-            </label>
-            <label className="flex items-center gap-2 text-sm text-light-textMuted dark:text-dark-textMuted cursor-pointer select-none">
-              <input
-                type="checkbox"
                 checked={wishlist}
                 onChange={() => setWishlist(!wishlist)}
                 className="form-checkbox h-4 w-4 rounded border-light-border dark:border-dark-border text-light-accent dark:text-dark-accent focus:ring-0"

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useContext } from "react";
+import React, { useState, useMemo, useContext, useEffect } from "react";
 import Image from "next/image";
 import { getSetLogo } from "@/utils/setLogos";
 import EditCollectionCardModal from "@/components/Collection/EditCollectionCardModal";
@@ -12,10 +12,12 @@ import QuantitySelectorModal from "@/components/UI/QuantitySelectorModal";
 import { getCardImageUrl } from "@/utils/imageUtils";
 import CardSkeleton from "@/components/UI/CardSkeleton";
 
-// --- Use the enriched data hook, NOT direct fetch ---
+// Use your custom collection hook:
 import useProfileCollection from "@/hooks/useProfileCollection";
+// Use your updated actions:
+import useProfileCardActions from "@/hooks/useProfileCardActions";
 
-// --- CONSTANTS AND HELPERS ---
+// --- CONSTANTS & HELPERS ---
 const SORT_OPTIONS = [
   { value: 'name-asc', label: 'Name (A-Z)' },
   { value: 'name-desc', label: 'Name (Z-A)' },
@@ -29,14 +31,12 @@ const SORT_OPTIONS = [
   { value: 'quantity-desc', label: 'Quantity (High to Low)' },
 ];
 
-// Format number as GBP currency
 const formatCurrency = value =>
   new Intl.NumberFormat("en-GB", {
     style: "currency", currency: "GBP",
     minimumFractionDigits: 2, maximumFractionDigits: 2
   }).format(value);
 
-  // --- NEW: Average price extractor between tcgplayer/cardmarket for collection cards ---
 const getCardAveragePrice = (card) => {
   if (!card || !Array.isArray(card.prices)) return null;
   const selectedVariation = card.variation || "normal";
@@ -47,36 +47,18 @@ const getCardAveragePrice = (card) => {
 
   if (!priceObj) return null;
 
-  const tcg = typeof priceObj.tcgplayer === "number" ? priceObj.tcgplayer : toNumber(priceObj.tcgplayer);
-  const cmk = typeof priceObj.cardmarket === "number" ? priceObj.cardmarket : toNumber(priceObj.cardmarket);
+  const toNumber = v => (typeof v === "number" ? v : Number(v));
+  const tcg = toNumber(priceObj.tcgplayer);
+  const cmk = toNumber(priceObj.cardmarket);
 
   if (tcg == null && cmk == null) return null;
   if (tcg != null && cmk != null) return (tcg + cmk) / 2;
   return tcg != null ? tcg : cmk;
 };
 
-// Unified price extractor (always available if hook is used!)
-// const getCardPrice = (card) => {
-//   if (!card) return null;
-//   // Prioritise TCGplayer, then Cardmarket
-//   return (
-//     card?.tcgplayerVariations?.normal?.market ||
-//     card?.tcgplayerVariations?.holofoil?.market ||
-//     card?.tcgplayerVariations?.reverseHolofoil?.market ||
-//     card?.pricing?.tcgplayer?.market ||
-//     card?.pricing?.tcgplayer?.mid ||
-//     card?.cardmarketVariations?.normal?.average_sell ||
-//     card?.cardmarketVariations?.holofoil?.average_sell ||
-//     card?.pricing?.cardmarket?.average_sell ||
-//     null
-//   );
-// };
-
-// Always parse createdAt properly (milliseconds as string/number)
 const getDate = (date) =>
   date ? new Date(typeof date === 'string' ? parseInt(date, 10) : date) : null;
 
-// Skeletons for loading
 function CollectionSkeletonGrid({ count = 10 }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 mt-6">
@@ -87,26 +69,26 @@ function CollectionSkeletonGrid({ count = 10 }) {
   );
 }
 
-// --- MAIN COMPONENT ---
+// --- MAIN PANEL COMPONENT ---
 export default function ProfileCollectionPanel({
   userId,
   isOwnProfile,
   onAddToCollection,
   onCardUpdated,
-  onCardRemoved,
   dark,
 }) {
   const { token } = useContext(AuthContext);
 
-  // === Use the enriched hook instead of direct fetch! ===
-  // If you need to display wishlist as well, use .wishlist.value
-  const {
-    collection,
-    loading,
-    refresh,
-  } = useProfileCollection({ user: { id: userId }, token });
+  // 1. Server state and loading
+  const { collection, loading } = useProfileCollection({ user: { id: userId }, token });
 
-  // UI State
+  // 2. Local display state for INSTANT updates
+  const [displayCollection, setDisplayCollection] = useState(collection.value || []);
+  useEffect(() => {
+    setDisplayCollection(collection.value || []);
+  }, [collection.value]);
+
+  // UI state for modals etc.
   const [setFilter, setSetFilter] = useState("");
   const [rarityFilter, setRarityFilter] = useState("");
   const [search, setSearch] = useState("");
@@ -117,14 +99,22 @@ export default function ProfileCollectionPanel({
   const [showQuantityModal, setShowQuantityModal] = useState(false);
   const [removeCard, setRemoveCard] = useState(null);
 
-  // --- Filtering and sorting logic ---
+  // 3. Actions (pass setDisplayCollection for INSTANT removal)
+  const { handleRemoveCard } = useProfileCardActions({
+    isOwnProfile,
+    token,
+    setCollection: setDisplayCollection, // key: UI updates local state, not just server
+    collection: displayCollection
+  });
+
+  // --- Filtering/Sorting using local state ---
   const filteredCards = useMemo(() => {
-    return (collection.value || []).filter(card =>
+    return (displayCollection || []).filter(card =>
       (!setFilter || card.setName === setFilter) &&
       (!rarityFilter || card.rarity === rarityFilter) &&
       (!search || (card.name || "").toLowerCase().includes(search.toLowerCase()))
     );
-  }, [collection.value, setFilter, rarityFilter, search]);
+  }, [displayCollection, setFilter, rarityFilter, search]);
 
   const sortedCards = useMemo(() => {
     if (!filteredCards.length) return [];
@@ -137,7 +127,7 @@ export default function ProfileCollectionPanel({
       case 'set':
         return collectionCopy.sort((a, b) => multiplier * ((a.setName || '').localeCompare(b.setName || '')));
       case 'price': {
-        const priceA = getCardPrice(a) ?? 0, priceB = getCardPrice(b) ?? 0;
+        const priceA = getCardAveragePrice(a) ?? 0, priceB = getCardAveragePrice(b) ?? 0;
         if (priceA === 0 && priceB === 0) return (a.name || '').localeCompare(b.name || '');
         return multiplier * (priceA - priceB);
       }
@@ -151,7 +141,7 @@ export default function ProfileCollectionPanel({
     }
   }, [filteredCards, sortOption]);
 
-  // Skeletons for incomplete rows (optional aesthetic)
+  // Helper: fill row
   const fillFirstRowSkeletons = (cardCount) => {
     if (cardCount >= 5) return null;
     return Array.from({ length: 5 - cardCount }).map((_, idx) => (
@@ -159,7 +149,45 @@ export default function ProfileCollectionPanel({
     ));
   };
 
-  // --- Render states ---
+  // --- Removal logic: fully instant, never flickers ---
+  const triggerRemove = (card) => {
+    if (!isOwnProfile || !card || !card.id) return;
+    if (card.quantity > 1) {
+      setRemoveCard(card);
+      setShowQuantityModal(true);
+      setConfirmRemoveId(null);
+    } else if (confirmRemoveId === card.id) {
+      // INSTANT removal: update local state immediately
+      setDisplayCollection(prev => prev.filter(x => String(x.id) !== String(card.id)));
+      handleRemoveCard(card.id, 1, {
+        onError: () => setDisplayCollection(collection.value || [])
+      });
+      setConfirmRemoveId(null);
+    } else {
+      setConfirmRemoveId(card.id);
+    }
+  };
+
+  const confirmQuantityRemove = (quantity) => {
+    if (removeCard) {
+      setDisplayCollection(prev =>
+        prev
+          .map(x =>
+            String(x.id) === String(removeCard.id)
+              ? { ...x, quantity: x.quantity - quantity }
+              : x
+          )
+          .filter(x => x.quantity > 0)
+      );
+      handleRemoveCard(removeCard.id, quantity, {
+        onError: () => setDisplayCollection(collection.value || [])
+      });
+    }
+    setShowQuantityModal(false);
+    setRemoveCard(null);
+  };
+
+  // --- Rest as before, but use displayCollection ---
   if (loading.value) {
     return (
       <section className="w-full max-w-8xl mx-auto mt-6">
@@ -168,7 +196,7 @@ export default function ProfileCollectionPanel({
     );
   }
 
-  if ((collection.value?.length ?? 0) === 0) {
+  if ((displayCollection?.length ?? 0) === 0) {
     return (
       <section className="w-full max-w-8xl mx-auto mt-6">
         <div className="text-center py-8">
@@ -202,51 +230,24 @@ export default function ProfileCollectionPanel({
   }
 
   // All sets/rarities for filters (unchanged)
-  const allSets = Array.from(new Set((collection.value || []).map(card => card.setName).filter(Boolean)));
-  const allRarities = Array.from(new Set((collection.value || []).map(card => card.rarity).filter(Boolean)));
+  const allSets = Array.from(new Set((displayCollection || []).map(card => card.setName).filter(Boolean)));
+  const allRarities = Array.from(new Set((displayCollection || []).map(card => card.rarity).filter(Boolean)));
 
-  // --- Actions/handlers ---
+  // -- Modals, handlers (same) --
   const openEditModal = (card) => {
     setEditingCard(card);
     setSelectedCard(null);
   };
-  const triggerRemove = (card) => {
-    if (!isOwnProfile || !card || !card.id) return;
-    if (card.quantity > 1) {
-      setRemoveCard(card);
-      setShowQuantityModal(true);
-      setConfirmRemoveId(null);
-    } else if (confirmRemoveId === card.id) {
-      onCardRemoved(card.id, 1);
-      setConfirmRemoveId(null);
-    } else {
-      setConfirmRemoveId(card.id);
-    }
-  };
-  const confirmQuantityRemove = (quantity) => {
-    if (removeCard) onCardRemoved(removeCard.id, quantity);
-    setShowQuantityModal(false);
-    setRemoveCard(null);
-  };
   const handleCardDetailsEdit = card => openEditModal(card);
   const handleCardDetailsRemove = card => triggerRemove(card);
   const handleEditModalClose = () => setEditingCard(null);
-  const handleModalCardUpdated = (updatedCard) => {
-    setEditingCard(null);
-    if (onCardUpdated) onCardUpdated(updatedCard);
-    refresh(); // re-fetch after update
-  };
-  const handleModalCardRemoved = (removedCardId) => {
-    setEditingCard(null);
-    if (onCardRemoved) onCardRemoved(removedCardId);
-    refresh(); // re-fetch after remove
-  };
 
   // --- MAIN RENDER ---
   return (
     <section className="w-full max-w-8xl mx-auto mt-6">
       {/* --- Filter/Search/Sort Bar --- */}
       <div className="max-w-3xl flex flex-wrap justify-start gap-2 items-center px-4 py-2 mb-6 transition-all">
+        {/* ...search/filter/sort code as before... */}
         <div className="relative w-[250px]">
           <input
             type="text"
@@ -262,7 +263,6 @@ export default function ProfileCollectionPanel({
             </svg>
           </span>
         </div>
-        {/* Set Filter */}
         <select
           value={setFilter}
           onChange={e => setSetFilter(e.target.value)}
@@ -271,7 +271,6 @@ export default function ProfileCollectionPanel({
           <option value="">Set</option>
           {allSets.map(set => <option key={set} value={set}>{set}</option>)}
         </select>
-        {/* Rarity Filter */}
         <select
           value={rarityFilter}
           onChange={e => setRarityFilter(e.target.value)}
@@ -280,7 +279,6 @@ export default function ProfileCollectionPanel({
           <option value="">Rarity</option>
           {allRarities.map(rarity => <option key={rarity} value={rarity}>{rarity}</option>)}
         </select>
-        {/* Sort Option */}
         <select
           value={sortOption}
           onChange={e => setSortOption(e.target.value)}
@@ -290,7 +288,6 @@ export default function ProfileCollectionPanel({
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
-        {/* Add Button */}
         {isOwnProfile && (
           <button
             className="bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white rounded-md px-3 py-1.5 text-sm shadow flex items-center h-9 ml-1 focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent transition font-semibold"
@@ -418,8 +415,15 @@ export default function ProfileCollectionPanel({
           card={editingCard}
           token={token}
           onClose={handleEditModalClose}
-          onUpdated={handleModalCardUpdated}
-          onRemoved={handleModalCardRemoved}
+          onUpdated={updatedCard => {
+            setEditingCard(null);
+            if (onCardUpdated) onCardUpdated(updatedCard);
+            // You may also update displayCollection if desired.
+          }}
+          onRemoved={removedCardId => {
+            setEditingCard(null);
+            setDisplayCollection(prev => prev.filter(card => card.id !== removedCardId));
+          }}
         />
       )}
       <QuantitySelectorModal

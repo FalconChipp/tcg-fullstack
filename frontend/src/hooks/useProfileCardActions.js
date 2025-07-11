@@ -79,62 +79,70 @@ export default function useProfileCardActions({
     }
   }
 
-  // Remove card from collection/wishlist
-  async function handleRemoveCard(collectionId, quantityToRemove = 1) {
-    if (!isOwnProfile || !token) {
-      setStatus({ type: "error", msg: "Must be logged in." });
-      return;
-    }
-    setLoading(true);
-    setCollection(prev => 
-      prev.map(card => 
-        String(card.id) === String(collectionId)
-          ? { ...card, quantity: card.quantity - quantityToRemove }
-          : card
-      ).filter(card => String(card.id) !== String(collectionId) || card.quantity > 0)
-    );
-    setWishlist(prev => 
-      prev.map(card => 
-        String(card.id) === String(collectionId)
-          ? { ...card, quantity: card.quantity - quantityToRemove }
-          : card
-      ).filter(card => String(card.id) !== String(collectionId) || card.quantity > 0)
-    );
-    try {
-      const mutation = `
-        mutation RemoveFromCollection($cardId: String!, $variation: String) {
-          removeFromCollection(cardId: $cardId, variation: $variation)
-        }
-      `;
-      const variables = {
-        cardId: collectionId.toString(),
-        variation: null
-      };
-      const response = await fetch(TCG_GRAPHQL_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          query: mutation,
-          variables,
-        }),
-      });
-      const { data, errors } = await response.json();
-      if (errors || !data?.removeFromCollection) {
-        setStatus({ type: "error", msg: "Failed to remove card from collection." });
-        refresh();
-      } else {
-        setStatus({ type: "success", msg: "Card removed from collection." });
-      }
-    } catch (error) {
-      setStatus({ type: "error", msg: "An error occurred while removing the card." });
-      refresh();
-    } finally {
-      setLoading(false);
-    }
+async function handleRemoveCard(collectionId, quantityToRemove = 1) {
+  if (!isOwnProfile || !token) {
+    setStatus({ type: "error", msg: "Must be logged in." });
+    return;
   }
+
+  const cardObj = (collection || []).find(card => String(card.id) === String(collectionId));
+  const prevCollection = [...(collection || [])];
+
+  // Optimistically remove from UI
+  setCollection(prev =>
+    prev
+      .map(card =>
+        String(card.id) === String(collectionId)
+          ? { ...card, quantity: card.quantity - quantityToRemove }
+          : card
+      )
+      .filter(card => String(card.id) !== String(collectionId) || card.quantity > 0)
+  );
+  setWishlist(prev =>
+    prev
+      .map(card =>
+        String(card.id) === String(collectionId)
+          ? { ...card, quantity: card.quantity - quantityToRemove }
+          : card
+      )
+      .filter(card => String(card.id) !== String(collectionId) || card.quantity > 0)
+  );
+
+  try {
+    const mutation = `
+      mutation RemoveFromCollection($cardId: String!, $variation: String) {
+        removeFromCollection(cardId: $cardId, variation: $variation)
+      }
+    `;
+    const variables = {
+      cardId: (cardObj?.cardId || cardObj?.id || collectionId).toString(),
+      variation: cardObj && cardObj.variation ? cardObj.variation : null
+    };
+
+    const response = await fetch(TCG_GRAPHQL_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        query: mutation,
+        variables,
+      }),
+    });
+    const { data, errors } = await response.json();
+    if (errors || !data?.removeFromCollection) {
+      setStatus({ type: "error", msg: "Failed to remove card from collection." });
+      setCollection(prevCollection); // Rollback
+    } else {
+      setStatus({ type: "success", msg: "Card removed from collection." });
+      // No need to refresh
+    }
+  } catch (error) {
+    setStatus({ type: "error", msg: "An error occurred while removing the card." });
+    setCollection(prevCollection); // Rollback
+  }
+}
 
   // Remove from wishlist
 async function handleRemoveFromWishlist(cardId) {

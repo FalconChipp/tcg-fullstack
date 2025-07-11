@@ -7,6 +7,9 @@ import { formatVariation } from "@/utils/formatVariation";
 const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
 const TCG_GRAPHQL_URL = "https://tcg.sixbyfive.com/tcgdex/graphql";
 
+// --- Helper: normalize variation so empty string/undefined/null is always null (useful for backend consistency)
+const normalizeVariation = (v) => (!v || (typeof v === "string" && v.trim() === "")) ? null : v;
+
 export default function EditCollectionCardModal({
   card,
   onClose,
@@ -16,7 +19,8 @@ export default function EditCollectionCardModal({
   // Local state
   const [quantity, setQuantity] = useState(card.quantity || 1);
   const [condition, setCondition] = useState(card.condition || "mint");
-  const [variation, setVariation] = useState(card.variation || "");
+  // --- CHANGED: variation always comes from the original card.variation, but normalized to null if missing
+  const [variation, setVariation] = useState(card.variation ?? "");
   const [isPublic, setIsPublic] = useState(!!card.isPublic);
   const [wishlist, setWishlist] = useState(!!card.wishlist);
   const [notes, setNotes] = useState(card.notes || "");
@@ -107,22 +111,12 @@ export default function EditCollectionCardModal({
         }
       }
     `;
-    const formatTcgData = v => v === null || v === undefined ? "" : String(v).trim();
-    const formatUrlField = url => {
-      if (!url) return "";
-      const trimmed = String(url).trim();
-      try { return new URL(trimmed).href; } catch { return trimmed.startsWith("/") ? trimmed : ""; }
-    };
-    const formatNumericValue = v => {
-      if (v === null || v === undefined || v === "") return null;
-      const n = parseFloat(v);
-      return isNaN(n) ? null : n;
-    };
+    // --- CHANGED: always normalize variation before sending
     const variables = {
       cardId: card.cardId || card.id,
       quantity,
       condition,
-      variation,
+      variation: normalizeVariation(variation),
     };
 
     try {
@@ -161,7 +155,13 @@ export default function EditCollectionCardModal({
         removeFromCollection(cardId: $cardId, variation: $variation)
       }
     `;
-    const variables = { cardId: card.cardId || card.id, variation: card.variation || null };
+    // --- CHANGED: always send the actual variation value
+    const variables = { 
+      cardId: card.cardId || card.id, 
+      variation: normalizeVariation(card.variation) // Always send card.variation, not the component state!
+    };
+    // Debug: log exactly what you're sending
+    // console.log("Remove variables:", variables);
     try {
       const res = await fetch(WP_GRAPHQL_URL, {
         method: "POST",

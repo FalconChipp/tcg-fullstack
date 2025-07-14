@@ -6,6 +6,13 @@ import { generateProofCode, moderateProofImage, saveBase64Image } from './helper
 
 import { getUserTier } from "../../utils/getUserTier.js";
 const proofCodes = new Map();
+// Periodically remove expired proof codes to avoid memory leaks
+setInterval(() => {
+  const now = Date.now();
+  for (const [userId, { expires }] of proofCodes) {
+    if (now > expires) proofCodes.delete(userId);
+  }
+}, 60 * 1000);
 const PROOF_DIR = path.join(process.cwd(), 'uploads', 'proofs');
 
 const DEFAULT_PAGE_SIZE = 20;

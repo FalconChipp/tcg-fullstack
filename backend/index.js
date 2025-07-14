@@ -246,9 +246,21 @@ try {
   await sequelize.authenticate();
   logger.info('Database connection established.');
   await sequelize.sync(); // For production, use migrations!
-  startExpiredMessageCleanup(logger);
-  startUnreadReminderJob(logger);
-  startNotificationCleanup(logger);
+  const cleanupIntervals = [
+    startExpiredMessageCleanup(logger),
+    startUnreadReminderJob(logger),
+    startNotificationCleanup(logger),
+  ];
+
+  function shutdown() {
+    cleanupIntervals.forEach(clearInterval);
+    httpServer.close(() => {
+      sequelize.close().then(() => process.exit(0));
+    });
+  }
+
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 } catch (err) {
   logger.error('Database connection failed:', err);
   process.exit(1);

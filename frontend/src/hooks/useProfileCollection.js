@@ -2,16 +2,43 @@ import { useState, useEffect } from "react";
 
 const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
 
-// Helper to safely convert to number
+// --- Shared helpers for card price calculation (added/changed) ---
+// Safely convert to number
 const toNumber = (value) => {
   if (value === null || value === undefined) return null;
   const num = typeof value === 'string' ? parseFloat(value) : value;
   return isNaN(num) ? null : num;
 };
 
+// Calculate the average price for a card, matching panel logic
+function getCardAveragePrice(card) {
+  if (!card || !Array.isArray(card.prices)) return null;
+  const selectedVariation = card.variation || "normal";
+  let priceObj = card.prices.find(
+    (p) => p && (p.variation === selectedVariation)
+  );
+  if (!priceObj && card.prices.length) priceObj = card.prices[0];
+  if (!priceObj) return null;
+  const tcg = toNumber(priceObj.tcgplayer);
+  const cmk = toNumber(priceObj.cardmarket);
+  if (tcg == null && cmk == null) return null;
+  if (tcg != null && cmk != null) return (tcg + cmk) / 2;
+  return tcg != null ? tcg : cmk;
+}
+
+// Calculate total value for collection
+function getCollectionTotalValue(col = []) {
+  return col.reduce((sum, card) => {
+    const price = getCardAveragePrice(card) ?? 0;
+    const quantity = card.quantity || 1;
+    return sum + (price * quantity);
+  }, 0);
+}
+
+// --- UPDATED HOOK --- //
 export default function useProfileCollection({ user, token }) {
   const [collection, setCollection] = useState([]);
-  const [wishlist, setWishlist] = useState([]);
+  const [wishlist, setWishlist] = useState({ entries: [] }); // <-- Now an object, not array
   const [loading, setLoading] = useState(true);
   const [collectionValue, setCollectionValue] = useState(0);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -28,7 +55,7 @@ export default function useProfileCollection({ user, token }) {
     (async () => {
       setLoading(true);
 
-      // ---- FIXED QUERY ----
+      // --- Fetch collection as before --- //
       const colQ = `
         query GetUserProfileCollection($userId: ID!) {
           collection(userId: $userId) {
@@ -80,56 +107,80 @@ export default function useProfileCollection({ user, token }) {
         rawCollectionData = [];
       }
 
-      // ---- FLATTEN & SPLIT COLLECTION/WISHLIST ----
+      // ---- FLATTEN & SPLIT COLLECTION/WISHLIST (collection-style only) ----
       let col = [];
-      let wish = [];
       (rawCollectionData || []).forEach((entry) => {
         if (!entry) return;
         const isWishlistItem = entry.wishlist === true || entry.wishlist === 1 || String(entry.wishlist).toLowerCase() === "true";
-        const card = entry.card || {};
-        // Defensive: filter nulls out of prices/variations if present
-        const prices = Array.isArray(card.prices)
-          ? card.prices.filter(Boolean)
-          : [];
-        const variations = card.variations && typeof card.variations === 'object'
-          ? card.variations
-          : null;
-        const fullEntry = {
-          ...entry,
-          ...card, // flatten card fields for easy access in UI
-          prices,
-          variations,
-          cardId: entry.cardId,
-          quantity: entry.quantity,
-          condition: entry.condition,
-          variation: entry.variation,
-          wishlist: entry.wishlist,
-          createdAt: entry.createdAt,
-          updatedAt: entry.updatedAt,
-        };
-        if (isWishlistItem) wish.push(fullEntry);
-        else col.push(fullEntry);
+        if (!isWishlistItem) {
+          const card = entry.card || {};
+          // Defensive: filter nulls out of prices/variations if present
+          const prices = Array.isArray(card.prices)
+            ? card.prices.filter(Boolean)
+            : [];
+          const variations = card.variations && typeof card.variations === 'object'
+            ? card.variations
+            : null;
+          const fullEntry = {
+            ...entry,
+            ...card, // flatten card fields for easy access in UI
+            prices,
+            variations,
+            cardId: entry.cardId,
+            quantity: entry.quantity,
+            condition: entry.condition,
+            variation: entry.variation,
+            wishlist: entry.wishlist,
+            createdAt: entry.createdAt,
+            updatedAt: entry.updatedAt,
+          };
+          col.push(fullEntry);
+        }
       });
 
-      // ---- CALCULATE COLLECTION VALUE ----
-      const totalValue = col.reduce((sum, card) => {
-        // Defensive: filter nulls out of prices
-        const filteredPrices = Array.isArray(card?.prices) ? card.prices.filter(Boolean) : [];
-        // Find "normal" variation price first, fallback to any price
-        const normal = filteredPrices.find(p => p && p.variation === "normal");
-        const firstPrice = normal
-          ? (toNumber(normal.tcgplayer) || toNumber(normal.cardmarket) || 0)
-          : (
-            filteredPrices.length
-              ? (toNumber(filteredPrices[0].tcgplayer) || toNumber(filteredPrices[0].cardmarket) || 0)
-              : 0
-          );
-        const quantity = card.quantity || 1;
-        return sum + (firstPrice * quantity);
-      }, 0);
+      // --- Fetch wishlist using proper wishlist query/object! --- //
+      const wishQ = `
+        query Wishlist($userId: ID!) {
+          wishlist(userId: $userId) {
+            entries {
+              id
+              cardId
+              variation
+              quantity
+              card {
+                id
+                name
+                setName
+                image
+                number
+              }
+            }
+            total
+            page
+            pageSize
+          }
+        }
+      `;
+      let wish = { entries: [] };
+      try {
+        const headers = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const r = await fetch(WP_GRAPHQL_URL, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ query: wishQ, variables: { userId: String(user.id) } }),
+        });
+        const responseJson = await r.json();
+        wish = responseJson.data?.wishlist ?? { entries: [] };
+      } catch (fetchError) {
+        wish = { entries: [] };
+      }
+
+      // ---- Calculate total value for collection ----
+      const totalValue = getCollectionTotalValue(col);
 
       setCollection(col);
-      setWishlist(wish);
+      setWishlist(wish); // <-- object, not array
       setCollectionValue(totalValue);
       setLoading(false);
     })();
@@ -137,7 +188,7 @@ export default function useProfileCollection({ user, token }) {
 
   return {
     collection: { value: collection, set: setCollection },
-    wishlist: { value: wishlist, set: setWishlist },
+    wishlist: { value: wishlist, set: setWishlist }, // <-- object, with .entries
     loading: { value: loading, set: setLoading },
     collectionValue: { value: collectionValue, set: setCollectionValue },
     refresh,

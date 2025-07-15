@@ -17,7 +17,6 @@ export default gql`
     userId: ID!
     cardId: String!
     variation: String
-    condition: String
     quantity: Int
     notes: String
     addedAt: String

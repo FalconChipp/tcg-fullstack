@@ -1,16 +1,17 @@
 // src/modules/collections/resolvers.js
 
-import { Collection, Card, sequelize } from '../../models/index.js';
+import { Collection, Wishlist, Card, sequelize } from '../../models/index.js';
 import { requireAuth } from './helpers.js';
 import { maybeGrantAchievement } from '../achievements/helpers.js';
 
-// --- Normalize variation: treats undefined, empty, or "" as null everywhere ---
-function normalizeVariation(v) {  // CHANGED: Normalize variation helper
-  return (!v || String(v).trim() === "") ? null : v;
+// Normalize variation to null if empty, undefined, or blank
+function normalizeVariation(v) {
+  return (!v || String(v).trim() === "") ? null : String(v).trim();
 }
 
 const resolvers = {
   Query: {
+    // Fetch logged-in user's collection (not wishlist items)
     myCollection: async (_, __, { token }) => {
       const payload = requireAuth(token);
       return Collection.findAll({
@@ -18,19 +19,21 @@ const resolvers = {
         include: [{ model: Card, as: 'card' }]
       });
     },
+    // Fetch any user's collection (not wishlist items)
     collection: async (_, { userId }) => {
       return Collection.findAll({
         where: { userId, wishlist: false },
         include: [{ model: Card, as: 'card' }]
       });
     },
+    // Fetch a single collection entry (not wishlist)
     collectionEntry: async (_, { cardId, variation }, { token }) => {
       const payload = requireAuth(token);
       return Collection.findOne({
         where: {
           userId: payload.id,
           cardId,
-          variation: normalizeVariation(variation), // CHANGED: Normalize variation
+          variation: normalizeVariation(variation),
           wishlist: false,
         },
         include: [{ model: Card, as: 'card' }]
@@ -39,6 +42,7 @@ const resolvers = {
   },
 
   Mutation: {
+    // Add a card to collection (not wishlist)
     addToCollection: async (_, { cardId, quantity = 1, condition, variation }, { token }) => {
       const payload = requireAuth(token);
       const t = await sequelize.transaction();
@@ -47,7 +51,7 @@ const resolvers = {
           where: {
             userId: payload.id,
             cardId,
-            variation: normalizeVariation(variation), // CHANGED: Normalize variation
+            variation: normalizeVariation(variation),
             wishlist: false
           },
           transaction: t,
@@ -63,7 +67,7 @@ const resolvers = {
             cardId,
             quantity,
             condition,
-            variation: normalizeVariation(variation), // CHANGED: Normalize variation
+            variation: normalizeVariation(variation),
             wishlist: false
           }, { transaction: t });
         }
@@ -79,29 +83,23 @@ const resolvers = {
       }
     },
 
-removeFromCollection: async (_, { cardId, variation }, { token }) => {
-  const payload = requireAuth(token); // <-- DECLARE FIRST!
+    // Remove a card from collection (not wishlist)
+    removeFromCollection: async (_, { cardId, variation }, { token }) => {
+      const payload = requireAuth(token);
+      const entry = await Collection.findOne({
+        where: {
+          userId: payload.id,
+          cardId,
+          variation: normalizeVariation(variation),
+          wishlist: false
+        }
+      });
+      if (!entry) throw new Error('Entry not found');
+      await entry.destroy();
+      return true;
+    },
 
-  // Normalize variation before query
-  const normalizeVariation = v => (!v || v.trim() === "") ? null : v.trim();
-
-  console.log('Remove args:', { userId: payload.id, cardId, variation, wishlist: false });
-
-  const entry = await Collection.findOne({
-    where: {
-      userId: payload.id,
-      cardId,
-      variation: normalizeVariation(variation),
-      wishlist: false
-    }
-  });
-  console.log("Found entry:", entry); // DEBUG
-  if (!entry) throw new Error('Entry not found');
-  await entry.destroy();
-  return true;
-},
-
-
+    // Update collection entry (not wishlist)
     updateCollectionEntry: async (_, { cardId, quantity, condition, variation }, { token }) => {
       const payload = requireAuth(token);
       const t = await sequelize.transaction();
@@ -110,7 +108,7 @@ removeFromCollection: async (_, { cardId, variation }, { token }) => {
           where: {
             userId: payload.id,
             cardId,
-            variation: normalizeVariation(variation), // CHANGED: Normalize variation
+            variation: normalizeVariation(variation),
             wishlist: false
           },
           transaction: t,
@@ -128,6 +126,7 @@ removeFromCollection: async (_, { cardId, variation }, { token }) => {
       }
     },
 
+    // Move a card *from* collection *to* wishlist (toggle wishlist true)
     moveToWishlist: async (_, { cardId, variation }, { token }) => {
       const payload = requireAuth(token);
       const t = await sequelize.transaction();
@@ -136,7 +135,7 @@ removeFromCollection: async (_, { cardId, variation }, { token }) => {
           where: {
             userId: payload.id,
             cardId,
-            variation: normalizeVariation(variation), // CHANGED: Normalize variation
+            variation: normalizeVariation(variation),
             wishlist: false
           },
           transaction: t,
@@ -153,25 +152,60 @@ removeFromCollection: async (_, { cardId, variation }, { token }) => {
       }
     },
 
+    // PATCHED: Move from wishlist (Wishlist table) to collection (Collection table)
     moveToCollection: async (_, { cardId, variation }, { token }) => {
       const payload = requireAuth(token);
       const t = await sequelize.transaction();
       try {
-        const entry = await Collection.findOne({
+        // 1. Find the wishlist entry to move
+        const wishlistEntry = await Wishlist.findOne({
           where: {
             userId: payload.id,
             cardId,
-            variation: normalizeVariation(variation), // CHANGED: Normalize variation
-            wishlist: true
+            variation: normalizeVariation(variation)
           },
           transaction: t,
           lock: t.LOCK.UPDATE
         });
-        if (!entry) throw new Error('Entry not found in wishlist');
-        entry.wishlist = false;
-        await entry.save({ transaction: t });
+
+        if (!wishlistEntry) {
+          await t.rollback();
+          throw new Error("Entry not found in wishlist");
+        }
+
+        // Save fields from wishlist entry
+        const quantity = wishlistEntry.quantity || 1;
+
+        // Remove from wishlist
+        await wishlistEntry.destroy({ transaction: t });
+
+        // 2. Add to collection (or increment if already present)
+        let collectionEntry = await Collection.findOne({
+          where: {
+            userId: payload.id,
+            cardId,
+            variation: normalizeVariation(variation),
+            wishlist: false
+          },
+          transaction: t,
+          lock: t.LOCK.UPDATE
+        });
+
+        if (collectionEntry) {
+          collectionEntry.quantity += quantity;
+          await collectionEntry.save({ transaction: t });
+        } else {
+          collectionEntry = await Collection.create({
+            userId: payload.id,
+            cardId,
+            variation: normalizeVariation(variation),
+            quantity,
+            wishlist: false
+          }, { transaction: t });
+        }
+
         await t.commit();
-        return entry;
+        return collectionEntry;
       } catch (err) {
         await t.rollback();
         throw err;
@@ -179,8 +213,8 @@ removeFromCollection: async (_, { cardId, variation }, { token }) => {
     },
   },
 
+  // Auto-resolve the associated card for each collection entry
   Collection: {
-    // Use eager loaded association when available to avoid N+1 queries
     card: async (col) => col.card || Card.findByPk(col.cardId)
   }
 };

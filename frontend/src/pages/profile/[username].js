@@ -212,16 +212,20 @@ export default function ProfilePage({ user, error }) {
               onBinderEditorClose={() => setBinderEditorOpen(false)}
             />
           )}
-          {activeTab === "wishlist" &&
-            <ProfileWishlistPanel
-              user={user}
-              wishlist={wishlist.value}
-              isOwnProfile={isOwnProfile}
-              onCardRemoved={handleRemoveFromWishlist}
-              onMoveToCollection={handleMoveToCollection}
-              setStatus={status.set}
-            />
-          }
+          {activeTab === "wishlist" && (
+            <>
+              {/* Add this logging here */}
+              {console.log("PROFILE PAGE: wishlist.value", wishlist.value)}
+              <ProfileWishlistPanel
+                wishlist={wishlist.value.entries || []}
+                user={user}
+                isOwnProfile={isOwnProfile}
+                onCardRemoved={handleRemoveFromWishlist}
+                onMoveToCollection={handleMoveToCollection}
+                setStatus={status.set}
+              />
+            </>
+          )}
           {activeTab === "achievements" &&
             <ProfileAchievements
               achievements={achievements}

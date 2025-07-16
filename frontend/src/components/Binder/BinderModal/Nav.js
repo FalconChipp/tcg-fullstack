@@ -1,6 +1,22 @@
-import React from "react";
+import React, { useState } from "react";
 import BinderCover from "@/components/Binder/BinderCover";
 
+/**
+ * BinderNav
+ * Navigation and action bar for binder editor, including Save, Save & Close, Add Page, Delete Page, color picker, and page nav buttons.
+ * 
+ * @param {Object} props
+ * @param {Array} pages - Array of binder pages (each with slots)
+ * @param {number} currentPage - The currently active page index
+ * @param {Object} handlers - Action handlers: must include handleSaveBinder (calls the batch save mutation)
+ * @param {boolean} isOwnProfile - True if viewing own binder (enables editing)
+ * @param {boolean} hasUnsavedChanges - True if there are changes to save
+ * @param {Function} onClose - Callback to close the modal
+ * @param {string} coverColor - Current binder cover color
+ * @param {string} accentColor - Current binder accent color
+ * @param {string} colorName - Display name for current color
+ * @param {Function} onEditCover - Opens the color picker
+ */
 export default function BinderNav({
   pages,
   currentPage,
@@ -13,10 +29,32 @@ export default function BinderNav({
   colorName = "",
   onEditCover = () => {},
 }) {
-  // Await save before closing
+  // Track save state to disable buttons while saving
+  const [saving, setSaving] = useState(false);
+
+  // Save & Close: calls handleSaveBinder, then closes if successful
   const handleSaveAndClose = async () => {
+    if (!handlers.handleSaveBinder) {
+      alert("Save handler is missing!");
+      return;
+    }
+    setSaving(true);
+    console.log("Save & Close button clicked - attempting to call handleSaveBinder");
     const result = await handlers.handleSaveBinder();
+    setSaving(false);
     if (result) onClose();
+  };
+
+  // Save (just saves, does not close)
+  const handleSaveClick = async () => {
+    if (!handlers.handleSaveBinder) {
+      alert("Save handler is missing!");
+      return;
+    }
+    setSaving(true);
+    console.log("Save button clicked - attempting to call handleSaveBinder");
+    await handlers.handleSaveBinder();
+    setSaving(false);
   };
 
   return (
@@ -72,6 +110,8 @@ export default function BinderNav({
           Binder Cover: {colorName || "Colour"}
         </button>
       )}
+
+      {/* -- Save Button (right, green) -- */}
       <button
         className={`
           ml-auto px-4 py-1 rounded-xl font-bold
@@ -79,11 +119,11 @@ export default function BinderNav({
           disabled:bg-light-border dark:disabled:bg-dark-border
           transition
         `}
-        onClick={handlers.handleSaveBinder}
-        disabled={!hasUnsavedChanges}
+        onClick={handleSaveClick}
+        disabled={!hasUnsavedChanges || saving}
         title="Save Binder"
       >
-        Save
+        {saving ? "Saving..." : "Save"}
       </button>
       <button
         className={`
@@ -93,10 +133,10 @@ export default function BinderNav({
           transition
         `}
         onClick={handleSaveAndClose}
-        disabled={!hasUnsavedChanges}
+        disabled={!hasUnsavedChanges || saving}
         title="Save & Close Binder"
       >
-        Save & Close
+        {saving ? "Saving..." : "Save & Close"}
       </button>
 
       {/* -- Page Nav Buttons (right) -- */}
@@ -123,7 +163,7 @@ export default function BinderNav({
               dark:${
                 currentPage === i
                   ? "bg-dark-primary border-dark-primary text-white shadow"
-                  : "bg-dark-alt border-dark-border text-dark-text hover:bg-dark-accentLight hover:border-dark-accent"
+                  : "bg-dark-alt border-dark-border text-dark-text hover:bg-dark-accentLight dark:hover:border-dark-accent"
               }
               focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent
               cursor-pointer select-none

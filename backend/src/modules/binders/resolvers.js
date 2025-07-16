@@ -12,10 +12,9 @@ import {
 import { requireAuth, requireAdmin, slugify, checkBinderLimits } from './helpers.js';
 import { maybeGrantAchievement } from '../achievements/helpers.js';
 import { notifyUser } from '../../utils/notifications.js';
-import { saveBase64Image } from '../marketplace/helpers.js';
 import { getUserTier } from '../../utils/getUserTier.js';
 
-const COVER_DIR = path.join(process.cwd(), 'uploads', 'binder_covers');
+// No image logic: only coverColor is used now
 
 const DEFAULT_PAGE_SIZE = 20;
 
@@ -23,13 +22,27 @@ const resolvers = {
   Query: {
     myBinders: async (_, __, { token }) => {
       const payload = requireAuth(token);
-      return Binder.findAll({ where: { userId: payload.id, isDeleted: false }, order: [['createdAt', 'DESC']] });
+      return Binder.findAll({
+        where: { userId: payload.id, isDeleted: false },
+        order: [['createdAt', 'DESC']]
+      });
     },
     binder: async (_, { id, slug }, { token }) => {
       const where = {};
       if (id) where.id = id;
       if (slug) where.slug = slug;
-      const binder = await Binder.findOne({ where });
+      const binder = await Binder.findOne({
+        where,
+        include: [{
+          model: BinderPage,
+          as: 'pages',
+          include: [{
+            model: BinderSlot,
+            as: 'slots',
+            include: [{ model: Card, as: 'card' }]
+          }]
+        }]
+      });
       if (!binder) return null;
       if (binder.visibility === 'private' && (!token || requireAuth(token).id !== binder.userId)) {
         throw new Error('Not authorized');
@@ -50,6 +63,15 @@ const resolvers = {
         limit: pageSize,
         offset: (page - 1) * pageSize,
         order: [['createdAt', 'DESC']],
+        include: [{
+          model: BinderPage,
+          as: 'pages',
+          include: [{
+            model: BinderSlot,
+            as: 'slots',
+            include: [{ model: Card, as: 'card' }]
+          }]
+        }]
       });
       return { binders: rows, total: count, page, pageSize };
     },
@@ -71,7 +93,8 @@ const resolvers = {
         name: input.name,
         description: input.description,
         accentColor: input.accentColor,
-        visibility: input.visibility || 'private',
+        coverColor: input.coverColor, // main color
+        visibility: input.visibility || 'public',
         slug,
       });
       await maybeGrantAchievement(payload.id, 'first_binder_created', { binderId: binder.id });
@@ -81,7 +104,11 @@ const resolvers = {
       const payload = requireAuth(token);
       const binder = await Binder.findByPk(id);
       if (!binder || binder.userId !== payload.id) throw new Error('Not authorized');
-      Object.assign(binder, input);
+      if (input.name !== undefined) binder.name = input.name;
+      if (input.description !== undefined) binder.description = input.description;
+      if (input.accentColor !== undefined) binder.accentColor = input.accentColor;
+      if (input.coverColor !== undefined) binder.coverColor = input.coverColor;
+      if (input.visibility !== undefined) binder.visibility = input.visibility;
       await binder.save();
       return binder;
     },
@@ -177,21 +204,117 @@ const resolvers = {
       await slot.destroy();
       return true;
     },
-    uploadBinderCover: async (_, { id, image }, { token }) => {
+
+    // --- BULK PAGES + SLOTS SAVE ---
+    /**
+     * Bulk save (upsert) all pages and slots for a binder.
+     * Any page/slot not in the request is deleted.
+     */
+    saveBinderPagesAndSlots: async (_, { binderId, pages }, { token }) => {
       const payload = requireAuth(token);
-      const binder = await Binder.findByPk(id);
+      const binder = await Binder.findByPk(binderId, {
+        include: [{ model: BinderPage, as: 'pages', include: [{ model: BinderSlot, as: 'slots' }] }]
+      });
       if (!binder || binder.userId !== payload.id) throw new Error('Not authorized');
-      fs.mkdirSync(COVER_DIR, { recursive: true });
-      const filePath = saveBase64Image(image, COVER_DIR);
-      binder.coverImage = `/uploads/binder_covers/${path.basename(filePath)}`;
-      await binder.save();
-      return binder.coverImage;
+
+      // Existing state
+      const existingPages = await BinderPage.findAll({ where: { binderId } });
+      const existingPageMap = Object.fromEntries(existingPages.map(p => [p.id, p]));
+      const keptPageIds = [];
+      let keptSlotIds = [];
+
+      for (const [pageIdx, clientPage] of pages.entries()) {
+        let page;
+        if (clientPage.id && existingPageMap[clientPage.id]) {
+          // Update
+          page = existingPageMap[clientPage.id];
+          if (clientPage.layout !== undefined) page.layout = clientPage.layout;
+          if (clientPage.title !== undefined) page.title = clientPage.title;
+          page.pageOrder = pageIdx;
+          await page.save();
+        } else {
+          // Create
+          page = await BinderPage.create({
+            binderId,
+            pageOrder: pageIdx,
+            layout: clientPage.layout,
+            title: clientPage.title
+          });
+        }
+        keptPageIds.push(page.id);
+
+        // --- SLOTS (upsert or create, and collect kept ids) ---
+        const existingSlots = await BinderSlot.findAll({ where: { pageId: page.id } });
+        const existingSlotMap = Object.fromEntries(existingSlots.map(s => [s.id, s]));
+        const thisPageSlotIds = [];
+
+        for (const clientSlot of (clientPage.slots || [])) {
+          let slot;
+          if (clientSlot.id && existingSlotMap[clientSlot.id]) {
+            // Update
+            slot = existingSlotMap[clientSlot.id];
+            slot.position = clientSlot.position;
+            slot.cardId = clientSlot.cardId;
+            slot.quantity = clientSlot.quantity;
+            slot.notes = clientSlot.notes;
+            await slot.save();
+          } else {
+            // Create
+            slot = await BinderSlot.create({
+              id: clientSlot.id,
+              pageId: page.id,
+              cardId: clientSlot.cardId,
+              position: clientSlot.position,
+              quantity: clientSlot.quantity,
+              notes: clientSlot.notes,
+            });
+          }
+          thisPageSlotIds.push(slot.id);
+        }
+
+        // Remove slots not kept on this page
+        for (const slot of existingSlots) {
+          if (!thisPageSlotIds.includes(slot.id)) {
+            await slot.destroy();
+          }
+        }
+        keptSlotIds = keptSlotIds.concat(thisPageSlotIds);
+      }
+
+      // Remove pages not kept
+      for (const p of existingPages) {
+        if (!keptPageIds.includes(p.id)) {
+          // Delete slots under the page first (in case)
+          await BinderSlot.destroy({ where: { pageId: p.id } });
+          await p.destroy();
+        }
+      }
+
+      // Return updated binder, nested
+      return Binder.findByPk(binderId, {
+        include: [{
+          model: BinderPage,
+          as: 'pages',
+          include: [{
+            model: BinderSlot,
+            as: 'slots',
+            include: [{ model: Card, as: 'card' }]
+          }],
+          order: [['pageOrder', 'ASC']]
+        }]
+      });
     },
+
+    // Admin only
     adminEditBinder: async (_, { id, input }, { token }) => {
       requireAdmin(token);
       const binder = await Binder.findByPk(id);
       if (!binder) throw new Error('Not found');
-      Object.assign(binder, input);
+      if (input.name !== undefined) binder.name = input.name;
+      if (input.description !== undefined) binder.description = input.description;
+      if (input.accentColor !== undefined) binder.accentColor = input.accentColor;
+      if (input.coverColor !== undefined) binder.coverColor = input.coverColor;
+      if (input.visibility !== undefined) binder.visibility = input.visibility;
       await binder.save();
       await notifyUser({
         userId: binder.userId,
@@ -221,10 +344,18 @@ const resolvers = {
     },
   },
   Binder: {
-    pages: (binder) => BinderPage.findAll({ where: { binderId: binder.id }, order: [['pageOrder', 'ASC']] }),
+    pages: (binder) =>
+      BinderPage.findAll({
+        where: { binderId: binder.id },
+        order: [['pageOrder', 'ASC']]
+      }),
   },
   BinderPage: {
-    slots: (page) => BinderSlot.findAll({ where: { pageId: page.id }, order: [['position', 'ASC']] }),
+    slots: (page) =>
+      BinderSlot.findAll({
+        where: { pageId: page.id },
+        order: [['position', 'ASC']]
+      }),
   },
   BinderSlot: {
     card: (slot) => Card.findByPk(slot.cardId),

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useContext } from "react";
 import Image from "next/image";
 import { formatCurrency } from "@/utils/formatCurrency";
 import BinderEditorModal from "@/components/Binder/BinderEditorModal";
@@ -7,6 +7,30 @@ import BinderSettingsModal from "@/components/Binder/BinderSettingsModal";
 import Portal from "@/components/UI/Portal";
 import CardSkeleton from "@/components/UI/CardSkeleton";
 import BinderCover from "../Binder/BinderCover";
+import { AuthContext } from "@/components/Auth/AuthProvider";
+import { executeMutation, COLLECTION_MUTATIONS } from "@/utils/graphqlUtils";
+
+// --- ADD PAGE MUTATION ---
+const ADD_BINDER_PAGE_MUTATION = `
+  mutation AddBinderPage($binderId: ID!, $input: BinderPageInput!) {
+    addBinderPage(binderId: $binderId, input: $input) {
+      id
+      binderId
+      title
+      layout
+      pageOrder
+      createdAt
+      updatedAt
+      slots {
+        id
+        cardId
+        quantity
+        position
+        notes
+      }
+    }
+  }
+`;
 
 const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
 
@@ -26,17 +50,19 @@ export default function ProfileBindersPanel({
   onBinderEditorOpen = () => {},
   onBinderEditorClose = () => {},
 }) {
+  const { token } = useContext(AuthContext);
+
   const [selectedBinder, setSelectedBinder] = useState(null);
   const [showBinderEditor, setShowBinderEditor] = useState(false);
   const [showBinderSettings, setShowBinderSettings] = useState(false);
-  const [newBinderSettings, setNewBinderSettings] = useState(null);
   const [statusMessage, setStatusMessage] = useState(null);
+  const [creating, setCreating] = useState(false);
 
   const [bindersWithValues, setBindersWithValues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Fetch binders
+  // --- Fetch binders from backend ---
   const fetchBinders = useCallback(() => {
     if (!userId) return;
     setLoading(true);
@@ -45,7 +71,8 @@ export default function ProfileBindersPanel({
       query GetUserBinders($userId: ID!, $page: Int, $pageSize: Int) {
         browseBinders(userId: $userId, page: $page, pageSize: $pageSize) {
           binders {
-            id userId name description coverImage accentColor visibility slug createdAt updatedAt
+            id userId name description coverColor accentColor visibility slug createdAt updatedAt
+            pages { id layout slots { id cardId position quantity notes } }
           }
         }
       }
@@ -63,11 +90,12 @@ export default function ProfileBindersPanel({
         } else {
           const userBinders = data?.browseBinders?.binders || [];
           const processed = userBinders.map((binder) => {
-            const totalValue = (binder.pages || []).reduce(
-              (total, page) => total + (page.tcgplayerMid || page.cardmarketAverageSell || 0),
+            // You may want to sum card values or slot counts differently here!
+            const totalValue = 0;
+            const cardsCount = (binder.pages || []).reduce(
+              (sum, p) => sum + (p.slots?.length || 0),
               0
             );
-            const cardsCount = (binder.pages || []).length;
             return { ...binder, totalValue, cardsCount };
           });
           setBindersWithValues(processed);
@@ -85,25 +113,68 @@ export default function ProfileBindersPanel({
   useEffect(() => { fetchBinders(); }, [fetchBinders]);
   const refetch = () => fetchBinders();
 
-  // Modal handlers
-  const handleCreateBinder = () => setShowBinderSettings(true);
-  const handleBinderSettingsConfirm = (settings) => {
-    setNewBinderSettings(settings);
-    setShowBinderSettings(false);
-    setShowBinderEditor(true);
-    setSelectedBinder(null);
+  // --- Modal handlers ---
+  const handleCreateBinder = () => {
+    setShowBinderSettings(true);
   };
+
+  // -------- THE MAIN NEW CREATION FLOW ---------
+  const handleBinderSettingsConfirm = async (settings) => {
+    setCreating(true);
+    setStatusMessage({ type: "info", message: "Creating binder..." });
+    try {
+      // 1. Create binder
+      const binderRes = await executeMutation(
+        COLLECTION_MUTATIONS.CREATE_BINDER,
+        {
+          input: {
+            name: settings.name,
+            accentColor: settings.accentColor,
+            coverColor: settings.coverColor,  // <-- Use coverColor!
+            visibility: "public", // Or from modal
+          }
+        },
+        token
+      );
+      const binder = binderRes?.createBinder;
+      if (!binder?.id) throw new Error('Failed to create binder.');
+
+      // 2. Create the first page with the chosen layout
+      const pageRes = await executeMutation(
+        ADD_BINDER_PAGE_MUTATION,
+        {
+          binderId: binder.id,
+          input: { layout: settings.layout, title: "" }
+        },
+        token
+      );
+      const page = pageRes?.addBinderPage;
+      if (!page?.id) throw new Error('Binder created, but failed to add page.');
+
+      // Optionally, re-fetch from backend or build locally:
+      const newBinder = { ...binder, pages: [page] };
+      setBindersWithValues(prev => [newBinder, ...prev]);
+
+      setShowBinderSettings(false);
+      setSelectedBinder(newBinder);
+      setShowBinderEditor(true);
+
+      setStatusMessage({ type: "success", message: "Binder created!" });
+    } catch (err) {
+      setStatusMessage({ type: "error", message: err.message || "Failed to create binder." });
+    }
+    setCreating(false);
+  };
+
   const handleOpenBinder = (binder) => {
     setSelectedBinder(binder);
     setShowBinderEditor(true);
     setShowBinderSettings(false);
-    setNewBinderSettings(null);
     onBinderEditorOpen();
   };
   const handleCloseEditor = () => {
     setShowBinderEditor(false);
     setSelectedBinder(null);
-    setNewBinderSettings(null);
     onBinderEditorClose();
     refetch();
   };
@@ -113,49 +184,37 @@ export default function ProfileBindersPanel({
     try {
       const isUpdate = !!data.id;
       const mutation = isUpdate
-        ? `
-        mutation UpdateBinder($id: ID!, $input: BinderInput!) {
-          updateBinder(id: $id, input: $input) {
-            id
-            name
-            description
-            accentColor
-            visibility
-            slug
-            createdAt
-            updatedAt
-          }
-        }
-      `
-        : `
-        mutation CreateBinder($input: BinderInput!) {
-          createBinder(input: $input) {
-            id
-            name
-            description
-            accentColor
-            visibility
-            slug
-            createdAt
-            updatedAt
-          }
-        }
-      `;
+        ? COLLECTION_MUTATIONS.UPDATE_BINDER
+        : COLLECTION_MUTATIONS.CREATE_BINDER;
+
       const variables = isUpdate
-        ? { id: data.id, input: { name: data.name, description: data.description, accentColor: data.accentColor, visibility: data.visibility || "public" } }
-        : { input: { name: data.name, description: data.description, accentColor: data.accentColor, visibility: data.visibility || "public" } };
-      const res = await fetch(WP_GRAPHQL_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: mutation, variables }),
-      });
-      const { data: result, errors } = await res.json();
+        ? { id: data.id, input: {
+            name: data.name,
+            description: data.description,
+            accentColor: data.accentColor,
+            coverColor: data.coverColor,
+            visibility: data.visibility || "public"
+          } }
+        : { input: {
+            name: data.name,
+            description: data.description,
+            accentColor: data.accentColor,
+            coverColor: data.coverColor,
+            visibility: data.visibility || "public"
+          } };
+
+      const binderRes = await executeMutation(mutation, variables, token);
+
       const key = isUpdate ? "updateBinder" : "createBinder";
-      if (errors || !result?.[key]) {
+      if (!binderRes?.[key]) {
         setStatusMessage({ type: "error", message: "Failed to save binder." });
         return false;
       }
+
+      // Optionally: update cards/pages/slots here if you want to push slot updates
+
       setStatusMessage({ type: "success", message: "Binder saved!" });
+      refetch(); // Refresh the panel
       return true;
     } catch (err) {
       setStatusMessage({ type: "error", message: err.message || "Error saving binder." });
@@ -211,17 +270,16 @@ export default function ProfileBindersPanel({
     );
   }
 
-  // ----- Main Render -----
+  // ---------- Main UI Content as Variable ----------
+  let mainContent;
   if (loading) {
-    return (
+    mainContent = (
       <section className="w-full max-w-8xl mx-auto mt-6">
         <SkeletonGrid />
       </section>
     );
-  }
-
-  if (error) {
-    return (
+  } else if (error) {
+    mainContent = (
       <section className="w-full max-w-8xl mx-auto mt-6">
         <div className="col-span-full text-light-error dark:text-dark-error py-10 text-center">
           Error loading binders: {error}
@@ -229,10 +287,8 @@ export default function ProfileBindersPanel({
         <SkeletonGrid />
       </section>
     );
-  }
-
-  if (bindersWithValues.length === 0) {
-    return (
+  } else if (bindersWithValues.length === 0) {
+    mainContent = (
       <section className="w-full max-w-8xl mx-auto mt-6">
         <div className="text-center py-8">
           <div className="flex flex-col items-center gap-2 mb-2">
@@ -247,60 +303,66 @@ export default function ProfileBindersPanel({
         <SkeletonGrid />
       </section>
     );
-  }
-
-  return (
-    <section className="w-full max-w-8xl mx-auto mt-6">
-      {/* Status Message */}
-      {statusMessage && (
-        <div
-          className={`rounded p-3 my-3 text-center font-semibold ${
-            statusMessage.type === "success"
-              ? "bg-light-success dark:bg-dark-success text-white"
-              : statusMessage.type === "error"
-              ? "bg-light-error dark:bg-dark-error text-white"
-              : "bg-light-accent dark:bg-dark-accent text-white"
-          }`}
-        >
-          {statusMessage.message}
-        </div>
-      )}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-        {/* Add Binder panel always first if own profile */}
-        {isOwnProfile && (
+  } else {
+    mainContent = (
+      <section className="w-full max-w-8xl mx-auto mt-6">
+        {/* Status Message */}
+        {statusMessage && (
           <div
-            className="bg-light-surface dark:bg-dark-surface rounded-xl shadow p-3 flex flex-col items-center justify-center min-h-[420px] hover:bg-light-accent/10 dark:hover:bg-dark-accent/10 cursor-pointer transition"
-            onClick={handleCreateBinder}
+            className={`rounded p-3 my-3 text-center font-semibold ${
+              statusMessage.type === "success"
+                ? "bg-light-success dark:bg-dark-success text-white"
+                : statusMessage.type === "error"
+                ? "bg-light-error dark:bg-dark-error text-white"
+                : "bg-light-accent dark:bg-dark-accent text-white"
+            }`}
           >
-            <div className="text-5xl text-light-textMuted dark:text-dark-textMuted mb-2 font-bold">+</div>
-            <span className="text-light-textSecondary dark:text-dark-textSecondary font-semibold">New Binder</span>
+            {statusMessage.message}
           </div>
         )}
-        {/* Actual binder cards */}
-        {bindersWithValues.map((binder) => (
-          <BinderCard binder={binder} key={binder.id} />
-        ))}
-        {/* Fill first row to 5 with skeletons */}
-        {fillFirstRowSkeletons(isOwnProfile ? bindersWithValues.length + 1 : bindersWithValues.length, isOwnProfile)}
-      </div>
-      {/* Binder Settings Modal (for new binder) */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+          {/* Add Binder panel always first if own profile */}
+          {isOwnProfile && (
+            <div
+              className="bg-light-surface dark:bg-dark-surface rounded-xl shadow p-3 flex flex-col items-center justify-center min-h-[420px] hover:bg-light-accent/10 dark:hover:bg-dark-accent/10 cursor-pointer transition"
+              onClick={handleCreateBinder}
+            >
+              <div className="text-5xl text-light-textMuted dark:text-dark-textMuted mb-2 font-bold">+</div>
+              <span className="text-light-textSecondary dark:text-dark-textSecondary font-semibold">New Binder</span>
+            </div>
+          )}
+          {/* Actual binder cards */}
+          {bindersWithValues.map((binder) => (
+            <BinderCard binder={binder} key={binder.id} />
+          ))}
+          {/* Fill first row to 5 with skeletons */}
+          {fillFirstRowSkeletons(isOwnProfile ? bindersWithValues.length + 1 : bindersWithValues.length, isOwnProfile)}
+        </div>
+      </section>
+    );
+  }
+
+  // -------------- Always Render Modals at End ----------------
+  return (
+    <>
+      {mainContent}
+
+      {/* Always render modals, regardless of content above */}
       {showBinderSettings && (
         <BinderSettingsModal
           onConfirm={handleBinderSettingsConfirm}
           onClose={() => setShowBinderSettings(false)}
-          // Always provide default colors for the modal, in case user skips color picker
           defaultCoverColor="#181822"
           defaultAccentColor="#7de95a"
+          creating={creating}
         />
       )}
-      {/* Binder Editor Modal (for new or edit) */}
       {showBinderEditor && (
         <Portal>
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
             <div className="bg-light-surface dark:bg-dark-surface rounded-lg shadow-xl w-full max-w-7xl h-full">
               <BinderEditorModal
                 binder={selectedBinder}
-                settings={newBinderSettings}
                 onSave={handleSaveBinder}
                 onClose={handleCloseEditor}
                 isOwnProfile={isOwnProfile}
@@ -310,6 +372,6 @@ export default function ProfileBindersPanel({
           </div>
         </Portal>
       )}
-    </section>
+    </>
   );
 }

@@ -142,7 +142,7 @@ BinderPage.belongsTo(Binder, { foreignKey: 'binderId' });
 BinderPage.hasMany(BinderSlot, { foreignKey: 'pageId', as: 'slots', onDelete: 'CASCADE' });
 BinderSlot.belongsTo(BinderPage, { foreignKey: 'pageId' });
 Card.hasMany(BinderSlot, { foreignKey: 'cardId' });
-BinderSlot.belongsTo(Card, { foreignKey: 'cardId' });
+BinderSlot.belongsTo(Card, { foreignKey: 'cardId', as: 'card' });
 
 // Trades
 User.hasMany(Trade, { as: 'partyATrades', foreignKey: 'partyAId' });

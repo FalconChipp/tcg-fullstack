@@ -5,32 +5,32 @@
 export const COLLECTION_MUTATIONS = {
   ADD_CARD: `
     mutation AddToCollection(
-    $cardId: String!,
-    $quantity: Int,
-    $condition: String,
-    $variation: String,
-    $wishlist: Boolean,
-    $isPublic: Boolean
-  ) {
-    addToCollection(
-      cardId: $cardId,
-      quantity: $quantity,
-      condition: $condition,
-      variation: $variation,
-      wishlist: $wishlist,
-      isPublic: $isPublic
+      $cardId: String!,
+      $quantity: Int,
+      $condition: String,
+      $variation: String,
+      $wishlist: Boolean,
+      $isPublic: Boolean
     ) {
-      id
-      cardId
-      quantity
-      condition
-      variation
-      wishlist
-      isPublic
-      createdAt
-      updatedAt
+      addToCollection(
+        cardId: $cardId,
+        quantity: $quantity,
+        condition: $condition,
+        variation: $variation,
+        wishlist: $wishlist,
+        isPublic: $isPublic
+      ) {
+        id
+        cardId
+        quantity
+        condition
+        variation
+        wishlist
+        isPublic
+        createdAt
+        updatedAt
+      }
     }
-  }
   `,
   UPDATE_CARD: `
     mutation UpdateCollectionCard($input: UpdateCollectionCardInput!) {
@@ -48,6 +48,7 @@ export const COLLECTION_MUTATIONS = {
     }
   `,
 
+  // ----- BINDER MUTATIONS -----
   CREATE_BINDER: `
     mutation CreateBinder($input: BinderInput!) {
       createBinder(input: $input) {
@@ -55,13 +56,28 @@ export const COLLECTION_MUTATIONS = {
         name
         description
         accentColor
+        coverColor     # <-- changed from coverImage to coverColor
         visibility
         slug
         createdAt
         updatedAt
+        pages {
+          id
+          title
+          layout
+          pageOrder
+          slots {         # <-- include slots for proper hydration
+            id
+            cardId
+            position
+            quantity
+            notes
+          }
+        }
       }
     }
   `,
+
   UPDATE_BINDER: `
     mutation UpdateBinder($id: ID!, $input: BinderInput!) {
       updateBinder(id: $id, input: $input) {
@@ -69,13 +85,73 @@ export const COLLECTION_MUTATIONS = {
         name
         description
         accentColor
+        coverColor
         visibility
         slug
         createdAt
         updatedAt
+        pages {
+          id
+          title
+          layout
+          pageOrder
+          slots {
+            id
+            cardId
+            position
+            quantity
+            notes
+          }
+        }
       }
     }
-  `
+  `,
+
+  // --- NEW: Add card to binder slot (for saving slots) ---
+  ADD_CARD_TO_BINDER: `
+    mutation AddCardToBinder($pageId: ID!, $input: BinderSlotInput!) {
+      addCardToBinder(pageId: $pageId, input: $input) {
+        id
+        pageId
+        cardId
+        position
+        quantity
+        notes
+      }
+    }
+  `,
+
+  // --- NEW: Batch Save All Binder Pages & Slots ---
+  SAVE_BINDER_PAGES_AND_SLOTS: `
+    mutation SaveBinderPagesAndSlots($binderId: ID!, $pages: [BinderPageInput!]!) {
+      saveBinderPagesAndSlots(binderId: $binderId, pages: $pages) {
+        id
+        name
+        description
+        accentColor
+        coverColor
+        visibility
+        slug
+        createdAt
+        updatedAt
+        pages {
+          id
+          title
+          layout
+          pageOrder
+          slots {
+            id
+            cardId
+            position
+            quantity
+            notes
+          }
+        }
+      }
+    }
+  `,
+
+  // (If you have update/delete slot mutations, add here as needed)
 };
 
 /**

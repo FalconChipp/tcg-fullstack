@@ -3,10 +3,12 @@ import { deepClonePages } from '../utils/deepClonePages';
 import { getCardKey } from '@/utils/cardUtils';
 import { AuthContext } from '@/components/Auth/AuthProvider';
 import { slotsTo2DArray } from '@/utils/slotsTo2DArray';
+// ADDED: Import uuid for unique slot IDs
+import { v4 as uuidv4 } from "uuid";
 
 /**
  * useBinderPages: Handles all binder editing state, including movedCards,
- * but no longer allows swapping slots.
+ * but no longer exposes any save handler.
  */
 export function useBinderPages({
   binder,
@@ -31,7 +33,6 @@ export function useBinderPages({
   const totalSlots = rows * cols;
 
   // ----- Binder Cover and Accent Color State -----
-  // If prop provided, use as default. Otherwise fallback to binder or hardcoded default.
   const [coverColor, setCoverColor] = useState(
     initialCoverColor ?? binder?.coverColor ?? "#181822"
   );
@@ -94,7 +95,7 @@ export function useBinderPages({
       }
 
       setBinderName(
-        (typeof binder?.name === "string" && binder?.name.length > 0)
+        (typeof binder?.name === "string" && binder.name.length > 0)
           ? binder.name
           : (typeof settings?.name === "string" && settings.name.length > 0)
             ? settings.name
@@ -102,7 +103,6 @@ export function useBinderPages({
       );
       setBinderDescription(binder?.description || settings?.description || '');
 
-      // --- KEY: Reset cover and accent color if binder/settings change ---
       setCoverColor(
         initialCoverColor ?? binder?.coverColor ?? "#181822"
       );
@@ -133,7 +133,6 @@ export function useBinderPages({
   }, [binderName, currentLayout, coverColor, accentColor]);
 
   useEffect(() => {
-    // For pages, track changes for unsaved (can be optimized)
     setHasUnsavedChanges(true);
     // eslint-disable-next-line
   }, [pages]);
@@ -249,7 +248,15 @@ export function useBinderPages({
         return np;
       }
 
-      const movingCard = { ...card, page: pageIdx + 1, position: targetSlotIdx };
+      // CHANGED: Always assign a unique id to every slot
+      const movingCard = {
+        ...card,
+        id: card.id || uuidv4(), // ADDED: Ensure all slots have a unique id (backend needs this)
+        page: pageIdx + 1,
+        position: targetSlotIdx,
+        quantity: card.quantity || 1,
+        notes: card.notes || "",
+      };
 
       page[targetSlotIdx] = movingCard;
       if (!isCollectionDrag && sourceIdx !== -1) {
@@ -298,63 +305,12 @@ export function useBinderPages({
     });
   }, [isOwnProfile, onCardAddedToBinder]);
 
-  // --- Helper to serialize binder pages into backend shape ---
-  function serializePagesForSave(pages) {
-    const slots = [];
-    pages.forEach((pageArr, pageIdx) => {
-      pageArr.forEach((slot, slotIdx) => {
-        if (slot) {
-          slots.push({
-            page: pageIdx + 1,      // 1-based index for backend
-            position: slotIdx,
-            cardId: slot.cardId,
-          });
-        }
-      });
-    });
-    return slots;
-  }
-
-  // ----- MAIN SAVE FUNCTION -----
-  async function handleSaveBinder() {
-    if (!onSave) return false;
-    const success = await onSave({
-      id:           binder?.id,
-      name:         (typeof binderName === "string" && binderName.length > 0) ? binderName : "My New Binder",
-      layout:       currentLayout,
-      slotsPerPage: rows * cols,
-      coverColor,
-      accentColor,
-      pages: pages
-        .flat()
-        .filter(s => !!s)
-        .map(s => ({
-          cardId:               s.cardId,
-          owned:                !!s.owned,
-          page:                 s.page,
-          position:             s.position,
-          externalId:           s.externalId,
-          name:                 s.name,
-          imageUrl:             s.imageUrl,
-          setName:              s.setName,
-          setSymbolUrl:         s.setSymbolUrl,
-          rarity:               s.rarity,
-          tcgplayerMarket:      s.tcgplayerMarket,
-          tcgplayerMid:         s.tcgplayerMid,
-          cardmarketTrendPrice: s.cardmarketTrendPrice,
-          cardmarketAverageSell:s.cardmarketAverageSell,
-        })),
-    });
-    if (success) setHasUnsavedChanges(false);
-    return success;
-  }
-
   // --- Misc handlers ---
   const handlePageDragOver = useCallback(e => { e.preventDefault(); }, []);
   const handlePageDragLeave = useCallback(e => { e.preventDefault(); }, []);
   const handlePageDrop = useCallback(e => { e.preventDefault(); }, []);
 
-  // --- Return state and handlers ---
+  // --- Return state and handlers (NO save handler!) ---
   return {
     binderName, setBinderName,
     binderDescription, setBinderDescription,
@@ -383,7 +339,7 @@ export function useBinderPages({
       handleRemoveCard, handleCardDropped,
       searchPage, setSearchPage,
       hasMoreResults, setHasMoreResults,
-      handleSaveBinder,
+      // NO handleSaveBinder here!
     }
   };
 }

@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import BinderCover, { STANDARD_COLOURS } from "@/components/Binder/BinderCover";
+import { AuthContext } from '@/components/Auth/AuthProvider';
+import { COLLECTION_MUTATIONS, executeMutation } from '@/utils/graphqlUtils';
 
 const LAYOUT_OPTIONS = [
   { value: '2x2', label: '2×2 (4 slots)', slots: 4 },
@@ -7,7 +9,28 @@ const LAYOUT_OPTIONS = [
   { value: '4x3', label: '4×3 (12 slots)', slots: 12 },
 ];
 
-// Add these props for color defaults!
+// Mutation for adding a page to a binder
+const ADD_BINDER_PAGE_MUTATION = `
+  mutation AddBinderPage($binderId: ID!, $input: BinderPageInput!) {
+    addBinderPage(binderId: $binderId, input: $input) {
+      id
+      binderId
+      title
+      layout
+      pageOrder
+      createdAt
+      updatedAt
+      slots {
+        id
+        cardId
+        quantity
+        position
+        notes
+      }
+    }
+  }
+`;
+
 export default function BinderSettingsModal({
   onConfirm,
   onClose,
@@ -15,12 +38,17 @@ export default function BinderSettingsModal({
   defaultCoverColor = "#181822",
   defaultAccentColor = "#7de95a"
 }) {
+  const { token } = useContext(AuthContext);
+
+  // State for form fields
   const [name, setName] = useState('');
   const [layout, setLayout] = useState('2x2');
   const [coverColor, setCoverColor] = useState(defaultCoverColor);
   const [accentColor, setAccentColor] = useState(defaultAccentColor);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  // Find default index for highlight
+  // Highlight for color picker
   const defaultIdx = STANDARD_COLOURS.findIndex(
     c => c.color === defaultCoverColor && c.accent === defaultAccentColor
   );
@@ -44,19 +72,57 @@ export default function BinderSettingsModal({
     };
   }, [onClose]);
 
-  function handleSubmit(e) {
+  // --------- THE MAIN LOGIC: CREATE BINDER + PAGE -----------
+  async function handleSubmit(e) {
     e.preventDefault();
-    const slots = LAYOUT_OPTIONS.find(o => o.value === layout).slots;
-    onConfirm({
-      name,
-      layout,
-      slots,
-      coverColor,
-      accentColor,
-    });
+    setLoading(true);
+    setError('');
+    try {
+      // 1. Create the binder (only core info)
+      const binderRes = await executeMutation(
+        COLLECTION_MUTATIONS.CREATE_BINDER,
+        {
+          input: {
+            name,
+            accentColor,
+            // If your backend supports description or coverColor, add here:
+            // description,
+            coverColor,
+            visibility: "public" // Or allow selecting "public" if you wish
+          }
+        },
+        token
+      );
+      const binder = binderRes?.createBinder;
+      if (!binder?.id) throw new Error('Failed to create binder.');
+
+      // 2. Create the first page, with the selected layout (e.g., "3x3")
+      const pageRes = await executeMutation(
+        ADD_BINDER_PAGE_MUTATION,
+        {
+          binderId: binder.id,
+          input: {
+            layout, // e.g., '3x3'
+            // You can set a default title, or leave blank/null
+            title: "", // or use name, or let user set
+            // pageOrder: 0, // (optional, backend usually auto-orders)
+          }
+        },
+        token
+      );
+      const page = pageRes?.addBinderPage;
+      if (!page?.id) throw new Error('Binder created, but failed to add page.');
+
+      // 3. Pass binder+page to parent handler, so parent can update UI or fetch fresh
+      onConfirm({ ...binder, pages: [page] });
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Failed to create binder.');
+    }
+    setLoading(false);
   }
 
-  // SCROLLABLE colour picker
+  // --------- UI UNCHANGED (with loading/error handling) ---------
   function renderColorPicker() {
     return (
       <div className="flex flex-col gap-2">
@@ -136,6 +202,7 @@ export default function BinderSettingsModal({
                     dark:bg-dark-alt dark:border-dark-border dark:text-dark-text dark:placeholder-dark-textMuted dark:focus:border-dark-accent
                   `}
                   placeholder="e.g. My Trades or Base Set"
+                  disabled={loading}
                 />
               </div>
               <div>
@@ -153,6 +220,7 @@ export default function BinderSettingsModal({
                     focus:border-light-accent
                     dark:bg-dark-alt dark:border-dark-border dark:text-dark-text dark:focus:border-dark-accent
                   `}
+                  disabled={loading}
                 >
                   {LAYOUT_OPTIONS.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -165,11 +233,14 @@ export default function BinderSettingsModal({
               {renderColorPicker()}
             </div>
           </div>
-          {/* Modal buttons */}
+          {error && (
+            <div className="text-red-500 mt-4 mb-2">{error}</div>
+          )}
           <div className="flex justify-end gap-4 mt-10">
             <button
               type="button"
               onClick={onClose}
+              disabled={loading}
               className={`
                 px-5 py-2 font-semibold rounded-xl shadow transition
                 bg-light-alt text-light-text hover:bg-light-border
@@ -180,13 +251,14 @@ export default function BinderSettingsModal({
             </button>
             <button
               type="submit"
+              disabled={loading}
               className={`
                 px-7 py-2 font-bold rounded-xl shadow transition
                 bg-light-primary text-white hover:bg-light-accent
                 dark:bg-dark-primary dark:hover:bg-dark-accent
               `}
             >
-              Create
+              {loading ? "Creating..." : "Create"}
             </button>
           </div>
         </form>

@@ -1,7 +1,12 @@
 import { DataTypes, Model } from 'sequelize';
 
 export default (sequelize) => {
-  class BinderSlot extends Model {}
+  class BinderSlot extends Model {
+    static associate(models) {
+      // Set up correct alias so eager loading 'card' works
+      BinderSlot.belongsTo(models.Card, { foreignKey: 'cardId', as: 'card' });
+    }
+  }
 
   BinderSlot.init(
     {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useContext } from "react";
 import { VIEW_MODES } from "@/utils/constants";
 import BinderEditorHeader from "@/components/Binder/BinderModal/Header";
 import PageGrid from "@/components/Binder/BinderModal/PageGrid";
@@ -11,8 +11,9 @@ import { useBinderPages } from "@/hooks/useBinderPages";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import StatusMessage from "../UI/StatusMessage";
 import BinderCover, { STANDARD_COLOURS } from "@/components/Binder/BinderCover";
+import { AuthContext } from "@/components/Auth/AuthProvider";
+import { executeMutation, COLLECTION_MUTATIONS } from "@/utils/graphqlUtils";
 
-// Set initial cover/accent color INSIDE component
 export default function BinderEditorModal(props) {
   const {
     binder,
@@ -48,10 +49,10 @@ export default function BinderEditorModal(props) {
     rows, cols,
     viewMode, setViewMode,
     showShortcuts, setShowShortcuts,
-    pages, currentPage,
+    pages, setPages, currentPage,
     draggedPageIndex, hasUnsavedChanges,
     activeTab, setActiveTab,
-    handlers,
+    handlers, // used for non-save actions only!
     searchTerm, setSearchTerm,
     searchResults, setSearchResults,
     searchPage, setSearchPage,
@@ -73,6 +74,9 @@ export default function BinderEditorModal(props) {
     accentColor: initialAccentColor
   });
 
+  // Get token for saving (must be logged in)
+  const { token } = useContext(AuthContext);
+
   // Color picker modal
   const [showCoverPicker, setShowCoverPicker] = useState(false);
 
@@ -91,6 +95,58 @@ export default function BinderEditorModal(props) {
     onClose,
   });
 
+  // ======================
+  // BATCH SAVE LOGIC BELOW
+  // ======================
+  async function handleSaveBinder() {
+    setStatusMessage({ type: "info", message: "Saving binder..." });
+
+    // Build the pages and slots structure for the mutation input
+    const inputPages = pages.map(page => ({
+      id: page.id,
+      title: page.title,
+      layout: page.layout,
+      pageOrder: page.pageOrder,
+      slots: (page.slots || []).map(slot => ({
+        id: slot.id,
+        cardId: slot.cardId,
+        quantity: slot.quantity,
+        position: slot.position,
+        notes: slot.notes,
+      }))
+    }));
+
+    try {
+      const binderId = binder?.id;
+      if (!binderId) throw new Error("No binder ID to save!");
+
+      // Use the batch save mutation for ALL saves
+      const res = await executeMutation(
+        COLLECTION_MUTATIONS.SAVE_BINDER_PAGES_AND_SLOTS,
+        {
+          binderId,
+          pages: inputPages
+        },
+        token
+      );
+
+      // Success: refresh UI and notify
+      setStatusMessage({ type: "success", message: "Binder saved!" });
+      // Optionally, update local state with fresh data:
+      if (res?.saveBinderPagesAndSlots) {
+        setPages(res.saveBinderPagesAndSlots.pages);
+      }
+      if (typeof onSave === "function") {
+        onSave(res?.saveBinderPagesAndSlots);
+      }
+      return true;
+    } catch (err) {
+      setStatusMessage({ type: "error", message: err.message || "Failed to save binder." });
+      return false;
+    }
+  }
+
+  // --- Always pass handleSaveBinder to Nav and Header
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
@@ -128,6 +184,7 @@ export default function BinderEditorModal(props) {
           showShortcuts={showShortcuts}
           setShowShortcuts={setShowShortcuts}
           onClose={onClose}
+          onSave={handleSaveBinder}
         />
 
         {/* MAIN BODY */}
@@ -211,7 +268,10 @@ export default function BinderEditorModal(props) {
           currentPage={currentPage}
           draggedPageIndex={draggedPageIndex}
           hasUnsavedChanges={hasUnsavedChanges}
-          handlers={handlers}
+          handlers={{
+            ...handlers,
+            handleSaveBinder, // Only use the local batch save handler!
+          }}
           isOwnProfile={isOwnProfile}
           onClose={onClose}
           coverColor={coverColor}

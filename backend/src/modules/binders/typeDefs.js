@@ -6,7 +6,7 @@ export default gql`
     userId: ID!
     name: String!
     description: String
-    coverImage: String
+    coverColor: String          # CHANGED from coverImage
     accentColor: String
     visibility: String!
     slug: String!
@@ -39,17 +39,21 @@ export default gql`
   input BinderInput {
     name: String
     description: String
+    coverColor: String      # CHANGED from coverImage
     accentColor: String
     visibility: String
   }
 
   input BinderPageInput {
+    id: ID
     title: String
     layout: String
     pageOrder: Int
+    slots: [BinderSlotInput!]      # NEW: for bulk save, list of slots per page
   }
 
   input BinderSlotInput {
+    id: ID
     cardId: String!
     quantity: Int
     position: Int!
@@ -65,7 +69,7 @@ export default gql`
 
   extend type Query {
     myBinders: [Binder!]!
-    binder(id: ID!, slug: String): Binder
+    binder(id: ID, slug: String): Binder
     browseBinders(page: Int, pageSize: Int, userId: ID, search: String): BinderPageResult!
   }
 
@@ -83,7 +87,10 @@ export default gql`
     moveBinderSlot(id: ID!, pageId: ID!, position: Int!): BinderSlot!
     removeBinderSlot(id: ID!): Boolean!
 
-    uploadBinderCover(id: ID!, image: String!): String!
+    # Bulk save for binder pages and slots
+    saveBinderPagesAndSlots(binderId: ID!, pages: [BinderPageInput!]!): Binder!
+
+    # Remove uploadBinderCover (not used anymore)
 
     adminEditBinder(id: ID!, input: BinderInput!): Binder!
     adminDeleteBinder(id: ID!, permanent: Boolean): Boolean!

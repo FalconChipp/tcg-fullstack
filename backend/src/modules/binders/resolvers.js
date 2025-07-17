@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { Op } from 'sequelize';
 import {
+  sequelize,
   Binder,
   BinderPage,
   BinderSlot,
@@ -212,109 +213,103 @@ const resolvers = {
      */
     saveBinderPagesAndSlots: async (_, { binderId, pages }, { token }) => {
       const payload = requireAuth(token);
-      const binder = await Binder.findByPk(binderId, {
-        include: [{ model: BinderPage, as: 'pages', include: [{ model: BinderSlot, as: 'slots' }] }]
-      });
+      const binder = await Binder.findByPk(binderId);
       if (!binder || binder.userId !== payload.id) throw new Error('Not authorized');
 
       console.log('saveBinderPagesAndSlots input:', JSON.stringify({ binderId, pages }, null, 2));
 
-      // Existing state
+      // Existing pages for this binder
       const existingPages = await BinderPage.findAll({ where: { binderId } });
       const existingPageMap = Object.fromEntries(existingPages.map(p => [p.id, p]));
       const keptPageIds = [];
       let keptSlotIds = [];
-      console.log('Existing pages:', existingPages.map(p => p.id));
 
-      for (const [pageIdx, clientPage] of pages.entries()) {
-        console.log(`Processing page ${pageIdx}`, clientPage);
-        let page;
-        if (clientPage.id && existingPageMap[clientPage.id]) {
-          // Update
-          page = existingPageMap[clientPage.id];
-          if (clientPage.layout !== undefined) page.layout = clientPage.layout;
-          if (clientPage.title !== undefined) page.title = clientPage.title;
-          page.pageOrder = pageIdx;
-          await page.save();
-        } else {
-          // Create
-          page = await BinderPage.create({
-            binderId,
-            pageOrder: pageIdx,
-            layout: clientPage.layout,
-            title: clientPage.title
-          });
-        }
-        keptPageIds.push(page.id);
+      // Use a transaction so all changes succeed or rollback together
+      const t = await sequelize.transaction();
+      try {
+        for (const [pageIdx, clientPage] of pages.entries()) {
+          let page;
+          if (clientPage.id && existingPageMap[clientPage.id]) {
+            // Update existing page
+            page = existingPageMap[clientPage.id];
+            if (clientPage.layout !== undefined) page.layout = clientPage.layout;
+            if (clientPage.title !== undefined) page.title = clientPage.title;
+            page.pageOrder = pageIdx;
+            await page.save({ transaction: t });
+          } else {
+            // Create new page
+            page = await BinderPage.create({
+              binderId,
+              pageOrder: pageIdx,
+              layout: clientPage.layout,
+              title: clientPage.title
+            }, { transaction: t });
+          }
+          keptPageIds.push(page.id);
 
-        // --- SLOTS (upsert or create, and collect kept ids) ---
-        const existingSlots = await BinderSlot.findAll({ where: { pageId: page.id } });
-        const existingSlotMap = Object.fromEntries(existingSlots.map(s => [s.id, s]));
-        const thisPageSlotIds = [];
+          // ---- Slots ----
+          const existingSlots = await BinderSlot.findAll({ where: { pageId: page.id }, transaction: t });
+          const existingSlotMap = Object.fromEntries(existingSlots.map(s => [s.id, s]));
+          const thisPageSlotIds = [];
 
-        for (const clientSlot of (clientPage.slots || [])) {
-          console.log('  Processing slot', clientSlot);
-          let slot;
-          try {
+          for (const clientSlot of (clientPage.slots || [])) {
+            let slot;
             if (clientSlot.id && existingSlotMap[clientSlot.id]) {
-              // Update
+              // Update existing slot
               slot = existingSlotMap[clientSlot.id];
               slot.position = clientSlot.position;
               slot.cardId = clientSlot.cardId;
-              slot.quantity = clientSlot.quantity;
+              slot.quantity = clientSlot.quantity ?? 1;
               slot.notes = clientSlot.notes;
-              await slot.save();
+              await slot.save({ transaction: t });
             } else {
-              // Create
+              // Create new slot
               slot = await BinderSlot.create({
                 id: clientSlot.id,
                 pageId: page.id,
                 cardId: clientSlot.cardId,
                 position: clientSlot.position,
-                quantity: clientSlot.quantity,
+                quantity: clientSlot.quantity ?? 1,
                 notes: clientSlot.notes,
-              });
+              }, { transaction: t });
             }
-          } catch (err) {
-            console.error('Slot upsert failed', err);
-            throw new Error('Failed to save binder slot');
+            thisPageSlotIds.push(slot.id);
           }
-          thisPageSlotIds.push(slot.id);
+
+          // Remove any slots that were not included in the request
+          await BinderSlot.destroy({
+            where: { pageId: page.id, id: { [Op.notIn]: thisPageSlotIds } },
+            transaction: t
+          });
+          keptSlotIds = keptSlotIds.concat(thisPageSlotIds);
         }
 
-        // Remove slots not kept on this page
-        for (const slot of existingSlots) {
-          if (!thisPageSlotIds.includes(slot.id)) {
-            console.log('  Removing slot', slot.id);
-            await slot.destroy();
-          }
-        }
-        keptSlotIds = keptSlotIds.concat(thisPageSlotIds);
-      }
+        // Remove pages that the client omitted
+        await BinderSlot.destroy({
+          where: { pageId: { [Op.in]: existingPages.filter(p => !keptPageIds.includes(p.id)).map(p => p.id) } },
+          transaction: t
+        });
+        await BinderPage.destroy({
+          where: { id: { [Op.notIn]: keptPageIds }, binderId },
+          transaction: t
+        });
 
-      // Remove pages not kept
-      for (const p of existingPages) {
-        if (!keptPageIds.includes(p.id)) {
-          // Delete slots under the page first (in case)
-          console.log('Removing page', p.id);
-          await BinderSlot.destroy({ where: { pageId: p.id } });
-          await p.destroy();
-        }
+        await t.commit();
+      } catch (err) {
+        console.error('saveBinderPagesAndSlots failed', err);
+        await t.rollback();
+        throw new Error('Failed to save binder');
       }
 
       console.log('Kept pages after save:', keptPageIds);
       console.log('Kept slots after save:', keptSlotIds);
 
-      // Return updated binder, nested
+      // Return the fresh binder with pages and slots
       return Binder.findByPk(binderId, {
         include: [{
           model: BinderPage,
           as: 'pages',
-          include: [{
-            model: BinderSlot,
-            as: 'slots',
-            include: [{ model: Card, as: 'card' }]
-          }],
+          include: [{ model: BinderSlot, as: 'slots', include: [{ model: Card, as: 'card' }] }],
           order: [['pageOrder', 'ASC']]
         }]
       });

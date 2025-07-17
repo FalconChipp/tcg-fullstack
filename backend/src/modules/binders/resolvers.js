@@ -217,13 +217,17 @@ const resolvers = {
       });
       if (!binder || binder.userId !== payload.id) throw new Error('Not authorized');
 
+      console.log('saveBinderPagesAndSlots input:', JSON.stringify({ binderId, pages }, null, 2));
+
       // Existing state
       const existingPages = await BinderPage.findAll({ where: { binderId } });
       const existingPageMap = Object.fromEntries(existingPages.map(p => [p.id, p]));
       const keptPageIds = [];
       let keptSlotIds = [];
+      console.log('Existing pages:', existingPages.map(p => p.id));
 
       for (const [pageIdx, clientPage] of pages.entries()) {
+        console.log(`Processing page ${pageIdx}`, clientPage);
         let page;
         if (clientPage.id && existingPageMap[clientPage.id]) {
           // Update
@@ -249,25 +253,31 @@ const resolvers = {
         const thisPageSlotIds = [];
 
         for (const clientSlot of (clientPage.slots || [])) {
+          console.log('  Processing slot', clientSlot);
           let slot;
-          if (clientSlot.id && existingSlotMap[clientSlot.id]) {
-            // Update
-            slot = existingSlotMap[clientSlot.id];
-            slot.position = clientSlot.position;
-            slot.cardId = clientSlot.cardId;
-            slot.quantity = clientSlot.quantity;
-            slot.notes = clientSlot.notes;
-            await slot.save();
-          } else {
-            // Create
-            slot = await BinderSlot.create({
-              id: clientSlot.id,
-              pageId: page.id,
-              cardId: clientSlot.cardId,
-              position: clientSlot.position,
-              quantity: clientSlot.quantity,
-              notes: clientSlot.notes,
-            });
+          try {
+            if (clientSlot.id && existingSlotMap[clientSlot.id]) {
+              // Update
+              slot = existingSlotMap[clientSlot.id];
+              slot.position = clientSlot.position;
+              slot.cardId = clientSlot.cardId;
+              slot.quantity = clientSlot.quantity;
+              slot.notes = clientSlot.notes;
+              await slot.save();
+            } else {
+              // Create
+              slot = await BinderSlot.create({
+                id: clientSlot.id,
+                pageId: page.id,
+                cardId: clientSlot.cardId,
+                position: clientSlot.position,
+                quantity: clientSlot.quantity,
+                notes: clientSlot.notes,
+              });
+            }
+          } catch (err) {
+            console.error('Slot upsert failed', err);
+            throw new Error('Failed to save binder slot');
           }
           thisPageSlotIds.push(slot.id);
         }
@@ -275,6 +285,7 @@ const resolvers = {
         // Remove slots not kept on this page
         for (const slot of existingSlots) {
           if (!thisPageSlotIds.includes(slot.id)) {
+            console.log('  Removing slot', slot.id);
             await slot.destroy();
           }
         }
@@ -285,10 +296,14 @@ const resolvers = {
       for (const p of existingPages) {
         if (!keptPageIds.includes(p.id)) {
           // Delete slots under the page first (in case)
+          console.log('Removing page', p.id);
           await BinderSlot.destroy({ where: { pageId: p.id } });
           await p.destroy();
         }
       }
+
+      console.log('Kept pages after save:', keptPageIds);
+      console.log('Kept slots after save:', keptSlotIds);
 
       // Return updated binder, nested
       return Binder.findByPk(binderId, {

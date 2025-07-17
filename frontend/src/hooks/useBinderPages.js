@@ -3,6 +3,9 @@ import { deepClonePages } from '../utils/deepClonePages';
 import { getCardKey } from '@/utils/cardUtils';
 import { AuthContext } from '@/components/Auth/AuthProvider';
 import { slotsTo2DArray } from '@/utils/slotsTo2DArray';
+// NEW: helper to convert API binder pages into 2D slot arrays while
+// preserving page metadata (id, title, layout, pageOrder)
+import { binderPagesTo2DArray } from '@/utils/binderPagesTo2DArray';
 // ADDED: Import uuid for unique slot IDs
 import { v4 as uuidv4 } from "uuid";
 
@@ -44,7 +47,8 @@ export function useBinderPages({
   const [pages, setPages] = useState(() => {
     if (binder?.pages?.length) {
       if (Array.isArray(binder.pages[0])) return binder.pages;
-      return slotsTo2DArray(binder.pages, binder.slotsPerPage || totalSlots);
+      // Convert API page objects to slot grids and keep metadata
+      return binderPagesTo2DArray(binder.pages, totalSlots);
     }
     return [Array(totalSlots).fill(null)];
   });
@@ -88,7 +92,8 @@ export function useBinderPages({
         if (Array.isArray(binder.pages[0])) {
           setPages(binder.pages);
         } else {
-          setPages(slotsTo2DArray(binder.pages, binder.slotsPerPage || slots));
+          // Preserve page metadata when converting
+          setPages(binderPagesTo2DArray(binder.pages, slots));
         }
       } else {
         setPages([Array(slots).fill(null)]);
@@ -174,9 +179,17 @@ export function useBinderPages({
     setCurrentPage(prev => Math.max(0, prev - 1));
   }, [totalSlots]);
   const handleAddPage = useCallback(() => {
-    setPages(p => { const np = deepClonePages(p); np.push(Array(totalSlots).fill(null)); setHasUnsavedChanges(true); return np; });
+    setPages(p => {
+      const np = deepClonePages(p);
+      const newPage = Array(totalSlots).fill(null);
+      // keep metadata for saving later
+      newPage.layout = currentLayout;
+      np.push(newPage);
+      setHasUnsavedChanges(true);
+      return np;
+    });
     setCurrentPage(pages.length);
-  }, [pages.length, totalSlots]);
+  }, [pages.length, totalSlots, currentLayout]);
 
   // --- Remove card from binder slot ---
   const handleRemoveCard = useCallback((pageIdx, slotIdx) => {

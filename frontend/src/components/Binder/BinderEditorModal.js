@@ -13,6 +13,7 @@ import StatusMessage from "../UI/StatusMessage";
 import BinderCover, { STANDARD_COLOURS } from "@/components/Binder/BinderCover";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 import { executeMutation, COLLECTION_MUTATIONS } from "@/utils/graphqlUtils";
+import { binderPagesTo2DArray } from "@/utils/binderPagesTo2DArray";
 
 export default function BinderEditorModal(props) {
   const {
@@ -102,19 +103,29 @@ export default function BinderEditorModal(props) {
     setStatusMessage({ type: "info", message: "Saving binder..." });
 
     // Build the pages and slots structure for the mutation input
-    const inputPages = pages.map(page => ({
-      id: page.id,
-      title: page.title,
-      layout: page.layout,
-      pageOrder: page.pageOrder,
-      slots: (page.slots || []).map(slot => ({
-        id: slot.id,
-        cardId: slot.cardId,
-        quantity: slot.quantity,
-        position: slot.position,
-        notes: slot.notes,
-      }))
-    }));
+    const inputPages = pages.map((page, idx) => {
+      const slots = page
+        .map((slot, position) =>
+          slot
+            ? {
+                id: slot.id,
+                cardId: slot.cardId,
+                quantity: slot.quantity,
+                position,
+                notes: slot.notes,
+              }
+            : null
+        )
+        .filter(Boolean);
+
+      return {
+        id: page.id,
+        title: page.title,
+        layout: page.layout || currentLayout,
+        pageOrder: idx,
+        slots,
+      };
+    });
 
     try {
       const binderId = binder?.id;
@@ -134,7 +145,7 @@ export default function BinderEditorModal(props) {
       setStatusMessage({ type: "success", message: "Binder saved!" });
       // Optionally, update local state with fresh data:
       if (res?.saveBinderPagesAndSlots) {
-        setPages(res.saveBinderPagesAndSlots.pages);
+        setPages(binderPagesTo2DArray(res.saveBinderPagesAndSlots.pages, rows * cols));
       }
       if (typeof onSave === "function") {
         onSave(res?.saveBinderPagesAndSlots);

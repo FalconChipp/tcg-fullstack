@@ -229,21 +229,26 @@ const resolvers = {
       for (const [pageIdx, clientPage] of pages.entries()) {
         console.log(`Processing page ${pageIdx}`, clientPage);
         let page;
-        if (clientPage.id && existingPageMap[clientPage.id]) {
-          // Update
-          page = existingPageMap[clientPage.id];
-          if (clientPage.layout !== undefined) page.layout = clientPage.layout;
-          if (clientPage.title !== undefined) page.title = clientPage.title;
-          page.pageOrder = pageIdx;
-          await page.save();
-        } else {
-          // Create
-          page = await BinderPage.create({
-            binderId,
-            pageOrder: pageIdx,
-            layout: clientPage.layout,
-            title: clientPage.title
-          });
+        try {
+          if (clientPage.id && existingPageMap[clientPage.id]) {
+            // Update
+            page = existingPageMap[clientPage.id];
+            if (clientPage.layout !== undefined) page.layout = clientPage.layout;
+            if (clientPage.title !== undefined) page.title = clientPage.title;
+            page.pageOrder = pageIdx;
+            await page.save();
+          } else {
+            // Create
+            page = await BinderPage.create({
+              binderId,
+              pageOrder: pageIdx,
+              layout: clientPage.layout,
+              title: clientPage.title
+            });
+          }
+        } catch (err) {
+          console.error('Page upsert failed', err);
+          throw new Error('Failed to save binder page');
         }
         keptPageIds.push(page.id);
 

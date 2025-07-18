@@ -10,28 +10,6 @@ import BinderCover from "../Binder/BinderCover";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 import { executeMutation, COLLECTION_MUTATIONS } from "@/utils/graphqlUtils";
 
-// --- ADD PAGE MUTATION ---
-const ADD_BINDER_PAGE_MUTATION = `
-  mutation AddBinderPage($binderId: ID!, $input: BinderPageInput!) {
-    addBinderPage(binderId: $binderId, input: $input) {
-      id
-      binderId
-      title
-      layout
-      pageOrder
-      createdAt
-      updatedAt
-      slots {
-        id
-        cardId
-        quantity
-        position
-        notes
-      }
-    }
-  }
-`;
-
 const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
 
 // Helper: Fills first row to 5 with skeletons (for grid parity)
@@ -119,46 +97,16 @@ export default function ProfileBindersPanel({
   };
 
   // -------- THE MAIN NEW CREATION FLOW ---------
-  const handleBinderSettingsConfirm = async (settings) => {
+  // Handle data returned from BinderSettingsModal.
+  // The modal already performs the mutation to create the binder and first page
+  // and passes the created binder back via onConfirm. We simply store it.
+  const handleBinderSettingsConfirm = (binder) => {
     setCreating(true);
-    setStatusMessage({ type: "info", message: "Creating binder..." });
     try {
-      // 1. Create binder
-      const binderRes = await executeMutation(
-        COLLECTION_MUTATIONS.CREATE_BINDER,
-        {
-          input: {
-            name: settings.name,
-            accentColor: settings.accentColor,
-            coverColor: settings.coverColor,  // <-- Use coverColor!
-            visibility: "public", // Or from modal
-          }
-        },
-        token
-      );
-      const binder = binderRes?.createBinder;
-      if (!binder?.id) throw new Error('Failed to create binder.');
-
-      // 2. Create the first page with the chosen layout
-      const pageRes = await executeMutation(
-        ADD_BINDER_PAGE_MUTATION,
-        {
-          binderId: binder.id,
-          input: { layout: settings.layout, title: "" }
-        },
-        token
-      );
-      const page = pageRes?.addBinderPage;
-      if (!page?.id) throw new Error('Binder created, but failed to add page.');
-
-      // Optionally, re-fetch from backend or build locally:
-      const newBinder = { ...binder, pages: [page] };
-      setBindersWithValues(prev => [newBinder, ...prev]);
-
+      setBindersWithValues(prev => [binder, ...prev]);
       setShowBinderSettings(false);
-      setSelectedBinder(newBinder);
+      setSelectedBinder(binder);
       setShowBinderEditor(true);
-
       setStatusMessage({ type: "success", message: "Binder created!" });
     } catch (err) {
       setStatusMessage({ type: "error", message: err.message || "Failed to create binder." });

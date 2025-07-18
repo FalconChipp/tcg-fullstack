@@ -1,3 +1,5 @@
+// src/components/BinderSlot.jsx
+
 import React, { useState } from 'react';
 import CardDetails from './CardDetails';
 import { getCardImageUrl } from '@/utils/imageUtils';
@@ -7,9 +9,24 @@ const FALLBACK_CARD_IMAGE = "/images/card-placeholder.svg";
 
 /**
  * BinderSlot - represents a single slot in the binder grid.
- * - Accepts 'size' prop: 'small', 'default', 'large' to override viewMode layout.
- * - Handles all drag/drop, double-click, and key interactions.
- * - Controlled: all slot/card state is from props!
+ * Now hydrates card info from the userCollection array, so we always show
+ * the latest image, name, and set info for each card.
+ *
+ * @param {Object} props
+ * @param {number} index - Index of the slot in the page.
+ * @param {Object} card - Card data in the slot (at minimum must have cardId).
+ * @param {Function} onDrop - Handler for card drop into this slot.
+ * @param {Function} onRemove - Handler for removing the card.
+ * @param {Function} onUpdate - Handler for updating the card.
+ * @param {boolean} isOwnProfile - Is the current profile the owner?
+ * @param {boolean} isDragging - Is this slot being dragged?
+ * @param {number} currentPageIndex - Page index for slot actions.
+ * @param {Function} onDragOver
+ * @param {Function} onDragEnd
+ * @param {Function} onDragLeave
+ * @param {string} viewMode
+ * @param {string} size
+ * @param {Array} userCollection - Array of user's collection cards (hydration source)
  */
 export default function BinderSlot({
   index,
@@ -25,22 +42,34 @@ export default function BinderSlot({
   onDragLeave,
   viewMode = VIEW_MODES.GRID,
   size,
+  userCollection = [], // <-- NEW: array of cards in user's collection
 }) {
   const [showDetails, setShowDetails] = useState(false);
 
+  // --- Hydrate the card data from user's collection for full info ---
+  let hydratedCard = card;
+  if (card && card.cardId) {
+    // Find card in collection, prefer full collection data if present
+    const collectionCard = userCollection.find(c => c.cardId === card.cardId);
+    if (collectionCard) {
+      hydratedCard = { ...collectionCard, ...card }; // slot props override if any
+    }
+  }
+
   // --- Helper: Card image URL ---
-  const getCardImage = (card) => {
-    if (!card) return FALLBACK_CARD_IMAGE;
-    const imageUrl = card.tcgImageUrl || card.imageUrl || card.image;
-    if (!imageUrl && card.cardId) {
+  const getCardImage = (c) => {
+    if (!c) return FALLBACK_CARD_IMAGE;
+    // Prefer collection's image field
+    const imageUrl = c.image || c.tcgImageUrl || c.imageUrl;
+    if (!imageUrl && c.cardId) {
       return getCardImageUrl(null, {
-        cardId: card.cardId,
-        cardName: card.tcgName || card.name,
+        cardId: c.cardId,
+        cardName: c.tcgName || c.name,
         debug: true,
       });
     }
     return getCardImageUrl(imageUrl, {
-      cardId: card.cardId || card.externalId,
+      cardId: c.cardId || c.externalId,
       debug: true,
     });
   };
@@ -107,11 +136,11 @@ export default function BinderSlot({
   }
 
   const handleDragStart = (e) => {
-    if (!card) return;
+    if (!hydratedCard) return;
     const cardData = {
-      ...card,
-      tcgImageUrl: card.tcgImageUrl || card.image,
-      tcgName: card.tcgName || card.name,
+      ...hydratedCard,
+      tcgImageUrl: hydratedCard.tcgImageUrl || hydratedCard.image,
+      tcgName: hydratedCard.tcgName || hydratedCard.name,
       slotIndex: index,
     };
     e.dataTransfer.setData('application/json', JSON.stringify(cardData));
@@ -122,7 +151,7 @@ export default function BinderSlot({
   function handleDoubleClick(e) {
     e.preventDefault();
     e.stopPropagation();
-    if (!card) return;
+    if (!hydratedCard) return;
     if (isOwnProfile) {
       onRemove && onRemove(currentPageIndex ?? 0, index);
       return;
@@ -142,17 +171,16 @@ export default function BinderSlot({
 
   // --- Render card OR empty slot ---
   const renderCardContent = () => {
-    if (!card) {
+    if (!hydratedCard) {
       return (
         <div className={`flex items-center justify-center h-full`}>
-          {/* Changed from text-[#cac8e2] dark:text-[#716d98] to palette tokens */}
           <span className="text-xs text-light-textMuted dark:text-dark-textMuted">Empty</span>
         </div>
       );
     }
 
-    const isSearchResult = card.isSearchResult === true;
-    const showNotOwnedOverlay = isSearchResult && !card._originalQuantity;
+    const isSearchResult = hydratedCard.isSearchResult === true;
+    const showNotOwnedOverlay = isSearchResult && !hydratedCard._originalQuantity;
 
     switch (finalViewMode) {
       case VIEW_MODES.LIST:
@@ -161,10 +189,10 @@ export default function BinderSlot({
             <div className="flex-shrink-0 pr-2">
               <div className="relative">
                 <img
-                  src={getCardImage(card)}
-                  alt={card.tcgName || card.name || 'Card image'}
+                  src={getCardImage(hydratedCard)}
+                  alt={hydratedCard.tcgName || hydratedCard.name || 'Card image'}
                   className="w-16 h-auto object-cover rounded"
-                  onError={(e) => { e.target.onerror = null; e.target.src = FALLBACK_CARD_IMAGE; }}
+                  onError={e => { e.target.onerror = null; e.target.src = FALLBACK_CARD_IMAGE; }}
                   draggable={isOwnProfile}
                   onDragStart={handleDragStart}
                   onDragEnd={onDragEnd}
@@ -177,19 +205,17 @@ export default function BinderSlot({
               </div>
             </div>
             <div className="flex-1 min-w-0">
-              {/* text-[#393962] dark:text-[#e6d6ff] to palette */}
               <p className="text-xs font-medium text-light-text dark:text-dark-text truncate">
-                {card.tcgName || card.name || 'Unnamed Card'}
+                {hydratedCard.tcgName || hydratedCard.name || hydratedCard.cardId || 'Unnamed Card'}
               </p>
-              {/* text-[#a7a7b7] dark:text-[#716d98] to palette */}
               <p className="text-[10px] text-light-textSecondary dark:text-dark-textSecondary truncate">
-                {card.tcgSetName || card.setName || 'Unknown Set'}
+                {hydratedCard.tcgSetName || hydratedCard.setName || 'Unknown Set'}
               </p>
             </div>
             {isOwnProfile && (
               <button
                 className="text-red-500 hover:text-red-700 ml-2 text-base"
-                onClick={(e) => { e.stopPropagation(); onRemove?.(currentPageIndex, index); }}
+                onClick={e => { e.stopPropagation(); onRemove?.(currentPageIndex, index); }}
                 title="Remove card"
               >×</button>
             )}
@@ -199,8 +225,8 @@ export default function BinderSlot({
         return (
           <div className="flex items-center justify-center w-full h-full relative">
             <img
-              src={getCardImage(card)}
-              alt={card.tcgName || card.name || 'Card image'}
+              src={getCardImage(hydratedCard)}
+              alt={hydratedCard.tcgName || hydratedCard.name || 'Card image'}
               className="h-8 w-6 object-cover rounded shadow"
               draggable={isOwnProfile}
               onDragStart={handleDragStart}
@@ -215,7 +241,7 @@ export default function BinderSlot({
             {isOwnProfile && (
               <button
                 className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs"
-                onClick={(e) => { e.stopPropagation(); onRemove?.(currentPageIndex, index); }}
+                onClick={e => { e.stopPropagation(); onRemove?.(currentPageIndex, index); }}
                 title="Remove card"
               >×</button>
             )}
@@ -226,10 +252,10 @@ export default function BinderSlot({
         return (
           <div className="relative w-full h-full flex items-center justify-center">
             <img
-              src={getCardImage(card)}
-              alt={card.tcgName || card.name || 'Card image'}
+              src={getCardImage(hydratedCard)}
+              alt={hydratedCard.tcgName || hydratedCard.name || 'Card image'}
               className="object-contain w-full h-full"
-              onError={(e) => { e.target.onerror = null; e.target.src = FALLBACK_CARD_IMAGE; }}
+              onError={e => { e.target.onerror = null; e.target.src = FALLBACK_CARD_IMAGE; }}
               draggable={isOwnProfile}
               onDragStart={handleDragStart}
               onDragEnd={onDragEnd}
@@ -242,7 +268,7 @@ export default function BinderSlot({
             {isOwnProfile && (
               <button
                 className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={(e) => { e.stopPropagation(); onRemove?.(currentPageIndex, index); }}
+                onClick={e => { e.stopPropagation(); onRemove?.(currentPageIndex, index); }}
                 title="Remove card"
               >×</button>
             )}
@@ -252,29 +278,21 @@ export default function BinderSlot({
   };
 
   // --- MAIN RETURN ---
-
   return (
     <div
       className={getContainerClasses()}
       tabIndex={0}
       onDoubleClick={handleDoubleClick}
       onKeyDown={handleKeyDown}
-      onDragOver={(e) => {
-        e.preventDefault();
-        onDragOver?.(e);
-      }}
-      onDragLeave={(e) => {
-        e.preventDefault();
-        onDragLeave?.(e);
-      }}
+      onDragOver={e => { e.preventDefault(); onDragOver?.(e); }}
+      onDragLeave={e => { e.preventDefault(); onDragLeave?.(e); }}
       onDrop={handleDrop}
     >
       {renderCardContent()}
-      {showDetails && card && (
+      {showDetails && hydratedCard && (
         <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
-          {/* bg-[#fff] dark:bg-[#23232f] border-[#ececf1] dark:border-[#282833] to palette */}
           <div className="bg-light-surface dark:bg-dark-surface rounded-2xl p-4 max-w-md w-full max-h-[90vh] overflow-auto shadow-xl border border-light-border dark:border-dark-border">
-            <CardDetails card={card} onClose={() => setShowDetails(false)} />
+            <CardDetails card={hydratedCard} onClose={() => setShowDetails(false)} />
           </div>
         </div>
       )}

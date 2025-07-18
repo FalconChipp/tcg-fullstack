@@ -14,6 +14,7 @@ import BinderCover, { STANDARD_COLOURS } from "@/components/Binder/BinderCover";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 import { executeMutation, COLLECTION_MUTATIONS } from "@/utils/graphqlUtils";
 import { binderPagesTo2DArray } from "@/utils/binderPagesTo2DArray";
+import { filterCollectionByBinderSlots } from "@/utils/filterCollectionByBinderSlots";
 
 export default function BinderEditorModal(props) {
   const {
@@ -53,7 +54,7 @@ export default function BinderEditorModal(props) {
     pages, setPages, currentPage,
     draggedPageIndex, hasUnsavedChanges,
     activeTab, setActiveTab,
-    handlers, // used for non-save actions only!
+    handlers,
     searchTerm, setSearchTerm,
     searchResults, setSearchResults,
     searchPage, setSearchPage,
@@ -75,7 +76,6 @@ export default function BinderEditorModal(props) {
     accentColor: initialAccentColor
   });
 
-  // Get token for saving (must be logged in)
   const { token } = useContext(AuthContext);
 
   // Color picker modal
@@ -86,7 +86,7 @@ export default function BinderEditorModal(props) {
     c => c.color === coverColor && c.accent === accentColor
   );
 
-  // compute grid columns for CollectionTab
+  // Compute grid columns for CollectionTab
   const gridColumns = viewMode === VIEW_MODES.COMPACT ? cols + 1 : cols;
 
   useKeyboardShortcuts({
@@ -95,6 +95,12 @@ export default function BinderEditorModal(props) {
     setViewMode,
     onClose,
   });
+
+  // --- Compute filtered collection: only cards/quantities not currently in slots
+  const filteredCollection = useMemo(
+    () => filterCollectionByBinderSlots(collection, pages),
+    [collection, pages]
+  );
 
   // ======================
   // BATCH SAVE LOGIC BELOW
@@ -210,6 +216,7 @@ export default function BinderEditorModal(props) {
               totalSlots={rows * cols}
               viewMode={viewMode}
               isOwnProfile={isOwnProfile}
+              userCollection={collection}  // <-- always unfiltered for slot hydration!
             />
           </div>
           {/* Side tab: 1/3 */}
@@ -250,7 +257,7 @@ export default function BinderEditorModal(props) {
               {activeTab === "collection" ? (
                 <CollectionTab
                   isOwnProfile={isOwnProfile}
-                  userEntireCollection={collection}
+                  userEntireCollection={filteredCollection}  // <-- always filtered!
                   gridColumns={gridColumns}
                   movedCards={movedCards}
                   setMovedCards={setMovedCards}

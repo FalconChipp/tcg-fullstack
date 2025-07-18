@@ -2,7 +2,16 @@
 import React from 'react';
 import BinderSlot from '../BinderSlot';
 
-export default function PageGrid({ pages, currentPage, viewMode, handlers, cols, totalSlots, isOwnProfile }) {
+export default function PageGrid({
+  pages,
+  currentPage,
+  viewMode,
+  handlers,
+  cols,
+  totalSlots,
+  isOwnProfile,
+  userCollection // <-- NEW PROP
+}) {
   const slots = pages[currentPage] || [];
 
   let gridClass = 'grid gap-2 p-2 h-full w-full';
@@ -37,6 +46,7 @@ export default function PageGrid({ pages, currentPage, viewMode, handlers, cols,
           onDrop={(card, fromSlotIdx) => handlers.handleCardDropped(card, i, fromSlotIdx)}
           onRemove={() => handlers.handleRemoveCard(currentPage, i)}
           onUpdate={c => handlers.handleCardDropped(c, i)}
+          userCollection={userCollection} // <-- PASS DOWN
         />
       ))}
     </div>

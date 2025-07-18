@@ -352,7 +352,6 @@ export function useBinderPages({
       handleRemoveCard, handleCardDropped,
       searchPage, setSearchPage,
       hasMoreResults, setHasMoreResults,
-      // NO handleSaveBinder here!
     }
   };
 }

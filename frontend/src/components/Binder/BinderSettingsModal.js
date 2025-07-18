@@ -45,7 +45,8 @@ export default function BinderSettingsModal({
   const [layout, setLayout] = useState('2x2');
   const [coverColor, setCoverColor] = useState(defaultCoverColor);
   const [accentColor, setAccentColor] = useState(defaultAccentColor);
-  const [loading, setLoading] = useState(false);
+  // track submission to prevent duplicate binder creation
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   // Highlight for color picker
@@ -75,7 +76,9 @@ export default function BinderSettingsModal({
   // --------- THE MAIN LOGIC: CREATE BINDER + PAGE -----------
   async function handleSubmit(e) {
     e.preventDefault();
-    setLoading(true);
+    // ignore repeated clicks while submitting
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     setError('');
     try {
       // 1. Create the binder (only core info)
@@ -119,7 +122,7 @@ export default function BinderSettingsModal({
     } catch (err) {
       setError(err.message || 'Failed to create binder.');
     }
-    setLoading(false);
+    setIsSubmitting(false);
   }
 
   // --------- UI UNCHANGED (with loading/error handling) ---------
@@ -202,7 +205,7 @@ export default function BinderSettingsModal({
                     dark:bg-dark-alt dark:border-dark-border dark:text-dark-text dark:placeholder-dark-textMuted dark:focus:border-dark-accent
                   `}
                   placeholder="e.g. My Trades or Base Set"
-                  disabled={loading}
+                  disabled={isSubmitting}
                 />
               </div>
               <div>
@@ -220,7 +223,7 @@ export default function BinderSettingsModal({
                     focus:border-light-accent
                     dark:bg-dark-alt dark:border-dark-border dark:text-dark-text dark:focus:border-dark-accent
                   `}
-                  disabled={loading}
+                  disabled={isSubmitting}
                 >
                   {LAYOUT_OPTIONS.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -240,7 +243,7 @@ export default function BinderSettingsModal({
             <button
               type="button"
               onClick={onClose}
-              disabled={loading}
+              disabled={isSubmitting}
               className={`
                 px-5 py-2 font-semibold rounded-xl shadow transition
                 bg-light-alt text-light-text hover:bg-light-border
@@ -251,14 +254,14 @@ export default function BinderSettingsModal({
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={isSubmitting}
               className={`
                 px-7 py-2 font-bold rounded-xl shadow transition
                 bg-light-primary text-white hover:bg-light-accent
                 dark:bg-dark-primary dark:hover:bg-dark-accent
               `}
             >
-              {loading ? "Creating..." : "Create"}
+              {isSubmitting ? "Creating..." : "Create"}
             </button>
           </div>
         </form>

@@ -148,21 +148,10 @@ export default function Header() {
               </nav>
             </div>
             {/* Center: User Search */}
-            <div className="hidden md:block flex-1 max-w-md mx-8">
-              <input
-                type="text"
-                className="
-                  w-full px-4 py-2 rounded-lg
-                  bg-light-alt dark:bg-dark-alt
-                  text-light-text dark:text-dark-text
-                  placeholder-light-textMuted dark:placeholder-dark-textMuted
-                  border border-light-border dark:border-dark-border
-                  focus:border-light-accent dark:focus:border-dark-accent
-                  focus:outline-none transition
-                "
-                placeholder="Search users..."
-              />
-            </div>
+<div className="hidden md:block flex-1 max-w-md mx-8">
+  <UserSearchDropdown />
+</div>
+
             {/* Right: Auth, Settings, Mobile */}
             <div className="flex items-center gap-3">
               {loading ? (

@@ -30,9 +30,11 @@ export default function UserSearchDropdown() {
           query SearchUsers($query: String!) {
             searchUsers(query: $query) {
               id
-              username
-              userProfile {
-                avatarUrl
+              avatar
+              user {
+                id
+                username
+                avatar
               }
             }
           }
@@ -104,10 +106,10 @@ export default function UserSearchDropdown() {
           rounded-xl mt-1 shadow-lg z-10
           divide-y divide-light-border dark:divide-dark-border
           ">
-          {results.map((user) => (
-            <li key={user.id}>
+          {results.map((profile) => (
+            <li key={profile.id}>
               <Link
-                href={`/profile/${user.username}`}
+                href={`/profile/${profile.user?.username || profile.user?.id || ""}`}
                 className="
                   flex items-center p-2 gap-2
                   hover:bg-light-alt dark:hover:bg-dark-alt
@@ -116,16 +118,18 @@ export default function UserSearchDropdown() {
               >
                 <Image
                   src={
-                    user.userProfile?.avatarUrl ||
+                    // Prefer profile.avatar, then user.avatar, then placeholder
+                    profile.avatar ||
+                    profile.user?.avatar ||
                     "https://placehold.co/40/webp?text=No+Avatar"
                   }
-                  alt={user.username}
+                  alt={profile.user?.username || "User"}
                   width={40}
                   height={40}
                   className="rounded-full object-cover border border-light-border dark:border-dark-border"
                 />
                 <span className="text-light-text dark:text-dark-text font-semibold">
-                  {user.username}
+                  {profile.user?.username || "(unknown)"}
                 </span>
               </Link>
             </li>

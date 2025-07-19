@@ -2,17 +2,13 @@ import React, { useState } from "react";
 
 // --- Helper: Unwrap achievement data for API UserAchievement or flat Achievement ---
 function extractAchievement(ach) {
-  // Returns the inner achievement if wrapped, else itself
   return ach && ach.achievement ? ach.achievement : ach;
 }
 
-// --- Helper: Robust unlock check ---
 function isAchievementUnlocked(ach) {
-  // Unlocked if any "earnedAt" or "earned_at" property exists
   return !!(ach.isComplete ?? ach.earnedAt ?? ach.earned_at);
 }
 
-// --- Robust date parser for ms/ISO ---
 function parseAchievementDate(val) {
   if (!val) return null;
   if (val instanceof Date) return val;
@@ -21,31 +17,26 @@ function parseAchievementDate(val) {
   return new Date(val);
 }
 
-// --- Get the best image url (iconUrl, imageUrl, assetUrl) ---
 function getAchievementImageUrl(ach) {
   const a = extractAchievement(ach);
   return a.iconUrl || a.imageUrl || a.assetUrl || null;
 }
 
-// --- Get the display name (name, title, fallback code) ---
 function getAchievementName(ach) {
   const a = extractAchievement(ach);
   return a.name || a.title || a.code || "Achievement";
 }
 
-// --- Get the description, fallback to empty string ---
 function getAchievementDescription(ach) {
   const a = extractAchievement(ach);
   return a.description || "";
 }
 
-// --- Get tier, fallback to "Special" ---
 function getAchievementTier(ach) {
   const a = extractAchievement(ach);
   return (a.tier || "Special").toUpperCase();
 }
 
-// --- Group by tier (using unwrapped achievement) ---
 const groupByTier = (achievements) => {
   const groups = {};
   for (const ach of achievements) {
@@ -66,7 +57,8 @@ const tierColors = {
   GOLD: "from-yellow-400 to-yellow-200 border-yellow-300",
   SILVER: "from-gray-300 to-gray-100 border-gray-400",
   BRONZE: "from-orange-400 to-orange-200 border-orange-300",
-  SECRET: "from-blue-400 to-cyan-200 border-blue-400"
+  SECRET: "from-blue-400 to-cyan-200 border-blue-400",
+  SPECIAL: "from-purple-400 to-purple-100 border-purple-300"
 };
 
 const tierOptions = [
@@ -76,6 +68,35 @@ const tierOptions = [
   { value: "BRONZE", label: "Bronze" },
   { value: "SECRET", label: "Secret" }
 ];
+
+// --- How many skeletons to show for coming soon, per tier
+const SKELETONS_PER_TIER = 5;
+
+function AchievementSkeleton() {
+  return (
+    <div
+      className={`
+        group bg-white dark:bg-[#232336]
+        rounded-2xl p-2 flex flex-col items-center shadow-lg border-2 border-dashed border-gray-400
+        opacity-60 grayscale cursor-not-allowed relative
+        min-h-[160px]
+      `}
+      tabIndex={-1}
+      aria-disabled="true"
+      style={{ pointerEvents: "none" }}
+    >
+      <div className="w-28 h-28 rounded-full flex items-center justify-center mb-1 border-2 border-gray-300 bg-light-alt dark:bg-dark-alt">
+        <span className="text-4xl opacity-50">?</span>
+      </div>
+      <span className="text-xs font-semibold text-center w-full text-gray-400 mt-1">
+        Coming Soon
+      </span>
+      <span className="text-[10px] text-center mt-1 opacity-50">
+        More achievements arriving soon!
+      </span>
+    </div>
+  );
+}
 
 export default function ProfileAchievements({ achievements = [] }) {
   const [selected, setSelected] = useState(null);
@@ -104,6 +125,9 @@ export default function ProfileAchievements({ achievements = [] }) {
   });
 
   const groups = groupByTier(filtered);
+
+  // Check if at least one skeleton should be shown (if you want, you can hide them when all possible achievements are shown)
+  const anySkeletons = groups.length > 0;
 
   return (
     <div className="w-full mb-8">
@@ -173,10 +197,6 @@ export default function ProfileAchievements({ achievements = [] }) {
               const name = getAchievementName(achievement);
               const imgUrl = getAchievementImageUrl(achievement);
               const desc = getAchievementDescription(achievement);
-
-              // Debug output
-              console.log("ACHIEVEMENT OBJ:", achievement);
-              console.log("Image URL:", imgUrl);
 
               return (
                 <button
@@ -252,9 +272,20 @@ export default function ProfileAchievements({ achievements = [] }) {
                 </button>
               );
             })}
+            {/* --- Skeletons: visually hint more are coming --- */}
+            {[...Array(SKELETONS_PER_TIER)].map((_, i) => (
+              <AchievementSkeleton key={`skeleton-${tier}-${i}`} />
+            ))}
           </div>
         </div>
       ))}
+
+      {/* "More coming soon" note if any skeletons are shown */}
+      {anySkeletons && (
+        <div className="mt-8 text-center text-gray-400 dark:text-gray-500 text-base italic">
+          More achievements coming soon!
+        </div>
+      )}
 
       {/* Modal for achievement details */}
       {selected && (() => {

@@ -27,14 +27,14 @@ const slidesData = [
     action: "binders",
   },
   {
-    image: "/images/slide3.jpg",
+    image: "/assets/HeroSlides/wishlist.png",
     title: "Wishlist & Wantlist",
     subtitle: "Keep track of the cards you need next. Never forget a wanted card again.",
     ctaText: "Open Wishlist",
     action: "wishlist",
   },
   {
-    image: "/images/slide4.jpg",
+    image: "/assets/HeroSlides/search.png",
     title: "Advanced Card Search",
     subtitle: "Find any English Pokémon card by set, rarity, type, or number—fast.",
     ctaText: "Search Cards",

@@ -288,7 +288,7 @@ export default function ProfileCollectionPanel({
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
-        {isOwnProfile && (
+        {/* {isOwnProfile && (
           <button
             className="bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white rounded-md px-3 py-1.5 text-sm shadow flex items-center h-9 ml-1 focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent transition font-semibold"
             onClick={onAddToCollection}
@@ -299,7 +299,7 @@ export default function ProfileCollectionPanel({
             </svg>
             <span className="hidden sm:inline">Add</span>
           </button>
-        )}
+        )} */}
       </div>
       {/* --- Card Grid --- */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">

@@ -1,13 +1,26 @@
-// /src/pages/landing.js
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import StatusMessage from "@/components/UI/StatusMessage";
 import { setCookie } from "@/utils/cookieUtils";
 import { useTheme } from "@/hooks/ThemeProvider";
 
-const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
+const WP_GRAPHQL_URL =
+  process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
+
+// --- Countdown utility ---
+function getCountdown(targetDate) {
+  const now = new Date();
+  const diff = targetDate - now;
+  if (diff <= 0)
+    return { days: 0, hours: 0, minutes: 0, seconds: 0, ended: true };
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+  const minutes = Math.floor((diff / (1000 * 60)) % 60);
+  const seconds = Math.floor((diff / 1000) % 60);
+  return { days, hours, minutes, seconds, ended: false };
+}
 
 export default function Landing() {
   const { dark } = useTheme?.() || {};
@@ -15,6 +28,17 @@ export default function Landing() {
   const [registerPassword, setRegisterPassword] = useState("");
   const [showPasswordRules, setShowPasswordRules] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  // --- Countdown state ---
+  const targetDate = new Date("2025-07-25T00:00:00+01:00"); // BST/UK
+  const [countdown, setCountdown] = useState(getCountdown(targetDate));
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCountdown(getCountdown(targetDate));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const {
     register,
@@ -90,6 +114,11 @@ export default function Landing() {
 
   const pwErrors = getPasswordValidationErrors(registerPassword);
 
+  // --- Format countdown text ---
+  const countdownText = countdown.ended
+    ? "We're live!"
+    : `${countdown.days}d ${String(countdown.hours).padStart(2, "0")}h ${String(countdown.minutes).padStart(2, "0")}m ${String(countdown.seconds).padStart(2, "0")}s`;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-light-accent/5 via-light-background to-light-surface dark:from-dark-surface dark:via-dark-background dark:to-dark-alt flex flex-col">
       {/* HERO */}
@@ -98,6 +127,14 @@ export default function Landing() {
           <h1 className="text-4xl md:text-5xl font-heading font-extrabold mb-4 text-light-accent dark:text-dark-accent">
             Sign Up Now — Get Notified When We Go Live
           </h1>
+          {/* Countdown */}
+          <div className="mb-4">
+            <span className="inline-block text-lg md:text-xl font-bold px-4 py-2 rounded-lg bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border shadow-sm text-light-accent dark:text-dark-accent">
+              {countdown.ended
+                ? "We're live!"
+                : `Time left until launch: ${countdownText}`}
+            </span>
+          </div>
           <p className="text-lg md:text-xl text-light-textSecondary dark:text-dark-textSecondary font-medium mb-8">
             Manage your collection, trade cards, and connect <br />with the UK’s next-gen TCG community.<br />
             Sign up below to be first to know when SixByFive TCG launches!
@@ -210,7 +247,7 @@ export default function Landing() {
               <button
                 type="submit"
                 className="mt-2 w-full rounded-lg bg-light-accent dark:bg-dark-accent text-white font-bold text-lg py-2 px-4 transition-colors hover:bg-light-accentLight dark:hover:bg-dark-accentLight focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent"
-                disabled={statusMessage?.type === "loading"}
+                disabled={statusMessage?.type === "loading" || countdown.ended}
               >
                 Sign Up for Launch Notification
               </button>
@@ -264,16 +301,28 @@ export default function Landing() {
           Frequently Asked Questions
         </h3>
         <div className="mb-4">
-          <span className="font-semibold text-light-accent dark:text-dark-accent">When does SixByFive TCG launch?</span>
-          <p className="text-light-text dark:text-dark-text">Soon! Sign up and you’ll be first to know — we’ll send a notification as soon as registration opens.</p>
+          <span className="font-semibold text-light-accent dark:text-dark-accent">
+            When does SixByFive TCG launch?
+          </span>
+          <p className="text-light-text dark:text-dark-text">
+            Soon! Sign up and you’ll be first to know — we’ll send a notification as soon as registration opens.
+          </p>
         </div>
         <div className="mb-4">
-          <span className="font-semibold text-light-accent dark:text-dark-accent">Is there a cost?</span>
-          <p className="text-light-text dark:text-dark-text">No — signing up is free and there’s no commitment required.</p>
+          <span className="font-semibold text-light-accent dark:text-dark-accent">
+            Is there a cost?
+          </span>
+          <p className="text-light-text dark:text-dark-text">
+            No — signing up is free and there’s no commitment required.
+          </p>
         </div>
         <div>
-          <span className="font-semibold text-light-accent dark:text-dark-accent">Will you send me marketing or spam?</span>
-          <p className="text-light-text dark:text-dark-text">No spam — only a handful of important launch-related updates. You can unsubscribe at any time.</p>
+          <span className="font-semibold text-light-accent dark:text-dark-accent">
+            Will you send me marketing or spam?
+          </span>
+          <p className="text-light-text dark:text-dark-text">
+            No spam — only a handful of important launch-related updates. You can unsubscribe at any time.
+          </p>
         </div>
       </section>
       {/* Footer */}
@@ -287,7 +336,7 @@ export default function Landing() {
   );
 }
 
-// --- Utility: If you don't have getPasswordValidationErrors in a utils file, paste it here:
+// --- Password validation utility ---
 function getPasswordValidationErrors(pw = "") {
   const errors = [];
   if (pw.length < 8) errors.push("At least 8 characters");

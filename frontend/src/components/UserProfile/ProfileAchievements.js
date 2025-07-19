@@ -1,21 +1,58 @@
 import React, { useState } from "react";
-import CachedImage from "@/utils/cacheImgs";
 
-// Helper: Determine if achievement is unlocked (robust for all backends)
+// --- Helper: Unwrap achievement data for API UserAchievement or flat Achievement ---
+function extractAchievement(ach) {
+  // Returns the inner achievement if wrapped, else itself
+  return ach && ach.achievement ? ach.achievement : ach;
+}
+
+// --- Helper: Robust unlock check ---
 function isAchievementUnlocked(ach) {
-  // Accepts API property, camelCase, or snake_case timestamp field
+  // Unlocked if any "earnedAt" or "earned_at" property exists
   return !!(ach.isComplete ?? ach.earnedAt ?? ach.earned_at);
 }
 
-// Helper to group by tier
+// --- Robust date parser for ms/ISO ---
+function parseAchievementDate(val) {
+  if (!val) return null;
+  if (val instanceof Date) return val;
+  if (typeof val === "string" && /^\d+$/.test(val)) return new Date(Number(val));
+  if (typeof val === "number") return new Date(val);
+  return new Date(val);
+}
+
+// --- Get the best image url (iconUrl, imageUrl, assetUrl) ---
+function getAchievementImageUrl(ach) {
+  const a = extractAchievement(ach);
+  return a.iconUrl || a.imageUrl || a.assetUrl || null;
+}
+
+// --- Get the display name (name, title, fallback code) ---
+function getAchievementName(ach) {
+  const a = extractAchievement(ach);
+  return a.name || a.title || a.code || "Achievement";
+}
+
+// --- Get the description, fallback to empty string ---
+function getAchievementDescription(ach) {
+  const a = extractAchievement(ach);
+  return a.description || "";
+}
+
+// --- Get tier, fallback to "Special" ---
+function getAchievementTier(ach) {
+  const a = extractAchievement(ach);
+  return (a.tier || "Special").toUpperCase();
+}
+
+// --- Group by tier (using unwrapped achievement) ---
 const groupByTier = (achievements) => {
   const groups = {};
   for (const ach of achievements) {
-    const tier = (ach.tier || "Special").toUpperCase();
+    const tier = getAchievementTier(ach);
     if (!groups[tier]) groups[tier] = [];
     groups[tier].push(ach);
   }
-  // Order: Gold, Silver, Bronze, then others
   const order = ["GOLD", "SILVER", "BRONZE"];
   return order
     .map((t) => [t, groups[t] || []])
@@ -32,7 +69,6 @@ const tierColors = {
   SECRET: "from-blue-400 to-cyan-200 border-blue-400"
 };
 
-// All available tiers for filtering
 const tierOptions = [
   { value: "all", label: "All Tiers" },
   { value: "GOLD", label: "Gold" },
@@ -44,27 +80,26 @@ const tierOptions = [
 export default function ProfileAchievements({ achievements = [] }) {
   const [selected, setSelected] = useState(null);
   const [filterText, setFilterText] = useState("");
-  const [filterUnlocked, setFilterUnlocked] = useState("unlocked"); // all, unlocked, locked
+  const [filterUnlocked, setFilterUnlocked] = useState("unlocked");
   const [filterTier, setFilterTier] = useState("all");
 
   if (!achievements.length) return null;
 
-  // Apply filters
+  // --- Apply filters (using unwrapped data) ---
   const filtered = achievements.filter((ach) => {
+    const a = extractAchievement(ach);
     const textMatch =
       !filterText ||
-      ach.title?.toLowerCase().includes(filterText.toLowerCase()) ||
-      ach.description?.toLowerCase().includes(filterText.toLowerCase());
-    // ------- Changed to use robust check -------------
+      getAchievementName(a).toLowerCase().includes(filterText.toLowerCase()) ||
+      getAchievementDescription(a).toLowerCase().includes(filterText.toLowerCase());
     const unlockedMatch =
       filterUnlocked === "all" ||
       (filterUnlocked === "unlocked" && isAchievementUnlocked(ach)) ||
       (filterUnlocked === "locked" && !isAchievementUnlocked(ach));
-    // ----------------------------------------------
     const tierMatch =
       filterTier === "all" ||
-      (ach.tier?.toUpperCase() === filterTier) ||
-      (!ach.tier && filterTier === "SECRET");
+      (getAchievementTier(a) === filterTier) ||
+      (!a.tier && filterTier === "SECRET");
     return textMatch && unlockedMatch && tierMatch;
   });
 
@@ -124,21 +159,29 @@ export default function ProfileAchievements({ achievements = [] }) {
           </h4>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {achs.map((ach) => {
-              // --------- Changed everywhere that checks unlocked -----------
-              console.log("ACH DATA", ach);
+              const achievement = extractAchievement(ach);
               const isAchieved = isAchievementUnlocked(ach);
-
               const showProgress =
                 typeof ach.current === "number" &&
                 typeof ach.goal === "number" &&
                 ach.goal > 1;
               const ringColor =
-                tierColors[tier] || tierColors["SPECIAL"] || "border-gray-200";
+                tierColors[getAchievementTier(achievement)] || tierColors["SPECIAL"] || "border-gray-200";
+              const unlockedDate = isAchieved
+                ? parseAchievementDate(ach.earnedAt || ach.earned_at)
+                : null;
+              const name = getAchievementName(achievement);
+              const imgUrl = getAchievementImageUrl(achievement);
+              const desc = getAchievementDescription(achievement);
+
+              // Debug output
+              console.log("ACHIEVEMENT OBJ:", achievement);
+              console.log("Image URL:", imgUrl);
 
               return (
                 <button
                   type="button"
-                  key={ach.achievementKey}
+                  key={ach.achievementKey || achievement.code || achievement.id}
                   onClick={() => setSelected(ach)}
                   className={`
                     group bg-white dark:bg-[#232336]
@@ -150,21 +193,24 @@ export default function ProfileAchievements({ achievements = [] }) {
                       : "border-light-alt dark:border-dark-alt opacity-60 grayscale"}
                   `}
                   tabIndex={0}
-                  aria-label={ach.title}
-                  title={ach.description || ach.title}
+                  aria-label={name}
+                  title={desc || name}
                 >
-                  <div className="w-14 h-14 rounded-full flex items-center justify-center mb-1 border-2 border-white dark:border-[#222234] overflow-hidden">
-                    {ach.assetUrl ? (
-                      <CachedImage
-                        src={ach.assetUrl}
-                        alt={ach.title}
+                  <div className="w-28 h-28 rounded-full flex items-center justify-center mb-1 border-2 border-white dark:border-[#222234] overflow-hidden">
+                    {imgUrl ? (
+                      <img
+                        src={imgUrl}
+                        alt={name}
                         className="w-full h-full object-contain"
                         style={{
+                          maxWidth: "120px",
+                          maxHeight: "120px",
+                          minWidth: "120px",
+                          minHeight: "120px",
                           filter: isAchieved
                             ? "none"
                             : "grayscale(90%) brightness(0.85) opacity(0.7)"
                         }}
-                        cacheKey={ach.achievementKey || ach.assetUrl}
                       />
                     ) : (
                       <span className="text-3xl">🏆</span>
@@ -175,7 +221,7 @@ export default function ProfileAchievements({ achievements = [] }) {
                       isAchieved ? "text-light-text dark:text-dark-text" : "opacity-70"
                     }`}
                   >
-                    {ach.title}
+                    {name}
                   </span>
                   {showProgress && (
                     <div className="w-full mt-1">
@@ -198,9 +244,9 @@ export default function ProfileAchievements({ achievements = [] }) {
                       </span>
                     </div>
                   )}
-                  {isAchieved && (ach.earnedAt || ach.earned_at) && (
+                  {isAchieved && unlockedDate && (
                     <span className="block text-[10px] mt-1 opacity-60 text-center">
-                      {`Unlocked: ${new Date(ach.earnedAt || ach.earned_at).toLocaleDateString()}`}
+                      {`Unlocked: ${unlockedDate.toLocaleDateString()}`}
                     </span>
                   )}
                 </button>
@@ -211,80 +257,87 @@ export default function ProfileAchievements({ achievements = [] }) {
       ))}
 
       {/* Modal for achievement details */}
-      {selected && (
-        <div
-          className="fixed inset-0 z-40 bg-black bg-opacity-50 flex items-center justify-center"
-          onClick={() => setSelected(null)}
-        >
+      {selected && (() => {
+        const achievement = extractAchievement(selected);
+        const name = getAchievementName(achievement);
+        const imgUrl = getAchievementImageUrl(achievement);
+        const desc = getAchievementDescription(achievement);
+        return (
           <div
-            className="bg-white dark:bg-[#1c1c28] rounded-2xl shadow-2xl p-6 max-w-xs w-full relative"
-            onClick={e => e.stopPropagation()}
+            className="fixed inset-0 z-40 bg-black bg-opacity-50 flex items-center justify-center"
+            onClick={() => setSelected(null)}
           >
-            <button
-              className="absolute top-3 right-3 text-lg opacity-60 hover:opacity-100"
-              onClick={() => setSelected(null)}
-              aria-label="Close"
+            <div
+              className="bg-white dark:bg-[#1c1c28] rounded-2xl shadow-2xl p-6 max-w-xs w-full relative"
+              onClick={e => e.stopPropagation()}
             >
-              ×
-            </button>
-            <div className="flex flex-col items-center">
-              <div className="w-20 h-20 rounded-full mb-2 border-4 border-light-accent dark:border-dark-accent overflow-hidden">
-                {selected.assetUrl ? (
-                  <CachedImage
-                    src={selected.assetUrl}
-                    alt={selected.title}
-                    className="w-full h-full object-contain"
-                    style={{
-                      filter: isAchievementUnlocked(selected)
-                        ? "none"
-                        : "grayscale(90%) brightness(0.85) opacity(0.7)"
-                    }}
-                    cacheKey={selected.achievementKey || selected.assetUrl}
-                  />
-                ) : (
-                  <span className="text-4xl">🏆</span>
-                )}
-              </div>
-              <h5 className="text-lg font-bold mb-1 text-center">
-                {selected.title}
-              </h5>
-              <div className="text-xs text-center opacity-80 mb-2">{selected.category}</div>
-              <div className="text-sm text-center mb-2">
-                {selected.description || ""}
-              </div>
-              {selected.goal > 1 && (
-                <div className="w-full">
-                  <div className="h-2 rounded bg-light-alt dark:bg-dark-alt mb-1">
-                    <div
-                      className="h-2 rounded"
+              <button
+                className="absolute top-3 right-3 text-lg opacity-60 hover:opacity-100"
+                onClick={() => setSelected(null)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+              <div className="flex flex-col items-center">
+                <div className="w-28 h-28 rounded-full mb-2 border-4 border-light-accent dark:border-dark-accent overflow-hidden flex items-center justify-center bg-light-surface dark:bg-dark-surface">
+                  {imgUrl ? (
+                    <img
+                      src={imgUrl}
+                      alt={name}
+                      className="object-contain"
                       style={{
-                        width: `${Math.min(
-                          100,
-                          ((selected.current || 0) / selected.goal) * 100
-                        )}%`,
-                        background: isAchievementUnlocked(selected)
-                          ? "linear-gradient(90deg,#C1F29C,#a7f3d0)"
-                          : "linear-gradient(90deg,#adc7f3,#67c4fa)"
+                        width: "120px",
+                        height: "120px",
+                        filter: isAchievementUnlocked(selected)
+                          ? "none"
+                          : "grayscale(90%) brightness(0.85) opacity(0.7)",
                       }}
-                    ></div>
-                  </div>
-                  <span className="block text-xs text-center opacity-70 mb-1">
-                    {selected.current || 0} / {selected.goal}
-                  </span>
+                    />
+                  ) : (
+                    <span className="text-4xl">🏆</span>
+                  )}
                 </div>
-              )}
-              <div className="text-xs mt-2 text-center opacity-60">
-                {isAchievementUnlocked(selected)
-                  ? (selected.earnedAt || selected.earned_at)
-                    ? "Unlocked: " +
-                      new Date(selected.earnedAt || selected.earned_at).toLocaleDateString()
-                    : "Unlocked"
-                  : "Not yet unlocked"}
+                <h5 className="text-lg font-bold mb-1 text-center">
+                  {name}
+                </h5>
+                <div className="text-xs text-center opacity-80 mb-2">{achievement.category}</div>
+                <div className="text-sm text-center mb-2">
+                  {desc}
+                </div>
+                {selected.goal > 1 && (
+                  <div className="w-full">
+                    <div className="h-2 rounded bg-light-alt dark:bg-dark-alt mb-1">
+                      <div
+                        className="h-2 rounded"
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            ((selected.current || 0) / selected.goal) * 100
+                          )}%`,
+                          background: isAchievementUnlocked(selected)
+                            ? "linear-gradient(90deg,#C1F29C,#a7f3d0)"
+                            : "linear-gradient(90deg,#adc7f3,#67c4fa)"
+                        }}
+                      ></div>
+                    </div>
+                    <span className="block text-xs text-center opacity-70 mb-1">
+                      {selected.current || 0} / {selected.goal}
+                    </span>
+                  </div>
+                )}
+                <div className="text-xs mt-2 text-center opacity-60">
+                  {isAchievementUnlocked(selected)
+                    ? (() => {
+                        const date = parseAchievementDate(selected.earnedAt || selected.earned_at);
+                        return date ? "Unlocked: " + date.toLocaleDateString() : "Unlocked";
+                      })()
+                    : "Not yet unlocked"}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

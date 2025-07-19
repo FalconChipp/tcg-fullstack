@@ -42,6 +42,7 @@ const logger = winston.createLogger({
 // --- Express Setup ---
 const app = express();
 const httpServer = http.createServer(app);
+app.use('/achievements', express.static('public/achievements'));
 
 // --- Socket.IO ---
 const io = new SocketIOServer(httpServer, {

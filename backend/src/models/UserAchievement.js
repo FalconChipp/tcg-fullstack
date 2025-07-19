@@ -48,7 +48,5 @@ export default (sequelize) => {
     }
   );
 
-  // Do NOT set up associations here—do them in models/index.js
-
   return UserAchievement;
 };

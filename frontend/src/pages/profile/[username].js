@@ -113,7 +113,7 @@ export default function ProfilePage({ user, error }) {
                   name
                   description
                   tier
-                  imageUrl
+                  iconUrl
                   createdAt
                   updatedAt
                 }

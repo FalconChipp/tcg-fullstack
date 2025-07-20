@@ -7,6 +7,7 @@ import { fetchPTCGCardById } from './api/pokemontcg.js';
 /** --- Set Exclusion Blocklist --- */
 export const BLOCKED_SET_CODES = [
   // Fill this with set codes from Pokémon TCG Pocket, e.g. 'POKPOC1'
+  'PROMO-A', 'A1', 'A1a', 'A2', 'A2a', 'A2b', 'A3', 'A3a', 'A3b', 'A4'
 ];
 
 /** --- Set Normalization & Filtering --- */

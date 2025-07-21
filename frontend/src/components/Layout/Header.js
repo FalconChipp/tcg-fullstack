@@ -102,6 +102,7 @@ export default function Header() {
               <nav className="hidden md:flex items-center gap-1">
                 <HeaderNavLink href="/" isActive={pathname === "/"}>Home</HeaderNavLink>
                 <HeaderNavLink href="/about" isActive={pathname === "/about"}>About</HeaderNavLink>
+                <HeaderNavLink href="/subscriptions" isActive={pathname === "/subscriptions"}>Subscriptions</HeaderNavLink>
                 {/* Services Dropdown */}
                 {/* <div
                   className="relative"
@@ -148,9 +149,9 @@ export default function Header() {
               </nav>
             </div>
             {/* Center: User Search */}
-<div className="hidden md:block flex-1 max-w-md mx-8">
-  <UserSearchDropdown />
-</div>
+            <div className="hidden md:block flex-1 max-w-md mx-8">
+              <UserSearchDropdown />
+            </div>
 
             {/* Right: Auth, Settings, Mobile */}
             <div className="flex items-center gap-3">
@@ -280,6 +281,7 @@ export default function Header() {
           <nav className="flex flex-col space-y-4 flex-grow">
             <HeaderNavLink href="/" isActive={pathname === "/"}>Home</HeaderNavLink>
             <HeaderNavLink href="/about" isActive={pathname === "/about"}>About</HeaderNavLink>
+            <HeaderNavLink href="/subscriptions" isActive={pathname === "/subscriptions"}>Subscriptions</HeaderNavLink>
             <HeaderNavLink href="/contact" isActive={pathname === "/contact"}>Contact</HeaderNavLink>
           </nav>
           <div className="mt-auto pt-8">

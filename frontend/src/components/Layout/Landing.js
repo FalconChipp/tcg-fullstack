@@ -74,14 +74,22 @@ export default function Landing() {
 
     const query = `
       mutation Register($username: String!, $email: String!, $password: String!) {
-        registerCustomUser(input: { username: $username, email: $email, password: $password }) {
-          user {
-            id
-            username
-            email
+          register(username: $username, email: $email, password: $password) {
+            user {
+              id
+              username
+              email
+              emailVerified
+              lastLogin
+              createdAt
+              updatedAt
+              avatar
+              mfaEnabled
+              oauthProvider
+              oauthId
+            }
           }
         }
-      }
     `;
     const variables = { username, email, password };
 

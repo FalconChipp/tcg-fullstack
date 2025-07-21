@@ -30,7 +30,7 @@ export default function Landing() {
   const [submitted, setSubmitted] = useState(false);
 
   // --- Countdown state ---
-  const targetDate = new Date("2025-07-25T00:00:00+01:00"); // BST/UK
+  const targetDate = new Date("2025-07-28T00:00:00+01:00"); // BST/UK
   const [countdown, setCountdown] = useState(getCountdown(targetDate));
 
   useEffect(() => {

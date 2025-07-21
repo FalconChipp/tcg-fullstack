@@ -24,6 +24,8 @@ export const SET_MAPPING = {
   'PRE':   { tcgdex: 'sv08.5', ptcg: 'sv8pt5' },         // Prismatic Evolutions
   'JTG':   { tcgdex: 'sv09',   ptcg: 'sv9' },            // Journey Together           
   'DRI':   { tcgdex: 'sv10',   ptcg: 'sv10' },           // Destined Rivals
+  'BLK':   { tcgdex: 'sv10.5b', ptcg: 'zsv10pt5'},       // Black Bolt
+  'WHT':   { tcgdex: 'sv10.5bw', ptcg: 'rsv10pt5'},      // White Flare
 
   // Sword & Shield sets:
   'SWSH':  { tcgdex: 'swshp',  ptcg: 'swshp' },          // Sword & Shield Promos

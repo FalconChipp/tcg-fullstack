@@ -2,7 +2,7 @@
 import emailBase from './emailBase.js';
 
 export default function buildVerificationEmail({ username, token }) {
-  const frontendUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify?token=${encodeURIComponent(token)}`;
+  const frontendUrl = `https://tcg.sixbyfive.com/verify?token=${encodeURIComponent(token)}`;
   return {
     subject: 'Verify your email address – SixByFive TCG',
     html: emailBase({

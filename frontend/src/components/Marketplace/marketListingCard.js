@@ -2,13 +2,24 @@
 import React from "react";
 import { FaShoppingCart } from "react-icons/fa";
 
-// Example props: { listing }
-export default function MarketplaceListingCard({ listing }) {
+// Now accepts onClick for modal opening!
+export default function MarketplaceListingCard({ listing, onClick }) {
   return (
-    <div className="
-      bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border
-      rounded-2xl shadow hover:shadow-2xl transition p-4 flex flex-col group
-    ">
+    <div
+      className="
+        bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border
+        rounded-2xl shadow hover:shadow-2xl transition p-4 flex flex-col group
+        cursor-pointer
+      "
+      onClick={onClick}
+      tabIndex={0}
+      role="button"
+      aria-label={`View listing for ${listing.cardName}`}
+      // Support Enter/Space key to open modal for accessibility
+      onKeyDown={e => {
+        if (e.key === "Enter" || e.key === " ") onClick();
+      }}
+    >
       <div className="relative w-full aspect-[3/4] mb-3 bg-light-alt dark:bg-dark-alt rounded-xl overflow-hidden flex items-center justify-center">
         <img
           src={listing.cardImage}
@@ -16,7 +27,7 @@ export default function MarketplaceListingCard({ listing }) {
           className="object-contain w-full h-full"
           draggable={false}
         />
-        {/* Optional: Proof-of-ownership overlay icon */}
+        {/* Proof-of-ownership overlay icon */}
         {listing.proofImage && (
           <div className="absolute bottom-2 right-2 bg-light-surface/80 dark:bg-dark-surface/80 rounded-full p-1 text-xs">
             <span className="text-light-accent dark:text-dark-accent">PO</span>
@@ -33,6 +44,9 @@ export default function MarketplaceListingCard({ listing }) {
         <div className="text-sm text-light-textSecondary dark:text-dark-textSecondary mb-1">
           #{listing.cardNumber} • {listing.rarity}
         </div>
+        <div className="text-sm text-light-textMuted dark:text-dark-textMuted mb-1">
+          {listing.condition} • {listing.language}
+        </div>
         <div className="text-base font-semibold mb-2 text-light-accent dark:text-dark-accent">
           £{listing.price.toFixed(2)}
         </div>
@@ -44,6 +58,8 @@ export default function MarketplaceListingCard({ listing }) {
               hover:bg-light-accentLight dark:hover:bg-dark-accentLight transition
               shadow
             "
+            tabIndex={-1} // Prevent button from stealing focus (modal opens on card)
+            type="button"
           >
             <FaShoppingCart /> Buy Now
           </button>

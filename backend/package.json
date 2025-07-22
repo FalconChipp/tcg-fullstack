@@ -17,12 +17,15 @@
   "dependencies": {
     "@apollo/server": "^4.10.0",
     "@graphql-tools/merge": "^9.0.24",
+    "@tensorflow/tfjs-node": "^4.22.0",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.2",
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "csurf": "^1.11.0",
+    "csv-parser": "^3.2.0",
+    "csv-writer": "^1.6.0",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-rate-limit": "^7.0.0",
@@ -38,6 +41,7 @@
     "mysql2": "^3.10.0",
     "node-fetch": "^3.3.2",
     "nodemailer": "^6.9.12",
+    "nsfwjs": "^4.2.1",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "pg": "^8.11.5",
@@ -49,11 +53,9 @@
     "speakeasy": "^2.0.0",
     "sqlite3": "^5.1.7",
     "stripe": "^14.17.0",
-    "uuid": "^9.0.1",
-    "winston": "^3.10.1",
-    "nsfwjs": "^4.2.1",
     "tesseract.js": "^6.0.1",
-    "@tensorflow/tfjs-node": "^4.22.0"
+    "uuid": "^9.0.1",
+    "winston": "^3.10.1"
   },
   "devDependencies": {
     "eslint": "^8.57.0",

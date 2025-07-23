@@ -32,13 +32,6 @@ export default function MarketplaceListingModal({ listing, onClose }) {
         >
           &times;
         </button>
-        {/* Fullscreen Toggle */}
-        <button
-          onClick={() => setFull(!full)}
-          className="absolute bottom-4 right-4 bg-light-text dark:bg-dark-text text-white px-3 py-1 rounded bg-opacity-80 text-sm"
-        >
-          {full ? "Exit Fullscreen" : "Fullscreen"}
-        </button>
         {/* Content */}
         <div className="flex flex-col md:flex-row gap-8 p-8 overflow-auto">
           {/* Image */}

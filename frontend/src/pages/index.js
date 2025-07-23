@@ -33,11 +33,11 @@ export default function Home() {
         <meta name="twitter:description" content="Build your collection, get price updates, and join the UK's newest TCG community. Sign up now for launch rewards!" />
         <meta name="twitter:image" content="https://tcg.sixbyfive.com/og-image.png" />
       </Head>
-      {/* <Layout noTopPadding>
-        <div className="pt-20"> */}
+      <Layout noTopPadding>
+        <div className="pt-20">
 
           {/* HERO SECTION */}
-          {/* <HeroSection onOpenAuthModal={() => setAuthModalOpen(true)} />
+          <HeroSection onOpenAuthModal={() => setAuthModalOpen(true)} />
 
           <section className="max-w-3xl mx-auto py-10 px-4 text-center">
             <h2 className="text-3xl font-bold mb-4">Ready to Take Your Collection Online?</h2>
@@ -94,18 +94,18 @@ export default function Home() {
 
           <DiscordJoinBar />
 
-          <FAQ /> */}
+          <FAQ />
 
-          <Landing />
+          {/* <Landing /> */}
 
-        {/* </div>
+        </div>
 
         <AuthModal
           isOpen={authModalOpen}
           onClose={() => setAuthModalOpen(false)}
           onAuthSuccess={() => setAuthModalOpen(false)}
         />
-      </Layout> */}
+      </Layout>
     </>
   );
 }

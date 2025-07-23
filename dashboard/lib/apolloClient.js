@@ -2,22 +2,23 @@ import { ApolloClient, InMemoryCache, createHttpLink } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
 
 const httpLink = createHttpLink({
-  uri: process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || 'http://localhost:4000/graphql'
+  uri: process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT, // Automatically uses the right one
 });
 
 const authLink = setContext((_, { headers }) => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  let token;
+  if (typeof window !== "undefined") {
+    token = localStorage.getItem('tcg_admin_token');
+  }
   return {
     headers: {
       ...headers,
-      authorization: token ? `Bearer ${token}` : ''
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
     }
   };
 });
 
-const client = new ApolloClient({
+export const client = new ApolloClient({
   link: authLink.concat(httpLink),
-  cache: new InMemoryCache()
+  cache: new InMemoryCache(),
 });
-
-export default client;

@@ -25,6 +25,7 @@ import { startNotificationCleanup } from './src/jobs/notificationCleanup.js';
 
 import { typeDefs, resolvers } from './src/schema.js';
 import { sequelize, User, Profile } from './src/models/index.js';
+import * as models from './src/models/index.js'; // instead of destructuring
 
 // --- Logger Setup ---
 const logger = winston.createLogger({
@@ -64,6 +65,15 @@ app.use(
       }
     },
     credentials: true,
+    allowedHeaders: [
+      'Authorization',
+      'Content-Type',
+      'Origin',
+      'X-Requested-With',
+      'Accept',
+      'X-Access-Token'
+    ],
+    exposedHeaders: ['Authorization']
   })
 );
 app.use(helmet());
@@ -226,18 +236,51 @@ const apolloServer = new ApolloServer({
   },
 });
 await apolloServer.start();
+
 app.use(
   '/graphql',
   expressMiddleware(apolloServer, {
-    context: async ({ req, res }) => ({
-      req,
-      res,
-      io,
-      logger,
-      token: req.headers.authorization?.replace('Bearer ', '') || req.cookies.token || null,
-      userAgent: req.headers['user-agent'],
-      ip: req.ip,
-    }),
+    context: async ({ req, res }) => {
+      // Extract token (try all casings and sources)
+      let token =
+        req.headers.authorization?.replace('Bearer ', '') ||
+        req.headers.Authorization?.replace('Bearer ', '') ||
+        req.cookies.token ||
+        null;
+
+      logger.error("Authorization header:", req.headers.authorization);
+      logger.error("Token:", token);
+
+      let user = null;
+      if (token) {
+        try {
+          const payload = jwt.verify(token, process.env.JWT_SECRET);
+          logger.error("Decoded JWT payload:", payload);
+          user = await User.findByPk(payload.id);
+          logger.error("User from DB:", user ? { id: user.id, username: user.username, isAdmin: user.isAdmin } : null);
+        } catch (err) {
+          logger.error("JWT verify error:", err.message);
+          user = null;
+        }
+      } else {
+        logger.error("No token provided");
+      }
+
+      // Always log what we return for context user
+      logger.error("Final context user:", user);
+
+      return {
+        req,
+        res,
+        io,
+        logger,
+        user,          // for resolvers that check context.user
+        token,         // for requireAdmin(token) and other legacy resolvers
+        userAgent: req.headers['user-agent'],
+        ip: req.ip,
+        models,
+      };
+    }
   })
 );
 

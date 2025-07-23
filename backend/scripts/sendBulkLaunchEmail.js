@@ -1,12 +1,12 @@
 // scripts/sendBulkLaunchEmail.js
 
 import 'dotenv/config';
-import { sequelize, User } from '../src/models/index.js'; // Adjust as needed
+import { sequelize, User } from '../src/models/index.js';
 import { sendMail } from '../src/utils/email.js';
 import emailBase from '../src/emails/emailBase.js';
 import process from 'process';
 
-const TEST_EMAIL = 'ryanseekdev@gmail.com';
+const TEST_EMAIL = null; // Set to null/empty for production
 
 async function sendBulkEmail() {
   let users;
@@ -33,7 +33,8 @@ async function sendBulkEmail() {
 
   let success = 0, fail = 0;
   for (const [i, user] of users.entries()) {
-    const heading = `We're Launching, ${user.username}!`; // Personalised
+    // --- Customised heading and content ---
+    const heading = `We're Launching, ${user.username || 'Trainer'}!`; // Personalised
     const content = `
       <p style="font-size:17px;line-height:1.7;margin:0 0 18px 0;">
         Hello ${user.username || 'Trainer'}!
@@ -44,7 +45,7 @@ async function sendBulkEmail() {
       </p>
       <p style="font-size:17px;line-height:1.7;margin:0 0 18px 0;">
         You can visit <a href="https://tcg.sixbyfive.com" style="color:#2963FF;text-decoration:underline;">tcg.sixbyfive.com</a>
-        to explore collections, manage your cards, and soon - trade with the community.
+        to explore collections, manage your cards, and soon – trade with the community.
       </p>
       <p style="font-size:16px;line-height:1.6;margin:18px 0 0 0;">
         Thank you for being part of our community,<br>
@@ -61,7 +62,7 @@ async function sendBulkEmail() {
       outro,
     });
 
-    // For test mode, print the generated HTML to console for quick preview
+    // Print HTML preview in test mode
     if (TEST_EMAIL) {
       console.log("--------- EMAIL HTML PREVIEW ---------");
       console.log(html);

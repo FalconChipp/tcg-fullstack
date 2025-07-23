@@ -19,6 +19,7 @@ import messagesTypeDefs from './modules/messages/typeDefs.js';
 import notificationsTypeDefs from './modules/notifications/typeDefs.js';
 import subscriptionsTypeDefs from './modules/subscriptions/typeDefs.js';
 import shippingTypeDefs from './modules/shipping/typeDefs.js';
+import adminTypeDefs from './modules/admin/typeDefs.js';
 
 // ---- Import resolvers from all modules ----
 import authResolvers from './modules/auth/resolvers.js';
@@ -36,6 +37,7 @@ import messagesResolvers from './modules/messages/resolvers.js';
 import notificationsResolvers from './modules/notifications/resolvers.js';
 import subscriptionsResolvers from './modules/subscriptions/resolvers.js';
 import shippingResolvers from './modules/shipping/resolvers.js';
+import adminResolvers from './modules/admin/resolvers.js';
 
 // ---- Merge all typeDefs ----
 export const typeDefs = mergeTypeDefs([
@@ -54,6 +56,7 @@ export const typeDefs = mergeTypeDefs([
   notificationsTypeDefs,
   subscriptionsTypeDefs,
   shippingTypeDefs,
+  adminTypeDefs,
 ]);
 
 // ---- Merge all resolvers ----
@@ -73,4 +76,5 @@ export const resolvers = mergeResolvers([
   notificationsResolvers,
   subscriptionsResolvers,
   shippingResolvers,
+  adminResolvers,
 ]);

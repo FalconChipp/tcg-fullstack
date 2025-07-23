@@ -44,3 +44,7 @@
 //     </div>
 //   );
 // }
+
+export default function Binders() {
+  return <div>Binders</div>
+}

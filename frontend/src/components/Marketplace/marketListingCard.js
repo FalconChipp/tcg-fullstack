@@ -1,9 +1,12 @@
+// /components/Marketplace/marketListingCard.js
 "use client";
 import React from "react";
 import { FaShoppingCart } from "react-icons/fa";
+import { useCart } from "./CartProvider";
 
-// Now accepts onClick for modal opening!
 export default function MarketplaceListingCard({ listing, onClick }) {
+  const { addToCart } = useCart();
+
   return (
     <div
       className="
@@ -15,7 +18,6 @@ export default function MarketplaceListingCard({ listing, onClick }) {
       tabIndex={0}
       role="button"
       aria-label={`View listing for ${listing.cardName}`}
-      // Support Enter/Space key to open modal for accessibility
       onKeyDown={e => {
         if (e.key === "Enter" || e.key === " ") onClick();
       }}
@@ -27,7 +29,6 @@ export default function MarketplaceListingCard({ listing, onClick }) {
           className="object-contain w-full h-full"
           draggable={false}
         />
-        {/* Proof-of-ownership overlay icon */}
         {listing.proofImage && (
           <div className="absolute bottom-2 right-2 bg-light-surface/80 dark:bg-dark-surface/80 rounded-full p-1 text-xs">
             <span className="text-light-accent dark:text-dark-accent">PO</span>
@@ -58,8 +59,13 @@ export default function MarketplaceListingCard({ listing, onClick }) {
               hover:bg-light-accentLight dark:hover:bg-dark-accentLight transition
               shadow
             "
-            tabIndex={-1} // Prevent button from stealing focus (modal opens on card)
+            tabIndex={-1}
             type="button"
+            // Prevent modal opening when clicking "Buy Now"
+            onClick={e => {
+              e.stopPropagation();
+              addToCart(listing);
+            }}
           >
             <FaShoppingCart /> Buy Now
           </button>

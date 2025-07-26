@@ -24,7 +24,7 @@ export default function BackToTop() {
     <button
       onClick={scrollToTop}
       className={`
-        fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full shadow-lg focus:outline-none 
+        fixed bottom-6 left-6 z-50 w-12 h-12 rounded-full shadow-lg focus:outline-none 
         transition-all duration-300 ease-in-out transform hover:scale-105
         bg-light-accent dark:bg-dark-accent
         hover:bg-light-accentLight dark:hover:bg-dark-accentLight

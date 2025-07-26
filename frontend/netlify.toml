@@ -1,5 +1,7 @@
 [build]
+  base = "frontend"
   command = "npm run build"
+  publish = ".next"  # or "out" for next export
 
 [build.environment]
   NEXT_PUBLIC_BASE_URL = "https://sbftest.netlify.app"

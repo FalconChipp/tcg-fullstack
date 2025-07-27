@@ -31,6 +31,7 @@ const SIDEBAR_LINKS = [
 
 export default function Layout({ children }) {
   const [modules, setModules] = useState(DEFAULT_MODULES);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
   const pathname = router.pathname;
 
@@ -51,11 +52,49 @@ export default function Layout({ children }) {
   );
 
   return (
-    <div className="flex min-h-screen bg-gray-950 text-gray-100">
-      <aside className="w-64 bg-gray-900 p-5 flex flex-col gap-6 border-r border-gray-800">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight mb-2 text-indigo-400">TCG Admin</h2>
-          <span className="text-sm text-gray-400">Control Panel</span>
+    <div className="min-h-screen flex flex-col md:flex-row bg-gray-950 text-gray-100">
+      {/* Mobile header */}
+      <header className="flex items-center justify-between md:hidden px-4 py-3 border-b border-gray-800">
+        <button
+          aria-label="Open sidebar"
+          onClick={() => setSidebarOpen(true)}
+          className="text-gray-300 hover:text-white"
+        >
+          {/* simple hamburger icon */}
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        <span className="text-lg font-semibold text-indigo-400">TCG Admin</span>
+      </header>
+
+      {/* Sidebar */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-30 w-64 transform bg-gray-900 p-5 flex flex-col gap-6 border-r border-gray-800 transition-transform md:static md:translate-x-0 md:flex-shrink-0
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        `}
+      >
+        <div className="flex items-center justify-between mb-6 md:block">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight mb-2 text-indigo-400">TCG Admin</h2>
+            <span className="text-sm text-gray-400">Control Panel</span>
+          </div>
+          <button
+            className="md:hidden text-gray-300 hover:text-white"
+            aria-label="Close sidebar"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
         <nav className="flex flex-col gap-1">
           {filteredLinks.map(({ href, label }) => {
@@ -74,6 +113,7 @@ export default function Layout({ children }) {
                     : 'text-gray-300 hover:bg-gray-800 hover:text-white'}
                 `}
                 aria-current={active ? 'page' : undefined}
+                onClick={() => setSidebarOpen(false)}
               >
                 {label}
               </Link>
@@ -89,6 +129,7 @@ export default function Layout({ children }) {
                 ? 'bg-indigo-600 text-white'
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'}
             `}
+            onClick={() => setSidebarOpen(false)}
           >
             Login
           </Link>

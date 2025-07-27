@@ -46,7 +46,8 @@ export default function DiscordJoinBar({
               Join our Discord community!
             </div>
             <div className="mt-1 text-base text-light-textSecondary dark:text-dark-textSecondary">
-              Chat with collectors, get site updates, request features, and trade with other UK players.
+              Chat with collectors, get site updates, request features, and
+              trade with other UK players.
             </div>
           </div>
 
@@ -73,7 +74,7 @@ export default function DiscordJoinBar({
               hover:border-light-accentLight dark:hover:border-dark-accentLight
             `}
           >
-            <FaDiscord className="text-2xl mr-1 -ml-1" style={{ color: "#f7f8fa" }} />
+            <FaDiscord className="text-2xl mr-1 -ml-1 text-light-surface dark:text-dark-text" />
             <span>Join&nbsp;Discord</span>
           </a>
 
@@ -90,7 +91,7 @@ export default function DiscordJoinBar({
               "
               onClick={dismiss}
               style={{
-                boxShadow: "0 2px 8px 0 #21224c30"
+                boxShadow: "0 2px 8px 0 #21224c30",
               }}
             >
               <FaTimes className="text-lg" />

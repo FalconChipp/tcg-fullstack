@@ -57,45 +57,54 @@ export default function Home() {
           <HeroSection onOpenAuthModal={() => setAuthModalOpen(true)} />
 
           <section className="max-w-3xl mx-auto py-10 px-4 text-center">
-            <h2 className="text-3xl font-bold mb-4">
-              Ready to Take Your Collection Online?
-            </h2>
-            <p className="text-lg mb-6">
-              SixByFive TCG is a new platform for UK collectors to track,
-              organise, and value their Pokémon card collections.
-              <br />
-              No spreadsheets, no hassle. Fast, free, and community-powered.
-            </p>
-            <div className="flex flex-col md:flex-row gap-6 justify-center">
-              <div className="bg-dark-alt rounded-xl p-6 shadow-md flex-1">
-                <h3 className="font-semibold text-lg mb-2 text-light-accent dark:text-dark-accent">
-                  🗃️ Digital Collection Manager
-                </h3>
-                <p>
-                  Add cards, create wishlists, and view collection value at a
-                  glance.
-                </p>
-              </div>
-              <div className="bg-dark-alt rounded-xl p-6 shadow-md flex-1">
-                <h3 className="font-semibold text-lg mb-2 text-light-accent dark:text-dark-accent">
-                  📒 Custom Binders
-                </h3>
-                <p>
-                  Organise cards in digital binders—mimic your real binders
-                  online, share, and show off.
-                </p>
-              </div>
-              <div className="bg-dark-alt rounded-xl p-6 shadow-md flex-1">
-                <h3 className="font-semibold text-lg mb-2 text-light-accent dark:text-dark-accent">
-                  💬 Community & Achievements
-                </h3>
-                <p>
-                  Join our Discord for trading, advice, and exclusive early
-                  adopter badges.
-                </p>
-              </div>
-            </div>
-          </section>
+  <h2 className="text-3xl font-bold mb-4 text-light-primary dark:text-dark-primary">
+    Ready to Take Your Collection Online?
+  </h2>
+  <p className="text-lg mb-8 text-light-text dark:text-dark-text">
+    SixByFive TCG is a new platform for UK collectors to track,
+    organise, and value their Pokémon card collections.<br />
+    No spreadsheets, no hassle. Fast, free, and community-powered.
+  </p>
+  <div className="flex flex-col md:flex-row gap-6 justify-center">
+    {/* Collection Manager Card */}
+    <div className="
+      bg-light-surface dark:bg-dark-surface rounded-2xl p-7 shadow-xl flex-1 border
+      border-light-border dark:border-dark-border
+    ">
+      <h3 className="font-semibold text-lg mb-2 text-light-accent dark:text-dark-accent">
+        🗃️ Digital Collection Manager
+      </h3>
+      <p className="text-light-text dark:text-dark-text">
+        Add cards, create wishlists, and view collection value at a glance.
+      </p>
+    </div>
+    {/* Custom Binders Card */}
+    <div className="
+      bg-light-surface dark:bg-dark-surface rounded-2xl p-7 shadow-xl flex-1 border
+      border-light-border dark:border-dark-border
+    ">
+      <h3 className="font-semibold text-lg mb-2 text-light-accent dark:text-dark-accent">
+        📒 Custom Binders
+      </h3>
+      <p className="text-light-text dark:text-dark-text">
+        Organise cards in digital binders—mimic your real binders online, share, and show off.
+      </p>
+    </div>
+    {/* Community & Achievements Card */}
+    <div className="
+      bg-light-surface dark:bg-dark-surface rounded-2xl p-7 shadow-xl flex-1 border
+      border-light-border dark:border-dark-border
+    ">
+      <h3 className="font-semibold text-lg mb-2 text-light-accent dark:text-dark-accent">
+        💬 Community & Achievements
+      </h3>
+      <p className="text-light-text dark:text-dark-text">
+        Join our Discord for trading, advice, and exclusive early adopter badges.
+      </p>
+    </div>
+  </div>
+</section>
+
 
           <section className="my-8">
             <CardSearch />

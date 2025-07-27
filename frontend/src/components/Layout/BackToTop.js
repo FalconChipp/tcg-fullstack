@@ -36,7 +36,7 @@ export default function BackToTop() {
       `}
       aria-label="Back to Top"
     >
-      <i className="fas fa-arrow-up text-2xl" />
+      <i className="fas fa-arrow-up text-2xl text-white" />
     </button>
   );
 }

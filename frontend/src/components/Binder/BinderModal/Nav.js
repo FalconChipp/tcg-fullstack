@@ -70,7 +70,7 @@ export default function BinderNav({
       <button
         className={`
           px-3 py-1 rounded-xl font-medium
-          bg-light-primary text-white
+          bg-light-primary dark:bg-dark-primary text-white
           disabled:bg-light-border dark:disabled:bg-dark-border
           transition
         `}
@@ -82,7 +82,7 @@ export default function BinderNav({
       <button
         className={`
           px-3 py-1 rounded-xl font-medium
-          bg-light-error text-white
+          bg-light-error dark:bg-dark-error text-white
           disabled:bg-light-border dark:disabled:bg-dark-border
           transition
         `}
@@ -115,7 +115,7 @@ export default function BinderNav({
       <button
         className={`
           ml-auto px-4 py-1 rounded-xl font-bold
-          bg-light-success text-white
+          bg-light-success dark:bg-dark-success text-white
           disabled:bg-light-border dark:disabled:bg-dark-border
           transition
         `}
@@ -128,7 +128,7 @@ export default function BinderNav({
       <button
         className={`
           px-4 py-1 rounded-xl font-bold
-          bg-light-success text-white
+          bg-light-success dark:bg-dark-success text-white
           disabled:bg-light-border dark:disabled:bg-dark-border
           transition
         `}

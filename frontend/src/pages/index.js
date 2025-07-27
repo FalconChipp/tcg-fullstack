@@ -50,6 +50,8 @@ export default function Home() {
           name="twitter:image"
           content="https://tcg.sixbyfive.com/og-image.png"
         />
+        {/* Favicon (place this line below) */}
+        <link rel="icon" href="/assets/favicon.png" sizes="any" />
       </Head>
       <Layout noTopPadding>
         <div className="pt-20">

@@ -108,6 +108,9 @@ export default function AboutPage() {
           content="Learn more about SixByFive TCG and our mission to build the ultimate Pokémon TCG collection and trading platform."
         />
         <meta name="twitter:image" content="https://tcg.sixbyfive.com/og-image.png" />
+
+        {/* Favicon (place this line below) */}
+        <link rel="icon" href="/assets/favicon.png" sizes="any" />
       </Head>
       <Layout>
         <div className="min-h-screen bg-light-background dark:bg-dark-background text-light-text dark:text-dark-text transition-colors pb-12">
@@ -126,20 +129,20 @@ export default function AboutPage() {
                   href="/"
                   className="
                     flex items-center gap-2
-              px-6 py-3
-              bg-light-accent dark:bg-dark-accent
-              hover:bg-light-accentLight dark:hover:bg-dark-accentLight
-              text-light-surface dark:text-dark-text
-              hover:text-light-surface dark:hover:text-dark-text
-              text-lg font-semibold rounded-full
-              shadow-lg
-              transition-all duration-150
-              whitespace-nowrap
-              ml-0 md:ml-5
-              mt-3 md:mt-0
-              focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent
-              border-2 border-light-accent dark:border-dark-accent
-              hover:border-light-accentLight dark:hover:border-dark-accentLight
+                    px-6 py-3
+                    bg-light-accent dark:bg-dark-accent
+                    hover:bg-light-accentLight dark:hover:bg-dark-accentLight
+                    text-light-surface dark:text-dark-text
+                    hover:text-light-surface dark:hover:text-dark-text
+                    text-lg font-semibold rounded-full
+                    shadow-lg
+                    transition-all duration-150
+                    whitespace-nowrap
+                    ml-0 md:ml-5
+                    mt-3 md:mt-0
+                    focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent
+                    border-2 border-light-accent dark:border-dark-accent
+                    hover:border-light-accentLight dark:hover:border-dark-accentLight
                   "
                 >
                   Start Collecting
@@ -150,20 +153,20 @@ export default function AboutPage() {
                   rel="noopener noreferrer"
                   className="
                     flex items-center gap-2
-              px-6 py-3
-              bg-light-accent dark:bg-dark-accent
-              hover:bg-light-accentLight dark:hover:bg-dark-accentLight
-              text-light-surface dark:text-dark-text
-              hover:text-light-surface dark:hover:text-dark-text
-              text-lg font-semibold rounded-full
-              shadow-lg
-              transition-all duration-150
-              whitespace-nowrap
-              ml-0 md:ml-5
-              mt-3 md:mt-0
-              focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent
-              border-2 border-light-accent dark:border-dark-accent
-              hover:border-light-accentLight dark:hover:border-dark-accentLight
+                    px-6 py-3
+                    bg-light-accent dark:bg-dark-accent
+                    hover:bg-light-accentLight dark:hover:bg-dark-accentLight
+                    text-light-surface dark:text-dark-text
+                    hover:text-light-surface dark:hover:text-dark-text
+                    text-lg font-semibold rounded-full
+                    shadow-lg
+                    transition-all duration-150
+                    whitespace-nowrap
+                    ml-0 md:ml-5
+                    mt-3 md:mt-0
+                    focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent
+                    border-2 border-light-accent dark:border-dark-accent
+                    hover:border-light-accentLight dark:hover:border-dark-accentLight
                   "
                   aria-label="Join our Discord"
                 >

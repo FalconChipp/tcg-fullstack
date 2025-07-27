@@ -181,16 +181,16 @@ export default function Header() {
                     <span>{user.username}</span>
                     <i className="fas fa-chevron-down text-xs ml-2" />
                     </button>
-                    <NotificationBell notifications={notifications} />
+                    {/* <NotificationBell notifications={notifications} /> */}
                   </div>
                   {userDropdownOpen && (
                     <div className="absolute right-0 mt-2 w-52 rounded-xl shadow-lg bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border z-30 py-2 animate-fadeIn">
                       <Link href={`/profile/${user.username}`} className="block px-4 py-2 text-base text-light-text dark:text-dark-text hover:text-light-accent dark:hover:text-dark-accent rounded transition-colors" onClick={() => setUserDropdownOpen(false)}>
                         Profile
                       </Link>
-                      <Link href="/seller-dashboard" className="block px-4 py-2 text-base text-light-text dark:text-dark-text hover:text-light-accent dark:hover:text-dark-accent rounded transition-colors" onClick={() => setUserDropdownOpen(false)}>
+                      {/* <Link href="/seller-dashboard" className="block px-4 py-2 text-base text-light-text dark:text-dark-text hover:text-light-accent dark:hover:text-dark-accent rounded transition-colors" onClick={() => setUserDropdownOpen(false)}>
                         Seller Dashboard
-                      </Link>
+                      </Link> */}
                       <Link href="/account" className="block px-4 py-2 text-base text-light-text dark:text-dark-text hover:text-light-accent dark:hover:text-dark-accent rounded transition-colors" onClick={() => setUserDropdownOpen(false)}>
                         Account Details
                       </Link>

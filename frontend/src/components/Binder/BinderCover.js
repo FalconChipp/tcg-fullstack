@@ -82,7 +82,7 @@ export default function BinderCover({
         height="16"
         rx="5"
         fill={accent}
-        style={{ filter: "drop-shadow(0 1px 2px #0002)" }}
+        className="drop-shadow-[0_1px_2px_#0002]"
       />
 
       {/* Branding text with shadow for contrast */}
@@ -97,9 +97,9 @@ export default function BinderCover({
         textAnchor="end"
         style={{
           letterSpacing: "0.01em",
-          filter: "drop-shadow(0 2px 3px #0006)",
           paintOrder: "stroke",
         }}
+        className="drop-shadow-[0_2px_3px_#0006]"
       >
         {text}
       </text>

@@ -73,7 +73,7 @@ export default function DiscordJoinBar({
               hover:border-light-accentLight dark:hover:border-dark-accentLight
             `}
           >
-            <FaDiscord className="text-2xl mr-1 -ml-1" style={{ color: "#f7f8fa" }} />
+            <FaDiscord className="text-2xl mr-1 -ml-1 text-[#f7f8fa]" />
             <span>Join&nbsp;Discord</span>
           </a>
 

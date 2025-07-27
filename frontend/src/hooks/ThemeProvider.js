@@ -13,8 +13,7 @@ const ThemeContext = createContext(defaultState);
 // Set initial dark mode class before hydration
 if (typeof document !== 'undefined') {
   const userPreference = getCookie('darkMode');
-  const systemPreference = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
-  const isDark = userPreference ? userPreference === 'true' : systemPreference;
+  const isDark = userPreference ? userPreference === 'true' : true;
   if (isDark) {
     document.documentElement.classList.add('dark');
   }
@@ -30,8 +29,8 @@ export const ThemeProvider = ({ children }) => {
     if (userPreference) {
       return userPreference === 'true';
     }
-    // If no cookie, fall back to system preference
-    return window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+    // Default to dark mode on first load
+    return true;
   });
 
   // 2) Listen for changes to system dark mode & store preference

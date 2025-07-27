@@ -7,7 +7,6 @@ backend/.env
 backend/db/create_tables.sql
 backend/package-lock.json
 /frontend/.netlify/
-/frontend/netlify.toml
 frontend/package-lock.json
 dashboard/package-lock.json
 *.zip

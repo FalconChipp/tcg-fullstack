@@ -6,7 +6,7 @@ import { getCookie } from "@/utils/cookieUtils";
 import { useTheme } from "@/hooks/ThemeProvider";
 import { getSetLogo } from "@/utils/setLogos";
 import Image from "next/image";
-import StatusMessage from '@/components/UI/StatusMessage';
+import StatusMessage from "@/components/UI/StatusMessage";
 import PokemonAutocomplete from "./SearchComponents/PokemonAutocomplete";
 import SetAutocomplete from "./SearchComponents/SetAutocomplete";
 import CardDetailsModal from "../UserProfile/CardDetailsModal";
@@ -15,18 +15,22 @@ import CardSkeleton from "../UI/CardSkeleton";
 
 // --- CONSTANTS ---
 const FALLBACK_SYMBOL_IMAGE = "https://placehold.co/50x50/webp?text=Icon";
-const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
+const WP_GRAPHQL_URL =
+  process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
 const PER_PAGE = 25;
 
 // --- Helper: Get best available price object (prefers 'normal', falls back to first found) ---
 function getBestPrice(prices, prefer = "normal") {
-  if (!Array.isArray(prices)) return { tcgplayer: null, cardmarket: null, variation: null };
+  if (!Array.isArray(prices))
+    return { tcgplayer: null, cardmarket: null, variation: null };
   // Try preferred variation first
-  const found = prices.find(p => p.variation === prefer);
+  const found = prices.find((p) => p.variation === prefer);
   if (found) return found;
   // Otherwise, pick the first with either price set
   const next = prices.find(
-    p => (p.tcgplayer != null && !isNaN(p.tcgplayer)) || (p.cardmarket != null && !isNaN(p.cardmarket))
+    (p) =>
+      (p.tcgplayer != null && !isNaN(p.tcgplayer)) ||
+      (p.cardmarket != null && !isNaN(p.cardmarket)),
   );
   return next || { tcgplayer: null, cardmarket: null, variation: null };
 }
@@ -57,13 +61,13 @@ export default function CardSearch() {
 
   // --- Fetch cards with GraphQL query ---
   const fetchCards = async (pageToFetch = 1) => {
-    if (!name && !setCode && !number ) {
+    if (!name && !setCode && !number) {
       return {
-        cards: [], 
-        total: 0, 
+        cards: [],
+        total: 0,
         page: 1,
-        pageSize: PER_PAGE
-      }
+        pageSize: PER_PAGE,
+      };
     }
 
     const query = `
@@ -103,7 +107,7 @@ export default function CardSearch() {
         number,
         page: pageToFetch,
         pageSize: PER_PAGE,
-      }
+      },
     };
 
     const res = await fetch(WP_GRAPHQL_URL, {
@@ -147,7 +151,7 @@ export default function CardSearch() {
     try {
       const nextPage = page + 1;
       const data = await fetchCards(nextPage);
-      setResults(prev => [...prev, ...data.cards]);
+      setResults((prev) => [...prev, ...data.cards]);
       setPage(nextPage);
       setHasMore(data.cards.length === PER_PAGE);
     } catch (err) {
@@ -155,7 +159,16 @@ export default function CardSearch() {
     } finally {
       setIsLoadingMore(false);
     }
-  }, [page, hasMore, isLoadingMore, isExactCardSearch, name, setCode, number, language]);
+  }, [
+    page,
+    hasMore,
+    isLoadingMore,
+    isExactCardSearch,
+    name,
+    setCode,
+    number,
+    language,
+  ]);
 
   // --- AUTO-LOAD all pages until complete, except for exact set+number search ---
   useEffect(() => {
@@ -176,7 +189,8 @@ export default function CardSearch() {
   useEffect(() => {
     if (!hasMore || isExactCardSearch || loading) return;
     const handleScroll = () => {
-      const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 300;
+      const nearBottom =
+        window.innerHeight + window.scrollY >= document.body.offsetHeight - 300;
       if (nearBottom && !isLoadingMore) {
         loadMoreResults();
       }
@@ -192,15 +206,15 @@ export default function CardSearch() {
   };
 
   // --- Add card to wishlist ---
-const handleAddToWishlist = async (card) => {
-  const token = getCookie("authToken");
-  if (!token) {
-    showStatusMessage('error', "You must be logged in to add to wishlist.");
-    return;
-  }
+  const handleAddToWishlist = async (card) => {
+    const token = getCookie("authToken");
+    if (!token) {
+      showStatusMessage("error", "You must be logged in to add to wishlist.");
+      return;
+    }
 
-  // --- UPDATED MUTATION! ---
-  const mutation = `
+    // --- UPDATED MUTATION! ---
+    const mutation = `
     mutation AddToWishlist($cardId: String!, $variation: String) {
       addToWishlist(
         cardId: $cardId,
@@ -214,35 +228,43 @@ const handleAddToWishlist = async (card) => {
       }
     }
   `;
-  const variables = {
-    cardId: card.cardId || card.id,
-    variation: card.variation || (Array.isArray(card.variations) && card.variations.length > 0 ? card.variations[0] : "")
-  };
+    const variables = {
+      cardId: card.cardId || card.id,
+      variation:
+        card.variation ||
+        (Array.isArray(card.variations) && card.variations.length > 0
+          ? card.variations[0]
+          : ""),
+    };
 
-  try {
-    const res = await fetch(WP_GRAPHQL_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ query: mutation, variables }),
-    });
-    const json = await res.json();
+    try {
+      const res = await fetch(WP_GRAPHQL_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ query: mutation, variables }),
+      });
+      const json = await res.json();
 
-    if (json.data?.addToWishlist) {
-      showStatusMessage('success', `"${card.name}" was added to your wishlist!`);
-    } else if (json.errors && json.errors.length > 0) {
-      showStatusMessage('error', json.errors[0].message || "Failed to add to wishlist.");
-    } else {
-      showStatusMessage('error', "Failed to add to wishlist.");
+      if (json.data?.addToWishlist) {
+        showStatusMessage(
+          "success",
+          `"${card.name}" was added to your wishlist!`,
+        );
+      } else if (json.errors && json.errors.length > 0) {
+        showStatusMessage(
+          "error",
+          json.errors[0].message || "Failed to add to wishlist.",
+        );
+      } else {
+        showStatusMessage("error", "Failed to add to wishlist.");
+      }
+    } catch (err) {
+      showStatusMessage("error", "Network error. Please try again.");
     }
-  } catch (err) {
-    showStatusMessage('error', "Network error. Please try again.");
-  }
-};
-
-
+  };
 
   // --- Handle card detail modal open ---
   function handleCardDetail(card) {
@@ -256,11 +278,15 @@ const handleAddToWishlist = async (card) => {
 
   // --- JSX ---
   return (
-    <div className={`min-h-screen bg-light-background text-light-text dark:bg-dark-background dark:text-dark-text transition-colors`}>
+    <div
+      className={`min-h-screen bg-light-background text-light-text dark:bg-dark-background dark:text-dark-text transition-colors`}
+    >
       <div className="max-w-[1200px] mx-auto px-5 py-10">
         {/* Header */}
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-extrabold mb-2 tracking-tight">Pokémon Card Search</h1>
+          <h1 className="text-4xl font-extrabold mb-2 tracking-tight">
+            Pokémon Card Search
+          </h1>
           <p className="text-lg text-light-textMuted dark:text-dark-textMuted">
             Search for any Pokémon card and add it to your collection
           </p>
@@ -281,7 +307,9 @@ const handleAddToWishlist = async (card) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5 mb-0">
             {/* Name */}
             <div>
-              <label className="block text-base font-medium mb-2">Card Name</label>
+              <label className="block text-base font-medium mb-2">
+                Card Name
+              </label>
               <PokemonAutocomplete
                 value={name}
                 onChange={setName}
@@ -318,13 +346,15 @@ const handleAddToWishlist = async (card) => {
                       <circle cx="12" cy="16" r="1" fill="currentColor" />
                     </svg>
                     {/* Tooltip */}
-                    <div className="
+                    <div
+                      className="
                       absolute left-0 top-full mt-2 z-50 w-max min-w-[220px] max-w-xs
                       bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text
                       px-3 py-2 rounded shadow-lg text-xs border border-light-border dark:border-dark-border
                       opacity-0 group-hover:opacity-100
                       pointer-events-none transition-opacity duration-200
-                    ">
+                    "
+                    >
                       {/* Arrow */}
                       <svg
                         className="absolute left-0 -top-2"
@@ -340,7 +370,8 @@ const handleAddToWishlist = async (card) => {
                           className="dark:fill-dark-surface"
                         />
                       </svg>
-                      You can enter a set code (e.g, <b>sv08</b>), set abbreviation (e.g, <b>SSP</b>), or type the set name.
+                      You can enter a set code (e.g, <b>sv08</b>), set
+                      abbreviation (e.g, <b>SSP</b>), or type the set name.
                     </div>
                   </div>
                 </span>
@@ -363,11 +394,13 @@ const handleAddToWishlist = async (card) => {
             </div>
             {/* Card Number */}
             <div>
-              <label className="block text-base font-medium mb-2">Card Number</label>
+              <label className="block text-base font-medium mb-2">
+                Card Number
+              </label>
               <input
                 type="text"
                 value={number}
-                onChange={e => setNumber(e.target.value)}
+                onChange={(e) => setNumber(e.target.value)}
                 placeholder="Card number"
                 className="
                   w-full border rounded-xl px-4 py-3 text-base
@@ -411,7 +444,10 @@ const handleAddToWishlist = async (card) => {
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {Array.from({ length: 4 }).map((_, idx) => (
-              <div className="bg-light-surface dark:bg-dark-surface rounded-2xl shadow flex flex-col p-3 min-h-[300px] pointer-events-none" key={idx}>
+              <div
+                className="bg-light-surface dark:bg-dark-surface rounded-2xl shadow flex flex-col p-3 min-h-[300px] pointer-events-none"
+                key={idx}
+              >
                 <div className="w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-xl mb-3 relative shimmer"></div>
                 <div className="mt-2 flex flex-col gap-2">
                   <div className="h-3.5 bg-light-alt dark:bg-dark-alt rounded w-full shimmer"></div>
@@ -425,7 +461,7 @@ const handleAddToWishlist = async (card) => {
           <div>
             <h2 className="text-xl font-bold mb-6 ml-1">Search Results</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {results.map(cardRaw => {
+              {results.map((cardRaw) => {
                 const card = mapCardToDetail(cardRaw);
                 const priceObj = getBestPrice(card.prices, "normal"); // <-- New fallback logic
                 return (
@@ -438,7 +474,10 @@ const handleAddToWishlist = async (card) => {
                     key={card.id}
                     onClick={() => handleCardDetail(card)}
                     tabIndex={0}
-                    onKeyDown={e => { if (e.key === "Enter" || e.key === " ") handleCardDetail(card); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ")
+                        handleCardDetail(card);
+                    }}
                     role="button"
                     aria-label={`View details for ${card.name}`}
                   >
@@ -453,48 +492,63 @@ const handleAddToWishlist = async (card) => {
                     </div>
                     <div className="flex flex-col gap-1">
                       <div className="flex justify-between items-start gap-2">
-                        <span className="text-base font-bold flex-1 truncate">{card.name}</span>
+                        <span className="text-base font-bold flex-1 truncate">
+                          {card.name}
+                        </span>
                         <img
                           src={getSetLogo(card.setName)}
                           alt={card.setName || "Set logo"}
                           className="w-8 h-5 rounded bg-light-alt dark:bg-dark-alt"
-                          onError={e => {
+                          onError={(e) => {
                             e.target.onerror = null;
                             e.target.src = FALLBACK_SYMBOL_IMAGE;
                           }}
                         />
                       </div>
                       <div className="flex justify-between text-sm text-light-textMuted dark:text-dark-textMuted">
-                        <span className="whitespace-nowrap">{card.setName}</span>
+                        <span className="whitespace-nowrap">
+                          {card.setName}
+                        </span>
                         <span className="font-semibold">#{card.number}</span>
                       </div>
                       <div className="flex gap-2 text-sm my-1">
                         <div>
-                          <span className="font-bold text-light-accent dark:text-dark-accent">TCGP</span>
+                          <span className="font-bold text-light-accent dark:text-dark-accent">
+                            TCGP
+                          </span>
                           <span className="font-semibold ml-1 text-light-text dark:text-dark-text">
-                            {priceObj.tcgplayer !== null && priceObj.tcgplayer !== undefined
+                            {priceObj.tcgplayer !== null &&
+                            priceObj.tcgplayer !== undefined
                               ? `£${priceObj.tcgplayer.toFixed(2)}`
-                              : '—'}
+                              : "—"}
                           </span>
                         </div>
                         <div>
-                          <span className="font-bold text-light-accent dark:text-dark-accent">CMKT</span>
+                          <span className="font-bold text-light-accent dark:text-dark-accent">
+                            CMKT
+                          </span>
                           <span className="font-semibold ml-1 text-light-text dark:text-dark-text">
-                            {priceObj.cardmarket !== null && priceObj.cardmarket !== undefined
+                            {priceObj.cardmarket !== null &&
+                            priceObj.cardmarket !== undefined
                               ? `£${priceObj.cardmarket.toFixed(2)}`
-                              : '—'}
+                              : "—"}
                           </span>
                         </div>
                         {/* Optional: Show variation name if not "normal" */}
-                        {priceObj.variation && priceObj.variation !== "normal" ? (
-                          <span className="ml-2 text-xs text-light-textMuted">
+                        {priceObj.variation &&
+                        priceObj.variation !== "normal" ? (
+                          <span className="ml-2 text-xs text-light-textMuted dark:text-dark-textMuted">
                             ({priceObj.variation})
                           </span>
                         ) : null}
                       </div>
                       <div className="flex gap-2 mt-2">
                         <button
-                          onClick={e => { e.stopPropagation(); setSelectedCardDetail(card); setPanelOpen(true); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedCardDetail(card);
+                            setPanelOpen(true);
+                          }}
                           className="
                             rounded-lg px-4 py-2
                             bg-light-accent dark:bg-dark-accent
@@ -504,9 +558,14 @@ const handleAddToWishlist = async (card) => {
                             hover:text-light-surface dark:hover:text-dark-surface
                             transition
                           "
-                        >Add</button>
+                        >
+                          Add
+                        </button>
                         <button
-                          onClick={e => { e.stopPropagation(); handleAddToWishlist(card); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddToWishlist(card);
+                          }}
                           className="
                             rounded-lg px-4 py-2
                             border-2 border-light-accent dark:border-dark-accent
@@ -516,15 +575,20 @@ const handleAddToWishlist = async (card) => {
                             hover:text-light-surface dark:hover:text-dark-surface
                             transition
                           "
-                        >Wishlist</button>
+                        >
+                          Wishlist
+                        </button>
                       </div>
                     </div>
                   </div>
-                )
+                );
               })}
               {isLoadingMore &&
                 Array.from({ length: 4 }).map((_, idx) => (
-                  <div className="bg-light-surface dark:bg-dark-surface rounded-2xl shadow flex flex-col p-3 min-h-[300px] pointer-events-none" key={`load-${idx}`}>
+                  <div
+                    className="bg-light-surface dark:bg-dark-surface rounded-2xl shadow flex flex-col p-3 min-h-[300px] pointer-events-none"
+                    key={`load-${idx}`}
+                  >
                     <div className="w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-xl mb-3 relative shimmer"></div>
                     <div className="mt-2 flex flex-col gap-2">
                       <div className="h-3.5 bg-light-alt dark:bg-dark-alt rounded w-full shimmer"></div>

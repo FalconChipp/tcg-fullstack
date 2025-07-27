@@ -144,7 +144,7 @@ function PhaseRibbon({ phase }) {
       : phase === "Next"
       ? "bg-yellow-400 text-yellow-900"
       : phase === "Upcoming"
-      ? "bg-light-accent text-white"
+      ? "bg-light-accent dark:bg-dark-accent text-white"
       : "bg-gray-400 text-white";
   return (
     <span className={`absolute -top-5 left-1/2 -translate-x-1/2 text-xs px-3 py-1 font-bold rounded-full shadow ${color} z-10`}>

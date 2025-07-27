@@ -14,7 +14,8 @@ import {
 } from "@heroicons/react/24/outline";
 
 // --- GraphQL Helper ---
-const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
+const GRAPHQL_URL =
+  process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
 async function graphqlRequest(query, variables, token) {
   try {
     const res = await fetch(GRAPHQL_URL, {
@@ -39,7 +40,7 @@ async function graphqlRequest(query, variables, token) {
   } catch (err) {
     console.error("Request error:", err);
     throw new Error(
-      err.message || "Sorry, there was a server error. Please try again later."
+      err.message || "Sorry, there was a server error. Please try again later.",
     );
   }
 }
@@ -56,10 +57,13 @@ function getPasswordRules(pw) {
 }
 function checkPasswordStrength(pw) {
   if (pw.length < 8) return "Password must be at least 8 characters";
-  if (!/[A-Z]/.test(pw)) return "Password must have at least one uppercase letter";
-  if (!/[a-z]/.test(pw)) return "Password must have at least one lowercase letter";
+  if (!/[A-Z]/.test(pw))
+    return "Password must have at least one uppercase letter";
+  if (!/[a-z]/.test(pw))
+    return "Password must have at least one lowercase letter";
   if (!/[0-9]/.test(pw)) return "Password must have at least one number";
-  if (!/[\W_]/.test(pw)) return "Password must have at least one special character";
+  if (!/[\W_]/.test(pw))
+    return "Password must have at least one special character";
   return null;
 }
 
@@ -108,7 +112,10 @@ export default function AccountPage() {
         content="Manage your SixByFive TCG account settings, profile and preferences."
       />
       <meta property="og:url" content="https://tcg.sixbyfive.com/account" />
-      <meta property="og:image" content="https://tcg.sixbyfive.com/og-image.png" />
+      <meta
+        property="og:image"
+        content="https://tcg.sixbyfive.com/og-image.png"
+      />
       <meta property="og:type" content="website" />
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="Account Settings – SixByFive TCG" />
@@ -116,7 +123,10 @@ export default function AccountPage() {
         name="twitter:description"
         content="Manage your SixByFive TCG account settings, profile and preferences."
       />
-      <meta name="twitter:image" content="https://tcg.sixbyfive.com/og-image.png" />
+      <meta
+        name="twitter:image"
+        content="https://tcg.sixbyfive.com/og-image.png"
+      />
     </Head>
   );
 
@@ -147,14 +157,14 @@ export default function AccountPage() {
     <>
       {head}
       <Layout>
-      <div className="flex flex-col md:flex-row max-w-4xl mx-auto py-12 gap-8">
-        {/* Sidebar */}
-        <aside className="md:w-56 w-full flex-shrink-0 mb-4 md:mb-0">
-          <nav className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface shadow px-4 py-6 flex flex-row md:flex-col gap-2 md:gap-1">
-            {SETTINGS_TABS.map((tab) => (
-              <button
-                key={tab.key}
-                className={`
+        <div className="flex flex-col md:flex-row max-w-4xl mx-auto py-12 gap-8">
+          {/* Sidebar */}
+          <aside className="md:w-56 w-full flex-shrink-0 mb-4 md:mb-0">
+            <nav className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface shadow px-4 py-6 flex flex-row md:flex-col gap-2 md:gap-1">
+              {SETTINGS_TABS.map((tab) => (
+                <button
+                  key={tab.key}
+                  className={`
                   flex items-center gap-3 px-4 py-2 rounded-xl transition-colors font-semibold w-full
                   ${
                     activeTab === tab.key
@@ -163,36 +173,36 @@ export default function AccountPage() {
                   }
                   ${tab.soon ? "opacity-60 cursor-not-allowed" : ""}
                 `}
-                onClick={() => !tab.soon && setActiveTab(tab.key)}
-                disabled={tab.soon}
-                type="button"
-                tabIndex={tab.soon ? -1 : 0}
-                aria-current={activeTab === tab.key ? "page" : undefined}
-              >
-                <tab.icon className="w-5 h-5 flex-shrink-0" />
-                <span>{tab.label}</span>
-                {tab.soon && (
-                  <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">
-                    Soon
-                  </span>
-                )}
-              </button>
-            ))}
-          </nav>
-        </aside>
+                  onClick={() => !tab.soon && setActiveTab(tab.key)}
+                  disabled={tab.soon}
+                  type="button"
+                  tabIndex={tab.soon ? -1 : 0}
+                  aria-current={activeTab === tab.key ? "page" : undefined}
+                >
+                  <tab.icon className="w-5 h-5 flex-shrink-0" />
+                  <span>{tab.label}</span>
+                  {tab.soon && (
+                    <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">
+                      Soon
+                    </span>
+                  )}
+                </button>
+              ))}
+            </nav>
+          </aside>
 
-        {/* Main settings panel */}
-        <main className="flex-1 min-w-0">
-          {activeTab === "profile" && (
-            <AccountProfileTab user={user} token={token} />
-          )}
-          {activeTab === "security" && (
-            <AccountSecurityTab user={user} token={token} />
-          )}
-          {/* Coming soon: Add Preferences, Notifications etc. */}
-        </main>
-      </div>
-    </Layout>
+          {/* Main settings panel */}
+          <main className="flex-1 min-w-0">
+            {activeTab === "profile" && (
+              <AccountProfileTab user={user} token={token} />
+            )}
+            {activeTab === "security" && (
+              <AccountSecurityTab user={user} token={token} />
+            )}
+            {/* Coming soon: Add Preferences, Notifications etc. */}
+          </main>
+        </div>
+      </Layout>
     </>
   );
 }
@@ -279,7 +289,8 @@ function AccountProfileTab({ user, token }) {
       </div>
       <div className="mb-6">
         <label className="block mb-1 font-semibold text-light-text dark:text-dark-text">
-          Current Password <span className="text-light-error">*</span>
+          Current Password{" "}
+          <span className="text-light-error dark:text-dark-error">*</span>
         </label>
         <input
           type="password"
@@ -334,7 +345,10 @@ function AccountSecurityTab({ user, token }) {
     setPwStatus(null);
 
     if (!passwordFields.current) {
-      setPwStatus({ type: "error", msg: "Please enter your current password." });
+      setPwStatus({
+        type: "error",
+        msg: "Please enter your current password.",
+      });
       return;
     }
     if (!passwordFields.new || passwordFields.new !== passwordFields.confirm) {
@@ -405,7 +419,10 @@ function AccountSecurityTab({ user, token }) {
       const resp = await graphqlRequest(mutation, variables, null);
       const out = resp?.data?.startCustomUserPasswordReset;
       if (out?.success) {
-        setResetStatus({ type: "success", msg: "Reset link sent! Check your email." });
+        setResetStatus({
+          type: "success",
+          msg: "Reset link sent! Check your email.",
+        });
       } else {
         setResetStatus({
           type: "error",
@@ -413,7 +430,10 @@ function AccountSecurityTab({ user, token }) {
         });
       }
     } catch (err) {
-      setResetStatus({ type: "error", msg: err.message || "Error sending reset link." });
+      setResetStatus({
+        type: "error",
+        msg: err.message || "Error sending reset link.",
+      });
     }
   }
 
@@ -458,19 +478,49 @@ function AccountSecurityTab({ user, token }) {
           />
           {/* Dynamic rules feedback */}
           <ul className="text-sm mb-2 mt-2">
-            <li className={rules.length ? "text-green-600" : "text-light-textMuted dark:text-dark-textMuted"}>
+            <li
+              className={
+                rules.length
+                  ? "text-green-600"
+                  : "text-light-textMuted dark:text-dark-textMuted"
+              }
+            >
               {rules.length ? "✅" : "❌"} At least 8 characters
             </li>
-            <li className={rules.upper ? "text-green-600" : "text-light-textMuted dark:text-dark-textMuted"}>
+            <li
+              className={
+                rules.upper
+                  ? "text-green-600"
+                  : "text-light-textMuted dark:text-dark-textMuted"
+              }
+            >
               {rules.upper ? "✅" : "❌"} At least one uppercase letter
             </li>
-            <li className={rules.lower ? "text-green-600" : "text-light-textMuted dark:text-dark-textMuted"}>
+            <li
+              className={
+                rules.lower
+                  ? "text-green-600"
+                  : "text-light-textMuted dark:text-dark-textMuted"
+              }
+            >
               {rules.lower ? "✅" : "❌"} At least one lowercase letter
             </li>
-            <li className={rules.number ? "text-green-600" : "text-light-textMuted dark:text-dark-textMuted"}>
+            <li
+              className={
+                rules.number
+                  ? "text-green-600"
+                  : "text-light-textMuted dark:text-dark-textMuted"
+              }
+            >
               {rules.number ? "✅" : "❌"} At least one number
             </li>
-            <li className={rules.special ? "text-green-600" : "text-light-textMuted dark:text-dark-textMuted"}>
+            <li
+              className={
+                rules.special
+                  ? "text-green-600"
+                  : "text-light-textMuted dark:text-dark-textMuted"
+              }
+            >
               {rules.special ? "✅" : "❌"} At least one special character
             </li>
           </ul>

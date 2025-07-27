@@ -7,6 +7,7 @@ import { setCookie } from "@/utils/cookieUtils";
 import { AuthContext } from "../Auth/AuthProvider";
 import UserSearchDropdown from "@/components/UserProfile/UserSearch";
 import { useRouter } from "next/router";
+import NotificationBell from "@/components/Notifications/NotificationBell";
 
 // Helper for header nav links (neutral text, blue accent only for active/hover)
 const HeaderNavLink = ({ href, children, isActive }) => (
@@ -69,6 +70,13 @@ export default function Header() {
       />
     ) : null;
 
+    const notifications = [
+      { id: 1, type: "info",    title: "Card sold!",       body: "Your Pikachu VMAX has sold.", read: false, date: "2025-07-25T18:33:00Z" },
+      { id: 2, type: "warning", title: "Action needed",    body: "Please verify your email.",   read: false, date: "2025-07-25T16:10:00Z" },
+      { id: 3, type: "message", title: "New message",      body: "John sent you a message.",    read: true,  date: "2025-07-23T12:05:00Z" },
+      { id: 4, type: "error",   title: "Payment failed",   body: "Stripe payment did not go through.", read: true, date: "2025-07-21T20:50:00Z" },
+    ];
+
   return (
     <>
       {/* Main Header */}
@@ -102,7 +110,7 @@ export default function Header() {
               <nav className="hidden md:flex items-center gap-1">
                 <HeaderNavLink href="/" isActive={pathname === "/"}>Home</HeaderNavLink>
                 <HeaderNavLink href="/about" isActive={pathname === "/about"}>About</HeaderNavLink>
-                <HeaderNavLink href="/subscriptions" isActive={pathname === "/subscriptions"}>Subscriptions</HeaderNavLink>
+                {/* <HeaderNavLink href="/subscriptions" isActive={pathname === "/subscriptions"}>Subscriptions</HeaderNavLink> */}
                 {/* Services Dropdown */}
                 {/* <div
                   className="relative"
@@ -145,7 +153,7 @@ export default function Header() {
                     </div>
                   )}
                 </div> */}
-                <HeaderNavLink href="/contact" isActive={pathname === "/contact"}>Contact</HeaderNavLink>
+                {/* <HeaderNavLink href="/contact" isActive={pathname === "/contact"}>Contact</HeaderNavLink> */}
               </nav>
             </div>
             {/* Center: User Search */}
@@ -159,24 +167,30 @@ export default function Header() {
                 <div className="animate-pulse h-8 w-20 bg-light-border dark:bg-dark-border rounded" />
               ) : user ? (
                 <div className="relative">
-                  <button
-                    onClick={() => setUserDropdownOpen((v) => !v)}
-                    className="
+                  <div className="
                       flex items-center gap-2
                       px-4 py-2 rounded-xl transition text-base font-medium
                       bg-light-accent hover:bg-light-accentLight text-white
                       dark:bg-dark-accent dark:hover:bg-dark-accentLight dark:text-white
                       focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accentLight
-                    "
+                    ">
+                  <button
+                    className="hover:bg-light-border dark:hover:bg-dark-border py-1 px-3 rounded-full"
+                    onClick={() => setUserDropdownOpen((v) => !v)}
                   >
                     <span>{user.username}</span>
-                    <i className="fas fa-chevron-down text-xs" />
-                  </button>
+                    <i className="fas fa-chevron-down text-xs ml-2" />
+                    </button>
+                    {/* <NotificationBell notifications={notifications} /> */}
+                  </div>
                   {userDropdownOpen && (
                     <div className="absolute right-0 mt-2 w-52 rounded-xl shadow-lg bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border z-30 py-2 animate-fadeIn">
                       <Link href={`/profile/${user.username}`} className="block px-4 py-2 text-base text-light-text dark:text-dark-text hover:text-light-accent dark:hover:text-dark-accent rounded transition-colors" onClick={() => setUserDropdownOpen(false)}>
                         Profile
                       </Link>
+                      {/* <Link href="/seller-dashboard" className="block px-4 py-2 text-base text-light-text dark:text-dark-text hover:text-light-accent dark:hover:text-dark-accent rounded transition-colors" onClick={() => setUserDropdownOpen(false)}>
+                        Seller Dashboard
+                      </Link> */}
                       <Link href="/account" className="block px-4 py-2 text-base text-light-text dark:text-dark-text hover:text-light-accent dark:hover:text-dark-accent rounded transition-colors" onClick={() => setUserDropdownOpen(false)}>
                         Account Details
                       </Link>
@@ -281,8 +295,8 @@ export default function Header() {
           <nav className="flex flex-col space-y-4 flex-grow">
             <HeaderNavLink href="/" isActive={pathname === "/"}>Home</HeaderNavLink>
             <HeaderNavLink href="/about" isActive={pathname === "/about"}>About</HeaderNavLink>
-            <HeaderNavLink href="/subscriptions" isActive={pathname === "/subscriptions"}>Subscriptions</HeaderNavLink>
-            <HeaderNavLink href="/contact" isActive={pathname === "/contact"}>Contact</HeaderNavLink>
+            {/* <HeaderNavLink href="/subscriptions" isActive={pathname === "/subscriptions"}>Subscriptions</HeaderNavLink>
+            <HeaderNavLink href="/contact" isActive={pathname === "/contact"}>Contact</HeaderNavLink> */}
           </nav>
           <div className="mt-auto pt-8">
             {user ? (

@@ -1,26 +1,38 @@
 import React, { useState } from "react";
-import { User, Package, CheckCircle, XCircle, Loader, Mail, ArrowRight } from "lucide-react";
+import {
+  User,
+  Package,
+  CheckCircle,
+  XCircle,
+  Loader,
+  Mail,
+  ArrowRight,
+} from "lucide-react";
 import Image from "next/image";
 
 // Statuses with palette classes (adjust if you add more palette entries)
 const TRADE_STATUS = {
   pending: {
-    color: "bg-light-warning/30 text-light-warning dark:bg-dark-warning/30 dark:text-dark-warning",
+    color:
+      "bg-light-warning/30 text-light-warning dark:bg-dark-warning/30 dark:text-dark-warning",
     label: "Pending",
     icon: <Loader className="w-5 h-5 animate-spin" />,
   },
   shipped: {
-    color: "bg-light-primary/20 text-light-primary dark:bg-dark-primary/30 dark:text-dark-primary",
+    color:
+      "bg-light-primary/20 text-light-primary dark:bg-dark-primary/30 dark:text-dark-primary",
     label: "Shipped",
     icon: <Package className="w-5 h-5" />,
   },
   completed: {
-    color: "bg-light-success/20 text-light-success dark:bg-dark-success/40 dark:text-dark-success",
+    color:
+      "bg-light-success/20 text-light-success dark:bg-dark-success/40 dark:text-dark-success",
     label: "Completed",
     icon: <CheckCircle className="w-5 h-5" />,
   },
   cancelled: {
-    color: "bg-light-error/20 text-light-error dark:bg-dark-error/40 dark:text-dark-error",
+    color:
+      "bg-light-error/20 text-light-error dark:bg-dark-error/40 dark:text-dark-error",
     label: "Cancelled",
     icon: <XCircle className="w-5 h-5" />,
   },
@@ -31,7 +43,8 @@ export default function ProfileTradesPanel({ trades = [], onAction, dark }) {
   const [selectedTrade, setSelectedTrade] = useState(null);
 
   const filteredTrades = trades.filter((trade) => {
-    if (activeFilter === "active") return ["pending", "shipped"].includes(trade.status);
+    if (activeFilter === "active")
+      return ["pending", "shipped"].includes(trade.status);
     if (activeFilter === "completed") return trade.status === "completed";
     if (activeFilter === "cancelled") return trade.status === "cancelled";
     return true;
@@ -80,13 +93,17 @@ export default function ProfileTradesPanel({ trades = [], onAction, dark }) {
             {/* User */}
             <div className="flex items-center gap-3 w-full sm:w-56">
               <Image
-                src={trade.otherUser?.avatar || "/assets/avatar-placeholder.png"}
+                src={
+                  trade.otherUser?.avatar || "/assets/avatar-placeholder.png"
+                }
                 alt={trade.otherUser?.name || "User"}
                 width={38}
                 height={38}
                 className="rounded-full border border-light-border dark:border-dark-border object-cover"
               />
-              <span className="font-semibold text-base">{trade.otherUser?.name || "User"}</span>
+              <span className="font-semibold text-base">
+                {trade.otherUser?.name || "User"}
+              </span>
             </div>
             {/* Arrow */}
             <ArrowRight className="hidden sm:block w-6 h-6 text-light-border dark:text-dark-border mx-2" />
@@ -109,7 +126,9 @@ export default function ProfileTradesPanel({ trades = [], onAction, dark }) {
                     +{trade.cardsSent.length - 2} more
                   </span>
                 )}
-                <span className="ml-2 text-xs text-light-textSecondary dark:text-dark-textSecondary">sent</span>
+                <span className="ml-2 text-xs text-light-textSecondary dark:text-dark-textSecondary">
+                  sent
+                </span>
               </div>
               <ArrowRight className="w-4 h-4 text-purple-400 mx-2 sm:hidden" />
               {/* You receive */}
@@ -129,7 +148,9 @@ export default function ProfileTradesPanel({ trades = [], onAction, dark }) {
                     +{trade.cardsReceived.length - 2} more
                   </span>
                 )}
-                <span className="ml-2 text-xs text-light-textSecondary dark:text-dark-textSecondary">received</span>
+                <span className="ml-2 text-xs text-light-textSecondary dark:text-dark-textSecondary">
+                  received
+                </span>
               </div>
             </div>
             {/* Status */}
@@ -177,7 +198,9 @@ function TradeDetailsModal({ trade, onClose, onAction, dark }) {
             height={44}
             className="rounded-full border border-light-border dark:border-dark-border"
           />
-          <span className="text-lg font-bold">{trade.otherUser?.name || "User"}</span>
+          <span className="text-lg font-bold">
+            {trade.otherUser?.name || "User"}
+          </span>
           <span
             className={`ml-auto px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${TRADE_STATUS[trade.status]?.color}`}
           >
@@ -191,8 +214,16 @@ function TradeDetailsModal({ trade, onClose, onAction, dark }) {
             <div className="flex flex-wrap gap-2">
               {trade.cardsSent.map((card) => (
                 <div key={card.name} className="flex flex-col items-center">
-                  <Image src={card.image} alt={card.name} width={42} height={58} className="rounded shadow" />
-                  <span className="text-xs mt-1">{card.name} x{card.quantity}</span>
+                  <Image
+                    src={card.image}
+                    alt={card.name}
+                    width={42}
+                    height={58}
+                    className="rounded shadow"
+                  />
+                  <span className="text-xs mt-1">
+                    {card.name} x{card.quantity}
+                  </span>
                 </div>
               ))}
             </div>
@@ -202,8 +233,16 @@ function TradeDetailsModal({ trade, onClose, onAction, dark }) {
             <div className="flex flex-wrap gap-2">
               {trade.cardsReceived.map((card) => (
                 <div key={card.name} className="flex flex-col items-center">
-                  <Image src={card.image} alt={card.name} width={42} height={58} className="rounded shadow" />
-                  <span className="text-xs mt-1">{card.name} x{card.quantity}</span>
+                  <Image
+                    src={card.image}
+                    alt={card.name}
+                    width={42}
+                    height={58}
+                    className="rounded shadow"
+                  />
+                  <span className="text-xs mt-1">
+                    {card.name} x{card.quantity}
+                  </span>
                 </div>
               ))}
             </div>
@@ -220,7 +259,7 @@ function TradeDetailsModal({ trade, onClose, onAction, dark }) {
                 Accept Trade
               </button>
               <button
-                className="bg-light-error text-white px-4 py-2 rounded-lg font-semibold hover:bg-light-error/80 transition"
+                className="bg-light-error text-white px-4 py-2 rounded-lg font-semibold hover:bg-light-error/80 dark:bg-dark-error dark:hover:bg-dark-error/90 transition"
                 onClick={() => onAction("cancel", trade)}
               >
                 Cancel

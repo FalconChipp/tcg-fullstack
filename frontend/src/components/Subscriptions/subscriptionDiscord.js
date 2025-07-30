@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { FaDiscord, FaTimes } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 
-const DISCORD_INVITE = "https://discord.gg/pAnGVBb2Dc";
+const DISCORD_INVITE = "https://discord.gg/PRMbMbRE2H";
 
 export default function SubscriptionDiscord({
   invite = DISCORD_INVITE,

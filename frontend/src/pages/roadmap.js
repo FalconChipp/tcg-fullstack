@@ -237,7 +237,7 @@ export default function RoadmapPage() {
           </a>
           {" or "}
           <a
-            href="https://discord.gg/pAnGVBb2Dc"
+            href="https://discord.gg/PRMbMbRE2H"
             className="text-light-accent dark:text-dark-accent underline"
             target="_blank"
             rel="noopener noreferrer"

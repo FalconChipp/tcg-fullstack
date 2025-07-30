@@ -148,7 +148,7 @@ export default function AboutPage() {
                   Start Collecting
                 </Link>
                 <Link
-                  href="https://discord.gg/pAnGVBb2Dc"
+                  href="https://discord.gg/PRMbMbRE2H"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="
@@ -246,7 +246,7 @@ export default function AboutPage() {
               </h2>
               <p className="text-base text-light-textSecondary dark:text-dark-textSecondary mb-4 text-center">
                 SixByFive TCG is built for collectors, by collectors. Have ideas, feature requests, or want to help test new features?{" "}
-                <Link href="https://discord.gg/pAnGVBb2Dc" target="_blank" className="underline text-light-accent dark:text-dark-accent font-semibold">Join our Discord</Link>
+                <Link href="https://discord.gg/PRMbMbRE2H" target="_blank" className="underline text-light-accent dark:text-dark-accent font-semibold">Join our Discord</Link>
                 {" "}or reach out any time.
               </p>
               <p className="text-base text-light-textMuted dark:text-dark-textMuted text-center">

@@ -91,7 +91,7 @@ export default function ContactPage() {
           <ContactCard
             icon="💬"
             label="Discord"
-            href="https://discord.gg/pAnGVBb2Dc"
+            href="https://discord.gg/PRMbMbRE2H"
             desc="Chat with our community & team"
             external
           />

@@ -75,7 +75,7 @@ export default function Footer({ onCookieSettingsClick }) {
           {/* Navigation Links */}
           <nav className="flex gap-5 text-sm font-medium mt-1 md:mt-0">
             <FooterLink href="/about">About</FooterLink>
-            <FooterLink href="/contact">Contact</FooterLink>
+            {/* <FooterLink href="/contact">Contact</FooterLink> */}
             <FooterLink href="/privacy">Privacy</FooterLink>
             <FooterLink href="/terms">Terms</FooterLink>
           </nav>
@@ -83,12 +83,12 @@ export default function Footer({ onCookieSettingsClick }) {
 
         {/* Social + Cookie */}
         <div className="flex flex-col items-center md:items-end gap-2 md:gap-3">
-          <div className="flex gap-3 items-center">
+          {/* <div className="flex gap-3 items-center">
             <span className="text-xs text-light-textMuted dark:text-dark-textMuted">Follow us:</span>
             <FooterSocialLink href="https://twitter.com">Twitter</FooterSocialLink>
             <FooterSocialLink href="https://facebook.com">Facebook</FooterSocialLink>
             <FooterSocialLink href="https://instagram.com">Instagram</FooterSocialLink>
-          </div>
+          </div> */}
           <button
             className="
               text-xs mt-1 text-light-textMuted dark:text-dark-textMuted

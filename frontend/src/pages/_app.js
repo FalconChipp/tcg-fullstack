@@ -20,7 +20,6 @@ export default function MyApp({ Component, pageProps }) {
             {/* Global favicon */}
             <Head>
               <link rel="icon" href="/assets/favicon.png" sizes="any" />
-              <meta name="google-site-verification" content="E99dzL-VmDXBCklACriXXuFFdbiFGlx9Ieawb5lVqTQ" />
             </Head>
             <Component {...pageProps} />
             {/* MessengerLayout includes sidebar, toggle, and popups */}

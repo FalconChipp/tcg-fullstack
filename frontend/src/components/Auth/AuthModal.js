@@ -365,13 +365,13 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
           <span className="text-light-textMuted dark:text-dark-textMuted text-sm">or</span>
           <hr className="flex-grow border-light-border dark:border-dark-border" />
         </div>
-        <div className="mb-2 text-center">
+        {/* <div className="mb-2 text-center">
           {GoogleLoginComponent ? (
             <GoogleLoginComponent onSuccess={handleGoogleSuccess} onError={handleGoogleFailure} useOneTap />
           ) : (
             <span className="text-light-textMuted dark:text-dark-textMuted text-sm">Google Login not available</span>
           )}
-        </div>
+        </div> */}
         <div className="flex justify-center items-center gap-2 mt-2 text-base text-light-textSecondary dark:text-dark-textSecondary">
           {isLogin ? "No account?" : "Already have an account?"}
           <button

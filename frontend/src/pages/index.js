@@ -20,7 +20,7 @@ export default function Home() {
         <title>SixByFive TCG – UK Trading Card Collection & Marketplace</title>
         <meta
           name="description"
-          content="The UK’s next-gen Pokémon TCG collection app. Manage your cards, build digital binders, track values, and connect with collectors. Sign up free for launch rewards."
+          content="The UK’s next-gen Pokémon TCG collection app. Manage your cards, build digital binders, track values, and connect with collectors."
         />
         <link rel="canonical" href="https://tcg.sixbyfive.com/" />
         <meta
@@ -29,7 +29,7 @@ export default function Home() {
         />
         <meta
           property="og:description"
-          content="Join the new home for UK Pokémon TCG collectors. Track your collection, get price updates, and join our Discord community. Early achievements for pre-launch signups!"
+          content="Join the new home for UK Pokémon TCG collectors. Track your collection, get price updates, and join our Discord community."
         />
         <meta property="og:url" content="https://tcg.sixbyfive.com/" />
         <meta
@@ -44,14 +44,12 @@ export default function Home() {
         />
         <meta
           name="twitter:description"
-          content="Build your collection, get price updates, and join the UK's newest TCG community. Sign up now for launch rewards!"
+          content="Build your collection, get price updates, and join the UK's newest TCG community."
         />
         <meta
           name="twitter:image"
           content="https://tcg.sixbyfive.com/og-image.png"
         />
-        {/* Favicon (place this line below) */}
-        <link rel="icon" href="/assets/favicon.png" sizes="any" />
       </Head>
       <Layout noTopPadding>
         <div className="pt-20">

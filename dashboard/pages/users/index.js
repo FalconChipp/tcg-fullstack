@@ -11,7 +11,7 @@ const USERS = gql`
       username
       isBanned
       isAdmin
-      lastLogin   // Now fetched!
+      lastLogin
     }
   }
 `;

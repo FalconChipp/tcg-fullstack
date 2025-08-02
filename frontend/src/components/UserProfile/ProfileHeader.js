@@ -26,16 +26,21 @@ export default function ProfileHeader({
   const { token } = useContext(AuthContext);
 
   // Backend URLs
-  const WP_GRAPHQL_URL =
-    process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
-  const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:4000";
+  // Always ensure BACKEND_URL includes protocol!
+const rawBackendUrl = process.env.BACKEND_URL || "http://localhost:4000";
+const BACKEND_URL = rawBackendUrl.startsWith("http")
+  ? rawBackendUrl
+  : `https://${rawBackendUrl}`;
 
-  // Avatar URL resolver (to turn DB value into full URL for <Image>)
-  const resolveavatar = (avatar) => {
-    if (!avatar) return "https://placehold.co/100/webp";
-    if (avatar.startsWith("http")) return avatar;
-    return `${BACKEND_URL}${avatar}`;
-  };
+// Avatar URL resolver
+const resolveavatar = (avatar) => {
+  if (!avatar) return "https://placehold.co/100/webp";
+  if (avatar.startsWith("http")) return avatar;
+  // Ensure leading slash for the avatar path (avoid double slash or missing slash)
+  const path = avatar.startsWith("/") ? avatar : `/${avatar}`;
+  return `${BACKEND_URL}${path}`;
+};
+
 
   // Editable State
   const [username, setUsername] = useState(profileData?.username || "Username");

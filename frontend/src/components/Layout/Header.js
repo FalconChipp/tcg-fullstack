@@ -10,8 +10,9 @@ import { useRouter } from "next/router";
 import NotificationBell from "@/components/Notifications/NotificationBell";
 
 // Helper for header nav links (neutral text, blue accent only for active/hover)
-const HeaderNavLink = ({ href, children, isActive }) => (
+const HeaderNavLink = ({ href, children, isActive, id }) => (
   <Link
+    id={id}
     href={href}
     className={`
       text-base font-medium px-3 py-2 border-b-2 transition
@@ -81,6 +82,7 @@ export default function Header() {
     <>
       {/* Main Header */}
       <header
+        id="main-header"
         className={`
           fixed top-0 left-0 w-full z-50
           transition-all duration-300
@@ -109,8 +111,27 @@ export default function Header() {
               {/* Desktop Nav: All nav text is neutral, blue only for accent/active */}
               <nav className="hidden md:flex items-center gap-1">
                 <HeaderNavLink href="/" isActive={pathname === "/"}>Home</HeaderNavLink>
-                <HeaderNavLink href="/about" isActive={pathname === "/about"}>About</HeaderNavLink>
-                {/* <HeaderNavLink href="/subscriptions" isActive={pathname === "/subscriptions"}>Subscriptions</HeaderNavLink> */}
+                <HeaderNavLink
+                  id="about-discord-link"
+                  href="/about"
+                  isActive={pathname === "/about"}
+                >
+                  About
+                </HeaderNavLink>
+                <HeaderNavLink
+                  id="roadmap-link"
+                  href="/roadmap"
+                  isActive={pathname === "/roadmap"}
+                >
+                  Roadmap
+                </HeaderNavLink>
+                <HeaderNavLink
+                  id="subscriptions-link"
+                  href="/subscriptions"
+                  isActive={pathname === "/subscriptions"}
+                >
+                  Subscriptions
+                </HeaderNavLink>
                 {/* Services Dropdown */}
                 {/* <div
                   className="relative"
@@ -167,14 +188,17 @@ export default function Header() {
                 <div className="animate-pulse h-8 w-20 bg-light-border dark:bg-dark-border rounded" />
               ) : user ? (
                 <div className="relative">
-                  <div className="
+                  <div
+                    className="
                       flex items-center gap-2
                       px-4 py-2 rounded-xl transition text-base font-medium
                       bg-light-accent hover:bg-light-accentLight text-white
                       dark:bg-dark-accent dark:hover:bg-dark-accentLight dark:text-white
                       focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accentLight
-                    ">
+                    "
+                  >
                   <button
+                    id="profile-link"
                     className="hover:bg-light-border dark:hover:bg-dark-border py-1 px-3 rounded-full"
                     onClick={() => setUserDropdownOpen((v) => !v)}
                   >

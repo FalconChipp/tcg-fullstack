@@ -26,6 +26,7 @@ export default function ProfileTabs({ activeTab, onChange }) {
         {TABS.map((tab) => (
           <li key={tab.key} className="flex-1">
             <button
+              id={tab.key === "wishlist" ? "wishlist-tab" : undefined}
               className={`
                 w-full px-0 py-3
                 font-semibold text-base sm:text-lg transition

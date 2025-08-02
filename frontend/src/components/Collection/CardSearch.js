@@ -294,6 +294,7 @@ export default function CardSearch() {
 
         {/* Search Form */}
         <form
+          id="card-search-form"
           onSubmit={handleSearch}
           className="
             bg-light-surface dark:bg-dark-surface

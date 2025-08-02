@@ -5,6 +5,7 @@ import { useTheme } from '@/hooks/ThemeProvider';
 import Header from './Header';
 import Footer from './Footer';
 import BackToTop from './BackToTop';
+import OnboardingTour from '../Onboarding/OnboardingTour';
 
 import CookieBanner from '../Cookies/CookieBanner';
 import CookieSettingsModal from '../Cookies/CookieSettings';
@@ -48,6 +49,7 @@ export default function Layout({ children, hideBackTop = false, noTopPadding = f
   return (
     <div className={`min-h-screen ${dark ? 'bg-dark-background text-dark-text' : 'bg-light-background text-light-text'}`}>
       <Header />
+      <OnboardingTour />
 
       {showCookieBanner && (
         <CookieBanner onShowSettings={openSettingsModal} onAccept={acceptCookies} />

@@ -1,12 +1,11 @@
-'use client'; // Ensures this file is treated as a client component
+'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTheme } from '@/hooks/ThemeProvider';
 import Header from './Header';
 import Footer from './Footer';
 import BackToTop from './BackToTop';
 import OnboardingTour from '../Onboarding/OnboardingTour';
-
 import CookieBanner from '../Cookies/CookieBanner';
 import CookieSettingsModal from '../Cookies/CookieSettings';
 // import FullPageLayout from '../../../Archive/FullPageLayout';
@@ -17,6 +16,11 @@ export default function Layout({ children, hideBackTop = false, noTopPadding = f
   const [showSettingModal, setShowSettingModal] = useState(false);
   const [showCookieBanner, setShowCookieBanner] = useState(false);
   const [showSaveNotification, setShowSaveNotification] = useState(false);
+
+  const onboardingRef = useRef(); // <-- 1. Create the ref
+
+  // 2. Define the function BEFORE using it
+  const startTour = () => onboardingRef.current?.startTour();
 
   // Apply dark mode class to html element
   useEffect(() => {
@@ -36,26 +40,24 @@ export default function Layout({ children, hideBackTop = false, noTopPadding = f
   const closeSettingModal = () => setShowSettingModal(false);
 
   const acceptCookies = () => {
-    // If needed, call setCookie('acceptCookies', 'true', 365);
     setShowCookieBanner(false);
   };
 
   const saveSettings = () => {
-    // If needed, persist cookie settings here
     setShowSaveNotification(true);
     setTimeout(() => setShowSaveNotification(false), 3000);
   };
 
   return (
     <div className={`min-h-screen ${dark ? 'bg-dark-background text-dark-text' : 'bg-light-background text-light-text'}`}>
-      <Header />
-      <OnboardingTour />
+      {/* 3. Pass startTour as a prop to Header */}
+      <Header onStartTour={startTour} />
+      <OnboardingTour ref={onboardingRef} />
 
       {showCookieBanner && (
         <CookieBanner onShowSettings={openSettingsModal} onAccept={acceptCookies} />
       )}
 
-      {/* Conditional padding! */}
       <div className={`${noTopPadding ? 'pt-0' : 'pt-20 md:pt-20'} min-h-[calc(100vh-80px)]`}>
         {children}
       </div>
@@ -72,9 +74,7 @@ export default function Layout({ children, hideBackTop = false, noTopPadding = f
         </div>
       )}
 
-      {!hideBackTop && <BackToTop /> }
-      {/* <BackToTop /> */}
+      {!hideBackTop && <BackToTop />}
     </div>
-    // <FullPageLayout/>
   );
 }

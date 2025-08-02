@@ -1,27 +1,26 @@
-// /components/subscriptions/SubscriptionFAQ.js
 "use client";
 import React, { useState } from "react";
 
 const faqs = [
   {
-    q: "Can I stay on the free tier forever?",
-    a: "Yes! All core collection and binder features are available free. Upgrading is optional for collectors who want extra features.",
+    q: "Can I subscribe or upgrade yet?",
+    a: "Not yet—subscriptions are coming soon! All features are free right now, and upgrades will be available in the next release.",
   },
   {
-    q: "How do I change or cancel my subscription?",
-    a: "You can upgrade, downgrade, or cancel at any time from this page. Changes take effect immediately; billing is handled securely via Stripe.",
+    q: "How many binders can I create on the free tier?",
+    a: "Free tier users can create up to 3 digital binders. Paid plans (coming soon) will allow unlimited binders.",
   },
   {
-    q: "What payment methods do you accept?",
-    a: "We use Stripe for payments, supporting credit/debit cards, Apple Pay, Google Pay, and more.",
-  },
-  {
-    q: "Do I lose access to my collection if I downgrade?",
-    a: "Never. Your cards, binders, and account are always available on the free tier.",
+    q: "Will I lose my collection if I never upgrade?",
+    a: "Never. Your cards and binders stay on your account, even if you never subscribe.",
   },
   {
     q: "Will new features come to all tiers?",
     a: "Most big features roll out to all users, but subscribers may get early access or special tools.",
+  },
+  {
+    q: "How do I change or cancel my subscription?",
+    a: "Upgrading/downgrading will be instant and self-service once subscriptions launch.",
   },
 ];
 

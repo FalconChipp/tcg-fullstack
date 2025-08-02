@@ -1,13 +1,19 @@
 "use client";
 
-import React, { useContext, useEffect, useState } from "react";
+import React, {
+  useContext,
+  useEffect,
+  useState,
+  forwardRef,
+  useImperativeHandle
+} from "react";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 
+// --- Steps for the onboarding tour ---
 const steps = [
   {
     target: "#dashboard-welcome",
-    content:
-      "Welcome to SixByFive TCG! You’ve landed on your collection dashboard.",
+    content: "Welcome to SixByFive TCG! You’ve landed on your collection dashboard.",
   },
   {
     target: "#dashboard-summary",
@@ -29,15 +35,13 @@ const steps = [
     target: "#profile-link",
     content: "View your public profile to show off your cards and binders.",
   },
-  {
-    target: "#roadmap-link",
-    content:
-      "Check the roadmap to see trading, marketplace, and achievements coming soon.",
-  },
+  // {
+  //   target: "#roadmap-link",
+  //   content: "Check the roadmap to see trading, marketplace, and achievements coming soon.",
+  // },
   {
     target: "#subscriptions-link",
-    content:
-      "Upgrade to unlock premium tools like unlimited binders and early access.",
+    content: "Upgrade to unlock premium tools like unlimited binders and early access.",
   },
   {
     target: "#about-discord-link",
@@ -49,12 +53,22 @@ const steps = [
   },
 ];
 
-export default function OnboardingTour() {
+// --- OnboardingTour component ---
+// Now forwards a ref so parent can trigger the tour manually (redo link)
+const OnboardingTour = forwardRef((props, ref) => {
   const { user } = useContext(AuthContext);
   const [step, setStep] = useState(0);
   const [active, setActive] = useState(false);
 
-  // Show tour only once per user
+  // Allow parent to start the tour by calling .startTour()
+  useImperativeHandle(ref, () => ({
+    startTour: () => {
+      setStep(0);       // Restart at the beginning
+      setActive(true);  // Show tour
+    }
+  }));
+
+  // Auto-show on first login, only once per user
   useEffect(() => {
     if (!user) return;
     const key = `onboarding_${user.id}`;
@@ -63,7 +77,7 @@ export default function OnboardingTour() {
     }
   }, [user]);
 
-  // Highlight current step target
+  // Highlight the element for the current step
   useEffect(() => {
     if (!active) return;
     const all = document.querySelectorAll(".onboarding-highlight");
@@ -73,12 +87,14 @@ export default function OnboardingTour() {
       current.classList.add("onboarding-highlight");
       current.scrollIntoView({ behavior: "smooth", block: "center" });
     }
+    // Clean up highlights when step/active changes or unmounts
     return () => {
       const allCleanup = document.querySelectorAll(".onboarding-highlight");
       allCleanup.forEach((el) => el.classList.remove("onboarding-highlight"));
     };
   }, [step, active]);
 
+  // End the tour: mark complete, clear highlight, hide modal
   const finish = () => {
     if (user && typeof window !== "undefined") {
       localStorage.setItem(`onboarding_${user.id}`, "done");
@@ -113,5 +129,6 @@ export default function OnboardingTour() {
       </div>
     </div>
   );
-}
+});
 
+export default OnboardingTour;

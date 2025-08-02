@@ -18,7 +18,7 @@ const DEFAULT_MODULES = [
 const SIDEBAR_LINKS = [
   { href: '/', label: 'Dashboard', mod: null },
   { href: '/users', label: 'Users', mod: 'users' },
-  // { href: '/cards', label: 'Cards', mod: 'cards' },
+  { href: '/cards', label: 'Cards', mod: 'cards' },
   // { href: '/binders', label: 'Binders', mod: 'binders' },
   // { href: '/listings', label: 'Listings', mod: 'listings' },
   // { href: '/logs', label: 'Logs', mod: 'logs' },

@@ -14,21 +14,21 @@ const plans = [
     name: "Collection",
     color: "border-light-accent dark:border-dark-accent",
     highlight: true, // Most Popular
-    cta: { text: "Upgrade", href: "/subscriptions?upgrade=collection" },
+    cta: null, // Upgrades disabled until launch
   },
   {
     name: "Business",
     color: "border-yellow-400 dark:border-yellow-500",
     highlight: false,
-    cta: { text: "Upgrade to Business", href: "/subscriptions?upgrade=business" },
+    cta: null, // Upgrades disabled until launch
   },
 ];
 
 const features = [
   { label: "Unlimited Collection Size", tiers: [true, true, true] },
-  { label: "Digital Binders", tiers: [true, true, true] },
+  { label: "Digital Binders", tiers: ["Up to 3", "Unlimited", "Unlimited"] }, // UPDATED
   { label: "Advanced Analytics", tiers: [false, true, true] },
-  { label: "Unlimited Binders", tiers: [false, true, true] },
+  { label: "Unlimited Binders", tiers: [false, true, true] }, // keep for clarity
   { label: "Marketplace Listings", tiers: ["5 per month", "50 per month", "Unlimited"] },
   { label: "Lower Marketplace Fees", tiers: ["2.5%", "1.5%", "1%"] },
   { label: "Early Access Features", tiers: [false, true, true] },
@@ -36,13 +36,17 @@ const features = [
   { label: "Priority Support", tiers: [false, false, true] },
 ];
 
-// ---- COMPONENT ----
 export default function SubscriptionComparisonTable() {
   return (
     <section className="max-w-7xl mx-auto my-16 px-2">
-      <h3 className="text-2xl font-bold text-center mb-7 text-light-primary dark:text-dark-primary">
+      <h3 className="text-2xl font-bold text-center mb-2 text-light-primary dark:text-dark-primary">
         Compare Subscription Tiers
       </h3>
+      <div className="text-center mb-7">
+        <span className="inline-block bg-light-accent dark:bg-dark-accent text-white font-semibold px-4 py-1 rounded-xl shadow">
+          Subscriptions Coming Soon
+        </span>
+      </div>
       <div className="overflow-x-auto">
         <table
           className="
@@ -53,7 +57,6 @@ export default function SubscriptionComparisonTable() {
           "
           style={{ borderCollapse: "separate", borderSpacing: 0 }}
         >
-          {/* ---- HEADER ---- */}
           <thead>
             <tr>
               <th className="w-1/3 py-5 rounded-tl-2xl"></th>
@@ -79,8 +82,6 @@ export default function SubscriptionComparisonTable() {
               ))}
             </tr>
           </thead>
-
-          {/* ---- FEATURES ---- */}
           <tbody>
             {features.map((f, i) => (
               <tr key={f.label} className={i % 2 === 1 ? "bg-light-alt dark:bg-dark-alt/60" : ""}>
@@ -118,8 +119,6 @@ export default function SubscriptionComparisonTable() {
               </tr>
             ))}
           </tbody>
-
-          {/* ---- CTA BUTTONS ---- */}
           <tfoot>
             <tr>
               <td className="py-5 px-3 bg-transparent border-none rounded-bl-2xl"></td>
@@ -132,28 +131,9 @@ export default function SubscriptionComparisonTable() {
                     ${idx === plans.length - 1 ? "rounded-br-2xl" : ""}
                   `}
                 >
-                  {plan.cta ? (
-                    <a
-                      href={plan.cta.href}
-                      className={`
-                        inline-flex items-center justify-center
-                        px-7 py-3 rounded-full font-bold text-base
-                        shadow-lg
-                        transition-all duration-150
-                        focus:outline-none
-                        bg-light-accent dark:bg-dark-accent
-                        hover:bg-light-accentLight dark:hover:bg-dark-accentLight
-                        text-light-surface dark:text-dark-surface
-                        border-2 border-light-accent dark:border-dark-accent
-                        hover:border-light-accentLight dark:hover:border-dark-accentLight
-                        whitespace-nowrap
-                      `}
-                    >
-                      {plan.cta.text}
-                    </a>
-                  ) : (
-                    <span className="text-gray-400 dark:text-gray-600 font-semibold">Current Plan</span>
-                  )}
+                  <span className="text-gray-400 dark:text-gray-600 font-semibold">
+                    Coming Soon
+                  </span>
                 </td>
               ))}
             </tr>

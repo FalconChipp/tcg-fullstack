@@ -1,19 +1,17 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { fetchSubscriptionPlans, startSubscriptionCheckout } from "@/utils/subscriptionsApi";
+import { fetchSubscriptionPlans } from "@/utils/subscriptionsApi";
 import SubscriptionCard from "./subscriptionCard";
 
 /**
  * SubscriptionPlans
  * - Shows all subscription plans as a responsive grid of SubscriptionCard
- * - Handles plan selection and redirects to Stripe checkout
- * - Follows SixByFive TCG UI conventions (heading, accent, loading, error)
+ * - Handles plan selection (disabled until launch)
  */
-export default function SubscriptionPlans({ currentPlanId, token }) {
+export default function SubscriptionPlans({ currentPlanId }) {
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -23,30 +21,11 @@ export default function SubscriptionPlans({ currentPlanId, token }) {
       .finally(() => setLoading(false));
   }, []);
 
-  // Handler for selecting a plan (start Stripe checkout)
-  const handleSelect = async (planId) => {
-    setSubmitting(true);
-    setError(null);
-    try {
-      const url = await startSubscriptionCheckout(planId, token);
-      // Redirect to Stripe checkout or dummy URL
-      window.location.href = url;
-    } catch {
-      setError("Could not start checkout. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // --- UI ---
-
   return (
     <div className="w-full">
       <h2 className="text-2xl md:text-3xl font-bold mb-7 text-light-primary dark:text-dark-primary text-center">
-        Choose Your Plan
+        Choose Your Plan <span className="ml-2 text-base bg-light-accent dark:bg-dark-accent text-white px-3 py-1 rounded-xl">Coming Soon</span>
       </h2>
-
-      {/* Loading Skeletons */}
       {loading && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
           {Array.from({ length: 3 }).map((_, idx) => (
@@ -70,8 +49,6 @@ export default function SubscriptionPlans({ currentPlanId, token }) {
           ))}
         </div>
       )}
-
-      {/* Error Message */}
       {!loading && error && (
         <div className="
           mt-6 px-4 py-3 rounded-lg text-center font-medium border
@@ -81,8 +58,6 @@ export default function SubscriptionPlans({ currentPlanId, token }) {
           {error}
         </div>
       )}
-
-      {/* Plans Grid */}
       {!loading && !error && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
           {plans.map((plan) => (
@@ -90,20 +65,8 @@ export default function SubscriptionPlans({ currentPlanId, token }) {
               key={plan.id}
               plan={plan}
               currentPlanId={currentPlanId}
-              onSelect={handleSelect}
             />
           ))}
-        </div>
-      )}
-
-      {/* Submitting State */}
-      {submitting && (
-        <div className="
-          mt-8 px-4 py-3 rounded-lg text-center font-semibold border
-          bg-blue-50 text-blue-700 border-blue-200
-          dark:bg-blue-900/60 dark:text-blue-100 dark:border-blue-600
-        ">
-          Redirecting to checkout...
         </div>
       )}
     </div>

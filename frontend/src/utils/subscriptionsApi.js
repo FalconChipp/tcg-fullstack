@@ -22,9 +22,9 @@ const dummyPlans = [
   },
   {
     id: "collection",
-    name: "Collection",
+    name: "Collector",
     description: "For dedicated collectors. Unlock more binders and premium features.",
-    price: 4.99,
+    price: "TBD",
     interval: "month",
     features: [
       "Unlimited binders",
@@ -37,7 +37,7 @@ const dummyPlans = [
     id: "business",
     name: "Business",
     description: "Sell and trade at scale. Extra perks for stores and power users.",
-    price: 9.99,
+    price: "TBD",
     interval: "month",
     features: [
       "Unlimited listings",
@@ -55,7 +55,7 @@ const dummyUserSubscription = {
   plan: {
     id: "collection",
     name: "Collection",
-    price: 4.99,
+    price: "TBD",
   },
   renewsAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString(), // 30 days from now
 };

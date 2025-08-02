@@ -1,5 +1,4 @@
 "use client";
-
 import React from "react";
 import { FaCheckCircle } from "react-icons/fa";
 
@@ -11,7 +10,7 @@ import { FaCheckCircle } from "react-icons/fa";
  *   - currentPlanId: The plan ID the user currently has (for "Current Plan" state)
  *   - onSelect: (planId) => void, called when user selects/changes plan
  */
-export default function SubscriptionCard({ plan, currentPlanId, onSelect }) {
+export default function SubscriptionCard({ plan, currentPlanId }) {
   const isActive = plan.id === currentPlanId;
 
   return (
@@ -49,7 +48,12 @@ export default function SubscriptionCard({ plan, currentPlanId, onSelect }) {
       </ul>
       <div className="mb-4 flex items-center">
         <span className="text-2xl font-bold text-light-primary dark:text-dark-primary">
-          {plan.price ? `£${plan.price.toFixed(2)}` : "Free"}
+          {typeof plan.price === "string"
+            ? plan.price
+            : plan.price
+              ? `£${plan.price.toFixed(2)}`
+              : "Free"
+          }
         </span>
         {plan.interval && (
           <span className="ml-2 text-sm text-light-textSecondary dark:text-dark-textSecondary">
@@ -58,20 +62,16 @@ export default function SubscriptionCard({ plan, currentPlanId, onSelect }) {
         )}
       </div>
       <button
-        className={`
+        className="
           w-full py-3 rounded-xl font-bold
-          ${isActive
-            ? "bg-light-accent dark:bg-dark-accent text-white cursor-not-allowed opacity-80"
-            : "bg-light-primary hover:bg-light-accent dark:bg-dark-primary dark:hover:bg-dark-accent text-white transition"
-          }
+          bg-light-accent/40 dark:bg-dark-accent/40 text-white cursor-not-allowed opacity-70
           shadow
-        `}
+        "
         type="button"
-        onClick={() => !isActive && onSelect(plan.id)}
-        disabled={isActive}
-        aria-disabled={isActive}
+        disabled
+        aria-disabled="true"
       >
-        {isActive ? "Current Plan" : "Select"}
+        Coming Soon
       </button>
     </div>
   );

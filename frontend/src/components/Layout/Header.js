@@ -27,7 +27,7 @@ const HeaderNavLink = ({ href, children, isActive, id }) => (
   </Link>
 );
 
-export default function Header() {
+export default function Header({ onStartTour }) {
   const { dark, toggleDark } = useTheme();
   const { user, setUser, loading } = useContext(AuthContext);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -118,13 +118,13 @@ export default function Header() {
                 >
                   About
                 </HeaderNavLink>
-                <HeaderNavLink
+                {/* <HeaderNavLink
                   id="roadmap-link"
                   href="/roadmap"
                   isActive={pathname === "/roadmap"}
                 >
                   Roadmap
-                </HeaderNavLink>
+                </HeaderNavLink> */}
                 <HeaderNavLink
                   id="subscriptions-link"
                   href="/subscriptions"
@@ -218,6 +218,12 @@ export default function Header() {
                       <Link href="/account" className="block px-4 py-2 text-base text-light-text dark:text-dark-text hover:text-light-accent dark:hover:text-dark-accent rounded transition-colors" onClick={() => setUserDropdownOpen(false)}>
                         Account Details
                       </Link>
+                      <button
+                        onClick={onStartTour}
+                        className="block w-full text-left px-4 py-2 text-base hover:bg-light-accent hover:text-white rounded transition-colors"
+                      >
+                        Redo Onboarding Tour
+                      </button>
                       <button
                         onClick={handleSignOut}
                         className="block w-full text-left px-4 py-2 text-base hover:bg-light-error hover:text-white dark:hover:bg-dark-error dark:hover:text-white rounded transition-colors"
@@ -319,8 +325,8 @@ export default function Header() {
           <nav className="flex flex-col space-y-4 flex-grow">
             <HeaderNavLink href="/" isActive={pathname === "/"}>Home</HeaderNavLink>
             <HeaderNavLink href="/about" isActive={pathname === "/about"}>About</HeaderNavLink>
-            {/* <HeaderNavLink href="/subscriptions" isActive={pathname === "/subscriptions"}>Subscriptions</HeaderNavLink>
-            <HeaderNavLink href="/contact" isActive={pathname === "/contact"}>Contact</HeaderNavLink> */}
+            <HeaderNavLink href="/subscriptions" isActive={pathname === "/subscriptions"}>Subscriptions</HeaderNavLink>
+            {/* <HeaderNavLink href="/contact" isActive={pathname === "/contact"}>Contact</HeaderNavLink> */}
           </nav>
           <div className="mt-auto pt-8">
             {user ? (

@@ -176,6 +176,7 @@ export default function ProfileBindersPanel({
       {/* If own profile, first panel is Add Binder card, rest are skeletons */}
       {isOwnProfile && (
         <div
+          id="binder-create-btn"
           className="bg-light-surface dark:bg-dark-surface rounded-xl shadow p-3 flex flex-col items-center justify-center min-h-[420px] hover:bg-light-accent/10 dark:hover:bg-dark-accent/10 cursor-pointer transition"
           onClick={handleCreateBinder}
         >
@@ -272,6 +273,7 @@ export default function ProfileBindersPanel({
           {/* Add Binder panel always first if own profile */}
           {isOwnProfile && (
             <div
+              id="binder-create-btn"
               className="bg-light-surface dark:bg-dark-surface rounded-xl shadow p-3 flex flex-col items-center justify-center min-h-[420px] hover:bg-light-accent/10 dark:hover:bg-dark-accent/10 cursor-pointer transition"
               onClick={handleCreateBinder}
             >

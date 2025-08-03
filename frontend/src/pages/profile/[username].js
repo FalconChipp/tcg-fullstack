@@ -62,12 +62,14 @@ export async function getServerSideProps({ params, res }) {
     }
     const profile = data.userProfile;
     const mergedUser = {
-      ...profile,
-      ...profile.user
-    };
-    delete mergedUser.user;
+  ...profile,
+  username: profile.user?.username,
+  email: profile.user?.email,
+  emailVerified: profile.user?.emailVerified,
+};
+delete mergedUser.user;
+return { props: { user: mergedUser } };
 
-    return { props: { user: mergedUser } };
   } catch (err) {
     return { props: { error: "Remote server error" } };
   }

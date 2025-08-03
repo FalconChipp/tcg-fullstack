@@ -3,9 +3,9 @@ import React, { useRef } from "react";
 export default function AvatarUpload({ token, onUploaded }) {
   const fileInput = useRef();
 
-  // Best practice: Always get BACKEND_URL from env, strip any trailing slashes.
-  const rawBackendUrl = process.env.BACKEND_URL || "http://localhost:4000";
-  const BACKEND_URL = rawBackendUrl.replace(/\/+$/, ""); // No trailing slash
+  // Best practice: Always get NEXT_PUBLIC_BACKEND_URL from env, strip any trailing slashes.
+  const rawBackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+  const NEXT_PUBLIC_BACKEND_URL = rawBackendUrl.replace(/\/+$/, ""); // No trailing slash
 
   // Handle avatar upload
   const handleUpload = async (e) => {
@@ -16,7 +16,7 @@ export default function AvatarUpload({ token, onUploaded }) {
     formData.append("avatar", file);
 
     // Construct correct upload endpoint
-    const uploadUrl = `${BACKEND_URL}/upload/avatar`;
+    const uploadUrl = `${NEXT_PUBLIC_BACKEND_URL}/upload/avatar`;
 
     try {
       const res = await fetch(uploadUrl, {

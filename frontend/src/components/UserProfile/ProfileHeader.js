@@ -26,9 +26,9 @@ export default function ProfileHeader({
   const { token } = useContext(AuthContext);
 
   // Backend URLs
-  // Always ensure BACKEND_URL includes protocol!
-const rawBackendUrl = process.env.BACKEND_URL || "http://localhost:4000";
-const BACKEND_URL = rawBackendUrl.startsWith("http")
+  // Always ensure NEXT_PUBLIC_BACKEND_URL includes protocol!
+const rawBackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+const NEXT_PUBLIC_BACKEND_URL = rawBackendUrl.startsWith("http")
   ? rawBackendUrl
   : `https://${rawBackendUrl}`;
 
@@ -38,7 +38,7 @@ const resolveavatar = (avatar) => {
   if (avatar.startsWith("http")) return avatar;
   // Ensure leading slash for the avatar path (avoid double slash or missing slash)
   const path = avatar.startsWith("/") ? avatar : `/${avatar}`;
-  return `${BACKEND_URL}${path}`;
+  return `${NEXT_PUBLIC_BACKEND_URL}${path}`;
 };
 
 
@@ -155,7 +155,7 @@ const resolveavatar = (avatar) => {
     const formData = new FormData();
     formData.append("avatar", newProfileImage);
 
-    const res = await fetch(`${BACKEND_URL}/upload/avatar`, {
+    const res = await fetch(`${NEXT_PUBLIC_BACKEND_URL}/upload/avatar`, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${token}`,

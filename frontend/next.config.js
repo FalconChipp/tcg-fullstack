@@ -4,6 +4,7 @@ const nextConfig = {
   swcMinify: true,
   images: {
     domains: [
+      'backendtcg.sixbyfive.com',
       'placehold.co',
       'assets.tcgdex.net',
       'cdn.tcgdex.net',

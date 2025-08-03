@@ -7,6 +7,8 @@ import ProfileSocialLinks from "@/components/UserProfile/ProfileSocialLinks";
 // import ProfileReputation from "@/components/UserProfile/ProfileReputation";
 import { FaLink } from "react-icons/fa";
 
+const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
+
 // Currency formatter
 const formatCurrency = (value) =>
   new Intl.NumberFormat("en-GB", {

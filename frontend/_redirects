@@ -1,0 +1,2 @@
+# Redirect /marketplace to /index
+/marketplace    /index   301

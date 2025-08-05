@@ -1,6 +1,6 @@
 # TCG Backend
 
-This directory contains the Node.js GraphQL API used by the TCG applications. It connects to a MySQL database and exposes all functionality consumed by the frontend and dashboard.
+This directory contains the Node.js GraphQL API used by the TCG applications. It requires Node.js 18+ and connects to a MySQL database, exposing all functionality consumed by the frontend and dashboard.
 
 ## Setup
 
@@ -79,6 +79,20 @@ mutation {
 ```
 
 Active subscriptions can be queried with `mySubscription`.
+
+## Testing & Linting
+
+Run the Jest test suite:
+
+```bash
+npm test
+```
+
+Check code style with ESLint:
+
+```bash
+npm run lint
+```
 
 ### Security Notes
 - CORS allowed origins are configurable via `CORS_ORIGINS`.

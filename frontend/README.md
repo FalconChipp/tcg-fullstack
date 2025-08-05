@@ -124,6 +124,14 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 This project is configured for deployment on Netlify. The deployment settings are defined in `netlify.toml`.
 
+## Testing
+
+Lint the codebase to catch common issues:
+
+```bash
+npm run lint
+```
+
 ## Contributing
 
 1. Fork the repository

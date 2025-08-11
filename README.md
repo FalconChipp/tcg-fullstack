@@ -2,6 +2,12 @@
 
 This monorepo contains the complete stack for the SixByFive trading card game (TCG) site. It aggregates the backend API, the public-facing web app and an admin dashboard in a single repository.
 
+## Prerequisites
+
+- [Node.js](https://nodejs.org/) 18 or later
+- npm
+- MySQL database (for the backend)
+
 ## Repository structure
 
 - `backend/` – Node.js GraphQL server with a MySQL database
@@ -30,6 +36,14 @@ cd ../frontend && npm install
 ```
 
 Refer to the subproject READMEs for environment variables and development commands.
+
+## Testing
+
+Each subproject manages its own tests and linting:
+
+- **backend** – run unit tests with `npm test` and code style checks with `npm run lint`.
+- **dashboard** – no dedicated test suite; run `npm run build` to verify the app compiles.
+- **frontend** – run lint checks with `npm run lint`.
 
 ## Security
 

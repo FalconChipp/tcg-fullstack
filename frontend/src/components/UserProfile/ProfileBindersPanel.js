@@ -10,7 +10,7 @@ import BinderCover from "../Binder/BinderCover";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 import { executeMutation, COLLECTION_MUTATIONS } from "@/utils/graphqlUtils";
 
-const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
+const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
 
 // Helper: Fills first row to 5 with skeletons (for grid parity)
 const fillFirstRowSkeletons = (cardCount, isOwnProfile) => {

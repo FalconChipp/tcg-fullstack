@@ -27,4 +27,4 @@ export const CARD_RARITIES = {
   SECRET_RARE: 'Secret Rare'
 }; 
 
-export const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
+export const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;

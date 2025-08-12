@@ -161,7 +161,7 @@ export const COLLECTION_MUTATIONS = {
  * @param {string} token - Authentication token
  * @returns {Promise<Object>} The response data or error
  */
-const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || 'http://localhost:4000/graphql';
+const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
 
 export async function executeMutation(mutation, variables, token) {
   try {

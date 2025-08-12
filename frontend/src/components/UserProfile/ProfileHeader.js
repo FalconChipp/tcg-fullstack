@@ -7,7 +7,7 @@ import ProfileSocialLinks from "@/components/UserProfile/ProfileSocialLinks";
 // import ProfileReputation from "@/components/UserProfile/ProfileReputation";
 import { FaLink } from "react-icons/fa";
 
-const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
+const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
 
 // Currency formatter
 const formatCurrency = (value) =>
@@ -29,7 +29,7 @@ export default function ProfileHeader({
 
   // Backend URLs
   // Always ensure NEXT_PUBLIC_BACKEND_URL includes protocol!
-const rawBackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+const rawBackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 const NEXT_PUBLIC_BACKEND_URL = rawBackendUrl.startsWith("http")
   ? rawBackendUrl
   : `https://${rawBackendUrl}`;

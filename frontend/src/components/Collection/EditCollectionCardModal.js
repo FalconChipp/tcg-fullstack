@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { getCookie } from "@/utils/cookieUtils";
 import { formatVariation } from "@/utils/formatVariation";
 
-const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
+const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
 const TCG_GRAPHQL_URL = "https://tcg.sixbyfive.com/tcgdex/graphql";
 
 // --- Helper: normalize variation so empty string/undefined/null is always null (useful for backend consistency)

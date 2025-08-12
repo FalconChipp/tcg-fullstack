@@ -7,7 +7,7 @@ import Link from 'next/link';
 import StatusMessage from '@/components/UI/StatusMessage';
 import { useTheme } from '@/hooks/ThemeProvider';
 
-const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || 'http://localhost:4000/graphql';
+const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
 
 function getPasswordValidationErrors(pw) {
   const errors = [];

@@ -1,5 +1,5 @@
 // src/utils/apiClient.js
-const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || 'http://localhost:4000/graphql';
+const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
 
 export async function apiClient(query, variables = {}, token) {
   console.log("apiClient: Called with query:", query, "variables:", variables, "token:", token);

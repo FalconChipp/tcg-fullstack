@@ -16,7 +16,7 @@ import CardSkeleton from "../UI/CardSkeleton";
 // --- CONSTANTS ---
 const FALLBACK_SYMBOL_IMAGE = "https://placehold.co/50x50/webp?text=Icon";
 const WP_GRAPHQL_URL =
-  process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
+  process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
 const PER_PAGE = 25;
 
 // --- Helper: Get best available price object (prefers 'normal', falls back to first found) ---

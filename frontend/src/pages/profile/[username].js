@@ -18,8 +18,8 @@ import ProfileAchievements from "@/components/UserProfile/ProfileAchievements";
 // ...other imports as needed
 
 // GraphQL endpoints
-const API_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
-const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
+const API_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
 
 // --- SSR user fetch from Node backend ---
 export async function getServerSideProps({ params, res }) {

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react"
 import Head from "next/head"
 import { useSearchParams } from "next/navigation"
 
-const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || 'http://localhost:4000/graphql';
+const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
 
 export default function ResetPasswordPage() {
   const searchParams = useSearchParams()

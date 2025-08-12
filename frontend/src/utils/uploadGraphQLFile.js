@@ -4,7 +4,7 @@ export default function AvatarUpload({ token, onUploaded }) {
   const fileInput = useRef();
 
   // Best practice: Always get NEXT_PUBLIC_BACKEND_URL from env, strip any trailing slashes.
-  const rawBackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+  const rawBackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
   const NEXT_PUBLIC_BACKEND_URL = rawBackendUrl.replace(/\/+$/, ""); // No trailing slash
 
   // Handle avatar upload

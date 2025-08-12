@@ -7,7 +7,7 @@ import { setCookie } from "@/utils/cookieUtils";
 import { useTheme } from "@/hooks/ThemeProvider";
 
 const WP_GRAPHQL_URL =
-  process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
+  process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
 
 // --- Countdown utility ---
 function getCountdown(targetDate) {

@@ -25,11 +25,11 @@ import { startNotificationCleanup } from './src/jobs/notificationCleanup.js';
 
 import { typeDefs, resolvers } from './src/schema.js';
 import { sequelize, User, Profile } from './src/models/index.js';
-import * as models from './src/models/index.js'; // instead of destructuring
+import * as models from './src/models/index.js';
 
 // --- Logger Setup ---
 const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || 'info', // CHANGED: configurable level
+  level: process.env.LOG_LEVEL || 'info',
   format: winston.format.combine(
     winston.format.timestamp(),
     winston.format.printf(({ level, message, timestamp }) =>
@@ -43,7 +43,7 @@ const logger = winston.createLogger({
 const app = express();
 const httpServer = http.createServer(app);
 
-// CHANGED: trust proxy to honor X-Forwarded-* from NGINX and fix express-rate-limit
+// CHANGED: honor X-Forwarded-* (fixes rate-limit IP + cookie/secure stuff behind proxy)
 app.set('trust proxy', ['loopback', '127.0.0.1', '::1']);
 
 // Serve static assets
@@ -58,8 +58,6 @@ app.set('io', io);
 // ======================================================================
 // STRIPE WEBHOOKS MUST COME **BEFORE** JSON BODY PARSING
 // ======================================================================
-
-// MOVED: Stripe webhook route BEFORE any bodyParser.json() so raw body is preserved
 app.post(
   '/webhooks/stripe',
   express.raw({ type: 'application/json' }),
@@ -72,7 +70,6 @@ app.post(
         sig,
         process.env.STRIPE_WEBHOOK_SECRET
       );
-      // TODO: implement handleStripeWebhook(event)
       // await handleStripeWebhook(event);
       res.json({ received: true });
     } catch (err) {
@@ -83,35 +80,44 @@ app.post(
 );
 
 // --- CORS / Security / Parsers ---
-// CHANGED: allow configured origins; allow no-origin (mobile apps/curl)
-const allowedOrigins = process.env.CORS_ORIGINS
-  ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
-  : [];
+// ADDED: log incoming Origin (helps you see exactly what to allow)
+app.use((req, _res, next) => {
+  if (req.headers.origin) logger.info(`[CORS] Origin: ${req.headers.origin}`);
+  next();
+});
 
-app.use(
-  cors({
-    origin: (origin, cb) => {
-      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
-        cb(null, true);
-      } else {
-        cb(new Error('Not allowed by CORS'));
-      }
-    },
-    credentials: true,
-    allowedHeaders: [
-      'Authorization',
-      'Content-Type',
-      'Origin',
-      'X-Requested-With',
-      'Accept',
-      'X-Access-Token'
-    ],
-    exposedHeaders: ['Authorization']
-  })
-);
+// CHANGED: parse allow-list from .env (comma separated)
+const allowedOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
+// ADDED: robust CORS options with header reflection + global preflight
+const corsOptions = {
+  origin: (origin, cb) => {
+    // allow no-origin tools (curl, server-to-server)
+    if (!origin) return cb(null, true);
+    // allow-all if no allow-list configured
+    if (allowedOrigins.length === 0) return cb(null, true);
+    // exact match (protocol + host + port)
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    return cb(new Error(`Not allowed by CORS: ${origin}`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  // ADDED: reflect whatever headers the browser says it will send
+  allowedHeaders: (req, cb) =>
+    cb(null, req.headers['access-control-request-headers'] || 'authorization,content-type'),
+  exposedHeaders: ['Authorization'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204, // some browsers choke on 200 here
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // ADDED: handle preflight globally
 
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'cross-origin' } // ADDED: typical for asset sharing
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
 app.use(compression());
 
@@ -119,20 +125,25 @@ app.use(compression());
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
-app.use(expressStatusMonitor({ path: '/status' })); // CHANGED: explicit path
+app.use(expressStatusMonitor({ path: '/status' }));
 
-// CHANGED: rate limit with safe keyGenerator and higher default ceiling
+// CHANGED: rate limit (skip OPTIONS so preflight never gets 429)
 const limiter = rateLimit({
-  windowMs: 60 * 1000,          // 1 minute window
-  max: 600,                     // allow more burst for GraphQL
+  windowMs: 60 * 1000,
+  max: 600,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.ip || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown',
-  skipFailedRequests: true,     // do not count 4xx/5xx
+  keyGenerator: (req) =>
+    req.ip ||
+    req.headers['x-forwarded-for'] ||
+    req.socket?.remoteAddress ||
+    'unknown',
+  skipFailedRequests: true,
+  skip: (req) => req.method === 'OPTIONS', // ADDED
 });
 app.use(limiter);
 
-// CHANGED: morgan uses info level; avoid spamming errors for normal flow
+// Logging
 app.use(
   morgan('combined', {
     stream: { write: (msg) => logger.info(msg.trim()) },
@@ -143,7 +154,6 @@ app.use(
 const AVATAR_DIR = path.join(process.cwd(), 'uploads', 'avatars');
 fs.mkdirSync(AVATAR_DIR, { recursive: true });
 
-// Helper: Decode JWT to get user ID (safe, only returns id)
 function getUserIdFromAuthHeader(header) {
   if (!header || !header.startsWith('Bearer ')) return null;
   try {
@@ -161,7 +171,6 @@ const storage = multer.diskStorage({
     try {
       let userId = getUserIdFromAuthHeader(req.headers.authorization);
 
-      // If username not provided, look up by userId
       let username = req.body.username || 'user';
       if (userId && (!req.body.username || req.body.username === 'user')) {
         const user = await User.findByPk(userId);
@@ -171,7 +180,6 @@ const storage = multer.diskStorage({
       const base = username.replace(/[^a-zA-Z0-9_-]/g, '_');
       const newFilename = `${base}_${Date.now()}${ext}`;
 
-      // Remove old avatar if the user's profile has one stored
       if (userId) {
         const profile = await Profile.findOne({ where: { userId } });
         if (profile && profile.avatar && !profile.avatar.startsWith('http')) {
@@ -193,7 +201,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (
       file.mimetype === 'image/jpeg' ||
@@ -245,7 +253,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: Date.now() });
 });
 
-// Optional: GET /graphql landing (handy for NGINX uptime tests)
+// Optional: GET /graphql landing (for uptime checks)
 app.get('/graphql', (_req, res) => res.status(200).send('OK'));
 
 // --- GraphQL Apollo Setup ---
@@ -254,7 +262,7 @@ const apolloServer = new ApolloServer({
   resolvers,
   plugins: [],
   formatError: (err) => {
-    logger.warn(`[GraphQL Error] ${err.message}`); // CHANGED: warn instead of error for noise control
+    logger.warn(`[GraphQL Error] ${err.message}`);
     return err;
   },
 });
@@ -264,16 +272,11 @@ app.use(
   '/graphql',
   expressMiddleware(apolloServer, {
     context: async ({ req, res }) => {
-      // Extract token (try all casings and sources)
       let token =
         req.headers.authorization?.replace('Bearer ', '') ||
         req.headers.Authorization?.replace('Bearer ', '') ||
         req.cookies.token ||
         null;
-
-      // CHANGED: lower log level; avoid spamming error logs on normal ops
-      logger.debug?.(`Authorization header: ${req.headers.authorization || ''}`);
-      logger.debug?.(`Token present: ${Boolean(token)}`);
 
       let user = null;
       if (token) {
@@ -291,25 +294,24 @@ app.use(
         res,
         io,
         logger,
-        user,          // for resolvers that check context.user
-        token,         // for legacy requireAdmin(token) etc
+        user,
+        token,
         userAgent: req.headers['user-agent'],
         ip: req.ip,
         models,
       };
-    }
+    },
   })
 );
 
 // --- Start DB, then Server ---
 const PORT = Number(process.env.PORT || 4000);
 
-// CHANGED: HTTP timeouts aligned with NGINX (avoid premature closes → 504)
+// Align with proxy timeouts to avoid premature closes → 504
 httpServer.keepAliveTimeout = 70 * 1000;
-httpServer.headersTimeout   = 75 * 1000;
-httpServer.requestTimeout   = 0; // disable per-request cap at Node layer
+httpServer.headersTimeout = 75 * 1000;
+httpServer.requestTimeout = 0;
 
-// CHANGED: Global crash shields so a bad resolver/external API doesn't kill PM2
 process.on('unhandledRejection', (reason) => {
   logger.error(`UnhandledRejection: ${reason?.stack || reason}`);
 });
@@ -320,7 +322,7 @@ process.on('uncaughtException', (err) => {
 try {
   await sequelize.authenticate();
   logger.info('Database connection established.');
-  await sequelize.sync(); // NOTE: use migrations in production
+  await sequelize.sync();
 
   const cleanupIntervals = [
     startExpiredMessageCleanup(logger),
@@ -328,18 +330,15 @@ try {
     startNotificationCleanup(logger),
   ];
 
-  // CHANGED: Graceful shutdown with timeout
   function shutdown() {
     logger.info('Shutdown requested, draining...');
     cleanupIntervals.forEach(clearInterval);
-    // Stop taking new connections
     httpServer.close(() => {
       sequelize.close().finally(() => {
         logger.info('Shutdown complete');
         process.exit(0);
       });
     });
-    // Force exit if something hangs
     setTimeout(() => {
       logger.error('Force-exiting after graceful timeout');
       process.exit(1);

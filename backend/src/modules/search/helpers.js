@@ -4,6 +4,18 @@ import { convertToGBP as convertToGBPLive } from './api/exchangeRates.js';
 import { fetchTCGDexCardById } from './api/tcgdex.js';
 import { fetchPTCGCardById } from './api/pokemontcg.js';
 
+// ADDED: shared timeouts + helper
+const SAFE_TIMEOUTS = {
+  externalFetch: Number(process.env.PRICE_FETCH_TIMEOUT_MS || 5000), // 5s default
+  jsonParse: 2000,
+};
+
+function withTimeout(promise, ms, label = 'timeout') { // ADDED
+  let t;
+  const timer = new Promise((_, rej) => (t = setTimeout(() => rej(new Error(label)), ms)));
+  return Promise.race([promise.finally(() => clearTimeout(t)), timer]);
+}
+
 /** --- Set Exclusion Blocklist --- */
 export const BLOCKED_SET_CODES = [
   // Fill this with set codes from Pokémon TCG Pocket, e.g. 'POKPOC1'
@@ -25,7 +37,7 @@ export function getSetInfo(setCode) {
 /** --- Card Image URL Builder --- */
 export function tcgdexImageUrl(card) {
   if (!card?.set || !card?.number) return null;
-  const eraMatch = card.set.match(/^([a-zA-Z]+)/);
+  const eraMatch = String(card.set).match(/^([a-zA-Z]+)/);
   const era = eraMatch ? eraMatch[1] : card.set;
   const number = String(card.number).replace(/^0+/, '');
   return `https://assets.tcgdex.net/en/${era}/${card.set}/${number}/high.webp`;
@@ -43,12 +55,17 @@ export function isCacheFresh(lastUpdated) {
 export async function convertToGBP(price, currency) {
   if (currency === 'GBP') return price;
   if (!price || typeof price !== 'number') return 0;
-  // Uses api/exchangeRates.js utility
-  return convertToGBPLive(price, currency);
+  // CHANGED: guard against rate API errors
+  try {
+    return await withTimeout(convertToGBPLive(price, currency), SAFE_TIMEOUTS.externalFetch, 'fx-timeout');
+  } catch {
+    return 0; // fail-open
+  }
 }
 
 /** --- Price Data Enrichment --- */
 export async function enrichCardWithGBPPrices(card, priceData) {
+  // CHANGED: defensively handle null priceData
   const result = { ...card, pricesGBP: {} };
   if (priceData?.tcgplayer) {
     for (const [variation, info] of Object.entries(priceData.tcgplayer)) {
@@ -126,12 +143,14 @@ export function tcgdexToPtcgId(tcgdexId) {
 export async function hydrateCard(card) {
   let hydrated = { ...card };
 
+  // CHANGED: wrap network calls with timeouts + swallow failures (fail-open)
+
   // Fetch TCGDex details if important fields are missing
   if (!hydrated.rarity || !hydrated.setName || !hydrated.setLogo || !hydrated.image) {
     try {
-      const dexData = await fetchTCGDexCardById(card.id);
-      hydrated = { ...dexData, ...hydrated }; // hydrate, but keep provided fields if already present
-    } catch (e) {}
+      const dexData = await withTimeout(fetchTCGDexCardById(card.id), SAFE_TIMEOUTS.externalFetch, 'tcgdex-timeout');
+      if (dexData) hydrated = { ...dexData, ...hydrated }; // hydrate, keep provided fields
+    } catch {}
   }
 
   // If still missing image, try PTCG.io
@@ -139,9 +158,9 @@ export async function hydrateCard(card) {
     const ptcgId = tcgdexToPtcgId(card.id);
     if (ptcgId) {
       try {
-        const ptcgData = await fetchPTCGCardById(ptcgId);
+        const ptcgData = await withTimeout(fetchPTCGCardById(ptcgId), SAFE_TIMEOUTS.externalFetch, 'ptcg-timeout');
         hydrated.image = ptcgData?.images?.large || ptcgData?.images?.small || null;
-      } catch (e) {}
+      } catch {}
     }
   }
   return hydrated;

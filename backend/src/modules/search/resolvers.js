@@ -19,6 +19,19 @@ import { saveOrUpdateCard } from './cardPersistence.js';
 import { SET_MAPPING } from './SetMapping.js';
 import { Card, Listing, Collection } from '../../models/index.js';
 
+// ADDED: limit concurrency & add timeouts so upstream flakiness doesn't stall requests
+import pLimit from 'p-limit';
+
+const PRICE_TIMEOUT_MS = Number(process.env.PRICE_FETCH_TIMEOUT_MS || 5000); // ADDED
+const PRICE_CONCURRENCY = Number(process.env.PRICE_CONCURRENCY || 6);       // ADDED
+const DISABLE_ENRICH = process.env.DISABLE_PRICE_ENRICHMENT === '1';         // ADDED
+
+function withTimeout(promise, ms, label = 'timeout') { // ADDED
+  let t;
+  const timer = new Promise((_, rej) => (t = setTimeout(() => rej(new Error(label)), ms)));
+  return Promise.race([promise.finally(() => clearTimeout(t)), timer]);
+}
+
 // -----------------------------------------------
 // Utility: Normalize set data for a given card
 // Returns consistent { setId, setName, setLogo }
@@ -75,22 +88,39 @@ function setCachedSearch(key, value, ttl = 60 * 60 * 1000) {
 // NOW FETCHES FINAL FIELDS FROM THE DB!
 // -------------------------------------------
 async function enrichCards(cards, { listed, forTrade, rarity }) {
+  // CHANGED: cap concurrency and fail-open on individual cards
+  const limit = pLimit(PRICE_CONCURRENCY);
   const cardIds = cards.map(c => c.id);
 
   // Step 1: Hydrate and persist each card in DB with all available data and prices
-  for (const card of cards) {
+  const settle = await Promise.allSettled(cards.map(card => limit(async () => {
     // Hydrate the card object before saving
-    const hydratedCard = await hydrateCard(card);
+    const hydratedCard = await withTimeout(hydrateCard(card), PRICE_TIMEOUT_MS, 'hydrate-timeout').catch(() => card);
 
-    // Fetch price data for this card from PTCG API
-    let ptcgId = tcgdexToPtcgId(card.id);
+    // Fetch price data (cached -> fetch -> fail-open)
     let priceData = null;
-    if (ptcgId) {
-      priceData = await fetchPTCGCardPrices(ptcgId);
+    if (!DISABLE_ENRICH) {
+      const ptcgId = tcgdexToPtcgId(card.id);
+      if (ptcgId) {
+        // Try cache first
+        priceData = await getCardPriceCache(card.id);
+        if (!priceData) {
+          // CHANGED: wrap in timeout and swallow errors (404/504 -> null)
+          priceData = await withTimeout(fetchPTCGCardPrices(ptcgId), PRICE_TIMEOUT_MS, 'price-timeout')
+            .catch(() => null);
+          if (priceData) {
+            await saveCardPriceCache(card.id, priceData).catch(() => {});
+          }
+        }
+      }
     }
-    // Save or update in DB
-    await saveOrUpdateCard(hydratedCard, priceData);
-  }
+
+    // Save or update in DB (CHANGED: tolerate null priceData)
+    await saveOrUpdateCard(hydratedCard, priceData).catch(() => {});
+  })));
+
+  // Optional: log any hard rejections (without failing the request)
+  // settle.forEach(r => { if (r.status === 'rejected') console.warn('[enrich] ', r.reason); });
 
   // Step 2: Marketplace listings
   let listingsMap = {};
@@ -123,20 +153,19 @@ async function enrichCards(cards, { listed, forTrade, rarity }) {
 
   // Step 5: Always return card fields from the DB
   return await Promise.all(filtered.map(async card => {
-    // Read fresh card data from the DB (including updated pricing and variations)
-    let dbCard = await Card.findByPk(card.id);
-
-    // Defensive fallback: if not in DB, fallback to original card
+    let dbCard = await Card.findByPk(card.id).catch(() => null);
     dbCard = dbCard || card;
 
-    // Normalize set fields for return
     const { setId, setName, setLogo } = normalizeCardSet(dbCard);
 
+    // CHANGED: safe return object (no throws if dbCard is a plain API object)
+    const base = dbCard.dataValues ? dbCard.dataValues : dbCard;
+
     return {
-      ...dbCard.dataValues, // All card fields as persisted
-      setName: setName ?? dbCard.setName ?? null,
-      setLogo: setLogo ?? dbCard.setLogo ?? null,
-      image: dbCard.image || tcgdexImageUrl({ ...dbCard, set: setId }),
+      ...base,
+      setName: setName ?? base.setName ?? null,
+      setLogo: setLogo ?? base.setLogo ?? null,
+      image: base.image || tcgdexImageUrl({ ...base, set: setId }),
       listings: listingsMap[card.id] || [],
       isListed: !!(listingsMap[card.id]?.length),
       isForTrade: !!forTradeMap[card.id],
@@ -161,32 +190,41 @@ async function searchCardsResolver(_, { input }, context) {
     pageSize = 25
   } = input;
 
+  // Optional in-memory cache key (name/set/number/page/pageSize only)
+  const cacheKey = JSON.stringify({ name, set, number, page, pageSize, rarity, listed, forTrade });
+  const cached = getCachedSearch(cacheKey);
+  if (cached) return cached; // ADDED: quick win
+
   // Step 1: Normalize set code and check blocklist
   let setCode = set ? normalizeSetCode(set) : null;
-  if (setCode && isSetBlocked(setCode)) return { cards: [], total: 0, page, pageSize };
-
-  // Step 2: Fetch paginated results from TCGDex API
-  const { cards, total } = await fetchTCGDexCards({
-    name,
-    set: setCode,
-    number,
-    page,
-    pageSize
-  });
-
-  // Defensive: Ensure every card has a set field. If not, re-fetch from TCGDex by ID.
-  for (let i = 0; i < cards.length; i++) {
-    if (!cards[i].set) {
-      try {
-        cards[i] = await fetchTCGDexCardById(cards[i].id);
-      } catch (e) {
-        // If it fails, leave the card as-is (shouldn't happen)
-      }
-    }
+  if (setCode && isSetBlocked(setCode)) {
+    const empty = { cards: [], total: 0, page, pageSize };
+    setCachedSearch(cacheKey, empty, 60_000);
+    return empty;
   }
 
+  // Step 2: Fetch paginated results from TCGDex API (CHANGED: timeout + fail-open)
+  const { cards = [], total = 0 } = await withTimeout(
+    fetchTCGDexCards({ name, set: setCode, number, page, pageSize }),
+    Number(process.env.SEARCH_FETCH_TIMEOUT_MS || 8000),
+    'tcgdex-search-timeout'
+  ).catch(() => ({ cards: [], total: 0 }));
+
+  // Defensive: Ensure every card has a set field. If not, re-fetch from TCGDex by ID.
+  const fixedCards = await Promise.all(cards.map(async (c) => {
+    if (!c?.set) {
+      try {
+        const full = await withTimeout(fetchTCGDexCardById(c.id), 3000, 'tcgdex-byid-timeout');
+        return full || c;
+      } catch {
+        return c;
+      }
+    }
+    return c;
+  }));
+
   // Remove cards from blocked sets (should be rare)
-  let filtered = cards.filter(card =>
+  let filtered = fixedCards.filter(card =>
     card.set && (typeof card.set === "object" ? card.set.id : card.set) &&
     !isSetBlocked(typeof card.set === "object" ? card.set.id : card.set)
   );
@@ -194,7 +232,6 @@ async function searchCardsResolver(_, { input }, context) {
   // ---- Exact set filter ----
   if (setCode) {
     filtered = filtered.filter(card => {
-      // Handle both { set: { id } } and set: '...' cases
       const cardSetId =
         typeof card.set === "object" && card.set && card.set.id
           ? card.set.id
@@ -208,16 +245,21 @@ async function searchCardsResolver(_, { input }, context) {
     card && typeof card.number === "string" && card.number.trim() !== ""
   );
 
-  // Step 3: Enrich with pricing, listing, etc
-  const enriched = await enrichCards(numbered, { listed, forTrade, rarity });
+  // Step 3: Enrich with pricing, listing, etc (CHANGED: guarded by DISABLE_ENRICH & resilient)
+  const enriched = DISABLE_ENRICH
+    ? numbered
+    : await enrichCards(numbered, { listed, forTrade, rarity }).catch(() => numbered);
 
-  // Step 4: Return page, pageSize, and the total from TCGDex
-  return {
+  // Step 4: Return page, pageSize, and the total from TCGDex (fallback to enriched length)
+  const out = {
     cards: enriched,
-    total: total ?? enriched.length, // fallback to length if total missing
+    total: total || enriched.length,
     page,
     pageSize,
   };
+
+  setCachedSearch(cacheKey, out, 60_000); // ADDED: cache 1 minute
+  return out;
 }
 
 // ----------------------
@@ -251,11 +293,10 @@ async function searchSetsResolver(_, { query }) {
 async function cardByIdResolver(_, { id }) {
   let card = await Card.findByPk(id);
   if (!card || !card.set) {
-    card = await fetchTCGDexCardById(id);
+    card = await withTimeout(fetchTCGDexCardById(id), 5000, 'tcgdex-byid-timeout').catch(() => null);
     if (!card) return null;
   }
-  // Read enriched card from DB after update
-  const enrichedArr = await enrichCards([card], {}, null);
+  const enrichedArr = await enrichCards([card], { listed: false, forTrade: false }).catch(() => [card]); // CHANGED
   return enrichedArr[0];
 }
 
@@ -264,8 +305,14 @@ async function cardByIdResolver(_, { id }) {
 // ----------------------
 async function getSetResolver(_, { code }) {
   if (isSetBlocked(code)) return null;
-  let cards = await fetchTCGDexCards({ set: code });
-  cards = cards.filter(card => card.set && (typeof card.set === "object" ? card.set.id : card.set) && !isSetBlocked(typeof card.set === "object" ? card.set.id : card.set));
+  let cardsRes = await withTimeout(fetchTCGDexCards({ set: code }), 8000, 'tcgdex-set-timeout')
+    .catch(() => ({ cards: [] }));
+  let cards = cardsRes.cards || [];
+  cards = cards.filter(card =>
+    card.set &&
+    (typeof card.set === "object" ? card.set.id : card.set) &&
+    !isSetBlocked(typeof card.set === "object" ? card.set.id : card.set)
+  );
   const total = getSetUniqueCardCount(code, cards, true);
   return {
     code,
@@ -283,8 +330,9 @@ async function getSetResolver(_, { code }) {
 async function cardSetCompletionResolver(_, { userId, set }) {
   const ownedCards = await Collection.findAll({ where: { userId, set } });
   const totalOwned = new Set(ownedCards.map(card => card.cardId)).size;
-  let allSetCards = await fetchTCGDexCards({ set });
-  const total = getSetUniqueCardCount(set, allSetCards, true);
+  let allSetCards = await withTimeout(fetchTCGDexCards({ set }), 8000, 'tcgdex-set-timeout')
+    .catch(() => ({ cards: [] }));
+  const total = getSetUniqueCardCount(set, allSetCards.cards || [], true);
   return total ? +(totalOwned / total * 100).toFixed(2) : 0;
 }
 
@@ -332,20 +380,15 @@ const resolvers = {
       if (!card.pricing) return [];
       try {
         let parsed = card.pricing;
-        // If it's a string, parse it. If already an array/object, leave as is.
         if (typeof parsed === "string") parsed = JSON.parse(parsed);
         if (Array.isArray(parsed)) {
-          // Remove nulls and only allow objects with a non-null 'variation' (for GraphQL non-null)
           return parsed.filter(p => p && typeof p.variation === "string");
         }
-        // If it's a single object (not an array), wrap in array if it has a variation
         if (parsed && typeof parsed === "object" && typeof parsed.variation === "string") {
           return [parsed];
         }
-        // If nothing matches, return empty array
         return [];
       } catch (e) {
-        // Log the error to help with debugging (optional)
         console.error('Failed to parse Card.pricing:', e, card.pricing);
         return [];
       }

@@ -1,18 +1,15 @@
-// src/modules/auth/helpers.js
-
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import speakeasy from 'speakeasy';
 import qrcode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
-import { User } from '../../models/index.js';
+// import { AuditLog } from '../../models/index.js'; // If you implement DB audit log
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
   throw new Error('JWT_SECRET not set');
 }
 
-// Generate JWT for a user
 export function generateJwt(user) {
   return jwt.sign(
     {
@@ -30,7 +27,6 @@ export function verifyJwt(token) {
   return jwt.verify(token, JWT_SECRET);
 }
 
-// Hash password
 export async function hashPassword(password) {
   return bcrypt.hash(password, 10);
 }
@@ -39,8 +35,7 @@ export async function comparePassword(password, hash) {
   return bcrypt.compare(password, hash);
 }
 
-// MFA TOTP Setup
-export async function generateMfaSecret(user) {
+export async function generateTwoFactorSecret(user) {
   const secret = speakeasy.generateSecret({
     name: `SixByFive TCG (${user.username})`,
     length: 32,
@@ -49,7 +44,7 @@ export async function generateMfaSecret(user) {
   return { ...secret, qrCodeDataURL };
 }
 
-export function verifyMfaToken(secret, token) {
+export function verifyTwoFactorToken(secret, token) {
   return speakeasy.totp.verify({
     secret,
     encoding: 'ascii',
@@ -58,7 +53,18 @@ export function verifyMfaToken(secret, token) {
   });
 }
 
-// Generate random token (for email verification, reset)
 export function randomToken() {
   return uuidv4() + uuidv4();
+}
+
+/**
+ * Records an audit log action (stub - add DB logic later)
+ * @param {Object} params - Action details
+ */
+export async function recordAuditLog({ userId, action, ip, userAgent, details }) {
+  // Replace with real DB logging if desired
+  // For now: just print (only in dev)
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[AUDIT]', { userId, action, ip, userAgent, details });
+  }
 }

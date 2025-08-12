@@ -1,9 +1,14 @@
 import { User, Profile, sequelize } from '../../models/index.js';
 import { Op } from 'sequelize';
 import winston from 'winston';
-import { verifyJwt } from '../auth/helpers.js';
+import { verifyJwt, comparePassword } from '../auth/helpers.js'; // <--- make sure comparePassword is imported!
 import { PROFILE_STATUSES } from '../../models/Profile.js';
 import { requireAdmin } from './helpers.js';
+
+// File system & archive utils (for data export)
+import fs from 'fs';
+import path from 'path';
+import archiver from 'archiver';
 
 // --- Logger ---
 const logger = winston.createLogger({
@@ -36,14 +41,14 @@ const resolvers = {
       const user = await User.findOne({ where: { username } });
       if (!user) return null;
       let profile = await Profile.findOne({ where: { userId: user.id } });
-// If no profile, create a blank one (optional—if this is your desired behavior)
-    if (!profile) {
-    profile = await Profile.create({ userId: user.id });
-    logger.info(`[PROFILE] Created blank profile for user ${username}`);
-    }
-    profile.user = user; // Attach user to profile for your GraphQL resolvers
-    logger.info(`[PROFILE] Fetched profile for user ${username}`);
-    return profile;
+      // If no profile, create a blank one (optional—if this is your desired behavior)
+      if (!profile) {
+        profile = await Profile.create({ userId: user.id });
+        logger.info(`[PROFILE] Created blank profile for user ${username}`);
+      }
+      profile.user = user; // Attach user to profile for your GraphQL resolvers
+      logger.info(`[PROFILE] Fetched profile for user ${username}`);
+      return profile;
     },
 
     userById: async (_, { id }) => {
@@ -139,6 +144,62 @@ const resolvers = {
       requireAdmin(token);
       await User.destroy({ where: { id: userId } });
       logger.info(`[ADMIN] Deleted user ${userId}`);
+      return true;
+    },
+
+    // --- PRIVACY: Export User Data (password required) ---
+    exportUserData: async (_, { password }, { token }) => {
+      if (!token) throw new Error("Not authenticated");
+      const payload = verifyJwt(token);
+      const user = await User.findByPk(payload.id, { include: [{ model: Profile }] });
+      if (!user) throw new Error("User not found");
+
+      // PASSWORD CHECK (required!)
+      const isValid = await comparePassword(password, user.password);
+      if (!isValid) throw new Error("Password incorrect.");
+
+      // 1. Gather all user data (add any relations needed here)
+      const data = {
+        user: user.toJSON(),
+        profile: user.Profile ? user.Profile.toJSON() : null,
+        // Add more related models as needed
+      };
+
+      // 2. Write to a temporary file
+      const exportDir = path.resolve(process.cwd(), "exports");
+      if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir, { recursive: true });
+      const fileName = `user_${user.id}_${Date.now()}.json`;
+      const filePath = path.join(exportDir, fileName);
+      fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+
+      // 3. Return download URL to the JSON file
+      logger.info(`[USER] Exported data for user ${user.id} to ${filePath}`);
+      return `/exports/${fileName}`;
+    },
+
+    // --- PRIVACY: Delete Account (password + confirmation required) ---
+    deleteAccount: async (_, { password, confirm }, { token }) => {
+      if (!token) throw new Error("Not authenticated");
+      const payload = verifyJwt(token);
+
+      const user = await User.findByPk(payload.id);
+      if (!user) throw new Error("User not found");
+
+      // PASSWORD CHECK (required!)
+      const isValid = await comparePassword(password, user.password);
+      if (!isValid) throw new Error("Password incorrect.");
+
+      // Confirm step (require "DELETE")
+      if (confirm !== "DELETE") {
+        throw new Error("Confirmation failed. Type DELETE to confirm account deletion.");
+      }
+
+      // Delete Profile (if exists)
+      await Profile.destroy({ where: { userId: payload.id } });
+      // Delete User
+      await User.destroy({ where: { id: payload.id } });
+      logger.info(`[USER] Deleted account ${payload.id}`);
+
       return true;
     },
   },

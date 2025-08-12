@@ -1,11 +1,9 @@
-// /lib/subscriptionsApi.js
-
 /**
  * Dummy API wrapper for subscription actions.
  * Returns fake data for frontend development.
  */
 
-// Simulated plans
+// Simulated plans (now with 4 tiers)
 const dummyPlans = [
   {
     id: "free",
@@ -34,6 +32,20 @@ const dummyPlans = [
     ],
   },
   {
+    id: "elite",
+    name: "Elite Collector",
+    description: "For power collectors. Bulk tools, extra perks, and more.",
+    price: "TBD",
+    interval: "month",
+    features: [
+      "Up to 200 active listings",
+      "Lower marketplace fees",
+      "Bulk listing tools",
+      "Promoted listings",
+      "Advanced binder customization"
+    ],
+  },
+  {
     id: "business",
     name: "Business",
     description: "Sell and trade at scale. Extra perks for stores and power users.",
@@ -48,13 +60,13 @@ const dummyPlans = [
   },
 ];
 
-// Simulated user subscription
-const dummyUserSubscription = {
+// Simulated user subscription (mutable for upgrades/downgrades)
+let mutableUserSubscription = {
   id: "sub_123456",
   status: "active",
   plan: {
     id: "collection",
-    name: "Collection",
+    name: "Collector",
     price: "TBD",
   },
   renewsAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString(), // 30 days from now
@@ -66,19 +78,60 @@ function simulateNetwork(data, ms = 600) {
 }
 
 export async function fetchSubscriptionPlans() {
-  // Return simulated plans
   return simulateNetwork(dummyPlans);
 }
 
 export async function fetchUserSubscription(token) {
-  // Optionally, switch dummyUserSubscription based on token, for now always returns the same
-  // To simulate logged out, you could add: if (!token) return simulateNetwork(null);
-  return simulateNetwork(dummyUserSubscription);
+  return simulateNetwork(mutableUserSubscription);
 }
 
 export async function startSubscriptionCheckout(planId, token) {
-  // Returns a dummy Stripe test checkout link
-  // You can add logic here to reject or vary based on planId/token if you want
-  const dummyCheckoutUrl = "https://checkout.stripe.com/pay/test-dummy-url";
-  return simulateNetwork(dummyCheckoutUrl);
+  if (planId === mutableUserSubscription.plan.id) {
+    throw new Error("Already subscribed to this plan");
+  }
+  if (Math.random() < 0.1) throw new Error("Payment failed. Try again.");
+  return simulateNetwork("https://checkout.stripe.com/pay/test-dummy-url");
+}
+
+export async function updateUserSubscription(planId) {
+  const foundPlan = dummyPlans.find(p => p.id === planId);
+  if (!foundPlan) throw new Error("Invalid plan");
+
+  mutableUserSubscription = {
+    ...mutableUserSubscription,
+    plan: { id: foundPlan.id, name: foundPlan.name, price: foundPlan.price },
+    renewsAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString(),
+    status: "active"
+  };
+
+  return simulateNetwork(mutableUserSubscription);
+}
+
+export async function cancelUserSubscription() {
+  mutableUserSubscription.status = "canceled";
+  return simulateNetwork({ success: true });
+}
+
+export async function reactivateUserSubscription() {
+  mutableUserSubscription.status = "active";
+  return simulateNetwork(mutableUserSubscription);
+}
+
+export function resetMockSubscription() {
+  mutableUserSubscription = { ...dummyUserSubscription };
+}
+
+const dummyInvoices = [
+  {
+    id: "inv_1",
+    date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString(),
+    amount: 499,
+    currency: "GBP",
+    status: "paid",
+    description: "Collector Subscription - July",
+  },
+];
+
+export async function fetchUserInvoices() {
+  return simulateNetwork(dummyInvoices);
 }

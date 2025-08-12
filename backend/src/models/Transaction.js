@@ -21,6 +21,10 @@ export default (sequelize) => {
         // references: { model: 'users', key: 'id' }, // Only needed for DB-level FK constraints
         // onDelete: 'CASCADE', // Handled in association in index.js
       },
+      sellerId: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
       relatedType: {
         // 'listing', 'trade', 'subscription', 'withdrawal'
         type: DataTypes.STRING,

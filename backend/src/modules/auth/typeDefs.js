@@ -1,5 +1,3 @@
-// src/modules/auth/typeDefs.js
-
 import { gql } from 'graphql-tag';
 
 const typeDefs = gql`
@@ -8,9 +6,14 @@ const typeDefs = gql`
     user: User!
   }
 
-  type MFASetupPayload {
+  # Renamed to 2FASetupPayload for clarity
+  type TwoFactorSetupPayload {
     otpauthUrl: String!
     qrCodeDataURL: String!
+  }
+
+  extend type User {
+    twoFactorEnabled: Boolean!
   }
 
   type Mutation {
@@ -25,20 +28,27 @@ const typeDefs = gql`
       email: String
       username: String
       password: String!
-      mfaToken: String
+      twoFactorToken: String
     ): AuthPayload!
 
     loginGoogle(googleToken: String!): AuthPayload!
 
-    enableMFA: MFASetupPayload!
-    verifyMFA(code: String!): Boolean!
-    disableMFA: Boolean!
+    # Unified naming: enable/verify/disable 2FA (no more "MFA" in API)
+    enableTwoFactor: TwoFactorSetupPayload!
+    verifyTwoFactor(code: String!): Boolean!
+    disableTwoFactor: Boolean!
 
     requestPasswordReset(email: String!): Boolean!
     resetPassword(token: String!, newPassword: String!): Boolean!
 
     verifyEmail(token: String!): Boolean!
     resendVerification(email: String!): Boolean!
+
+    # -------------------------------
+    # Added mutations for updating password/email
+    changePassword(currentPassword: String!, newPassword: String!): Boolean!
+    changeEmail(newEmail: String!, currentPassword: String!): Boolean!
+    # -------------------------------
   }
 
   type Query {

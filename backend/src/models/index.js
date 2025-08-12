@@ -227,12 +227,16 @@ User.hasMany(Subscription, { foreignKey: 'userId' });
 Subscription.belongsTo(User, { foreignKey: 'userId' });
 Subscription.belongsTo(SubscriptionTier, { foreignKey: 'tierId' });
 SubscriptionTier.hasMany(Subscription, { foreignKey: 'tierId' });
-
 User.hasMany(SubscriptionAddOn, { foreignKey: "userId" });
 SubscriptionAddOn.belongsTo(User, { foreignKey: "userId" });
+
 // Transactions/Payments
 User.hasMany(Transaction, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Transaction.belongsTo(User, { foreignKey: 'userId' });
+User.hasMany(Transaction, { foreignKey: 'sellerId', as: 'sales', onDelete: 'CASCADE' });
+Transaction.belongsTo(User, { foreignKey: 'sellerId', as: 'seller' });
+Listing.hasMany(Transaction, { foreignKey: 'relatedId', constraints: false, scope: { relatedType: 'listing' } });
+Transaction.belongsTo(Listing, { foreignKey: 'relatedId', constraints: false, as: 'listing' });
 
 // Shipping
 User.hasMany(ShippingLabel, { foreignKey: 'userId', onDelete: 'CASCADE' });

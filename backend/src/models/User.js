@@ -31,11 +31,11 @@ export default (sequelize) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
-      mfaSecret: {
+      twoFactorSecret: {
         type: DataTypes.STRING,
         allowNull: true,
       },
-      mfaEnabled: {
+      twoFactorEnabled: {
         type: DataTypes.BOOLEAN,
         defaultValue: false,
       },

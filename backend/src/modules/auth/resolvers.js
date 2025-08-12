@@ -8,9 +8,10 @@ import {
   verifyJwt,
   hashPassword,
   comparePassword,
-  generateMfaSecret,
-  verifyMfaToken,
-  randomToken
+  generateTwoFactorSecret,
+  verifyTwoFactorToken,
+  randomToken,
+  recordAuditLog // --- ADDED for audit logging
 } from './helpers.js';
 
 // --- Email templates & sending utility ---
@@ -18,13 +19,36 @@ import { sendMail } from '../../utils/email.js';
 import buildVerificationEmail from '../../emails/buildVerificationEmail.js';
 import buildResetEmail from '../../emails/buildResetEmail.js';
 import buildWelcomeEmail from '../../emails/buildWelcomeEmail.js';
-import buildMfaEmail from '../../emails/buildMfaEmail.js';
 import { grantReward } from '../rewards/helpers.js';
 
 const oauthClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+// --- BRUTE FORCE: Simple in-memory attempt maps (swap for Redis in prod) --- //
+const LOGIN_ATTEMPTS = new Map();
+const TWOFA_ATTEMPTS = new Map();
+function limitAttempts(key, map, maxAttempts = 5, windowMs = 15 * 60 * 1000) {
+  const now = Date.now();
+  let entry = map.get(key);
+  if (!entry || (now - entry.lastAttempt > windowMs)) {
+    entry = { count: 1, lastAttempt: now };
+  } else {
+    entry.count += 1;
+    entry.lastAttempt = now;
+  }
+  map.set(key, entry);
+  if (entry.count > maxAttempts) return false;
+  return true;
+}
+function resetAttempts(key, map) {
+  map.delete(key);
+}
 
 const resolvers = {
+  // --- Always expose this for the User type ---
+  User: {
+    twoFactorEnabled: (user) => !!user.twoFactorEnabled,
+  },
+
   Query: {
     me: async (_, __, { token, logger }) => {
       try {
@@ -39,8 +63,9 @@ const resolvers = {
       }
     },
   },
+
   Mutation: {
-    register: async (_, { username, email, password, referrerId }, { logger }) => {
+    register: async (_, { username, email, password, referrerId }, { logger, ip, userAgent }) => {
       logger.info(`[REGISTER] username=${username} email=${email}`);
       const existing = await User.findOne({ where: { email } });
       if (existing) throw new Error('Email already registered');
@@ -56,7 +81,6 @@ const resolvers = {
         isBanned: false,
         referrerId: referrerId || null,
       });
-      // Email verification token
       user.verifyToken = randomToken();
       user.verifyTokenExpiry = Date.now() + 24 * 60 * 60 * 1000;
       await user.save();
@@ -79,29 +103,73 @@ const resolvers = {
         await grantReward({ userId: referrerId, type: 'referral', data: { referredUserId: user.id } });
       }
 
+      // --- ADDED: Audit Log ---
+      if (recordAuditLog) await recordAuditLog({
+        userId: user.id,
+        action: 'register',
+        ip, userAgent,
+        details: { email, username }
+      });
+
       return {
         token: generateJwt(user),
         user,
       };
     },
 
-    login: async (_, { email, username, password, mfaToken }, { logger }) => {
-      const identifier = email || username;
+    // ---- LOGIN (with brute-force & 2FA protection) ----
+    login: async (_, { email, username, password, twoFactorToken }, { logger, ip, userAgent }) => {
+      const identifier = email || username || ip;
       logger.info(`[LOGIN] identifier=${identifier}`);
+
+      // --- BRUTE FORCE: Per-identifier limit
+      if (!limitAttempts(identifier, LOGIN_ATTEMPTS, 7, 15 * 60 * 1000)) {
+        if (recordAuditLog) await recordAuditLog({ userId: null, action: 'login_throttled', ip, userAgent, details: { identifier } });
+        throw new Error('Too many login attempts. Please wait and try again.');
+      }
+
       const where = email ? { email } : { username };
       const user = await User.findOne({ where });
-      if (!user) throw new Error('No account found');
-      if (user.isBanned) throw new Error('User banned');
-      if (!user.password) throw new Error('Set a password via password reset or Google login');
-      const valid = await comparePassword(password, user.password);
-      if (!valid) throw new Error('Invalid password');
-      if (user.mfaEnabled) {
-        if (!mfaToken) throw new Error('MFA token required');
-        if (!verifyMfaToken(user.mfaSecret, mfaToken)) throw new Error('Invalid MFA code');
+      if (!user) {
+        if (recordAuditLog) await recordAuditLog({ userId: null, action: 'login_fail', ip, userAgent, details: { identifier, reason: 'No account' } });
+        throw new Error('No account found');
       }
+      if (user.isBanned) {
+        if (recordAuditLog) await recordAuditLog({ userId: user.id, action: 'login_fail', ip, userAgent, details: { reason: 'banned' } });
+        throw new Error('User banned');
+      }
+      if (!user.password) {
+        if (recordAuditLog) await recordAuditLog({ userId: user.id, action: 'login_fail', ip, userAgent, details: { reason: 'no password' } });
+        throw new Error('Set a password via password reset or Google login');
+      }
+      const valid = await comparePassword(password, user.password);
+      if (!valid) {
+        if (recordAuditLog) await recordAuditLog({ userId: user.id, action: 'login_fail', ip, userAgent, details: { reason: 'bad password' } });
+        throw new Error('Invalid password');
+      }
+      // --- 2FA check if enabled ---
+      if (user.twoFactorEnabled) {
+        if (!twoFactorToken) {
+          if (recordAuditLog) await recordAuditLog({ userId: user.id, action: 'login_fail_2fa_required', ip, userAgent });
+          throw new Error('2FA code required');
+        }
+        // --- BRUTE FORCE: Per-user limit for 2FA code
+        if (!limitAttempts(user.id + '-2fa', TWOFA_ATTEMPTS, 5, 15 * 60 * 1000)) {
+          if (recordAuditLog) await recordAuditLog({ userId: user.id, action: '2fa_throttled', ip, userAgent });
+          throw new Error('Too many 2FA attempts. Please wait and try again.');
+        }
+        if (!verifyTwoFactorToken(user.twoFactorSecret, twoFactorToken)) {
+          if (recordAuditLog) await recordAuditLog({ userId: user.id, action: '2fa_fail', ip, userAgent, details: { code: twoFactorToken } });
+          throw new Error('Invalid 2FA code');
+        }
+        resetAttempts(user.id + '-2fa', TWOFA_ATTEMPTS); // Success: clear 2FA attempts
+      }
+      resetAttempts(identifier, LOGIN_ATTEMPTS); // Success: clear login attempts
+
       logger.info(`[LOGIN] User ${user.id} logged in`);
       user.lastLogin = new Date();
       await user.save();
+      if (recordAuditLog) await recordAuditLog({ userId: user.id, action: 'login_success', ip, userAgent });
       return {
         token: generateJwt(user),
         user,
@@ -129,6 +197,7 @@ const resolvers = {
         }
         user.lastLogin = new Date();
         await user.save();
+        // --- Optional: Audit logging for Google login can be added here ---
         return { token: generateJwt(user), user };
       } catch (err) {
         logger.error(`[LOGIN_GOOGLE] ${err.message}`);
@@ -136,39 +205,47 @@ const resolvers = {
       }
     },
 
-    // ---- MFA Setup ----
-    enableMFA: async (_, __, { token, logger }) => {
+    // ---- 2FA (Two Factor Auth) Setup ----
+    enableTwoFactor: async (_, __, { token, logger, ip, userAgent }) => {
       const payload = verifyJwt(token);
       const user = await User.findByPk(payload.id);
-      const { ascii, otpauth_url, qrCodeDataURL } = await generateMfaSecret(user);
-      user.mfaSecret = ascii;
-      user.mfaEnabled = false; // Only enable after verify
+      const { ascii, otpauth_url, qrCodeDataURL } = await generateTwoFactorSecret(user);
+      user.twoFactorSecret = ascii;
+      user.twoFactorEnabled = false; // Only enable after verify
       await user.save();
-      logger.info(`[MFA] Generated secret for user ${user.id}`);
-      // If you want to email MFA secret/QR, use a dedicated builder and sendMail here.
+      logger.info(`[2FA] Generated secret for user ${user.id}`);
+      if (recordAuditLog) await recordAuditLog({ userId: user.id, action: '2fa_generate_secret', ip, userAgent });
       return { otpauthUrl: otpauth_url, qrCodeDataURL };
     },
 
-    verifyMFA: async (_, { code }, { token, logger }) => {
+    verifyTwoFactor: async (_, { code }, { token, logger, ip, userAgent }) => {
       const payload = verifyJwt(token);
       const user = await User.findByPk(payload.id);
-      if (!user.mfaSecret) throw new Error('No MFA secret setup');
-      if (!verifyMfaToken(user.mfaSecret, code)) throw new Error('Invalid MFA code');
-      user.mfaEnabled = true;
+      if (!user.twoFactorSecret) throw new Error('No 2FA secret setup');
+      if (!limitAttempts(user.id + '-2fa-verify', TWOFA_ATTEMPTS, 5, 15 * 60 * 1000)) {
+        if (recordAuditLog) await recordAuditLog({ userId: user.id, action: '2fa_verify_throttled', ip, userAgent });
+        throw new Error('Too many attempts to enable 2FA. Please wait.');
+      }
+      if (!verifyTwoFactorToken(user.twoFactorSecret, code)) {
+        if (recordAuditLog) await recordAuditLog({ userId: user.id, action: '2fa_verify_fail', ip, userAgent });
+        throw new Error('Invalid 2FA code');
+      }
+      user.twoFactorEnabled = true;
       await user.save();
-
-      // Optionally, send a confirmation email about enabling MFA (if desired)
-      logger.info(`[MFA] Enabled for user ${user.id}`);
+      resetAttempts(user.id + '-2fa-verify', TWOFA_ATTEMPTS);
+      if (recordAuditLog) await recordAuditLog({ userId: user.id, action: '2fa_verify_success', ip, userAgent });
+      logger.info(`[2FA] Enabled for user ${user.id}`);
       return true;
     },
 
-    disableMFA: async (_, __, { token, logger }) => {
+    disableTwoFactor: async (_, __, { token, logger, ip, userAgent }) => {
       const payload = verifyJwt(token);
       const user = await User.findByPk(payload.id);
-      user.mfaEnabled = false;
-      user.mfaSecret = null;
+      user.twoFactorEnabled = false;
+      user.twoFactorSecret = null;
       await user.save();
-      logger.info(`[MFA] Disabled for user ${user.id}`);
+      if (recordAuditLog) await recordAuditLog({ userId: user.id, action: '2fa_disable', ip, userAgent });
+      logger.info(`[2FA] Disabled for user ${user.id}`);
       return true;
     },
 
@@ -247,6 +324,60 @@ const resolvers = {
       await sendMail({ to: user.email, subject, html });
 
       logger.info(`[VERIFY] Resent verification email to ${email}`);
+      return true;
+    },
+
+    // Change Password
+    changePassword: async (_, { currentPassword, newPassword }, { user, logger, ip, userAgent }) => {
+      if (!user) throw new Error('Authentication required');
+      const dbUser = await User.findByPk(user.id);
+      if (!dbUser) throw new Error('User not found');
+      const valid = await comparePassword(currentPassword, dbUser.password);
+      if (!valid) throw new Error('Current password is incorrect');
+      dbUser.password = await hashPassword(newPassword);
+      await dbUser.save();
+      if (recordAuditLog) await recordAuditLog({
+        userId: dbUser.id,
+        action: 'change_password',
+        ip, userAgent,
+        details: { userId: dbUser.id }
+      });
+      logger.info(`[CHANGE_PASSWORD] User ${dbUser.id} changed password`);
+      return true;
+    },
+
+    // Change Email (and send verification)
+    changeEmail: async (_, { newEmail, currentPassword }, { user, logger, ip, userAgent }) => {
+      if (!user) throw new Error('Authentication required');
+      const dbUser = await User.findByPk(user.id);
+      if (!dbUser) throw new Error('User not found');
+
+      if (await User.findOne({ where: { email: newEmail } })) {
+        throw new Error('Email is already in use.');
+      }
+      const valid = await comparePassword(currentPassword, dbUser.password);
+      if (!valid) throw new Error('Current password is incorrect');
+
+      dbUser.email = newEmail;
+      dbUser.emailVerified = false;
+      dbUser.verifyToken = randomToken();
+      dbUser.verifyTokenExpiry = Date.now() + 24 * 60 * 60 * 1000;
+      await dbUser.save();
+
+      // Send new verification email to the updated email address
+      const { subject, html } = buildVerificationEmail({
+        username: dbUser.username,
+        token: dbUser.verifyToken,
+      });
+      await sendMail({ to: newEmail, subject, html });
+
+      if (recordAuditLog) await recordAuditLog({
+        userId: dbUser.id,
+        action: 'change_email',
+        ip, userAgent,
+        details: { userId: dbUser.id, newEmail }
+      });
+      logger.info(`[CHANGE_EMAIL] User ${dbUser.id} changed email to ${newEmail}`);
       return true;
     },
   },

@@ -1,7 +1,8 @@
 import { gql } from 'graphql-tag';
 
 export default gql`
-scalar Upload
+  scalar Upload
+
   type User {
     id: ID!
     username: String!
@@ -94,5 +95,8 @@ scalar Upload
     adminBanUser(userId: ID!): Boolean
     adminUnbanUser(userId: ID!): Boolean
     adminDeleteUser(userId: ID!): Boolean
+
+    exportUserData(password: String!): String!
+    deleteAccount(password: String!, confirm: String!): Boolean!
   }
 `;

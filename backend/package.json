@@ -18,6 +18,8 @@
     "@apollo/server": "^4.10.0",
     "@graphql-tools/merge": "^9.0.24",
     "@tensorflow/tfjs-node": "^4.22.0",
+    "archiver": "^7.0.1",
+    "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.2",
     "compression": "^1.7.4",

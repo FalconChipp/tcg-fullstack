@@ -10,6 +10,14 @@ export default gql`
     updatedAt: String
   }
 
+  type CardPriceHistoryPoint {
+    date: String!
+    variation: String!
+    gbp: Float
+    tcgplayer: Float
+    cardmarket: Float
+  }
+
   type CardListing {
     id: ID!
     userId: ID!
@@ -32,6 +40,7 @@ export default gql`
     rarity: String
     variations: Variants
     prices: [CardPriceVariation]
+    priceHistory(days: Int = 30): [CardPriceHistoryPoint!]!
     isListed: Boolean
     listings: [CardListing]
     isForTrade: Boolean
@@ -80,6 +89,7 @@ export default gql`
     cardSetCompletion(userId: ID!, set: String!): Float!
     getExchangeRates: JSON
     allRarities: [String!]!
+    cardPriceHistory(cardId: ID!, days: Int = 30): [CardPriceHistoryPoint!]!
   }
 
   type Variants {

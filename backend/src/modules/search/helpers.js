@@ -1,6 +1,5 @@
 import { SET_MAPPING, getSetCandidates } from './SetMapping.js';
 import { CardPriceCache } from '../../models/index.js';
-import { convertToGBP as convertToGBPLive } from './api/exchangeRates.js';
 import { fetchTCGDexCardById } from './api/tcgdex.js';
 import { fetchPTCGCardById } from './api/pokemontcg.js';
 
@@ -51,50 +50,32 @@ export function isCacheFresh(lastUpdated) {
   return now - updated < 7 * 24 * 60 * 60 * 1000;
 }
 
-/** --- Price Conversion (always to GBP) --- */
-export async function convertToGBP(price, currency) {
-  if (currency === 'GBP') return price;
-  if (!price || typeof price !== 'number') return 0;
-  // CHANGED: guard against rate API errors
-  try {
-    return await withTimeout(convertToGBPLive(price, currency), SAFE_TIMEOUTS.externalFetch, 'fx-timeout');
-  } catch {
-    return 0; // fail-open
-  }
-}
+// --- Price Cache Helpers (24h TTL) ---
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-/** --- Price Data Enrichment --- */
-export async function enrichCardWithGBPPrices(card, priceData) {
-  // CHANGED: defensively handle null priceData
-  const result = { ...card, pricesGBP: {} };
-  if (priceData?.tcgplayer) {
-    for (const [variation, info] of Object.entries(priceData.tcgplayer)) {
-      if (info?.market) {
-        result.pricesGBP[variation] = await convertToGBP(info.market, 'USD');
-      }
-    }
-  }
-  if (priceData?.cardmarket) {
-    for (const [variation, info] of Object.entries(priceData.cardmarket)) {
-      if (info?.market) {
-        result.pricesGBP[variation] = await convertToGBP(info.market, 'EUR');
-      }
-    }
-  }
-  return result;
+function isFresh(dateLike) {
+  if (!dateLike) return false;
+  const t = new Date(dateLike).getTime();
+  return Number.isFinite(t) && Date.now() - t < ONE_DAY_MS;
 }
 
 /** --- Card Price Cache Util --- */
 export async function getCardPriceCache(cardId) {
   const cache = await CardPriceCache.findOne({ where: { cardId } });
   if (!cache) return null;
-  if (!isCacheFresh(cache.updatedAt)) return null;
-  return cache.data ? { ...cache.data } : null;
+  const freshnessAnchor = cache.lastFetched || cache.updatedAt;
+  if (!isFresh(freshnessAnchor)) return null;
+  return {
+    tcgplayer: cache.tcgplayer || null,
+    cardmarket: cache.cardmarket || null,
+  };
 }
+
 export async function saveCardPriceCache(cardId, priceData) {
   const [cache] = await CardPriceCache.findOrCreate({ where: { cardId } });
-  cache.data = priceData;
-  cache.updatedAt = new Date();
+  cache.tcgplayer = priceData?.tcgplayer ?? null;
+  cache.cardmarket = priceData?.cardmarket ?? null;
+  cache.lastFetched = new Date();
   await cache.save();
 }
 

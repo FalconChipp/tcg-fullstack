@@ -7,7 +7,6 @@ import {
   getCardPriceCache,
   saveCardPriceCache,
   tcgdexToPtcgId,
-  convertToGBP,
   hydrateCard
 } from './helpers.js';
 
@@ -17,7 +16,9 @@ import { getExchangeRates } from './api/exchangeRates.js';
 import { saveOrUpdateCard } from './cardPersistence.js';
 
 import { SET_MAPPING } from './SetMapping.js';
-import { Card, Listing, Collection } from '../../models/index.js';
+import { Card, Listing, Collection, CardPriceHistory } from '../../models/index.js';
+import { Op } from 'sequelize';
+import { Op } from 'sequelize';
 
 // ADDED: limit concurrency & add timeouts so upstream flakiness doesn't stall requests
 import pLimit from 'p-limit';
@@ -92,6 +93,13 @@ async function enrichCards(cards, { listed, forTrade, rarity }) {
   const limit = pLimit(PRICE_CONCURRENCY);
   const cardIds = cards.map(c => c.id);
 
+  let rates = null;
+  try {
+    rates = await getExchangeRates();
+  } catch {
+    rates = null;
+  }
+
   // Step 1: Hydrate and persist each card in DB with all available data and prices
   const settle = await Promise.allSettled(cards.map(card => limit(async () => {
     // Hydrate the card object before saving
@@ -116,7 +124,7 @@ async function enrichCards(cards, { listed, forTrade, rarity }) {
     }
 
     // Save or update in DB (CHANGED: tolerate null priceData)
-    await saveOrUpdateCard(hydratedCard, priceData).catch(() => {});
+    await saveOrUpdateCard(hydratedCard, priceData, rates).catch(() => {});
   })));
 
   // Optional: log any hard rejections (without failing the request)
@@ -350,6 +358,46 @@ function allRaritiesResolver() {
   return getAllRarities();
 }
 
+function mapVariationKey(v) {
+  switch (v) {
+    case 'reverse': return 'reverseHolofoil';
+    case 'holo': return 'holofoil';
+    case 'firstEdition': return 'firstEdition';
+    case 'wPromo': return 'normal';
+    default: return 'normal';
+  }
+}
+
+function cardmarketPriceForVariation(variation, cmk) {
+  if (!cmk) return null;
+  const tk = mapVariationKey(variation);
+  if (tk === 'normal') return cmk.trendPrice ?? cmk.averageSellPrice ?? null;
+  if (tk === 'reverseHolofoil') return cmk.reverseHoloTrend ?? cmk.reverseHoloSell ?? null;
+  if (tk === 'holofoil') return cmk.trendPrice ?? cmk.averageSellPrice ?? null;
+  if (tk === 'firstEdition') return cmk.trendPrice ?? null;
+  return null;
+}
+
+async function fetchHistoryFromTable(cardId, days) {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const rows = await CardPriceHistory.findAll({
+    where: { cardId, fetchedAt: { [Op.gte]: since } },
+    order: [['fetchedAt', 'ASC']]
+  });
+  return rows.map(r => ({
+    date: r.fetchedAt.toISOString().slice(0, 10),
+    variation: r.variation,
+    gbp: r.gbp == null ? null : parseFloat(r.gbp),
+    tcgplayer: r.tcgplayer?.market ?? null,
+    cardmarket: cardmarketPriceForVariation(r.variation, r.cardmarket)
+  }));
+}
+
+async function cardPriceHistoryResolver(_, { cardId, days = 30 }) {
+  const limit = Math.min(days, 30);
+  return fetchHistoryFromTable(cardId, limit);
+}
+
 // ----------------------
 // EXPORT RESOLVERS
 // ----------------------
@@ -362,6 +410,7 @@ const resolvers = {
     cardSetCompletion: cardSetCompletionResolver,
     getExchangeRates: getExchangeRatesResolver,
     allRarities: allRaritiesResolver,
+    cardPriceHistory: cardPriceHistoryResolver,
   },
 
   Card: {
@@ -376,26 +425,47 @@ const resolvers = {
       }
     },
     prices: (card) => {
-      // Return an empty array if nothing stored
-      if (!card.pricing) return [];
+      const raw = card.pricing;
+      if (!raw) return [];
       try {
-        let parsed = card.pricing;
-        if (typeof parsed === "string") parsed = JSON.parse(parsed);
-        if (Array.isArray(parsed)) {
-          return parsed.filter(p => p && typeof p.variation === "string");
-        }
-        if (parsed && typeof parsed === "object" && typeof parsed.variation === "string") {
-          return [parsed];
-        }
+        const obj = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (obj && Array.isArray(obj.latest)) return obj.latest;
+        // backward compat: if old schema
+        if (Array.isArray(obj)) return obj;
+        if (obj && typeof obj === 'object' && obj.variation) return [obj];
         return [];
       } catch (e) {
-        console.error('Failed to parse Card.pricing:', e, card.pricing);
+        console.error('Failed to parse Card.pricing:', e);
         return [];
       }
     },
-    setName: (card) => card.setName || null, 
+    priceHistory: async (card, { days = 30 }) => {
+      const limit = Math.min(days, 30);
+      const raw = card.pricing;
+      if (raw) {
+        try {
+          const obj = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          if (obj && Array.isArray(obj.history) && obj.history.length) {
+            const slice = obj.history.slice(-limit);
+            return slice.flatMap(h =>
+              (h.prices || []).map(p => ({
+                date: h.date,
+                variation: p.variation,
+                gbp: p.gbp ?? null,
+                tcgplayer: p.tcgplayer ?? null,
+                cardmarket: p.cardmarket ?? null,
+              }))
+            );
+          }
+        } catch (e) {
+          console.error('Failed to parse Card.pricing history:', e);
+        }
+      }
+      return fetchHistoryFromTable(card.id, limit);
+    },
+    setName: (card) => card.setName || null,
     image: (card) => card.image || null,
-    rarity: (card) => card.rarity || null, 
+    rarity: (card) => card.rarity || null,
   }
 };
 

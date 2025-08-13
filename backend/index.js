@@ -19,6 +19,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import fs from 'fs';
 import path from 'path';
 import jwt from 'jsonwebtoken';
+import cron from 'node-cron';
 import { startExpiredMessageCleanup } from './src/jobs/messageCleanup.js';
 import { startUnreadReminderJob } from './src/jobs/unreadReminder.js';
 import { startNotificationCleanup } from './src/jobs/notificationCleanup.js';
@@ -26,6 +27,7 @@ import { startNotificationCleanup } from './src/jobs/notificationCleanup.js';
 import { typeDefs, resolvers } from './src/schema.js';
 import { sequelize, User, Profile } from './src/models/index.js';
 import * as models from './src/models/index.js';
+import { updateCardPricesDaily } from './src/tasks/updateCardPrices.js';
 
 // --- Logger Setup ---
 const logger = winston.createLogger({
@@ -329,6 +331,16 @@ try {
     startUnreadReminderJob(logger),
     startNotificationCleanup(logger),
   ];
+
+  cron.schedule('0 3 * * *', async () => {
+    console.log('[CRON] Starting daily card price update...');
+    try {
+      const result = await updateCardPricesDaily();
+      console.log('[CRON] Daily update result:', result);
+    } catch (e) {
+      console.error('[CRON] Daily update failed:', e);
+    }
+  });
 
   function shutdown() {
     logger.info('Shutdown requested, draining...');

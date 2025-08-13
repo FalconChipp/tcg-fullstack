@@ -59,6 +59,7 @@ import SubscriptionTierFactory from './SubscriptionTier.js';
 import TransactionFactory from './Transaction.js';
 import ShippingLabelFactory from './ShippingLabel.js';
 import CardPriceCacheFactory from './CardPriceCache.js';
+import CardPriceHistoryFactory from './CardPriceHistory.js';
 import SubscriptionAddOnFactory from "./SubscriptionAddOn.js";
 import AdminActionFactory from './AdminAction.js';
 import RewardFactory from './Reward.js';
@@ -88,6 +89,7 @@ const SubscriptionTier = SubscriptionTierFactory(sequelize);
 const Transaction = TransactionFactory(sequelize);
 const ShippingLabel = ShippingLabelFactory(sequelize);
 const CardPriceCache = CardPriceCacheFactory(sequelize);
+const CardPriceHistory = CardPriceHistoryFactory(sequelize);
 const AdminAction = AdminActionFactory(sequelize);
 const SubscriptionAddOn = SubscriptionAddOnFactory(sequelize);
 const Reward = RewardFactory(sequelize);
@@ -246,6 +248,10 @@ ShippingLabel.belongsTo(User, { foreignKey: 'userId' });
 Card.hasOne(CardPriceCache, { foreignKey: 'cardId', onDelete: 'CASCADE' });
 CardPriceCache.belongsTo(Card, { foreignKey: 'cardId' });
 
+// Card Price History
+Card.hasMany(CardPriceHistory, { foreignKey: 'cardId', onDelete: 'CASCADE' });
+CardPriceHistory.belongsTo(Card, { foreignKey: 'cardId' });
+
 // Admin Actions (AdminAction fields: adminId, targetUserId)
 User.hasMany(AdminAction, { foreignKey: 'adminId', as: 'adminActions' });
 AdminAction.belongsTo(User, { foreignKey: 'adminId', as: 'admin' });
@@ -259,7 +265,7 @@ export {
   Trade, TradeCard, TradeProof, TradeDispute,
   UserReputation, Message,
   Notification, AuditLog, Achievement, Subscription,
-  SubscriptionTier, Transaction, ShippingLabel, CardPriceCache,
+  SubscriptionTier, Transaction, ShippingLabel, CardPriceCache, CardPriceHistory,
   AdminAction, UserAchievement, Offer, SubscriptionAddOn,
   Reward,
   ChatAgreement, ReportedUser,

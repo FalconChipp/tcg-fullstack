@@ -3,7 +3,7 @@ import { Card } from '../models/index.js';
 import { getCardPriceCache, saveCardPriceCache } from '../modules/search/helpers.js';
 import { fetchPTCGCardPrices } from '../modules/search/api/pokemontcg.js';
 import { saveOrUpdateCard } from '../modules/search/cardPersistence.js';
-import { tcgdexToPtcgId } from '../modules/search/helpers.js'; // adjust import path if needed
+import { tcgdexToPtcgId } from '../modules/search/helpers.js';
 import { sendMail } from '../utils/email.js';
 import { getExchangeRates } from '../modules/search/api/exchangeRates.js';
 
@@ -20,33 +20,33 @@ export async function updateCardPricesDaily() {
   const adminEmail = process.env.ADMIN_EMAIL;
   const failures = [];
 
-  // 1) FX fetch
+  // 1) FX fetch (only used to compute GBP; do not email if FX fails)
   try {
     report.rates = await withTimeout(getExchangeRates(), 8000, 'fx-timeout');
     console.log('[FX]', report.rates);
   } catch (e) {
     report.errors.push(`Exchange rate error: ${e.message}`);
   }
-
   const usdRate = Number(report.rates?.USD);
   const eurRate = Number(report.rates?.EUR);
   const ratesValid = usdRate > 0 && eurRate > 0;
-  if (!ratesValid) {
-    report.errors.push('Invalid exchange rates; GBP conversion skipped');
-  }
+  if (!ratesValid) report.errors.push('Invalid exchange rates; GBP conversion skipped');
 
   // 2) Iterate cards with concurrency
   const limit = pLimit(PRICE_CONCURRENCY);
-  const allCards = await Card.findAll({ attributes: ['id','name','number','set','setName','setLogo','setSymbol','image','rarity','edition','variations','pricing','createdAt','updatedAt'] });
+  const allCards = await Card.findAll({
+    attributes: ['id','name','number','set','setName','setLogo','setSymbol','image','rarity','edition','variations','pricing','createdAt','updatedAt']
+  });
 
   await Promise.all(allCards.map(card => limit(async () => {
     try {
       const cardId = card.id;
-      // Use fresh cache if present
+
       let cache = await getCardPriceCache(cardId);
       if (!cache) {
         const ptcgId = tcgdexToPtcgId(cardId);
         if (!ptcgId) { report.skipped++; return; }
+
         const prices = await withTimeout(fetchPTCGCardPrices(ptcgId), PRICE_TIMEOUT_MS, 'price-timeout').catch(() => null);
         if (!prices) { report.skipped++; return; }
         await saveCardPriceCache(cardId, prices);
@@ -60,11 +60,11 @@ export async function updateCardPricesDaily() {
       report.errors.push(err);
       failures.push({ cardId: card.id, error: e.message });
     }
-  }))); 
+  })));
 
   report.finishedAt = new Date().toISOString();
 
-  // 3) Email only if price fetch failures occurred
+  // 3) Email ONLY if there were price fetch/update failures (not FX issues)
   if (adminEmail && failures.length) {
     try {
       const html = `

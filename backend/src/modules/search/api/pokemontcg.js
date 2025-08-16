@@ -4,8 +4,10 @@ import fetch from 'node-fetch';
 const POKEMON_TCG_API = 'https://api.pokemontcg.io/v2';
 const API_KEY = process.env.POKEMON_TCG_API_KEY || '';
 
+const DEBUG_PRICE = process.env.DEBUG_PRICE === '1';
+
 // ADDED: tunables
-const PTCG_TIMEOUT_MS = Number(process.env.PTCG_TIMEOUT_MS || 5000);
+const PTCG_TIMEOUT_MS = 0;
 const PTCG_RETRIES    = Number(process.env.PTCG_RETRIES || 2);
 const RETRY_BACKOFF_MS = Number(process.env.PTCG_BACKOFF_MS || 300);
 
@@ -18,7 +20,6 @@ function getHeaders() {
   return headers;
 }
 
-// ADDED: common helper for timeout + retry + backoff
 async function fetchJSON(url, { method = 'GET', headers = {} } = {}, {
   timeoutMs = PTCG_TIMEOUT_MS,
   retries = PTCG_RETRIES,
@@ -26,11 +27,19 @@ async function fetchJSON(url, { method = 'GET', headers = {} } = {}, {
 } = {}) {
   let lastErr;
   for (let attempt = 0; attempt <= retries; attempt++) {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+    // Only create an AbortController if we actually want a timeout
+    const useTimeout = timeoutMs && timeoutMs > 0;
+    const ctrl = useTimeout ? new AbortController() : undefined;
+    const t = useTimeout ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
+
     try {
-      const res = await fetch(url, { method, headers: { ...getHeaders(), ...headers }, signal: ctrl.signal });
-      clearTimeout(t);
+      const res = await fetch(url, {
+        method,
+        headers: { ...getHeaders(), ...headers },
+        signal: ctrl?.signal
+      });
+
+      if (t) clearTimeout(t);
 
       // Retry on 429 or 5xx
       if (!res.ok && (res.status === 429 || (res.status >= 500 && res.status < 600))) {
@@ -44,7 +53,7 @@ async function fetchJSON(url, { method = 'GET', headers = {} } = {}, {
         }
       }
     } catch (e) {
-      clearTimeout(t);
+      if (t) clearTimeout(t);
       lastErr = e;
     }
 
@@ -64,13 +73,18 @@ console.log("[PTCG API] pokemontcg.js module loaded!");
  */
 export async function fetchPTCGCardById(cardId) {
   const url = `${POKEMON_TCG_API}/cards/${encodeURIComponent(cardId)}`;
-  const { res, json } = await fetchJSON(url).catch(() => ({ res: { ok: false }, json: null }));
+  const { res, json } = await fetchJSON(url).catch((e) => {
+    return { res: { ok: false, status: 0 }, json: null, error: e };
+  });
   if (!res?.ok) {
-    // CHANGED: treat 404 as "not found" instead of throwing; other non-ok still bubble up
-    if (res?.status === 404) return null;
+    if (res?.status === 404) {
+      return { data: null, status: 404, hasPrices: false };
+    }
     throw new Error(`[PTCG] Failed to fetch card: ${cardId}${res?.status ? ` (status ${res.status})` : ''}`);
   }
-  return json?.data || null;
+  const data = json?.data || null;
+  const hasPrices = !!(data?.tcgplayer || data?.cardmarket);
+  return { data, status: res.status, hasPrices };
 }
 
 /**
@@ -98,15 +112,16 @@ export async function fetchPTCGCards({ name, set, number }) {
  */
 export async function fetchPTCGCardPrices(cardId) {
   try {
-    const card = await fetchPTCGCardById(cardId);
-    if (!card) return { tcgplayer: null, cardmarket: null };
+    const { data, status, hasPrices } = await fetchPTCGCardById(cardId);
+    if (!data) return { tcgplayer: null, cardmarket: null, status, hasPrices: false };
     return {
-      tcgplayer: card?.tcgplayer || null,
-      cardmarket: card?.cardmarket || null,
+      tcgplayer: data?.tcgplayer || null,
+      cardmarket: data?.cardmarket || null,
+      status: status || 200,
+      hasPrices
     };
   } catch (e) {
-    // Network/transient failures → return empty pricing; caller should fail-open
-    return { tcgplayer: null, cardmarket: null };
+    return { tcgplayer: null, cardmarket: null, status: 0, hasPrices: false };
   }
 }
 

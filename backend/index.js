@@ -21,7 +21,7 @@ import path from 'path';
 import jwt from 'jsonwebtoken';
 import cron from 'node-cron';
 import { startExpiredMessageCleanup } from './src/jobs/messageCleanup.js';
-import { startUnreadReminderJob } from './src/jobs/unreadReminder.js';
+// import { startUnreadReminderJob } from './src/jobs/unreadReminder.js';
 import { startNotificationCleanup } from './src/jobs/notificationCleanup.js';
 
 import { typeDefs, resolvers } from './src/schema.js';
@@ -94,7 +94,7 @@ const allowedOrigins = (process.env.CORS_ORIGINS || '')
   .map(o => o.trim())
   .filter(Boolean);
 
-// ADDED: robust CORS options with header reflection + global preflight
+// robust CORS options with header reflection + global preflight
 const corsOptions = {
   origin: (origin, cb) => {
     // allow no-origin tools (curl, server-to-server)
@@ -107,29 +107,26 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  // ADDED: reflect whatever headers the browser says it will send
-  allowedHeaders: (req, cb) =>
-    cb(null, req.headers['access-control-request-headers'] || 'authorization,content-type'),
   exposedHeaders: ['Authorization'],
   preflightContinue: false,
   optionsSuccessStatus: 204, // some browsers choke on 200 here
 };
 
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // ADDED: handle preflight globally
+app.options('*', cors(corsOptions)); // handle preflight globally
 
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
 app.use(compression());
 
-// CHANGED: JSON/body parsers come AFTER Stripe raw route
+// JSON/body parsers come AFTER Stripe raw route
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 app.use(expressStatusMonitor({ path: '/status' }));
 
-// CHANGED: rate limit (skip OPTIONS so preflight never gets 429)
+// rate limit (skip OPTIONS so preflight never gets 429)
 const limiter = rateLimit({
   windowMs: 60 * 1000,
   max: 600,
@@ -141,7 +138,7 @@ const limiter = rateLimit({
     req.socket?.remoteAddress ||
     'unknown',
   skipFailedRequests: true,
-  skip: (req) => req.method === 'OPTIONS', // ADDED
+  skip: (req) => req.method === 'OPTIONS', 
 });
 app.use(limiter);
 
@@ -328,7 +325,7 @@ try {
 
   const cleanupIntervals = [
     startExpiredMessageCleanup(logger),
-    startUnreadReminderJob(logger),
+    // startUnreadReminderJob(logger),
     startNotificationCleanup(logger),
   ];
 

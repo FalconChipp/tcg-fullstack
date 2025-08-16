@@ -2,7 +2,7 @@
 import emailBase from './emailBase.js';
 
 export default function buildResetEmail({ username, token }) {
-  const frontendUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${encodeURIComponent(token)}`;
+  const frontendUrl = `${process.env.FRONTEND_URL || 'https://tcg.sixbyfive.com'}/reset-password?token=${encodeURIComponent(token)}`;
   return {
     subject: 'Reset your password – SixByFive TCG',
     html: emailBase({

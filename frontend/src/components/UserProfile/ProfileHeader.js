@@ -29,7 +29,7 @@ export default function ProfileHeader({
 
   // Backend URLs
   // Always ensure NEXT_PUBLIC_BACKEND_URL includes protocol!
-const rawBackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+const rawBackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
 const NEXT_PUBLIC_BACKEND_URL = rawBackendUrl.startsWith("http")
   ? rawBackendUrl
   : `https://${rawBackendUrl}`;

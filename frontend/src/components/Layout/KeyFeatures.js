@@ -1,49 +1,57 @@
 "use client";
 import React from "react";
 
+// CHANGED: benefit-first live features
+// NEW: Added Advanced Search + Price Tracking to surface core value immediately.
 const features = [
   {
-    icon: "📦",
-    title: "Collection Tracking",
-    desc: "Add, manage, and view every card you own, including set and quantity.",
+    icon: "🗃️",
+    title: "Digital Collection Manager", // CHANGED
+    desc: "Track what you own and what it’s worth — all in one place.", // CHANGED
   },
   {
-    icon: "🗂️",
-    title: "Digital Binders",
-    desc: "Organise your cards into custom digital binders—just like in real life.",
+    icon: "📒",
+    title: "Digital Binders", // CHANGED title format
+    desc: "Recreate your real binders online — layouts, covers, shareable links.", // CHANGED
+  },
+  {
+    icon: "🔎", // NEW
+    title: "Advanced Search", // NEW
+    desc: "Find any English card by set, rarity, type, or number — instantly.", // NEW
+  },
+  {
+    icon: "📈", // NEW
+    title: "Price Tracking", // NEW
+    desc: "See collection value at a glance with regularly refreshed prices.", // NEW
   },
   {
     icon: "💡",
     title: "Wishlist",
-    desc: "Keep an eye on cards you want to add next with your personal wishlist.",
-  },
-  {
-    icon: "🌐",
-    title: "Public Profiles",
-    desc: "Every collector gets a profile and public showcase of their collection.",
+    desc: "Keep your chase list front and centre so you never miss a pickup.", // CHANGED
   },
 ];
 
+// CHANGED: concise, reassuring copy for upcoming features
 const comingSoon = [
   {
     icon: "🏷️",
     title: "Marketplace",
-    desc: "Buy and sell cards safely with trusted payments and UK-focused features.",
+    desc: "Buy and sell with trusted payments and UK-focused tools.", // CHANGED
   },
   {
     icon: "🔄",
     title: "Trading",
-    desc: "Trade cards securely with other collectors—tracked shipping and address privacy built in.",
+    desc: "Secure trades with tracked shipping and privacy by default.", // CHANGED
   },
   {
     icon: "📈",
     title: "Price Alerts",
-    desc: "Get notified when the value of your cards changes, or set up custom price alerts.",
+    desc: "Get notified when prices move or hit your targets.", // CHANGED
   },
   {
     icon: "🏆",
     title: "Achievements",
-    desc: "Unlock digital badges as you complete sets and grow your collection.",
+    desc: "Unlock badges as you complete sets and grow your collection.", // CHANGED
   },
 ];
 
@@ -54,7 +62,7 @@ export default function KeyFeatures() {
         Features
       </h2>
 
-      {/* MVP Features */}
+      {/* Live Features — CHANGED: now includes Advanced Search + Price Tracking */}
       <div className="flex flex-col md:flex-row flex-wrap justify-center gap-6 max-w-5xl mx-auto mb-12">
         {features.map((f, i) => (
           <div
@@ -68,14 +76,18 @@ export default function KeyFeatures() {
               min-w-[220px] max-w-xs
             "
           >
-            <div className="text-4xl md:text-5xl mb-3">{f.icon}</div>
-            <div className="font-semibold text-lg md:text-xl text-light-accent dark:text-dark-accent mb-2 text-center">{f.title}</div>
-            <div className="text-light-textSecondary dark:text-dark-textSecondary text-base text-center">{f.desc}</div>
+            <div className="text-4xl md:text-5xl mb-3" aria-hidden="true">{f.icon}</div>
+            <div className="font-semibold text-lg md:text-xl text-light-accent dark:text-dark-accent mb-2 text-center">
+              {f.title}
+            </div>
+            <div className="text-light-textSecondary dark:text-dark-textSecondary text-base text-center">
+              {f.desc}
+            </div>
           </div>
         ))}
       </div>
 
-      {/* Coming Soon Features */}
+      {/* Coming Soon Features — CHANGED: copy tightened, still visually subdued */}
       <h3 className="text-xl font-bold text-center mb-5 text-light-textMuted dark:text-dark-textMuted tracking-wide">
         Coming Soon
       </h3>
@@ -95,10 +107,16 @@ export default function KeyFeatures() {
             "
             aria-disabled="true"
           >
-            <div className="text-4xl md:text-5xl mb-3">{f.icon}</div>
-            <div className="font-semibold text-lg md:text-xl text-light-textMuted dark:text-dark-textMuted mb-2 text-center">{f.title}</div>
-            <div className="text-light-textMuted dark:text-dark-textMuted text-base text-center">{f.desc}</div>
-            <div className="mt-2 text-xs text-light-textMuted dark:text-dark-textMuted uppercase tracking-wider">Coming Soon</div>
+            <div className="text-4xl md:text-5xl mb-3" aria-hidden="true">{f.icon}</div>
+            <div className="font-semibold text-lg md:text-xl text-light-textMuted dark:text-dark-textMuted mb-2 text-center">
+              {f.title}
+            </div>
+            <div className="text-light-textMuted dark:text-dark-textMuted text-base text-center">
+              {f.desc}
+            </div>
+            <div className="mt-2 text-xs text-light-textMuted dark:text-dark-textMuted uppercase tracking-wider">
+              Coming Soon
+            </div>
           </div>
         ))}
       </div>

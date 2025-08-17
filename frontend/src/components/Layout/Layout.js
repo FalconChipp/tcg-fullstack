@@ -1,34 +1,40 @@
-'use client';
+// src/components/Layout/Layout.js
+"use client";
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useTheme } from '@/hooks/ThemeProvider';
-import Header from './Header';
-import Footer from './Footer';
-import BackToTop from './BackToTop';
-import OnboardingTour from '../Onboarding/OnboardingTour';
-import CookieBanner from '../Cookies/CookieBanner';
-import CookieSettingsModal from '../Cookies/CookieSettings';
-// import FullPageLayout from '../../../Archive/FullPageLayout';
+import React, { useState, useEffect, useRef } from "react";
+import { useTheme } from "@/hooks/ThemeProvider";
+import Header from "./Header";
+import Footer from "./Footer";
+import BackToTop from "./BackToTop";
+import OnboardingTour from "../Onboarding/OnboardingTour";
+import CookieBanner from "../Cookies/CookieBanner";
+import CookieSettingsModal from "../Cookies/CookieSettings";
+// import FullPageLayout from "../../../Archive/FullPageLayout";
+import SEO from "@/components/SEO/SEO"; // NEW
 
-export default function Layout({ children, hideBackTop = false, noTopPadding = false }) {
+export default function Layout({
+  children,
+  hideBackTop = false,
+  noTopPadding = false,
+  seo = {}, // NEW: pass page-specific SEO overrides from pages
+}) {
   const { dark } = useTheme();
 
   const [showSettingModal, setShowSettingModal] = useState(false);
   const [showCookieBanner, setShowCookieBanner] = useState(false);
   const [showSaveNotification, setShowSaveNotification] = useState(false);
 
-  const onboardingRef = useRef(); // <-- 1. Create the ref
+  const onboardingRef = useRef();
 
-  // 2. Define the function BEFORE using it
   const startTour = () => onboardingRef.current?.startTour();
 
   // Apply dark mode class to html element
   useEffect(() => {
-    if (typeof document !== 'undefined') {
+    if (typeof document !== "undefined") {
       if (dark) {
-        document.documentElement.classList.add('dark');
+        document.documentElement.classList.add("dark");
       } else {
-        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.remove("dark");
       }
     }
   }, [dark]);
@@ -49,8 +55,15 @@ export default function Layout({ children, hideBackTop = false, noTopPadding = f
   };
 
   return (
-    <div className={`min-h-screen ${dark ? 'bg-dark-background text-dark-text' : 'bg-light-background text-light-text'}`}>
-      {/* 3. Pass startTour as a prop to Header */}
+    <div
+      className={`min-h-screen ${
+        dark ? "bg-dark-background text-dark-text" : "bg-light-background text-light-text"
+      }`}
+    >
+      {/* NEW: Centralised SEO with per-page overrides via `seo` prop */}
+      <SEO {...seo} />
+
+      {/* Header + tour */}
       <Header onStartTour={startTour} />
       <OnboardingTour ref={onboardingRef} />
 
@@ -58,7 +71,7 @@ export default function Layout({ children, hideBackTop = false, noTopPadding = f
         <CookieBanner onShowSettings={openSettingsModal} onAccept={acceptCookies} />
       )}
 
-      <div className={`${noTopPadding ? 'pt-0' : 'pt-20 md:pt-20'} min-h-[calc(100vh-80px)]`}>
+      <div className={`${noTopPadding ? "pt-0" : "pt-20 md:pt-20"} min-h-[calc(100vh-80px)]`}>
         {children}
       </div>
 

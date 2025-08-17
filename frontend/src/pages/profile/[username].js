@@ -15,7 +15,6 @@ import ProfileCollectionPanel from "@/components/UserProfile/ProfileCollectionPa
 import ProfileBindersPanel from "@/components/UserProfile/ProfileBindersPanel";
 import ProfileWishlistPanel from "@/components/UserProfile/ProfileWishlistPanel";
 import ProfileAchievements from "@/components/UserProfile/ProfileAchievements";
-// ...other imports as needed
 
 // GraphQL endpoints
 const API_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
@@ -54,22 +53,23 @@ export async function getServerSideProps({ params, res }) {
       body: JSON.stringify({ query: userQuery, variables: { username } }),
     });
     const { data, errors } = await r.json();
-    console.log({ data, errors })
+
     if (errors || !data?.userProfile) {
       return errors
         ? { props: { error: errors[0].message } }
         : { notFound: true };
     }
+
     const profile = data.userProfile;
     const mergedUser = {
-  ...profile,
-  username: profile.user?.username,
-  email: profile.user?.email,
-  emailVerified: profile.user?.emailVerified,
-};
-delete mergedUser.user;
-return { props: { user: mergedUser } };
+      ...profile,
+      username: profile.user?.username,
+      email: profile.user?.email,
+      emailVerified: profile.user?.emailVerified,
+    };
+    delete mergedUser.user;
 
+    return { props: { user: mergedUser } };
   } catch (err) {
     return { props: { error: "Remote server error" } };
   }
@@ -81,6 +81,11 @@ export default function ProfilePage({ user, error }) {
   const router = useRouter();
   const isOwnProfile = me?.username === user?.username;
 
+  // Always use the real account user id for GraphQL queries (not the profile id)
+  const UID = String(user?.userId ?? user?.id);
+  // For hooks/components that expect `user.id`, alias it to the account id
+  const userForQueries = { ...user, id: UID };
+
   // 1. Read tab from ?tab= in URL for deep linking
   const [activeTab, setActiveTab] = useState("collection");
   useEffect(() => {
@@ -91,13 +96,12 @@ export default function ProfilePage({ user, error }) {
 
   const [isBinderEditorOpen, setBinderEditorOpen] = useState(false);
 
-  // --- Fetch profile modules from WP backend (until migrated) ---
-  // Example: achievements
+  // --- Achievements ---
   const [achievements, setAchievements] = useState([]);
   const [achievementsLoading, setAchievementsLoading] = useState(true);
   useEffect(() => {
     async function fetchAchievements() {
-      if (!user?.id) return;
+      if (!UID) return;
       setAchievementsLoading(true);
       try {
         const res = await fetch(WP_GRAPHQL_URL, {
@@ -106,23 +110,23 @@ export default function ProfilePage({ user, error }) {
           body: JSON.stringify({
             query: `
               query GetUserAchievements($userId: ID!) {
-              userAchievements(userId: $userId) {
-                id
-                earnedAt
-                achievement {
+                userAchievements(userId: $userId) {
                   id
-                  code
-                  name
-                  description
-                  tier
-                  iconUrl
-                  createdAt
-                  updatedAt
+                  earnedAt
+                  achievement {
+                    id
+                    code
+                    name
+                    description
+                    tier
+                    iconUrl
+                    createdAt
+                    updatedAt
+                  }
                 }
               }
-            }
             `,
-            variables: { userId: user.id }
+            variables: { userId: UID }
           }),
         });
         const json = await res.json();
@@ -133,17 +137,14 @@ export default function ProfilePage({ user, error }) {
       setAchievementsLoading(false);
     }
     fetchAchievements();
-  }, [user?.id]);
+  }, [UID]);
 
-  // Example: useProfileCollection and useProfileCardActions can still point to WP backend
-  // Or: If you want, use two sets of hooks and merge results
-  // For now, keep your current hooks as is:
   const {
     collection, wishlist, loading, collectionValue,
     refresh, status,
     showCardDetails, setShowCardDetails, cardDetails
-  } = useProfileCollection({ user, token });
-  console.log("Current user for collection fetch:", user);
+  } = useProfileCollection({ user: userForQueries, token });
+
   const {
     handleMoveToCollection, handleRemoveCard,
     handleRemoveFromWishlist
@@ -156,35 +157,77 @@ export default function ProfilePage({ user, error }) {
     setLoading: loading.set,
     collection: collection.value,
     wishlist: wishlist.value,
-    userId: user?.id,
+    userId: UID,
     refresh
   });
 
   // --- Render ---
-  if (authLoading && !user) return <Layout><div className="text-center p-10">Loading authentication...</div></Layout>;
-  if (error) return <Layout><p className="error text-center p-10">{error}</p></Layout>;
-  if (!user) return <Layout><p className="text-center p-10">Profile not found.</p></Layout>;
+  if (authLoading && !user) {
+    return (
+      <Layout>
+        <div className="text-center p-10">Loading authentication...</div>
+      </Layout>
+    );
+  }
+  if (error) {
+    return (
+      <Layout>
+        <p className="error text-center p-10">{error}</p>
+      </Layout>
+    );
+  }
+  if (!user) {
+    return (
+      <Layout>
+        <p className="text-center p-10">Profile not found.</p>
+      </Layout>
+    );
+  }
 
   return (
     <>
       <Head>
         <title>{`${user.username}'s Profile – SixByFive TCG`}</title>
-        <meta name="description" content={user?.bio || "Check out my Pokémon TCG collection!"} />
-        <link rel="canonical" href={`https://tcg.sixbyfive.com/profile/${user.username}`} />
-        <meta property="og:title" content={`${user.username}'s Profile – SixByFive TCG`} />
-        <meta property="og:description" content={user?.bio || "Check out my Pokémon TCG collection!"} />
-        <meta property="og:url" content={`https://tcg.sixbyfive.com/profile/${user.username}`} />
-        <meta property="og:image" content={user?.avatar || '/default-avatar.png'} />
+        <meta
+          name="description"
+          content={user?.bio || "Check out my Pokémon TCG collection!"}
+        />
+        <link
+          rel="canonical"
+          href={`https://tcg.sixbyfive.com/profile/${user.username}`}
+        />
+        <meta
+          property="og:title"
+          content={`${user.username}'s Profile – SixByFive TCG`}
+        />
+        <meta
+          property="og:description"
+          content={user?.bio || "Check out my Pokémon TCG collection!"}
+        />
+        <meta
+          property="og:url"
+          content={`https://tcg.sixbyfive.com/profile/${user.username}`}
+        />
+        <meta property="og:image" content={user?.avatar || "/default-avatar.png"} />
         <meta property="og:type" content="profile" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={`${user.username}'s Profile – SixByFive TCG`} />
-        <meta name="twitter:description" content={user?.bio || "Check out my Pokémon TCG collection!"} />
-        <meta name="twitter:image" content={user?.avatar || '/default-avatar.png'} />
+        <meta
+          name="twitter:title"
+          content={`${user.username}'s Profile – SixByFive TCG`}
+        />
+        <meta
+          name="twitter:description"
+          content={user?.bio || "Check out my Pokémon TCG collection!"}
+        />
+        <meta
+          name="twitter:image"
+          content={user?.avatar || "/default-avatar.png"}
+        />
       </Head>
       <Layout hideBackTop={isBinderEditorOpen}>
         <div className="w-full px-2 sm:px-4 md:px-8 lg:px-24 xl:px-32 py-6">
           <ProfileHeader
-            profileData={user}
+            profileData={userForQueries}
             isOwnProfile={isOwnProfile}
             onUpdate={refresh}
             dark={dark}
@@ -195,18 +238,19 @@ export default function ProfilePage({ user, error }) {
           <ProfileTabs activeTab={activeTab} onChange={setActiveTab} />
 
           {/* Tab Panels */}
-          {activeTab === "collection" &&
+          {activeTab === "collection" && (
             <ProfileCollectionPanel
-              userId={user?.id}
+              userId={UID}
               cards={collection.value}
               isOwnProfile={isOwnProfile}
               setStatus={status.set}
               onCardRemoved={handleRemoveCard}
             />
-          }
+          )}
+
           {activeTab === "binders" && (
             <ProfileBindersPanel
-              userId={user?.id}
+              userId={UID}
               isOwnProfile={isOwnProfile}
               dark={dark}
               userEntireCollection={collection?.value || []}
@@ -214,26 +258,25 @@ export default function ProfilePage({ user, error }) {
               onBinderEditorClose={() => setBinderEditorOpen(false)}
             />
           )}
+
           {activeTab === "wishlist" && (
-            <>
-              {/* Add this logging here */}
-              {console.log("PROFILE PAGE: wishlist.value", wishlist.value)}
-              <ProfileWishlistPanel
-                wishlist={wishlist.value.entries || []}
-                user={user}
-                isOwnProfile={isOwnProfile}
-                onCardRemoved={handleRemoveFromWishlist}
-                onMoveToCollection={handleMoveToCollection}
-                setStatus={status.set}
-              />
-            </>
+            <ProfileWishlistPanel
+              wishlist={wishlist.value.entries || []}
+              user={userForQueries}
+              isOwnProfile={isOwnProfile}
+              onCardRemoved={handleRemoveFromWishlist}
+              onMoveToCollection={handleMoveToCollection}
+              setStatus={status.set}
+            />
           )}
-          {activeTab === "achievements" &&
+
+          {activeTab === "achievements" && (
             <ProfileAchievements
               achievements={achievements}
               loading={achievementsLoading}
             />
-          }
+          )}
+
           {/* Card details modal */}
           {showCardDetails && cardDetails && (
             <CardDetailsModal
@@ -241,12 +284,14 @@ export default function ProfilePage({ user, error }) {
               onClose={() => setShowCardDetails(false)}
             />
           )}
+
           {/* Collection loader */}
           {loading.value && (
             <div className="w-full py-12 text-center text-gray-400">
               Loading cards...
             </div>
           )}
+
           {/* Status messages */}
           {status.value && (
             <StatusMessage

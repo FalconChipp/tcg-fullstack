@@ -12,12 +12,9 @@ import QuantitySelectorModal from "@/components/UI/QuantitySelectorModal";
 import { getCardImageUrl } from "@/utils/imageUtils";
 import CardSkeleton from "@/components/UI/CardSkeleton";
 
-// Use your custom collection hook:
 import useProfileCollection from "@/hooks/useProfileCollection";
-// Use your updated actions:
 import useProfileCardActions from "@/hooks/useProfileCardActions";
 
-// --- CONSTANTS & HELPERS ---
 const SORT_OPTIONS = [
   { value: 'name-asc', label: 'Name (A-Z)' },
   { value: 'name-desc', label: 'Name (Z-A)' },
@@ -40,17 +37,12 @@ const formatCurrency = value =>
 const getCardAveragePrice = (card) => {
   if (!card || !Array.isArray(card.prices)) return null;
   const selectedVariation = card.variation || "normal";
-  let priceObj = card.prices.find(
-    (p) => p && (p.variation === selectedVariation)
-  );
+  let priceObj = card.prices.find((p) => p && (p.variation === selectedVariation));
   if (!priceObj && card.prices.length) priceObj = card.prices[0];
-
   if (!priceObj) return null;
-
   const toNumber = v => (typeof v === "number" ? v : Number(v));
   const tcg = toNumber(priceObj.tcgplayer);
   const cmk = toNumber(priceObj.cardmarket);
-
   if (tcg == null && cmk == null) return null;
   if (tcg != null && cmk != null) return (tcg + cmk) / 2;
   return tcg != null ? tcg : cmk;
@@ -69,9 +61,9 @@ function CollectionSkeletonGrid({ count = 10 }) {
   );
 }
 
-// --- MAIN PANEL COMPONENT ---
 export default function ProfileCollectionPanel({
-  userId,
+  userId,          // may be a profile id in some routes
+  profile,         // if available, contains profile.userId
   isOwnProfile,
   onAddToCollection,
   onCardUpdated,
@@ -79,16 +71,18 @@ export default function ProfileCollectionPanel({
 }) {
   const { token } = useContext(AuthContext);
 
-  // 1. Server state and loading
-  const { collection, loading } = useProfileCollection({ user: { id: userId }, token });
+  // Derive the correct *user* id for collection queries
+  const effectiveUserId = profile?.userId || userId;
 
-  // 2. Local display state for INSTANT updates
+  // Use updated hook signature: { userId, token }
+  const { collection, loading } = useProfileCollection({ userId: effectiveUserId, token });
+
+  // Local display state for instant updates
   const [displayCollection, setDisplayCollection] = useState(collection.value || []);
   useEffect(() => {
     setDisplayCollection(collection.value || []);
   }, [collection.value]);
 
-  // UI state for modals etc.
   const [setFilter, setSetFilter] = useState("");
   const [rarityFilter, setRarityFilter] = useState("");
   const [search, setSearch] = useState("");
@@ -99,15 +93,13 @@ export default function ProfileCollectionPanel({
   const [showQuantityModal, setShowQuantityModal] = useState(false);
   const [removeCard, setRemoveCard] = useState(null);
 
-  // 3. Actions (pass setDisplayCollection for INSTANT removal)
   const { handleRemoveCard } = useProfileCardActions({
     isOwnProfile,
     token,
-    setCollection: setDisplayCollection, // key: UI updates local state, not just server
+    setCollection: setDisplayCollection,
     collection: displayCollection
   });
 
-  // --- Filtering/Sorting using local state ---
   const filteredCards = useMemo(() => {
     return (displayCollection || []).filter(card =>
       (!setFilter || card.setName === setFilter) &&
@@ -121,27 +113,41 @@ export default function ProfileCollectionPanel({
     const collectionCopy = [...filteredCards];
     const [sortBy, direction] = sortOption.split('-');
     const multiplier = direction === 'asc' ? 1 : -1;
+
     switch (sortBy) {
       case 'name':
-        return collectionCopy.sort((a, b) => multiplier * ((a.name || '').localeCompare(b.name || '')));
+        return collectionCopy.sort((a, b) =>
+          multiplier * ((a.name || '').localeCompare(b.name || ''))
+        );
       case 'set':
-        return collectionCopy.sort((a, b) => multiplier * ((a.setName || '').localeCompare(b.setName || '')));
+        return collectionCopy.sort((a, b) =>
+          multiplier * ((a.setName || '').localeCompare(b.setName || ''))
+        );
       case 'price': {
-        const priceA = getCardAveragePrice(a) ?? 0, priceB = getCardAveragePrice(b) ?? 0;
-        if (priceA === 0 && priceB === 0) return (a.name || '').localeCompare(b.name || '');
-        return multiplier * (priceA - priceB);
+        // FIXED: proper comparator uses (a,b)
+        return collectionCopy.sort((a, b) => {
+          const priceA = getCardAveragePrice(a) ?? 0;
+          const priceB = getCardAveragePrice(b) ?? 0;
+          if (priceA === 0 && priceB === 0) {
+            return (a.name || '').localeCompare(b.name || '');
+          }
+          return multiplier * (priceA - priceB);
+        });
       }
       case 'quantity':
-        return collectionCopy.sort((a, b) => multiplier * ((a.quantity || 0) - (b.quantity || 0)));
-      case 'date':
-        const getTime = c => c.createdAt ? new Date(typeof c.createdAt === 'string' ? parseInt(c.createdAt, 10) : c.createdAt).getTime() : 0;
+        return collectionCopy.sort((a, b) =>
+          multiplier * ((a.quantity || 0) - (b.quantity || 0))
+        );
+      case 'date': {
+        const getTime = c =>
+          c.createdAt ? new Date(typeof c.createdAt === 'string' ? parseInt(c.createdAt, 10) : c.createdAt).getTime() : 0;
         return collectionCopy.sort((a, b) => multiplier * (getTime(a) - getTime(b)));
+      }
       default:
         return collectionCopy;
     }
   }, [filteredCards, sortOption]);
 
-  // Helper: fill row
   const fillFirstRowSkeletons = (cardCount) => {
     if (cardCount >= 5) return null;
     return Array.from({ length: 5 - cardCount }).map((_, idx) => (
@@ -149,7 +155,6 @@ export default function ProfileCollectionPanel({
     ));
   };
 
-  // --- Removal logic: fully instant, never flickers ---
   const triggerRemove = (card) => {
     if (!isOwnProfile || !card || !card.id) return;
     if (card.quantity > 1) {
@@ -157,11 +162,8 @@ export default function ProfileCollectionPanel({
       setShowQuantityModal(true);
       setConfirmRemoveId(null);
     } else if (confirmRemoveId === card.id) {
-      // INSTANT removal: update local state immediately
       setDisplayCollection(prev => prev.filter(x => String(x.id) !== String(card.id)));
-      handleRemoveCard(card.id, 1, {
-        onError: () => setDisplayCollection(collection.value || [])
-      });
+      handleRemoveCard(card.id, 1, { onError: () => setDisplayCollection(collection.value || []) });
       setConfirmRemoveId(null);
     } else {
       setConfirmRemoveId(card.id);
@@ -179,15 +181,12 @@ export default function ProfileCollectionPanel({
           )
           .filter(x => x.quantity > 0)
       );
-      handleRemoveCard(removeCard.id, quantity, {
-        onError: () => setDisplayCollection(collection.value || [])
-      });
+      handleRemoveCard(removeCard.id, quantity, { onError: () => setDisplayCollection(collection.value || []) });
     }
     setShowQuantityModal(false);
     setRemoveCard(null);
   };
 
-  // --- Rest as before, but use displayCollection ---
   if (loading.value) {
     return (
       <section className="w-full max-w-8xl mx-auto mt-6">
@@ -201,7 +200,7 @@ export default function ProfileCollectionPanel({
       <section className="w-full max-w-8xl mx-auto mt-6">
         <div className="text-center py-8">
           <div className="flex flex-col items-center gap-2 mb-2">
-            <span className="text-2xl font-bold text-light-accent dark:text-dark-accent">No cards in your collection yet.</span>
+            <span className="text-2xl font-bold text-light-accent dark:text-dark-accent">No cards in this collection yet.</span>
             <span className="text-base text-light-textSecondary dark:text-dark-textSecondary">Start adding cards to see them here!</span>
           </div>
         </div>
@@ -210,30 +209,9 @@ export default function ProfileCollectionPanel({
     );
   }
 
-  if (sortedCards.length === 0) {
-    return (
-      <section className="w-full max-w-8xl mx-auto mt-6">
-        <div className="text-center py-8">
-          <div className="flex flex-col items-center gap-2 mb-2">
-            <svg width={44} height={44} viewBox="0 0 48 48" className="mb-2 text-light-accent dark:text-dark-accent" fill="none">
-              <circle cx="24" cy="24" r="20" fill="#ede9fe" stroke="#a098d7" strokeWidth="2" />
-              <path d="M31 31L39 39" stroke="#a098d7" strokeWidth="3" strokeLinecap="round" />
-              <circle cx="24" cy="24" r="9" fill="#faf7ff" stroke="#a098d7" strokeWidth="1" />
-            </svg>
-            <span className="text-2xl font-bold text-light-accent dark:text-dark-accent">No cards match your filters.</span>
-            <span className="text-base text-light-textSecondary dark:text-dark-textSecondary">Try adjusting your search or filters.</span>
-          </div>
-        </div>
-        <CollectionSkeletonGrid count={10} />
-      </section>
-    );
-  }
-
-  // All sets/rarities for filters (unchanged)
   const allSets = Array.from(new Set((displayCollection || []).map(card => card.setName).filter(Boolean)));
   const allRarities = Array.from(new Set((displayCollection || []).map(card => card.rarity).filter(Boolean)));
 
-  // -- Modals, handlers (same) --
   const openEditModal = (card) => {
     setEditingCard(card);
     setSelectedCard(null);
@@ -242,12 +220,10 @@ export default function ProfileCollectionPanel({
   const handleCardDetailsRemove = card => triggerRemove(card);
   const handleEditModalClose = () => setEditingCard(null);
 
-  // --- MAIN RENDER ---
   return (
     <section className="w-full max-w-8xl mx-auto mt-6">
-      {/* --- Filter/Search/Sort Bar --- */}
+      {/* filters/search/sort (unchanged) */}
       <div className="max-w-3xl flex flex-wrap justify-start gap-2 items-center px-4 py-2 mb-6 transition-all">
-        {/* ...search/filter/sort code as before... */}
         <div className="relative w-[250px]">
           <input
             type="text"
@@ -288,25 +264,16 @@ export default function ProfileCollectionPanel({
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
-        {/* {isOwnProfile && (
-          <button
-            className="bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white rounded-md px-3 py-1.5 text-sm shadow flex items-center h-9 ml-1 focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent transition font-semibold"
-            onClick={onAddToCollection}
-            title="Add Card"
-          >
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="mr-1" aria-hidden="true">
-              <path d="M10 4v12m6-6H4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-            <span className="hidden sm:inline">Add</span>
-          </button>
-        )} */}
       </div>
-      {/* --- Card Grid --- */}
+
+      {/* Card Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
         {sortedCards.map(card => (
           <div key={card.id} className="bg-light-surface dark:bg-dark-surface rounded-xl shadow p-3 flex flex-col items-center hover:shadow-xl transition group">
-            <div className="relative w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-lg mb-2 overflow-hidden cursor-pointer"
-                 onClick={() => setSelectedCard(card)}>
+            <div
+              className="relative w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-lg mb-2 overflow-hidden cursor-pointer"
+              onClick={() => setSelectedCard(card)}
+            >
               <Image
                 src={getCardImageUrl(card.image)}
                 alt={card.name}
@@ -341,9 +308,7 @@ export default function ProfileCollectionPanel({
                 ? <span className="text-xs text-green-600 dark:text-green-400 font-bold mt-1">
                     {formatCurrency(getCardAveragePrice(card))}
                   </span>
-                : <span className="text-xs text-light-textMuted dark:text-dark-textMuted mt-1">
-                    —
-                  </span>
+                : <span className="text-xs text-light-textMuted dark:text-dark-textMuted mt-1">—</span>
               }
               {(card.createdAt) && (
                 <span className="text-xs text-light-textMuted dark:text-dark-textMuted mt-1">
@@ -353,7 +318,8 @@ export default function ProfileCollectionPanel({
             </div>
             {isOwnProfile && (
               <div className="mt-3 w-full flex justify-center">
-                <div className="flex flex-row flex-nowrap gap-2 items-center"
+                <div
+                  className="flex flex-row flex-nowrap gap-2 items-center"
                   onMouseLeave={() => { if (confirmRemoveId === card.id) setConfirmRemoveId(null); }}
                 >
                   <button
@@ -363,9 +329,7 @@ export default function ProfileCollectionPanel({
                     tabIndex={0}
                   >
                     <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="mr-1" aria-hidden="true">
-                      <path d="M17.25 7.75L12.25 2.75C12.051 2.551 11.799 2.427 11.529 2.427C11.259 2.427 11.007 2.551 10.808 2.75L3.25 10.308V15.25H8.192L15.75 7.692C15.949 7.493 16.201 7.369 16.471 7.369C16.741 7.369 16.993 7.493 17.192 7.692C17.391 7.891 17.515 8.143 17.515 8.413C17.515 8.683 17.391 8.935 17.192 9.134L9.634 16.692C9.435 16.891 9.183 17.015 8.913 17.015C8.643 17.015 8.391 16.891 8.192 16.692C7.993 16.493 7.869 16.241 7.869 15.971C7.869 15.701 7.993 15.449 8.192 15.25L15.75 7.692L17.25 7.75Z"
-                        fill="currentColor"
-                      />
+                      <path d="M17.25 7.75L12.25 2.75C12.051 2.551 11.799 2.427 11.529 2.427C11.259 2.427 11.007 2.551 10.808 2.75L3.25 10.308V15.25H8.192L15.75 7.692C15.949 7.493 16.201 7.369 16.471 7.369C16.741 7.369 16.993 7.493 17.192 7.692C17.391 7.891 17.515 8.143 17.515 8.413C17.515 8.683 17.391 8.935 17.192 9.134L9.634 16.692C9.435 16.891 9.183 17.015 8.913 17.015C8.643 17.015 8.391 16.891 8.192 16.692C7.993 16.493 7.869 16.241 7.869 15.971C7.869 15.701 7.993 15.449 8.192 15.25L15.75 7.692L17.25 7.75Z" fill="currentColor" />
                     </svg>
                     Edit
                   </button>
@@ -406,7 +370,7 @@ export default function ProfileCollectionPanel({
           card={selectedCard}
           onClose={() => setSelectedCard(null)}
           dark={dark}
-          onEdit={isOwnProfile ? handleCardDetailsEdit : undefined}
+          onEdit={isOwnProfile ? openEditModal : undefined}
           onDelete={isOwnProfile ? handleCardDetailsRemove : undefined}
         />
       )}
@@ -418,7 +382,6 @@ export default function ProfileCollectionPanel({
           onUpdated={updatedCard => {
             setEditingCard(null);
             if (onCardUpdated) onCardUpdated(updatedCard);
-            // You may also update displayCollection if desired.
           }}
           onRemoved={removedCardId => {
             setEditingCard(null);

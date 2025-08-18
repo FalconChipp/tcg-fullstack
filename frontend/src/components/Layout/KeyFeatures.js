@@ -1,57 +1,56 @@
 "use client";
 import React from "react";
 
-// CHANGED: benefit-first live features
-// NEW: Added Advanced Search + Price Tracking to surface core value immediately.
+// Live features (Price Tracking removed)
 const features = [
   {
     icon: "🗃️",
-    title: "Digital Collection Manager", // CHANGED
-    desc: "Track what you own and what it’s worth — all in one place.", // CHANGED
+    title: "Digital Collection Manager",
+    desc: "Track what you own and what it’s worth — all in one place.",
   },
   {
     icon: "📒",
-    title: "Digital Binders", // CHANGED title format
-    desc: "Recreate your real binders online — layouts, covers, shareable links.", // CHANGED
+    title: "Digital Binders",
+    desc: "Recreate your real binders online — layouts, covers, shareable links.",
   },
   {
-    icon: "🔎", // NEW
-    title: "Advanced Search", // NEW
-    desc: "Find any English card by set, rarity, type, or number — instantly.", // NEW
-  },
-  {
-    icon: "📈", // NEW
-    title: "Price Tracking", // NEW
-    desc: "See collection value at a glance with regularly refreshed prices.", // NEW
+    icon: "🔎",
+    title: "Advanced Search",
+    desc: "Find any English card by set, rarity, type, or number — instantly.",
   },
   {
     icon: "💡",
     title: "Wishlist",
-    desc: "Keep your chase list front and centre so you never miss a pickup.", // CHANGED
+    desc: "Keep your chase list front and centre so you never miss a pickup.",
   },
 ];
 
-// CHANGED: concise, reassuring copy for upcoming features
+// Coming soon (Price Tracking added)
 const comingSoon = [
   {
     icon: "🏷️",
     title: "Marketplace",
-    desc: "Buy and sell with trusted payments and UK-focused tools.", // CHANGED
+    desc: "Buy and sell with trusted payments and UK-focused tools.",
   },
   {
     icon: "🔄",
     title: "Trading",
-    desc: "Secure trades with tracked shipping and privacy by default.", // CHANGED
+    desc: "Secure trades with tracked shipping and privacy by default.",
   },
   {
     icon: "📈",
+    title: "Price Tracking",
+    desc: "See collection value at a glance with regularly refreshed prices.",
+  },
+  {
+    icon: "🔔",
     title: "Price Alerts",
-    desc: "Get notified when prices move or hit your targets.", // CHANGED
+    desc: "Get notified when prices move or hit your targets.",
   },
   {
     icon: "🏆",
     title: "Achievements",
-    desc: "Unlock badges as you complete sets and grow your collection.", // CHANGED
+    desc: "Unlock badges as you complete sets and grow your collection.",
   },
 ];
 
@@ -62,7 +61,7 @@ export default function KeyFeatures() {
         Features
       </h2>
 
-      {/* Live Features — CHANGED: now includes Advanced Search + Price Tracking */}
+      {/* Live Features */}
       <div className="flex flex-col md:flex-row flex-wrap justify-center gap-6 max-w-5xl mx-auto mb-12">
         {features.map((f, i) => (
           <div
@@ -87,7 +86,7 @@ export default function KeyFeatures() {
         ))}
       </div>
 
-      {/* Coming Soon Features — CHANGED: copy tightened, still visually subdued */}
+      {/* Coming Soon Features */}
       <h3 className="text-xl font-bold text-center mb-5 text-light-textMuted dark:text-dark-textMuted tracking-wide">
         Coming Soon
       </h3>

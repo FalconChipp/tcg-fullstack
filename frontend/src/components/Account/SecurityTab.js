@@ -1,7 +1,12 @@
+// src/components/Account/SecurityTab.js
+"use client";
+
 import React, { useState } from "react";
 import StatusMessage from "@/components/UI/StatusMessage";
+// ADDED: icons for provider rows
+import { FaDiscord, FaGoogle } from "react-icons/fa";
 
-// --- Password rule utils ---
+// --- Password rule utils (unchanged) ---
 function getPasswordRules(pw) {
   return {
     length: pw.length >= 8,
@@ -23,7 +28,7 @@ function checkPasswordStrength(pw) {
 const GRAPHQL_ENDPOINT = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
 
 export default function SecurityTab({ user, token }) {
-  // --- State for each section ---
+  // --- State for each section (existing) ---
   const [pwFields, setPwFields] = useState({ current: "", new: "", confirm: "" });
   const [pwStatus, setPwStatus] = useState(null);
 
@@ -32,7 +37,7 @@ export default function SecurityTab({ user, token }) {
 
   const [twoFA, setTwoFA] = useState({
     loading: false,
-    enabled: !!user.twoFactorEnabled,
+    enabled: !!user?.twoFactorEnabled,
     showSetup: false,
     setupUrl: "",
     qrCode: "",
@@ -44,7 +49,9 @@ export default function SecurityTab({ user, token }) {
   const isOAuth = user?.authProvider && user.authProvider !== "local";
   const pwRules = getPasswordRules(pwFields.new);
 
-  // ---- PASSWORD CHANGE HANDLER ----
+  // =========================
+  // PASSWORD CHANGE (existing)
+  // =========================
   async function handlePasswordUpdate(e) {
     e.preventDefault();
     setPwStatus(null);
@@ -83,7 +90,9 @@ export default function SecurityTab({ user, token }) {
     }
   }
 
-  // ---- EMAIL CHANGE HANDLER ----
+  // =======================
+  // EMAIL CHANGE (existing)
+  // =======================
   async function handleEmailUpdate(e) {
     e.preventDefault();
     setEmailStatus(null);
@@ -125,9 +134,9 @@ export default function SecurityTab({ user, token }) {
     }
   }
 
-  // ---- 2FA HANDLERS ----
-
-  // Begin 2FA setup (get QR)
+  // ==============================
+  // 2FA ENABLE / VERIFY / DISABLE
+  // ==============================
   async function handleStart2FA() {
     setTwoFA((s) => ({ ...s, loading: true, generalStatus: null }));
     try {
@@ -153,7 +162,6 @@ export default function SecurityTab({ user, token }) {
     }
   }
 
-  // Verify entered 2FA code (complete setup)
   async function handleVerify2FA(e) {
     e.preventDefault();
     setTwoFA((s) => ({ ...s, verifyStatus: null, loading: true }));
@@ -184,7 +192,6 @@ export default function SecurityTab({ user, token }) {
     }
   }
 
-  // Disable 2FA
   async function handleDisable2FA() {
     setTwoFA((s) => ({ ...s, loading: true, generalStatus: null }));
     try {
@@ -217,16 +224,116 @@ export default function SecurityTab({ user, token }) {
     }
   }
 
-  // ---- RENDER ----
+  // ==========================================
+  // ADDED: CONNECTED ACCOUNTS (Discord/Google)
+  // ==========================================
+  const [connLoading, setConnLoading] = useState(null); // 'discord' | 'google' | null
+  const [connStatus, setConnStatus] = useState(null);
+
+  // NOTE: Replace these with real OAuth/linking flows or GraphQL mutations.
+  async function handleLink(provider) {
+    setConnLoading(provider);
+    setConnStatus(null);
+    // TODO: Open your OAuth flow. When successful, refetch user.
+    setTimeout(() => {
+      setConnLoading(null);
+      setConnStatus({ type: "success", msg: `Linked with ${provider}.` });
+    }, 900);
+  }
+  async function handleUnlink(provider) {
+    setConnLoading(provider);
+    setConnStatus(null);
+    // TODO: Call your unlink mutation. Then refetch user.
+    setTimeout(() => {
+      setConnLoading(null);
+      setConnStatus({ type: "success", msg: `Unlinked from ${provider}.` });
+    }, 900);
+  }
+
+  const providers = [
+    {
+      id: "discord",
+      name: "Discord",
+      connected: !!user?.discordId,
+      Icon: FaDiscord,
+      brand: "#5865F2",
+    },
+    {
+      id: "google",
+      name: "Google",
+      connected: !!user?.googleId,
+      Icon: FaGoogle,
+      brand: "#ea4335",
+    },
+  ];
+
+  // --------- RENDER ----------
   return (
     <div className="space-y-10">
+      <section className="bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border rounded-2xl px-6 py-8 shadow">
+        <h2 className="text-xl font-bold mb-6 text-light-primary dark:text-dark-primary">
+          Connected Accounts
+        </h2>
+
+        <ul className="divide-y divide-light-border dark:divide-dark-border">
+          {providers.map(({ id, name, Icon, brand }) => (
+            <li key={id} className="flex items-center justify-between py-5">
+              {/* Provider identity */}
+              <div className="flex items-center gap-3">
+                <span
+                  className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-light-border dark:border-dark-border"
+                  style={{ color: brand }}
+                >
+                  <Icon className="text-current text-lg" />
+                </span>
+                <div>
+                  <div className="font-semibold">{name}</div>
+                  <div className="mt-0.5 flex items-center gap-2">
+                    <span className="text-sm text-light-textMuted dark:text-dark-textMuted">
+                      Account linking
+                    </span>
+                    <span
+                      className="
+                        text-[11px] uppercase tracking-wide
+                        px-2 py-0.5 rounded-full
+                        bg-light-alt dark:bg-dark-alt
+                        border border-light-border dark:border-dark-border
+                        text-light-textMuted dark:text-dark-textMuted
+                      "
+                    >
+                      Coming soon
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                aria-disabled="true"
+                disabled
+                title="Coming soon"
+                className="
+                  px-5 py-2 rounded-lg font-semibold
+                  border border-light-border dark:border-dark-border
+                  bg-light-alt dark:bg-dark-alt
+                  text-light-text dark:text-dark-text
+                  opacity-60 cursor-not-allowed
+                "
+              >
+                Link (Coming soon)
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+
       {/* PASSWORD CHANGE */}
       <form
         onSubmit={handlePasswordUpdate}
         className="bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border rounded-2xl px-6 py-8 shadow"
       >
         <h2 className="text-xl font-bold mb-6 text-light-primary dark:text-dark-primary">Change Password</h2>
-        {/* Fields as before */}
         <div className="mb-6">
           <label className="block mb-1 font-semibold text-light-text dark:text-dark-text">Current Password</label>
           <input
@@ -291,7 +398,7 @@ export default function SecurityTab({ user, token }) {
         )}
       </form>
 
-      {/* EMAIL CHANGE */}
+      {/* EMAIL CHANGE (existing UI) */}
       <form
         onSubmit={handleEmailUpdate}
         className="bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border rounded-2xl px-6 py-8 shadow"
@@ -333,7 +440,7 @@ export default function SecurityTab({ user, token }) {
         )}
       </form>
 
-      {/* 2FA ENABLE/DISABLE */}
+      {/* 2FA (existing UI) */}
       <div className="bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border rounded-2xl px-6 py-8 shadow">
         <h2 className="text-xl font-bold mb-6 text-light-primary dark:text-dark-primary">Two-Factor Authentication</h2>
         {twoFA.enabled ? (

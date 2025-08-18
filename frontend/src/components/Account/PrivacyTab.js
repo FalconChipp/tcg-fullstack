@@ -1,194 +1,222 @@
+// src/components/Account/PrivacyTab.js
+"use client";
+
 import React, { useState } from "react";
-import { gql, useMutation } from "@apollo/client";
-import StatusMessage from "@/components/UI/StatusMessage";
 import { useRouter } from "next/router";
+import StatusMessage from "@/components/UI/StatusMessage";
 
-// --- GQL MUTATIONS (match backend) ---
-const EXPORT_USER_DATA = gql`
-  mutation ExportUserData($password: String!) {
-    exportUserData(password: $password)
-  }
-`;
+const GRAPHQL_ENDPOINT = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
 
-const DELETE_ACCOUNT = gql`
-  mutation DeleteAccount($password: String!, $confirm: String!) {
-    deleteAccount(password: $password, confirm: $confirm)
-  }
-`;
+/* Small UI primitives */
+function Card({ title, children, className = "" }) {
+  return (
+    <section
+      className={`rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface p-6 md:p-7 shadow ${className}`}
+    >
+      {title && (
+        <h2 className="text-xl font-bold mb-5 text-light-primary dark:text-dark-primary">
+          {title}
+        </h2>
+      )}
+      {children}
+    </section>
+  );
+}
+function TextInput(props) {
+  return (
+    <input
+      {...props}
+      className={`w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent transition ${props.className || ""}`}
+    />
+  );
+}
+function PasswordField({ id, value, onChange, placeholder, disabled, autoComplete }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <TextInput
+        id={id}
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+      />
+      <button
+        type="button"
+        className="absolute inset-y-0 right-2 my-auto h-8 px-2 rounded-lg text-xs text-light-textMuted dark:text-dark-textMuted hover:bg-light-alt dark:hover:bg-dark-alt"
+        onClick={() => setShow((s) => !s)}
+        aria-label={show ? "Hide password" : "Show password"}
+      >
+        {show ? "Hide" : "Show"}
+      </button>
+    </div>
+  );
+}
 
-export default function PrivacyTab({ user }) {
-  const [showExport, setShowExport] = useState(false);
-  const [showDelete, setShowDelete] = useState(false);
-  const [password, setPassword] = useState("");
-  const [status, setStatus] = useState(null);
+export default function PrivacyTab({ user, token }) {
   const router = useRouter();
 
-  // --- EXPORT USER DATA ---
-  const [exportUserData, { loading: exporting }] = useMutation(EXPORT_USER_DATA, {
-    onCompleted: (data) => {
-      setStatus({ type: "success", msg: "Your data export is ready!" });
-      // Open the exported file in a new tab if a URL is returned
-      if (data.exportUserData) {
-        window.open(data.exportUserData, "_blank");
-      }
-      setShowExport(false);
-      setPassword("");
-    },
-    onError: (err) => {
-      setStatus({ type: "error", msg: err.message });
-    },
-  });
+  // local state (separate fields so forms don't share input)
+  const [exportPwd, setExportPwd] = useState("");
+  const [deletePwd, setDeletePwd] = useState("");
+  const [confirmText, setConfirmText] = useState("");
+  const [status, setStatus] = useState(null);
+  const [exporting, setExporting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  // --- DELETE ACCOUNT ---
-  const [deleteAccount, { loading: deleting }] = useMutation(DELETE_ACCOUNT, {
-    onCompleted: () => {
+  async function callGraphQL(query, variables) {
+    const res = await fetch(GRAPHQL_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ query, variables }),
+    });
+    const json = await res.json();
+    if (json.errors?.length) {
+      throw new Error(json.errors[0].message || "Request failed");
+    }
+    return json.data;
+  }
+
+  // EXPORT
+  const handleExport = async (e) => {
+    e.preventDefault();
+    setStatus(null);
+    if (!exportPwd) return setStatus({ type: "error", msg: "Enter your password to export your data." });
+
+    setExporting(true);
+    try {
+      const data = await callGraphQL(
+        `mutation ExportUserData($password: String!) { exportUserData(password: $password) }`,
+        { password: exportPwd }
+      );
+
+      const result = data?.exportUserData;
+      setStatus({ type: "success", msg: "Your data export is ready." });
+
+      // Backend may return a URL or a boolean/string; open if it looks like a URL
+      if (typeof result === "string" && /^https?:\/\//i.test(result)) {
+        window.open(result, "_blank");
+      }
+      setExportPwd("");
+    } catch (err) {
+      setStatus({ type: "error", msg: err.message });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // DELETE
+  const handleDelete = async (e) => {
+    e.preventDefault();
+    setStatus(null);
+    if (confirmText !== "DELETE")
+      return setStatus({ type: "error", msg: 'Type DELETE in the confirmation box to continue.' });
+    if (!deletePwd) return setStatus({ type: "error", msg: "Enter your password to delete your account." });
+
+    setDeleting(true);
+    try {
+      await callGraphQL(
+        `mutation DeleteAccount($password: String!, $confirm: String!) {
+           deleteAccount(password: $password, confirm: $confirm)
+         }`,
+        { password: deletePwd, confirm: "DELETE" }
+      );
+
       setStatus({ type: "success", msg: "Account deleted. Redirecting…" });
       setTimeout(() => {
-        // Clear all local storage/session data and redirect
-        if (typeof window !== "undefined") {
-          localStorage.clear();
-        }
+        if (typeof window !== "undefined") localStorage.clear();
         router.push("/");
         window.location.reload();
-      }, 1500);
-    },
-    onError: (err) => {
+      }, 1200);
+    } catch (err) {
       setStatus({ type: "error", msg: err.message });
-    },
-  });
-
-  // --- EXPORT HANDLER ---
-  const handleExport = (e) => {
-    e.preventDefault();
-    setStatus(null);
-    if (!password) {
-      setStatus({ type: "error", msg: "Enter your password to export your data." });
-      return;
+    } finally {
+      setDeleting(false);
     }
-    exportUserData({ variables: { password } });
   };
 
-  // --- DELETE HANDLER ---
-  const handleDelete = (e) => {
-    e.preventDefault();
-    setStatus(null);
-    // Confirm user really wants to delete account
-    const confirmText = window.prompt('Type DELETE to confirm account deletion.');
-    if (confirmText !== "DELETE") {
-      setStatus({ type: "error", msg: "Confirmation text incorrect." });
-      return;
-    }
-    if (!password) {
-      setStatus({ type: "error", msg: "Enter your password to delete your account." });
-      return;
-    }
-    deleteAccount({ variables: { password, confirm: "DELETE" } });
-  };
-
-  // --- UI ---
   return (
-    <div className="bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border rounded-2xl px-6 py-8 shadow">
-      <h2 className="text-xl font-bold mb-6 text-light-primary dark:text-dark-primary">
-        Privacy & Data
-      </h2>
-      <ul className="mb-4 space-y-2 text-light-text dark:text-dark-text">
-        <li>• Request/download your data (GDPR)</li>
-        <li>• Delete/close account</li>
-      </ul>
+    <div className="space-y-6">
+      {/* Intro */}
+      <Card title="Privacy & Data">
+        <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary">
+          Download a copy of your data or permanently delete your account.
+        </p>
+      </Card>
 
-      {/* --- EXPORT USER DATA FORM --- */}
-      {showExport && (
-        <form onSubmit={handleExport} className="space-y-4 max-w-md mb-8">
-          <label className="block mb-1 font-semibold">
-            Enter password to export your data:
-          </label>
-          <input
-            type="password"
-            className="w-full px-3 py-2 rounded-lg border"
-            value={password}
-            autoFocus
-            onChange={e => setPassword(e.target.value)}
-            required
-            disabled={exporting}
-          />
-          <div className="flex gap-4">
+      {/* Two-up */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Export data */}
+        <Card title="Request My Data (GDPR)">
+          <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary mb-4">
+            We’ll generate a downloadable archive (JSON/CSV where applicable) of your profile, collection, and settings.
+          </p>
+          <form onSubmit={handleExport} className="space-y-3" aria-live="polite">
+            <label className="block text-sm font-semibold">Confirm with password</label>
+            <PasswordField
+              id="export-password"
+              value={exportPwd}
+              onChange={(e) => setExportPwd(e.target.value)}
+              placeholder="Enter your password"
+              autoComplete="current-password"
+            />
             <button
               type="submit"
-              className="bg-light-accent dark:bg-dark-accent text-white dark:text-black px-6 py-2.5 rounded-xl font-bold"
               disabled={exporting}
+              className="mt-1 bg-light-accent dark:bg-dark-accent text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-light-accentLight dark:hover:bg-dark-accentLight transition disabled:opacity-50"
             >
-              {exporting ? "Exporting..." : "Export My Data"}
+              {exporting ? "Preparing export…" : "Generate export"}
             </button>
-            <button
-              type="button"
-              className="bg-light-alt dark:bg-dark-alt px-6 py-2.5 rounded-xl font-bold border"
-              onClick={() => { setShowExport(false); setPassword(""); }}
-              disabled={exporting}
-            >
-              Cancel
-            </button>
+          </form>
+        </Card>
+
+        {/* Delete account */}
+        <Card title="Delete Account" className="border-red-500/40 dark:border-red-500/40">
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 text-red-500 text-sm px-4 py-3 mb-4">
+            This action is permanent and cannot be undone. All personal data, collections, binders and preferences will be deleted.
           </div>
-        </form>
-      )}
 
-      {/* --- DELETE ACCOUNT FORM --- */}
-      {showDelete && (
-        <form onSubmit={handleDelete} className="space-y-4 max-w-md mb-8">
-          <label className="block mb-1 font-semibold">
-            Enter password to delete your account:
-          </label>
-          <input
-            type="password"
-            className="w-full px-3 py-2 rounded-lg border"
-            value={password}
-            autoFocus
-            onChange={e => setPassword(e.target.value)}
-            required
-            disabled={deleting}
-          />
-          <div className="flex gap-4">
-            <button
-              type="submit"
-              className="bg-light-error dark:bg-red-700 text-white px-6 py-2.5 rounded-xl font-bold"
-              disabled={deleting}
-            >
-              {deleting ? "Deleting…" : "Delete My Account"}
-            </button>
-            <button
-              type="button"
-              className="bg-light-alt dark:bg-dark-alt px-6 py-2.5 rounded-xl font-bold border"
-              onClick={() => { setShowDelete(false); setPassword(""); }}
-              disabled={deleting}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
+          <form onSubmit={handleDelete} className="space-y-3" aria-live="polite">
+            <label className="block text-sm font-semibold">
+              Type <span className="font-mono">DELETE</span> to confirm
+            </label>
+            <TextInput
+              id="delete-confirm"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder="DELETE"
+              autoComplete="off"
+            />
 
-      {/* --- ACTION BUTTONS --- */}
-      {!showExport && !showDelete && (
-        <form className="mt-6 space-y-4 max-w-md">
-          <button
-            type="button"
-            className="bg-light-accent dark:bg-dark-accent text-white dark:text-black px-6 py-2.5 rounded-xl font-bold hover:bg-light-primary dark:hover:bg-dark-primary transition"
-            onClick={() => { setShowExport(true); setStatus(null); setPassword(""); }}
-          >
-            Request My Data
-          </button>
-          <button
-            type="button"
-            className="bg-light-error dark:bg-red-700 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-red-600 transition"
-            onClick={() => { setShowDelete(true); setStatus(null); setPassword(""); }}
-          >
-            Delete My Account
-          </button>
-        </form>
-      )}
+            <label className="block text-sm font-semibold mt-2">Confirm with password</label>
+            <PasswordField
+              id="delete-password"
+              value={deletePwd}
+              onChange={(e) => setDeletePwd(e.target.value)}
+              placeholder="Enter your password"
+              autoComplete="current-password"
+            />
 
-      {/* --- STATUS MESSAGE --- */}
+            <div className="pt-1">
+              <button
+                type="submit"
+                disabled={deleting}
+                className="bg-light-error text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-red-600 transition disabled:opacity-50"
+              >
+                {deleting ? "Deleting…" : "Delete my account"}
+              </button>
+            </div>
+          </form>
+        </Card>
+      </div>
+
       {status && (
-        <div className="mt-4">
+        <div className="mt-1">
           <StatusMessage
             type={status.type}
             message={status.msg}
@@ -196,11 +224,6 @@ export default function PrivacyTab({ user }) {
           />
         </div>
       )}
-
-      {/* --- WARNING --- */}
-      <div className="mt-6 text-light-textMuted dark:text-dark-textMuted">
-        Deleting your account is permanent and cannot be undone.
-      </div>
     </div>
   );
 }

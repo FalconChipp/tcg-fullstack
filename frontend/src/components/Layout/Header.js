@@ -7,14 +7,14 @@ import { setCookie } from "@/utils/cookieUtils";
 import { AuthContext } from "../Auth/AuthProvider";
 import UserSearchDropdown from "@/components/UserProfile/UserSearch";
 import { useRouter } from "next/router";
-// import NotificationBell from "@/components/Notifications/NotificationBell"; // REMOVED: not used
+import NotificationBell from "@/components/Notifications/NotificationBell";
 
-// CHANGED: add aria-current + consistent classes
+// Helper for header nav links (neutral text, accent only for active/hover)
 const HeaderNavLink = ({ href, children, isActive, id }) => (
   <Link
     id={id}
     href={href}
-    aria-current={isActive ? "page" : undefined} // NEW
+    aria-current={isActive ? "page" : undefined} // a11y
     className={`
       text-base font-medium px-3 py-2 border-b-2 transition
       ${
@@ -35,13 +35,18 @@ export default function Header({ onStartTour }) {
   const { user, setUser, loading } = useContext(AuthContext);
   const [menuOpen, setMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-  const [servicesDropdownOpen, setServicesDropdownOpen] = useState(false);
   const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const router = useRouter();
 
-  const servicesTimeoutRef = useRef(null);
+  // Temp notifications TODO: Replace with API when ready 
+  const [notifications, setNotifications] = useState([
+    // seed with empty array; sample structure for reference:
+    // { id: 1, type: "info",    title: "Card sold!",       body: "Your Pikachu VMAX has sold.", read: false, date: "2025-07-25T18:33:00Z" },
+    // { id: 2, type: "warning", title: "Action needed",    body: "Please verify your email.",   read: false, date: "2025-07-25T16:10:00Z" },
+  ]);
+
+  const router = useRouter();
   const settingsTimeoutRef = useRef(null);
 
   useEffect(() => {
@@ -64,6 +69,10 @@ export default function Header({ onStartTour }) {
     setMenuOpen(false);
   };
 
+  const markAllNotificationsRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  };
+
   // Overlay for mobile menu
   const MobileOverlay = () =>
     menuOpen ? (
@@ -74,14 +83,12 @@ export default function Header({ onStartTour }) {
       />
     ) : null;
 
-  // const notifications = [...] // REMOVED: sample data, unused
-
   return (
     <>
       {/* Main Header */}
       <header
         id="main-header"
-        role="banner" // NEW
+        role="banner"
         className={`
           fixed top-0 left-0 w-full z-50
           transition-all duration-300
@@ -100,9 +107,7 @@ export default function Header({ onStartTour }) {
               {/* Logo */}
               <Link
                 href="/"
-                className="flex items-center font-extrabold text-2xl tracking-tight
-                  text-light-accent dark:text-dark-accent
-                "
+                className="flex items-center font-extrabold text-2xl tracking-tight text-light-accent dark:text-dark-accent"
                 aria-label="SixByFive TCG Home"
               >
                 SIXBYFIVE
@@ -120,7 +125,6 @@ export default function Header({ onStartTour }) {
                 <HeaderNavLink id="subscriptions-link" href="/subscriptions" isActive={pathname === "/subscriptions"}>
                   Subscriptions
                 </HeaderNavLink>
-                {/* (Optional) Services dropdown retained but commented */}
               </nav>
             </div>
 
@@ -129,44 +133,56 @@ export default function Header({ onStartTour }) {
               <UserSearchDropdown />
             </div>
 
-            {/* Right: Auth, Settings, Mobile */}
-            <div className="flex items-center gap-3">
+            {/* Right: Notifications, Auth, Settings, Mobile */}
+            <div className="flex items-center gap-2 md:gap-3">
+              {/* {user && (
+                <NotificationBell
+                  notifications={notifications}
+                  onMarkAllRead={markAllNotificationsRead} // safe if dropdown uses it
+                />
+              )} */}
+
               {loading ? (
                 <div className="animate-pulse h-8 w-20 bg-light-border dark:bg-dark-border rounded" />
               ) : user ? (
                 <div className="relative">
-                  {/* CHANGED: neutral container (accent only on hover) */}
                   <div
                     className="
-                      flex items-center gap-2
-                      px-1 py-1 rounded-xl transition
-                      bg-transparent
-                      focus-within:ring-2 focus-within:ring-light-accent dark:focus-within:ring-dark-accent
+                      flex items-center gap-1 px-1 py-1 rounded-xl transition bg-transparent
+                      focus-within:ring-2
+                      focus-within:ring-light-accent dark:focus-within:ring-dark-accent
+                      focus-within:ring-offset-2
+                      focus-within:ring-offset-light-surface dark:focus-within:ring-offset-dark-surface
                     "
                   >
                     <button
                       id="profile-link"
+                      type="button"
+                      onClick={() => setUserDropdownOpen(v => !v)}
+                      aria-haspopup="menu"
+                      aria-expanded={userDropdownOpen ? "true" : "false"}
+                      aria-controls="user-menu"
                       className="
                         flex items-center gap-2 py-1 px-3 rounded-full
                         hover:bg-light-alt dark:hover:bg-dark-alt
                         text-base font-medium text-light-text dark:text-dark-text
                         transition
+                        /* kill any inner focus visuals */
+                        focus:outline-none focus-visible:outline-none
+                        focus:ring-0 focus-visible:ring-0 focus:ring-offset-0
+                        shadow-none border-0
                       "
-                      onClick={() => setUserDropdownOpen((v) => !v)}
-                      aria-haspopup="menu"
-                      aria-expanded={userDropdownOpen ? "true" : "false"} // NEW
-                      aria-controls="user-menu"
                     >
                       <span>{user.username}</span>
                       <i className="fas fa-chevron-down text-xs ml-1" aria-hidden="true" />
                     </button>
-                    {/* <NotificationBell notifications={notifications} /> */}
                   </div>
+
 
                   {userDropdownOpen && (
                     <div
                       id="user-menu"
-                      role="menu" // NEW
+                      role="menu"
                       className="absolute right-0 mt-2 w-52 rounded-xl shadow-lg bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border z-30 py-2 animate-fadeIn"
                     >
                       <Link
@@ -189,6 +205,7 @@ export default function Header({ onStartTour }) {
                         onClick={onStartTour}
                         className="block w-full text-left px-4 py-2 text-base hover:bg-light-accent hover:text-white rounded transition-colors"
                         role="menuitem"
+                        type="button"
                       >
                         Redo Onboarding Tour
                       </button>
@@ -196,6 +213,7 @@ export default function Header({ onStartTour }) {
                         onClick={handleSignOut}
                         className="block w-full text-left px-4 py-2 text-base hover:bg-light-error hover:text-white dark:hover:bg-dark-error dark:hover:text-white rounded transition-colors"
                         role="menuitem"
+                        type="button"
                       >
                         Sign Out
                       </button>
@@ -203,7 +221,6 @@ export default function Header({ onStartTour }) {
                   )}
                 </div>
               ) : (
-                // CHANGED: acquisition-first label
                 <button
                   onClick={() => setAuthModalOpen(true)}
                   className="
@@ -225,14 +242,18 @@ export default function Header({ onStartTour }) {
                   setSettingsDropdownOpen(true);
                 }}
                 onMouseLeave={() => {
-                  settingsTimeoutRef.current = setTimeout(() => setSettingsDropdownOpen(false), 250);
+                  settingsTimeoutRef.current = setTimeout(
+                    () => setSettingsDropdownOpen(false),
+                    250
+                  );
                 }}
               >
                 <button
                   className="text-lg rounded-full p-2 hover:bg-light-alt dark:hover:bg-dark-alt transition text-light-text dark:text-dark-text"
                   aria-haspopup="true"
-                  aria-expanded={settingsDropdownOpen ? "true" : "false"} // NEW
+                  aria-expanded={settingsDropdownOpen ? "true" : "false"}
                   aria-label="Open settings"
+                  type="button"
                 >
                   <i className="fas fa-cog" />
                 </button>
@@ -243,13 +264,16 @@ export default function Header({ onStartTour }) {
                     aria-label="Settings"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-base font-medium text-light-text dark:text-dark-text">Dark Mode</span>
+                      <span className="text-base font-medium text-light-text dark:text-dark-text">
+                        Dark Mode
+                      </span>
                       <button
                         onClick={toggleDark}
                         className="relative inline-flex h-6 w-11 items-center rounded-full bg-light-border dark:bg-dark-border transition-colors focus:outline-none"
                         role="switch"
-                        aria-checked={dark ? "true" : "false"} // NEW
+                        aria-checked={dark ? "true" : "false"}
                         aria-label="Toggle dark mode"
+                        type="button"
                       >
                         <span
                           className={`
@@ -268,8 +292,9 @@ export default function Header({ onStartTour }) {
                 onClick={() => setMenuOpen((v) => !v)}
                 className="md:hidden text-lg rounded-full p-2 hover:bg-light-alt dark:hover:bg-dark-alt transition text-light-text dark:text-dark-text"
                 aria-label="Open menu"
-                aria-controls="mobile-menu" // NEW
-                aria-expanded={menuOpen ? "true" : "false"} // NEW
+                aria-controls="mobile-menu"
+                aria-expanded={menuOpen ? "true" : "false"}
+                type="button"
               >
                 <i className="fas fa-bars" />
               </button>
@@ -283,9 +308,9 @@ export default function Header({ onStartTour }) {
 
       {/* Mobile Menu */}
       <div
-        id="mobile-menu" // NEW
-        role="dialog" // NEW
-        aria-modal="true" // NEW
+        id="mobile-menu"
+        role="dialog"
+        aria-modal="true"
         className={`
           fixed top-0 right-0 w-80 h-full z-50
           transform transition-transform duration-300 ease-in-out
@@ -302,6 +327,7 @@ export default function Header({ onStartTour }) {
               onClick={() => setMenuOpen(false)}
               className="text-lg rounded-full p-2 hover:bg-light-alt dark:hover:bg-dark-alt transition text-light-text dark:text-dark-text"
               aria-label="Close menu"
+              type="button"
             >
               <i className="fas fa-times" />
             </button>
@@ -325,21 +351,19 @@ export default function Header({ onStartTour }) {
                     bg-light-error hover:bg-light-error/90 text-white
                     dark:bg-dark-error dark:hover:bg-dark-error/90 dark:text-white
                   "
+                  type="button"
                 >
                   Sign Out
                 </button>
               </>
             ) : (
-              // CHANGED: acquisition-first label
               <button
-                onClick={() => {
-                  setAuthModalOpen(true);
-                  setMenuOpen(false);
-                }}
+                onClick={() => { setAuthModalOpen(true); setMenuOpen(false); }}
                 className="w-full px-4 py-2 rounded-lg shadow text-base
                   bg-light-accent hover:bg-light-accentLight text-white
                   dark:bg-dark-accent dark:hover:bg-dark-accentLight dark:text-white
                 "
+                type="button"
               >
                 Start free
               </button>
@@ -357,7 +381,7 @@ export default function Header({ onStartTour }) {
         />
       )}
 
-      {/* Animate fade-in for dropdowns */}
+      {/* Fade-in anim for dropdowns */}
       <style jsx global>{`
         .animate-fadeIn {
           animation: fadeIn 0.18s cubic-bezier(0.4, 0, 0.2, 1);

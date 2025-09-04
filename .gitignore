@@ -14,3 +14,4 @@ dashboard/package-lock.json
 backend/schema.graphql
 backend/scripts/exportSchema.js
 frontend/.env
+frontend/.env

@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "preinstall": "echo \"CWD=$(pwd)\" && echo \"🔎 userconfig=$(npm config get userconfig)\" && echo \"🔎 @sixbyfive registry=$(npm config get @sixbyfive:registry)\" && node -e \"console.log('🔎 NODE_AUTH_TOKEN set:', !!process.env.NODE_AUTH_TOKEN)\"",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

@@ -13,5 +13,4 @@ dashboard/package-lock.json
 /backend/uploads/avatars
 backend/schema.graphql
 backend/scripts/exportSchema.js
-frontend/.npmrc
 frontend/.env

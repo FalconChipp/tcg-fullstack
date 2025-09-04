@@ -5,6 +5,7 @@
 
 [build.environment]
   NEXT_PUBLIC_BASE_URL = "https://sbftest.netlify.app"
+  NPM_CONFIG_USERCONFIG = "./.npmrc"
   NODE_VERSION = "18"
 
 [[plugins]]

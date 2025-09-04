@@ -1,180 +1,277 @@
-import { SET_MAPPING, getSetCandidates } from './SetMapping.js';
+// backend/src/modules/search/helpers.js
+
+import crypto from 'node:crypto';
 import { CardPriceCache } from '../../models/index.js';
-import { fetchTCGDexCardById } from './api/tcgdex.js';
-import { fetchPTCGCardById } from './api/pokemontcg.js';
 
-const DEBUG_PRICE = process.env.DEBUG_PRICE === '1';
-
-// Shared timeouts + helper
-const SAFE_TIMEOUTS = {
-  externalFetch: Number(process.env.PRICE_FETCH_TIMEOUT_MS || 5000),
-  jsonParse: 2000,
+/** -------- Logging (light) -------- */
+const ts = () => new Date().toISOString();
+export const log = {
+  info: (...args) => console.log(`[${ts()}] [info]`, ...args),
+  warn: (...args) => console.warn(`[${ts()}] [warn]`, ...args),
+  error: (...args) => console.error(`[${ts()}] [error]`, ...args),
+  timing: (obj) => console.log(`[SEARCH][timing] ${JSON.stringify(obj)}`),
+  priceOk: (id, where) => console.log(`[PRICE][OK] ${id} via ${where}`),
+  priceErr: (id, tryNo, code) =>
+    console.log(`[PRICE][ERR] ${id} ${code ? code + ' ' : ''}try ${tryNo}: price-timeout`),
+  priceMap: (from, to) => console.log(`[PRICE][MAP] ${from} -> ${to} via mapping`),
+  priceFallbackErr: (id, code) => console.log(`[PRICE][ERR] ${id} card-by-id fallback: ${code}`),
+  priceFallbackFail: (id, code) => console.log(`[PRICE][FAIL] ${id} after fallback ${code}`),
 };
 
-function withTimeout(promise, ms, label = 'timeout') {
-  let t;
-  const timer = new Promise((_, rej) => (t = setTimeout(() => rej(new Error(label)), ms)));
-  return Promise.race([promise.finally(() => clearTimeout(t)), timer]);
-}
-
-/** --- Set Exclusion Blocklist --- */
+/** -------- Pocket / unsupported sets blocklist -------- */
 export const BLOCKED_SET_CODES = [
-  // Pokémon TCG Pocket (example) / other unsupported sets
-  'PROMO-A','A1','A1a','A2','A2a','A2b','A3','A3a','A3b','A4'
+  // Pokémon TCG Pocket (examples)
+  'PROMO-A','A1','A1a','A2','A2a','A2b','A3','A3a','A3b','A4',
 ];
 
-/** --- Set Normalization & Filtering --- */
-export function normalizeSetCode(setInput) {
-  const candidates = getSetCandidates(setInput);
-  return candidates.length ? candidates[0] : null;
-}
 export function isSetBlocked(setCode) {
-  return BLOCKED_SET_CODES.includes(setCode?.toUpperCase());
-}
-export function getSetInfo(setCode) {
-  return SET_MAPPING[setCode] || null;
+  return !!setCode && BLOCKED_SET_CODES.includes(String(setCode).toUpperCase());
 }
 
-/** --- Card Image URL Builder --- */
-export function tcgdexImageUrl(card) {
-  if (!card?.set || !card?.number) return null;
-  const eraMatch = String(card.set).match(/^([a-zA-Z]+)/);
-  const era = eraMatch ? eraMatch[1] : card.set;
-  const number = String(card.number).replace(/^0+/, '');
-  return `https://assets.tcgdex.net/en/${era}/${card.set}/${number}/high.webp`;
+/** -------- Image normalizer (TCGdex -> /high.webp) -------- */
+export function normalizeImage(url) {
+  if (!url) return url;
+  if (/assets\.tcgdex\.net/.test(url)) {
+    const base = url.replace(/\/(low|high)\.webp$/i, '');
+    return `${base}/high.webp`;
+  }
+  return url;
 }
 
-/** --- Cache Freshness (7 days; price cache has 24h TTL below) --- */
-export function isCacheFresh(lastUpdated) {
-  if (!lastUpdated) return false;
-  const updated = new Date(lastUpdated);
-  return Date.now() - updated < 7 * 24 * 60 * 60 * 1000;
+/** -------- ID normalization + mapping --------
+ * Canonical ids look like `sv08-077` or `sv08.5-028`.
+ * Vendors use `sv8-77` or `sv8pt5-28` (drop leading zeros, `.5` -> `pt5`).
+ */
+export function normalizeId(id) {
+  if (!id) return id;
+  let canon = id.toLowerCase();
+  // normalize weird forms into e.g. sv08.5-028
+  canon = canon.replace(/sv(\d+)\.5-/g, (_m, n) => `sv${n}.5-`);
+  return canon;
 }
 
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-function isFresh(dateLike) {
-  if (!dateLike) return false;
-  const t = new Date(dateLike).getTime();
-  return Number.isFinite(t) && Date.now() - t < ONE_DAY_MS;
+export function splitCanonId(canonId) {
+  const m = /^([a-z]+)(\d+(?:\.5)?)\-([0-9a-z]+)$/i.exec(canonId);
+  if (!m) return null;
+  const [, prefix, version, num] = m;
+  const pt5 = /\.5$/.test(version);
+  const main = parseInt(version, 10); // sv05 -> 5
+  return { prefix: prefix.toLowerCase(), main, pt5, num: num.toLowerCase() };
 }
 
-function isEmptyPriceData(pd) {
-  if (!pd) return true;
-  const hasTCG = pd.tcgplayer && Object.keys(pd.tcgplayer).length > 0;
-  const hasCMK = pd.cardmarket && Object.keys(pd.cardmarket).length > 0;
-  return !(hasTCG || hasCMK);
+export function toVendorId(canonId /*, kind */) {
+  const n = normalizeId(canonId);
+  const parts = splitCanonId(n);
+  if (!parts) return canonId;
+
+  const base = parts.pt5 ? `sv${parts.main}pt5` : `sv${parts.main}`;
+  const numNoZero = parts.num.replace(/^0+/, '');
+  const vendorId = `${base}-${numNoZero}`;
+  log.priceMap(canonId, vendorId);
+  return vendorId;
 }
 
-// --- Card Price Cache Util (unchanged TTL logic, but ignore empty blobs)
-export async function getCardPriceCache(cardId) {
-  const cache = await CardPriceCache.findOne({ where: { cardId } });
-  if (!cache) return null;
-  const freshnessAnchor = cache.lastFetched || cache.updatedAt;
-  if (!isFresh(freshnessAnchor)) return null;
+// backward-compatible alias — old callers expect this name
+export function tcgdexToPtcgId(canonId) {
+  return toVendorId(canonId);
+}
 
-  const pd = {
-    tcgplayer: cache.tcgplayer || null,
-    cardmarket: cache.cardmarket || null,
-  };
-
-  // ignore “empty” cached blobs so we’ll refetch
-  if (isEmptyPriceData(pd)) {
-    if (DEBUG_PRICE) console.log(`[PRICE][CACHE] ${cardId} fresh-but-empty -> refetch`);
+/** -------- Cursor helpers -------- */
+export function encodeCursor(obj) {
+  return Buffer.from(JSON.stringify(obj)).toString('base64url');
+}
+export function decodeCursor(cur) {
+  try {
+    return JSON.parse(Buffer.from(cur, 'base64url').toString('utf8'));
+  } catch {
     return null;
   }
-  return pd;
 }
 
-export async function saveCardPriceCache(cardId, priceData) {
-  // don’t persist if it’s effectively empty
-  if (isEmptyPriceData(priceData)) {
-    if (DEBUG_PRICE) console.log(`[PRICE][CACHE] ${cardId} not saving empty cache`);
-    return;
+/** -------- Abortable fetch with timeout -------- */
+export async function withTimeout(promise, ms, onTimeout) {
+  let timer;
+  try {
+    const out = await Promise.race([
+      promise,
+      new Promise((_, rej) => (timer = setTimeout(() => rej(new Error('price-timeout')), ms))),
+    ]);
+    clearTimeout(timer);
+    return out;
+  } catch (e) {
+    if (timer) clearTimeout(timer);
+    if (onTimeout) onTimeout(e);
+    throw e;
   }
-  const [cache] = await CardPriceCache.findOrCreate({ where: { cardId } });
-  cache.tcgplayer = priceData?.tcgplayer ?? null;
-  cache.cardmarket = priceData?.cardmarket ?? null;
-  cache.lastFetched = new Date();
-  await cache.save();
-  if (DEBUG_PRICE) console.log(`[PRICE][CACHE] ${cardId} saved`);
 }
 
-/** --- Set Card Count (for Completion %) --- */
-export function getSetUniqueCardCount(setCode, cards, includePromos = true) {
-  return new Set(
-    cards
-      .filter(card => card.set === setCode && (includePromos ? true : !card.isPromo))
-      .map(card => card.number)
-  ).size;
-}
-
-/** --- Rarity List Helper --- */
-export const RARITIES = [
-  'Common','Uncommon','Rare','Rare Holo','Rare Holo EX',
-  'Rare Ultra','Rare Secret','Promo','Other'
-];
-export function getAllRarities() {
-  return RARITIES.slice().sort();
-}
-
-/**
- * Convert TCGDex id (e.g. sv08-057, sv08.5-028) → PokémonTCG id (sv8-57, sv8pt5-28).
- * Uses SET_MAPPING first; then a safe fallback (strip leading zeros, “.5”→“pt5”).
- */
-// Convert TCGDex id → PTCG id with resilient fallback
-export function tcgdexToPtcgId(tcgdexId) {
-  if (!tcgdexId) return "";
-  const m = String(tcgdexId).trim().match(/^([a-z0-9.]+)[-._](\d+)$/i);
-  if (!m) return "";
-  const [, tcgdexSet, rawNum] = m;
-
-  // Prefer explicit SET_MAPPING
-  for (const mapping of Object.values(SET_MAPPING)) {
-    if (mapping.tcgdex === tcgdexSet && mapping.ptcg) {
-      const id = `${mapping.ptcg}-${parseInt(rawNum, 10)}`;
-      if (DEBUG_PRICE) console.log(`[PRICE][MAP] ${tcgdexId} -> ${id} via mapping`);
-      return id;
-    }
-  }
-
-  // Fallback: normalize (sv08 -> sv8, sv08.5 -> sv8pt5)
-  const m2 = tcgdexSet.match(/^([a-z]+)(\d+(?:\.\d+)?)$/i);
-  if (!m2) return "";
-  const prefix = m2[1].toLowerCase();
-  const version = m2[2];
-  const [main, dot] = version.split('.');
-  const mainNoZero = String(parseInt(main, 10));
-  const ptPart = dot ? `pt${parseInt(dot, 10)}` : "";
-  const ptcgSet = `${prefix}${mainNoZero}${ptPart}`;
-  const id = `${ptcgSet}-${parseInt(rawNum, 10)}`;
-  if (DEBUG_PRICE) console.log(`[PRICE][MAP] ${tcgdexId} -> ${id} via fallback`);
-  return id;
-}
-
-/**
- * Hydrate a card object with as much detail as possible from TCGDex and PTCG.io
- * Used before saving to DB to prevent nulls!
- */
-export async function hydrateCard(card) {
-  let hydrated = { ...card };
-
-  // Fetch TCGDex details if important fields are missing
-  if (!hydrated.rarity || !hydrated.setName || !hydrated.setLogo || !hydrated.image) {
+/** -------- Simple retry with backoff -------- */
+export async function retry(fn, { tries = 2, baseMs = 300 } = {}) {
+  let lastErr;
+  for (let i = 1; i <= tries; i++) {
     try {
-      const dexData = await withTimeout(fetchTCGDexCardById(card.id), SAFE_TIMEOUTS.externalFetch, 'tcgdex-timeout');
-      if (dexData) hydrated = { ...dexData, ...hydrated }; // hydrate, keep provided fields
-    } catch {}
-  }
-
-  // If still missing image, try PTCG.io
-  if (!hydrated.image) {
-    const ptcgId = tcgdexToPtcgId(card.id);
-    if (ptcgId) {
-      try {
-        const ptcgData = await withTimeout(fetchPTCGCardById(ptcgId), SAFE_TIMEOUTS.externalFetch, 'ptcg-timeout');
-        hydrated.image = ptcgData?.images?.large || ptcgData?.images?.small || null;
-      } catch {}
+      return await fn(i);
+    } catch (e) {
+      lastErr = e;
+      if (i === tries) break;
+      await new Promise((r) => setTimeout(r, baseMs * i));
     }
   }
-  return hydrated;
+  throw lastErr;
 }
+
+/** -------- Stable sort + card comparator -------- */
+export function stableSort(arr, cmp) {
+  return arr
+    .map((v, i) => ({ v, i }))
+    .sort((a, b) => {
+      const d = cmp(a.v, b.v);
+      return d !== 0 ? d : a.i - b.i;
+    })
+    .map((x) => x.v);
+}
+
+function cardKeyParts(card) {
+  const setKey = (card.set || '').toLowerCase();
+  const numStr = (card.number || '').toString().toLowerCase();
+  const num = parseInt(numStr.replace(/[^\d]/g, ''), 10);
+  return { setKey, num: Number.isNaN(num) ? Infinity : num, id: (card.id || '').toLowerCase() };
+}
+
+export function compareCards(a, b) {
+  const ka = cardKeyParts(a);
+  const kb = cardKeyParts(b);
+  if (ka.setKey < kb.setKey) return -1;
+  if (ka.setKey > kb.setKey) return 1;
+  if (ka.num < kb.num) return -1;
+  if (ka.num > kb.num) return 1;
+  if (ka.id < kb.id) return -1;
+  if (ka.id > kb.id) return 1;
+  return 0;
+}
+
+/** -------- Filter helpers -------- */
+export function applyFilters(cards, { listed, forTrade, rarity } = {}) {
+  return cards.filter((c) => {
+    if (isSetBlocked(c.set)) return false;
+    if (typeof listed === 'boolean' && !!c.listed !== listed) return false;
+    if (typeof forTrade === 'boolean' && !!c.forTrade !== forTrade) return false;
+    if (rarity && c.rarity && c.rarity.toLowerCase() !== rarity.toLowerCase()) return false;
+    return true;
+  });
+}
+
+/** -------- Variant key normalizer --------
+ * Normalizes vendor keys so we don’t stomp fields:
+ * - reverseHolofoil -> reverse
+ * - holofoil -> holo
+ * - normal stays normal
+ * - everything else stays as-is
+ */
+export function normalizeVariantKey(k) {
+  const s = String(k || '').toLowerCase().trim();
+  if (s === 'reverseholofoil' || s === 'reverseholo' || s === 'reverse') return 'reverse';
+  if (s === 'holofoil' || s === 'holo') return 'holo';
+  if (s === 'normal') return 'normal';
+  return k; // leave uncommon keys as-is (e.g., '1stEdition', etc.)
+}
+
+/** -------- Price merge helper -------- */
+export function mergePriceFields(target, priceObj, variation) {
+  if (!priceObj) return;
+  const key = normalizeVariantKey(variation);
+  if (!target.pricing) target.pricing = {};
+  // merge (don’t clobber if we merged from multiple vendors)
+  target.pricing[key] = { ...(target.pricing[key] || {}), ...priceObj };
+
+  // tcgplayer style
+  if ('low' in priceObj) target.tcgplayerLow = priceObj.low;
+  if ('mid' in priceObj) target.tcgplayerMid = priceObj.mid;
+  if ('high' in priceObj) target.tcgplayerHigh = priceObj.high;
+  if ('market' in priceObj) target.tcgplayerMarket = priceObj.market;
+  if ('directLow' in priceObj) target.tcgplayerDirectLow = priceObj.directLow;
+
+  // cardmarket style
+  if ('averageSellPrice' in priceObj) target.cardmarketAverageSell = priceObj.averageSellPrice;
+  if ('lowPrice' in priceObj) target.cardmarketLowPrice = priceObj.lowPrice;
+  if ('trendPrice' in priceObj) target.cardmarketTrendPrice = priceObj.trendPrice;
+}
+
+/** -------- Concurrency limiter -------- */
+export function createLimiter(max = 5) {
+  let active = 0;
+  const queue = [];
+  const next = () => {
+    if (active >= max || queue.length === 0) return;
+    active++;
+    const { fn, resolve, reject } = queue.shift();
+    fn()
+      .then((v) => {
+        active--;
+        resolve(v);
+        next();
+      })
+      .catch((e) => {
+        active--;
+        reject(e);
+        next();
+      });
+  };
+  return function limit(fn) {
+    return new Promise((resolve, reject) => {
+      queue.push({ fn, resolve, reject });
+      next();
+    });
+  };
+}
+
+/** -------- Simple price cache helpers for the daily job -------- */
+export async function getCardPriceCache(cardId) {
+  const row = await CardPriceCache.findOne({ where: { cardId }, raw: true });
+  return row ? row.tcgplayer || null : null;
+}
+
+export async function saveCardPriceCache(cardId, prices) {
+  const now = new Date();
+  const existing = await CardPriceCache.findOne({ where: { cardId } });
+  if (existing) {
+    await CardPriceCache.update(
+      { tcgplayer: prices ?? null, lastFetched: now, updatedAt: now },
+      { where: { cardId } }
+    );
+  } else {
+    await CardPriceCache.create({
+      id: crypto.randomUUID(),
+      cardId,
+      tcgplayer: prices ?? null,
+      cardmarket: null,
+      lastFetched: now,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+}
+
+/** Convenience export bundle */
+export default {
+  log,
+  normalizeId,
+  splitCanonId,
+  toVendorId,
+  tcgdexToPtcgId,
+  normalizeImage,
+  encodeCursor,
+  decodeCursor,
+  withTimeout,
+  retry,
+  stableSort,
+  compareCards,
+  applyFilters,
+  normalizeVariantKey,
+  mergePriceFields,
+  createLimiter,
+  getCardPriceCache,
+  saveCardPriceCache,
+  BLOCKED_SET_CODES,
+  isSetBlocked,
+};

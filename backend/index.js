@@ -28,6 +28,7 @@ import { typeDefs, resolvers } from './src/schema.js';
 import { sequelize, User, Profile } from './src/models/index.js';
 import * as models from './src/models/index.js';
 import { updateCardPricesDaily } from './src/tasks/updateCardPrices.js';
+import { refreshExchangeRates } from './src/modules/search/api/exchangeRates.js'; // ⬅️ NEW
 
 // --- Logger Setup ---
 const logger = winston.createLogger({
@@ -97,11 +98,8 @@ const allowedOrigins = (process.env.CORS_ORIGINS || '')
 // robust CORS options with header reflection + global preflight
 const corsOptions = {
   origin: (origin, cb) => {
-    // allow no-origin tools (curl, server-to-server)
-    if (!origin) return cb(null, true);
-    // allow-all if no allow-list configured
-    if (allowedOrigins.length === 0) return cb(null, true);
-    // exact match (protocol + host + port)
+    if (!origin) return cb(null, true); // allow no-origin tools (curl, server-to-server)
+    if (allowedOrigins.length === 0) return cb(null, true); // allow-all if no allow-list configured
     if (allowedOrigins.includes(origin)) return cb(null, true);
     return cb(new Error(`Not allowed by CORS: ${origin}`));
   },
@@ -109,7 +107,7 @@ const corsOptions = {
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   exposedHeaders: ['Authorization'],
   preflightContinue: false,
-  optionsSuccessStatus: 204, // some browsers choke on 200 here
+  optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsOptions));
@@ -138,7 +136,7 @@ const limiter = rateLimit({
     req.socket?.remoteAddress ||
     'unknown',
   skipFailedRequests: true,
-  skip: (req) => req.method === 'OPTIONS', 
+  skip: (req) => req.method === 'OPTIONS',
 });
 app.use(limiter);
 
@@ -329,15 +327,36 @@ try {
     startNotificationCleanup(logger),
   ];
 
+  // -------------------- CRON JOBS --------------------
+  // Configure timezone for cron (defaults to UTC if not provided)
+  const CRON_TZ = process.env.CRON_TZ || 'UTC';
+
+  // (A) Prime exchange rates on boot (non-blocking; safe if it fails)
+  refreshExchangeRates({ timeoutMs: 8000 })
+    .then(() => logger.info('[BOOT] Exchange rates refreshed'))
+    .catch(e => logger.warn(`[BOOT] FX refresh failed: ${e.message}`));
+
+  // (B) Daily job: refresh FX, then update prices (sequential, once a day)
+  // Runs at 03:00 every day in CRON_TZ
   cron.schedule('0 3 * * *', async () => {
-    console.log('[CRON] Starting daily card price update...');
+    logger.info('[CRON] Starting daily FX refresh + card price update...');
+    try {
+      await refreshExchangeRates({ timeoutMs: 8000 });
+      logger.info('[CRON] Exchange rates refreshed.');
+    } catch (e) {
+      // Continue even if FX fetch fails; update job will fall back to cached/env/defaults.
+      logger.warn(`[CRON] FX refresh failed: ${e.message}`);
+    }
+
     try {
       const result = await updateCardPricesDaily();
-      console.log('[CRON] Daily update result:', result);
+      logger.info(`[CRON] Daily price update done. Updated=${result?.updated ?? 0}, Skipped=${result?.skipped ?? 0}`);
     } catch (e) {
-      console.error('[CRON] Daily update failed:', e);
+      logger.error(`[CRON] Daily price update failed: ${e.message}`);
     }
-  });
+  }, { timezone: CRON_TZ });
+
+  // ---------------------------------------------------
 
   function shutdown() {
     logger.info('Shutdown requested, draining...');
@@ -359,6 +378,7 @@ try {
 
   httpServer.listen(PORT, () => {
     logger.info(`Server listening at http://localhost:${PORT}/graphql`);
+    logger.info(`[CRON] Timezone: ${CRON_TZ} — Daily job scheduled at 03:00`);
   });
 } catch (err) {
   logger.error(`Database connection failed: ${err.message}`);

@@ -1,10 +1,9 @@
-import { DataTypes, Model } from 'sequelize';
+// src/models/CardPriceHistory.js — ESM factory (default export)
+import { DataTypes } from 'sequelize';
 
-// CardPriceHistory model factory
-export default (sequelize) => {
-  class CardPriceHistory extends Model {}
-
-  CardPriceHistory.init(
+const CardPriceHistoryFactory = (sequelize) => {
+  const CardPriceHistory = sequelize.define(
+    'CardPriceHistory',
     {
       id: {
         type: DataTypes.UUID,
@@ -19,39 +18,18 @@ export default (sequelize) => {
         type: DataTypes.STRING,
         allowNull: false,
       },
-      tcgplayer: {
-        type: DataTypes.JSON,
-        allowNull: true,
-      },
-      cardmarket: {
-        type: DataTypes.JSON,
-        allowNull: true,
-      },
-      gbp: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: true,
-      },
-      currency: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      fetchedAt: {
-        type: DataTypes.DATE,
-        allowNull: false,
-        defaultValue: DataTypes.NOW,
-      },
-      createdAt: DataTypes.DATE,
-      updatedAt: DataTypes.DATE,
+      tcgplayer: { type: DataTypes.JSON, allowNull: true },
+      cardmarket: { type: DataTypes.JSON, allowNull: true },
+      gbp: { type: DataTypes.FLOAT, allowNull: true },
+      currency: { type: DataTypes.STRING, allowNull: true, defaultValue: 'GBP' },
+      fetchedAt: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
     },
     {
-      sequelize,
-      modelName: 'CardPriceHistory',
       tableName: 'card_price_history',
-      timestamps: true,
+      underscored: false,
+      timestamps: true, // keeps createdAt/updatedAt alongside fetchedAt
       indexes: [
         { fields: ['cardId'] },
-        { fields: ['variation'] },
-        { fields: ['fetchedAt'] },
         { fields: ['cardId', 'variation', 'fetchedAt'] },
       ],
     }
@@ -59,3 +37,5 @@ export default (sequelize) => {
 
   return CardPriceHistory;
 };
+
+export default CardPriceHistoryFactory;

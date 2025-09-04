@@ -7,7 +7,10 @@ import Link from 'next/link';
 import StatusMessage from '@/components/UI/StatusMessage';
 import { useTheme } from '@/hooks/ThemeProvider';
 
-const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+import { useMutation } from '@apollo/client';
+import { LoginDocument, RegisterDocument } from '@sixbyfive/tcg-binder';
+
+// const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
 
 /* ========= Helpers ========= */
 
@@ -21,7 +24,7 @@ function getPasswordValidationErrors(pw) {
   return errors;
 }
 
-// CHANGED: simple analytics shim (works with gtag or dataLayer if present)
+// simple analytics shim (works with gtag or dataLayer if present)
 function track(event, payload = {}) {
   try {
     if (typeof window === 'undefined') return;
@@ -51,6 +54,10 @@ export default function AuthModal({
   const [submitting, setSubmitting] = useState(false);
   const [showPw, setShowPw] = useState(false);
 
+  /* ADDED: Apollo mutations */
+const [loginMutation] = useMutation(LoginDocument); 
+const [registerMutation] = useMutation(RegisterDocument);
+
   const modalRef = useRef(null);
   const firstFocusRef = useRef(null);
   const lastFocusRef = useRef(null);
@@ -61,18 +68,8 @@ export default function AuthModal({
     handleSubmit,
     formState: { errors },
     reset,
-    watch,
     setFocus,
   } = useForm();
-
-  // // Google (only on client)
-  // let GoogleLoginComponent = null;
-  // if (typeof window !== 'undefined') {
-  //   try {
-  //     const googleMod = require('@react-oauth/google');
-  //     GoogleLoginComponent = googleMod.GoogleLogin;
-  //   } catch (_) {}
-  // }
 
   const showStatus = (type, message, ttl = 4500) => {
     setStatusMessage({ type, message });
@@ -93,11 +90,10 @@ export default function AuthModal({
     return { score: passed, total };
   }, [pwErrors, isLogin]);
 
-  // Focus trap + ESC close (CHANGED)
+  // Focus trap + ESC close
   useEffect(() => {
     if (!isOpen) return;
     const modalEl = modalRef.current;
-    // initial focus
     setTimeout(() => {
       try {
         (firstFocusRef.current || modalEl)?.focus();
@@ -136,7 +132,7 @@ export default function AuthModal({
     }
   };
 
-  // Verification resend (CHANGED: small debounce + feedback)
+  // Verification resend (kept as-is; hits your API route)
   let resendTimer = useRef(null);
   const handleResendVerification = async () => {
     if (resendTimer.current) return;
@@ -159,6 +155,7 @@ export default function AuthModal({
     }
   };
 
+  /* CHANGED: use generated mutations instead of manual fetch */
   const onSubmit = async (formData) => {
     if (submitting) return;
     const { username: identifier, email, password, terms } = formData;
@@ -177,78 +174,20 @@ export default function AuthModal({
       }
     }
 
-    const query = isLogin
-      ? `
-        mutation Login($email: String, $username: String, $password: String!) {
-          login(email: $email, username: $username, password: $password) {
-            token
-            user { id username email }
-          }
-        }
-      `
-      : `
-        mutation Register($username: String!, $email: String!, $password: String!) {
-          register(username: $username, email: $email, password: $password) {
-            user {
-              id
-              username
-              email
-              emailVerified
-              lastLogin
-              createdAt
-              updatedAt
-              avatar
-              mfaEnabled
-              oauthProvider
-              oauthId
-            }
-          }
-        }
-      `;
-
-    const variables = isLogin
-      ? identifier?.includes('@')
-        ? { email: identifier, password }
-        : { username: identifier, password }
-      : { username: identifier, email, password };
-
     try {
       setSubmitting(true);
       showStatus('loading', isLogin ? 'Logging in…' : 'Creating your account…', 0);
 
-      const response = await fetch(WP_GRAPHQL_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, variables }),
-      });
-
-      if (!response.ok) {
-        showStatus('error', 'Server error. Please try again.');
-        setSubmitting(false);
-        return;
-      }
-
-      const json = await response.json();
-
-      if (json?.errors?.length) {
-        const errorMsg =
-          json.errors[0]?.extensions?.debugMessage ||
-          json.errors[0]?.message ||
-          'Something went wrong. Please try again.';
-        if (isLogin && /verify your email/i.test(errorMsg)) {
-          setShowVerifyWarning(true);
-          setLastLoginEmail(identifier?.includes('@') ? identifier : '');
-          showStatus('warning', 'Please verify your email before logging in.');
-          setSubmitting(false);
-          return;
-        }
-        showStatus('error', errorMsg);
-        setSubmitting(false);
-        return;
-      }
-
       if (isLogin) {
-        const { token, user } = json?.data?.login || {};
+        /* CHANGED: call generated login mutation */
+        const vars =
+          identifier?.includes('@')
+            ? { email: identifier, password }
+            : { username: identifier, password };
+
+        const { data } = await loginMutation({ variables: vars });
+        const { token, user } = data?.login || {};
+
         if (token) {
           setCookie('authToken', token, 7);
           showStatus(null, null); // clear
@@ -259,7 +198,12 @@ export default function AuthModal({
           showStatus('error', 'Login failed. Please try again.');
         }
       } else {
-        const registerResult = json?.data?.register;
+        /* CHANGED: call generated register mutation */
+        const { data } = await registerMutation({
+          variables: { username: identifier, email, password },
+        });
+
+        const registerResult = data?.register;
         if (registerResult?.user) {
           setPendingVerification(true);
           showStatus(
@@ -275,51 +219,20 @@ export default function AuthModal({
         }
       }
     } catch (err) {
-      showStatus('error', 'Network error. Please try again.');
+      /* CHANGED: Apollo errors surface here */
+      const msg = err?.message || 'Network error. Please try again.';
+      if (isLogin && /verify your email/i.test(msg)) {
+        setShowVerifyWarning(true);
+        setLastLoginEmail(identifier?.includes('@') ? identifier : '');
+        showStatus('warning', 'Please verify your email before logging in.');
+      } else {
+        showStatus('error', msg);
+      }
       console.error('Auth error:', err);
     } finally {
       setSubmitting(false);
     }
   };
-
-  // const handleGoogleSuccess = async (response) => {
-  //   const { credential } = response || {};
-  //   if (!credential) return showStatus('error', 'Google login failed. Try again.');
-  //   const query = `
-  //     mutation GoogleLogin($idToken: String!) {
-  //       loginGoogle(googleToken: $idToken) {
-  //         token
-  //         user { id username email }
-  //       }
-  //     }
-  //   `;
-  //   const variables = { idToken: credential };
-
-  //   try {
-  //     setSubmitting(true);
-  //     showStatus('loading', 'Signing you in…', 0);
-  //     const res = await fetch(WP_GRAPHQL_URL, {
-  //       method: 'POST',
-  //       headers: { 'Content-Type': 'application/json' },
-  //       body: JSON.stringify({ query, variables }),
-  //     });
-  //     const json = await res.json();
-  //     const { token, user } = json?.data?.loginGoogle || {};
-  //     if (token) {
-  //       setCookie('authToken', token, 7);
-  //       track('auth_login_success', { method: 'google' });
-  //       onAuthSuccess?.({ id: user?.id, username: user?.username, email: user?.email });
-  //       onClose?.();
-  //     } else {
-  //       showStatus('error', json?.errors?.[0]?.message || 'Google login failed');
-  //     }
-  //   } catch (err) {
-  //     showStatus('error', 'Something went wrong with Google login. Please try again.');
-  //     console.error('Google login error:', err);
-  //   } finally {
-  //     setSubmitting(false);
-  //   }
-  // };
 
   const handleGoogleFailure = (error) => {
     console.error('Google login error:', error);
@@ -415,11 +328,7 @@ export default function AuthModal({
         )}
 
         {/* Form */}
-        <form
-          className="flex flex-col gap-2 mb-3"
-          onSubmit={handleSubmit(onSubmit)}
-          autoComplete="on"
-        >
+        <form className="flex flex-col gap-2 mb-3" onSubmit={handleSubmit(onSubmit)} autoComplete="on">
           {/* Username / Email */}
           <div className="flex flex-col gap-1 mb-2">
             <label htmlFor="username" className="font-semibold text-light-accent dark:text-dark-accent">
@@ -451,9 +360,7 @@ export default function AuthModal({
                 autoComplete="email"
                 className="rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt px-4 py-2 text-base text-light-text dark:text-dark-text focus:border-light-accent dark:focus:border-dark-accent focus:outline-none transition"
               />
-              {errors.email && (
-                <p className="text-xs text-light-error dark:text-dark-error">Email is required</p>
-              )}
+              {errors.email && <p className="text-xs text-light-error dark:text-dark-error">Email is required</p>}
             </div>
           )}
 
@@ -498,11 +405,7 @@ export default function AuthModal({
                   <div className="mb-1 h-2 w-full bg-light-border dark:bg-dark-border rounded">
                     <div
                       className={`h-2 rounded ${
-                        pwStrength.score >= 4
-                          ? 'bg-green-500'
-                          : pwStrength.score >= 3
-                          ? 'bg-amber-500'
-                          : 'bg-red-500'
+                        pwStrength.score >= 4 ? 'bg-green-500' : pwStrength.score >= 3 ? 'bg-amber-500' : 'bg-red-500'
                       }`}
                       style={{
                         width: `${(pwStrength.score / pwStrength.total) * 100}%`,
@@ -594,17 +497,6 @@ export default function AuthModal({
           <span className="text-light-textMuted dark:text-dark-textMuted text-sm">or</span>
           <hr className="flex-grow border-light-border dark:border-dark-border" />
         </div>
-
-        {/* Google login (shows if available) */}
-        {/* <div className="mb-2 text-center">
-          {GoogleLoginComponent ? (
-            <GoogleLoginComponent onSuccess={handleGoogleSuccess} onError={handleGoogleFailure} useOneTap />
-          ) : (
-            <span className="text-light-textMuted dark:text-dark-textMuted text-sm">
-              Social sign-in is coming soon.
-            </span>
-          )}
-        </div> */}
 
         {/* Toggle mode */}
         <div className="flex justify-center items-center gap-2 mt-2 text-base text-light-textSecondary dark:text-dark-textSecondary">

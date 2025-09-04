@@ -1,102 +1,85 @@
+// src/modules/search/typeDefs.js (ESM)
 import { gql } from 'graphql-tag';
 
-export default gql`
-  type CardPriceVariation {
-    variation: String!
-    gbp: Float
-    tcgplayer: Float
-    cardmarket: Float
-    currency: String
-    updatedAt: String
-  }
+export const typeDefs = gql`
+  scalar JSON
 
-  type CardPriceHistoryPoint {
-    date: String!
-    variation: String!
-    gbp: Float
-    tcgplayer: Float
-    cardmarket: Float
-  }
+  type Price {
+    low: Float
+    mid: Float
+    high: Float
+    market: Float
+    directLow: Float
 
-  type CardListing {
-    id: ID!
-    userId: ID!
-    price: Float!
-    currency: String!
-    condition: String
-    variation: String
-    notes: String
-    status: String
-    createdAt: String
+    averageSellPrice: Float
+    lowPrice: Float
+    trendPrice: Float
+
+    reverseHoloSell: Float
+    reverseHoloLow: Float
+    reverseHoloTrend: Float
   }
 
   type Card {
-    id: String!
-    name: String!
-    set: String!
+    id: ID!
+    name: String
+    number: String
+    set: String
     setName: String
-    number: String!
+    setLogo: String
+    setSymbol: String
+    edition: String
     image: String
     rarity: String
-    variations: Variants
-    prices: [CardPriceVariation]
-    priceHistory(days: Int = 30): [CardPriceHistoryPoint!]!
-    isListed: Boolean
-    listings: [CardListing]
-    isForTrade: Boolean
-    collectionCount: Int
-    setSize: Int
-    setCompletion: Float
+    variations: [String!]
+    pricing: JSON
+    tcgplayerVariations: JSON
+    cardmarketVariations: JSON
+    tcgplayerLow: Float
+    tcgplayerMid: Float
+    tcgplayerHigh: Float
+    tcgplayerMarket: Float
+    tcgplayerDirectLow: Float
+    cardmarketAverageSell: Float
+    cardmarketLowPrice: Float
+    cardmarketTrendPrice: Float
+    createdAt: String
+    updatedAt: String
   }
 
-  type CardSet {
-    code: String!
-    name: String!
-    total: Int!
-    tcgDexCode: String
-    logo: String
-    cards: [Card]
+  type CardEdge {
+    cursor: String!
+    node: Card!
   }
 
-  input SearchInput {
+  type CardConnection {
+    edges: [CardEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+  }
+
+  type PageInfo {
+    hasNextPage: Boolean!
+    endCursor: String
+  }
+
+  input SearchCardsInput {
     name: String
     set: String
     number: String
-    forTrade: Boolean
     listed: Boolean
+    forTrade: Boolean
     rarity: String
-    page: Int
-    pageSize: Int
-  }
-
-  type CardSearchResult {
-    cards: [Card!]!
-    total: Int!
-    page: Int!
-    pageSize: Int!
-  }
-
-  type SetSearchResult {
-    sets: [CardSet!]!
-    total: Int!
+    first: Int = 25
+    after: String
+    budget: Int = 8
+    trustUpstream: Boolean = false
   }
 
   type Query {
-    searchCards(input: SearchInput!): CardSearchResult!
-    searchSets(query: String): SetSearchResult!
-    cardById(id: String!): Card
-    getSet(code: String!): CardSet
-    cardSetCompletion(userId: ID!, set: String!): Float!
-    getExchangeRates: JSON
-    allRarities: [String!]!
-    cardPriceHistory(cardId: ID!, days: Int = 30): [CardPriceHistoryPoint!]!
-  }
-
-  type Variants {
-    firstEdition: Boolean
-    holo: Boolean
-    normal: Boolean 
-    reverse: Boolean
-    wPromo: Boolean
+    searchCards(input: SearchCardsInput!): CardConnection!
+    card(id: ID!): Card
   }
 `;
+
+export default typeDefs;

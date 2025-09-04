@@ -1,57 +1,50 @@
-// src/models/Card.js
-
-import { DataTypes, Model } from 'sequelize';
-
+// Card.js — ESM Sequelize model factory (self-contained)
 /**
- * Factory function for Card model.
- * Do NOT import sequelize or other models directly here;
- * pass sequelize from the models/index.js loader.
- *
- * @param {Sequelize} sequelize - the sequelize instance
- * @returns {Model} Card model
+ * Usage in models/index.js:
+ *   import CardFactory from './Card.js';
+ *   const Card = CardFactory(sequelize);
  */
-export default (sequelize) => {
-  class Card extends Model {}
+import { DataTypes } from 'sequelize';
 
-  Card.init(
+const CardFactory = (sequelize) => {
+  const Card = sequelize.define(
+    'Card',
     {
-      id: { // Primary key, e.g. 'sv08-238'
-        type: DataTypes.STRING,
-        primaryKey: true,
-      },
-      name: { type: DataTypes.STRING, allowNull: false },
-      number: { type: DataTypes.STRING, allowNull: false },
-      set: { type: DataTypes.STRING, allowNull: false },         // Set code, e.g. 'sv08'
-      setName: { type: DataTypes.STRING, allowNull: true },
-      setLogo: { type: DataTypes.STRING, allowNull: true },
-      setSymbol: { type: DataTypes.STRING, allowNull: true },
-      edition: { type: DataTypes.STRING, allowNull: true },      // e.g. 1st Edition, Unlimited
-      image: { type: DataTypes.STRING, allowNull: true },        // Base card image url
-      rarity: { type: DataTypes.STRING, allowNull: true },
-      variations: { type: DataTypes.TEXT, allowNull: true },     // JSON string/array: [holo, reverse, etc]
-      pricing: { type: DataTypes.TEXT, allowNull: true },        // JSON blob from TCG APIs
-      tcgplayerVariations: { type: DataTypes.TEXT, allowNull: true }, // Pricing variants
-      cardmarketVariations: { type: DataTypes.TEXT, allowNull: true },
-      // Common fields for search
-      tcgplayerLow: { type: DataTypes.FLOAT, allowNull: true },
-      tcgplayerMid: { type: DataTypes.FLOAT, allowNull: true },
-      tcgplayerHigh: { type: DataTypes.FLOAT, allowNull: true },
-      tcgplayerMarket: { type: DataTypes.FLOAT, allowNull: true },
-      tcgplayerDirectLow: { type: DataTypes.FLOAT, allowNull: true },
-      cardmarketAverageSell: { type: DataTypes.FLOAT, allowNull: true },
-      cardmarketLowPrice: { type: DataTypes.FLOAT, allowNull: true },
-      cardmarketTrendPrice: { type: DataTypes.FLOAT, allowNull: true },
-
-      createdAt: DataTypes.DATE,
-      updatedAt: DataTypes.DATE,
+      id: { type: DataTypes.STRING, primaryKey: true },
+      name: DataTypes.STRING,
+      number: DataTypes.STRING,
+      set: DataTypes.STRING,
+      setName: DataTypes.STRING,
+      setLogo: DataTypes.STRING,
+      setSymbol: DataTypes.STRING,
+      edition: DataTypes.STRING,
+      image: DataTypes.STRING,
+      rarity: DataTypes.STRING,
+      variations: DataTypes.JSON,
+      pricing: DataTypes.JSON,
+      tcgplayerVariations: DataTypes.JSON,
+      cardmarketVariations: DataTypes.JSON,
+      tcgplayerLow: DataTypes.FLOAT,
+      tcgplayerMid: DataTypes.FLOAT,
+      tcgplayerHigh: DataTypes.FLOAT,
+      tcgplayerMarket: DataTypes.FLOAT,
+      tcgplayerDirectLow: DataTypes.FLOAT,
+      cardmarketAverageSell: DataTypes.FLOAT,
+      cardmarketLowPrice: DataTypes.FLOAT,
+      cardmarketTrendPrice: DataTypes.FLOAT,
     },
     {
-      sequelize,
-      modelName: 'Card',
       tableName: 'cards',
+      underscored: false,
       timestamps: true,
+      indexes: [
+        { fields: ['set', 'number'] },
+        { fields: ['name'] },
+      ],
     }
   );
 
   return Card;
 };
+
+export default CardFactory;

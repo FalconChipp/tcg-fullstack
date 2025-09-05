@@ -6,6 +6,8 @@
 // If Mapping.php had empty: { tcgdex: '', ptcg: '' }
 
 export const SET_MAPPING = {
+  // Mega Evolution sets:
+  
   // Scarlet & Violet sets:
   'SVP':   { tcgdex: 'svp',    ptcg: 'svp' },            // Scarlet & Violet Promos
   'SVI':   { tcgdex: 'sv01',   ptcg: 'sv1' },            // Scarlet & Violet Base Set

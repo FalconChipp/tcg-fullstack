@@ -1,6 +1,8 @@
 // src/modules/search/cardPersistence.js
 import { Card, CardPriceHistory } from '../../models/index.js';
 import { Op } from 'sequelize';
+// CHANGED: use toGBP helper (rates are per 1 USD internally)
+import { toGBP } from './api/exchangeRates.js';
 
 /**
  * Normalize variation labels to PokémonTCG price keys.
@@ -16,30 +18,24 @@ function mapVariationKey(v) {
 }
 
 /**
- * Your exchangeRates service returns:
- *  - rates.USD = USD per 1 GBP
- *  - rates.EUR = EUR per 1 GBP
- * So: GBP = USD / rates.USD, and GBP = EUR / rates.EUR
+ * Convert vendor-native prices to GBP using the shared exchange helper.
+ * NOTE: toGBP(value, 'USD'|'EUR') expects the module's per-USD rates;
+ * no need to pass a rates object into these functions anymore.
  */
-function usdToGbp(x, rates) {
-  const r = Number(rates?.USD);
-  return (x != null && r > 0) ? Math.round((x / r) * 100) / 100 : null;
+function usdToGbp(x) {               // CHANGED: removed 'rates' param & per-GBP division
+  return x == null ? null : toGBP(x, 'USD');
 }
-function eurToGbp(x, rates) {
-  const r = Number(rates?.EUR);
-  return (x != null && r > 0) ? Math.round((x / r) * 100) / 100 : null;
+function eurToGbp(x) {               // CHANGED: removed 'rates' param & per-GBP division
+  return x == null ? null : toGBP(x, 'EUR');
 }
 
 /**
  * Back-compat single-field GBP chooser (prefer TCGplayer).
  * Kept because your history row also stores a single gbp column.
  */
-function computeGBP(tcgPriceUSD, cmkPriceEUR, rates) {
-  if (!rates || (rates.USD == null && rates.EUR == null)) return null;
-  const tcgGBP = usdToGbp(tcgPriceUSD, rates);
-  if (tcgGBP != null) return tcgGBP;
-  const cmkGBP = eurToGbp(cmkPriceEUR, rates);
-  return cmkGBP;
+function computeGBP(tcgPriceUSD, cmkPriceEUR) {  // CHANGED: removed 'rates' param
+  const tcgGBP = usdToGbp(tcgPriceUSD);
+  return tcgGBP != null ? tcgGBP : eurToGbp(cmkPriceEUR);
 }
 
 /**
@@ -66,7 +62,7 @@ function extractVariationKeys(cardData) {
  *   cardmarket: { prices: { trendPrice, averageSellPrice, reverseHoloTrend, ... }, updatedAt? }
  * }
  */
-function buildLatestArray(cardData, priceData, rates) {
+function buildLatestArray(cardData, priceData /*, rates */) { // CHANGED: rates no longer used
   const keys = extractVariationKeys(cardData);
   const tcg = priceData?.tcgplayer?.prices || {};
   const cmk = priceData?.cardmarket?.prices || {};
@@ -89,7 +85,7 @@ function buildLatestArray(cardData, priceData, rates) {
       tcg[tk]?.mid ??
       tcg[tk]?.low ??
       null;
-    const tcgGBP = usdToGbp(tcgUSD, rates);
+    const tcgGBP = usdToGbp(tcgUSD);            // CHANGED
 
     // --- Cardmarket (EUR) ---
     let cmkEUR = null;
@@ -98,11 +94,11 @@ function buildLatestArray(cardData, priceData, rates) {
     else if (tk === 'holofoil')        cmkEUR = cmk.trendPrice ?? cmk.averageSellPrice ?? null;
     else if (tk === 'firstEdition')    cmkEUR = cmk.trendPrice ?? null;
 
-    const cmkGBP = eurToGbp(cmkEUR, rates);
+    const cmkGBP = eurToGbp(cmkEUR);            // CHANGED
 
     return {
       variation: varName,
-      // IMPORTANT: store GBP numbers per vendor key for UI
+      // store GBP numbers per vendor key for UI
       tcgplayer: tcgGBP,
       cardmarket: cmkGBP,
       // single gbp field kept for compatibility (prefer tcg if present)
@@ -168,9 +164,9 @@ async function recordPriceHistory(cardId, latestArray, priceData, now) {
  * Main entry: create or update the Card row and embed pricing/history.
  * - cardData: hydrated tcgdex card
  * - priceData: raw vendor blobs from pokemontcg (or null)
- * - rates: { USD: number, EUR: number } (vendor currency per 1 GBP)
+ * - rates: (unused) kept for signature compatibility with older callers
  */
-export async function saveOrUpdateCard(cardData, priceData, rates = null) {
+export async function saveOrUpdateCard(cardData, priceData, rates = null) { // CHANGED: rates now unused
   if (!cardData?.id) return;
 
   const now = new Date();
@@ -196,7 +192,7 @@ export async function saveOrUpdateCard(cardData, priceData, rates = null) {
   };
 
   // Build latest array (GBP per vendor)
-  const latestArray = buildLatestArray(cardData, priceData || {}, rates);
+  const latestArray = buildLatestArray(cardData, priceData || {}, /* rates */ null); // CHANGED
   const shouldPersistPrices = hasAnyPrice(latestArray);
 
   if (!existing) {
@@ -205,12 +201,12 @@ export async function saveOrUpdateCard(cardData, priceData, rates = null) {
       ? upsertHistory({}, latestArray, todayISO)
       : { latest: [], history: [] };
 
-    // Legacy numeric columns (leave as-is; many upstreams don’t use these now)
+    // Legacy numeric columns (left best-effort; many providers only expose per-variation)
     const insertFields = {
       ...baseFields,
       pricing: JSON.stringify(pricingObj),
 
-      // Legacy columns — we only fill if vendor provides top-level fields
+      // NOTE: these top-level fields often won't exist; kept for back-compat
       tcgplayerLow: priceData?.tcgplayer?.prices?.low ?? null,
       tcgplayerMid: priceData?.tcgplayer?.prices?.mid ?? null,
       tcgplayerHigh: priceData?.tcgplayer?.prices?.high ?? null,

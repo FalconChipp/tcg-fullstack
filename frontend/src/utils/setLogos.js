@@ -1,4 +1,6 @@
-// Map of set names to their logo filenames
+// utils/setLogos.js
+
+// Map of set names to their logo filenames (your original map)
 export const SET_LOGOS = {
   // Mainline Sets
   'Base Set': 'base-set-logo.png',
@@ -118,6 +120,8 @@ export const SET_LOGOS = {
   'Prismatic Evolutions': 'prismatic-evolutions-logo.png',
   'Journey Together': 'journey-together-logo.png',
   'Destined Rivals': 'destined-rivals-logo.png',
+  'Black Bolt': 'black-bolt-logo.png',
+  'White Flare': 'white-flare-logo.png',
 
   // Trainer Kits, Vaults, Classic, Special, etc.
   'Detective Pikachu': 'detective-pikachu-logo.png',
@@ -128,8 +132,8 @@ export const SET_LOGOS = {
   'Astral Radiance Trainer Gallery': 'astral-radiance-trainer-gallery-logo.png',
   'Lost Origin Trainer Gallery': 'lost-origin-trainer-gallery-logo.png',
   'Silver Tempest Trainer Gallery': 'silver-tempest-trainer-gallery-logo.png',
-  'Shining Fates Shiny Vault': 'shining-fates-shiny-vault-logo.png',
-  'Hidden Fates Shiny Vault': 'hidden-fates-shiny-vault-logo.png',
+  'Shining Fates Shiny Vault': 'shining-fates-logo.png',
+  'Hidden Fates Shiny Vault': 'hidden-fates-logo.png',
 
   // Promo, POP, McDonald's, Rumble, etc.
   'Wizards Black Star Promos': 'wizards-black-star-promos-logo.png',
@@ -150,11 +154,11 @@ export const SET_LOGOS = {
   'POP Series 7': 'pop-series-7-logo.png',
   'POP Series 8': 'pop-series-8-logo.png',
   'POP Series 9': 'pop-series-9-logo.png',
-  "Best of Game": 'best-of-game-logo.png',
-  "Southern Islands": 'southern-islands-logo.png',
-  "Pokémon Rumble": 'pokemon-rumble-logo.png',
-  "Pokémon Futsal Collection": 'pokemon-futsal-logo.png',
-  "Scarlet & Violet Energy": 'scarlet-violet-energy-logo.png',
+  'Best of Game': 'best-of-game-logo.png',
+  'Southern Islands': 'southern-islands-logo.png',
+  'Pokémon Rumble': 'pokemon-rumble-logo.png',
+  'Pokémon Futsal Collection': 'pokemon-futsal-logo.png',
+  'Scarlet & Violet Energy': 'scarlet-violet-energy-logo.png',
 
   // McDonald's sets (by year)
   "McDonald's Collection 2011": 'mcdonalds-collection-2011-logo.png',
@@ -168,27 +172,110 @@ export const SET_LOGOS = {
   "McDonald's Collection 2021": 'mcdonalds-collection-2021-logo.png',
   "McDonald's Collection 2022": 'mcdonalds-collection-2022-logo.png',
   "McDonald's Match Battle 2023": 'mcdonalds-match-battle-2023-logo.png',
-
-  // Add more or update as needed!
 };
 
-// Fallback logo for sets without a specific logo
 export const DEFAULT_SET_LOGO = 'pokemon-tcg-logo.png';
 
-/**
- * Get the path to a set's logo
- * @param {string} setName - The name of the set
- * @returns {string} Path to the set's logo or default logo if not found
- */
-export function getSetLogo(setName) {
-  if (!setName) return `/assets/set-logos/${DEFAULT_SET_LOGO}`;
-  
-  // Find the matching set name (case insensitive)
-  const normalizedSetName = setName.trim();
-  const matchingSet = Object.keys(SET_LOGOS).find(
-    key => key.toLowerCase() === normalizedSetName.toLowerCase()
+// --- Minimal set-code -> canonical-name mapping (extend as needed)
+const CODE_TO_NAME = {
+  sv01: 'Scarlet & Violet',
+  sv02: 'Paldea Evolved',
+  sv03: 'Obsidian Flames',
+  'sv03.5': '151',
+  sv04: 'Paradox Rift',
+  'sv04.5': 'Paldean Fates',
+  sv05: 'Temporal Forces',
+  sv06: 'Twilight Masquerade',
+  'sv06.5': 'Shrouded Fable',
+  sv07: 'Stellar Crown',
+  sv08: 'Surging Sparks',
+  'sv08.5': 'Prismatic Evolutions',
+  sv09: 'Journey Together',
+  sv10: 'Destined Rivals',
+};
+
+// --- Name normalization and synonyms
+const NAME_SYNONYMS = {
+  'pokemon go': 'Pokémon GO',
+  "champion's path": "Champion's Path",
+};
+
+function normalizeNameKey(s) {
+  return s
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '') // strip accents
+    .replace(/&/g, 'and')
+    .replace(/[—–]/g, '-')           // normalize dashes
+    .replace(/[:]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function findByName(setName) {
+  if (!setName) return null;
+
+  // exact (case-insensitive)
+  const exact = Object.keys(SET_LOGOS).find(
+    k => k.toLowerCase() === setName.trim().toLowerCase()
   );
-  
-  const logoFilename = matchingSet ? SET_LOGOS[matchingSet] : DEFAULT_SET_LOGO;
-  return `/assets/set-logos/${logoFilename}`;
+  if (exact) return exact;
+
+  // normalized/synonyms
+  const norm = normalizeNameKey(setName);
+  const syn = NAME_SYNONYMS[norm];
+  if (syn && SET_LOGOS[syn]) return syn;
+
+  // fallback: try normalized match against all keys
+  for (const key of Object.keys(SET_LOGOS)) {
+    if (normalizeNameKey(key) === norm) return key;
+  }
+  return null;
+}
+
+function codeFromIdPrefix(id) {
+  if (!id) return null;
+  const s = String(id).toLowerCase();
+  const dash = s.indexOf('-');
+  return dash > 0 ? s.slice(0, dash) : null; // e.g. "sv08" or "sv08.5"
+}
+
+/**
+ * Get the path to a set's logo.
+ * Prefer setCode (stable), fall back to setName. Accepts either param.
+ * @param {string} setName        The human-readable set name (optional)
+ * @param {string} setCodeOrId    The set code (e.g., 'sv08', 'sv08.5') OR a card id ('sv08-057') (optional)
+ * @returns {string}              '/assets/set-logos/<file>'
+ */
+export function getSetLogo(setName, setCodeOrId) {
+  let code = setCodeOrId;
+
+  // If a full card id was passed ('sv08-057'), extract prefix ('sv08')
+  if (code && code.includes('-')) code = codeFromIdPrefix(code);
+
+  // 1) Try code -> canonical name
+  if (code) {
+    const canonical = CODE_TO_NAME[String(code).toLowerCase()];
+    if (canonical && SET_LOGOS[canonical]) {
+      return `/assets/set-logos/${SET_LOGOS[canonical]}`;
+    }
+  }
+
+  // 2) Try name
+  const key = findByName(setName || '');
+  if (key) {
+    return `/assets/set-logos/${SET_LOGOS[key]}`;
+  }
+
+  // 3) Last resort: if only an id was provided, try its prefix now
+  if (!code && setCodeOrId) {
+    const fromId = codeFromIdPrefix(setCodeOrId);
+    const canonical = CODE_TO_NAME[fromId];
+    if (canonical && SET_LOGOS[canonical]) {
+      return `/assets/set-logos/${SET_LOGOS[canonical]}`;
+    }
+  }
+
+  // 4) Default fallback
+  return `/assets/set-logos/${DEFAULT_SET_LOGO}`;
 }

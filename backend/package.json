@@ -1,6 +1,6 @@
 {
   "name": "sixbyfive-tcg-backend",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Modern Pokémon TCG backend API with Apollo Server, Express, and full marketplace/auth/user features.",
   "main": "index.js",
   "type": "module",

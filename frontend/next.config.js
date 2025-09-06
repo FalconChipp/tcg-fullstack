@@ -23,6 +23,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'cdn.pidgi.net' },
       { protocol: 'https', hostname: 'backendtcg.sixbyfive.com' },
       { protocol: 'https', hostname: 'tcg.sixbyfive.com' },
+      { protocol: 'https', hostname: 'placehold.co' },
       // dev
       { protocol: 'http', hostname: 'localhost' },
       { protocol: 'http', hostname: '127.0.0.1' },
@@ -40,7 +41,9 @@ const nextConfig = {
           key: 'Link',
           value:
             '<https://assets.tcgdex.net>; rel=preconnect, ' +
-            '<https://images.pokemontcg.io>; rel=preconnect',
+            '<https://images.pokemontcg.io>; rel=preconnect' +
+            '<https://cdn.pidgi.net>; rel=preconnect' +
+            '<https://placehold.co>; rel=preconnect',
         },
       ],
     },

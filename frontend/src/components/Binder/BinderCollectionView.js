@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useCallback, useState } from "react";
+import React, { useMemo, useCallback, useState, useEffect } from "react";
 import { getCardImageUrl } from "@/utils/imageUtils";
 import Image from "next/image";
 import { getCardKey } from "@/utils/cardUtils";
@@ -10,6 +10,33 @@ const DEFAULT_IMAGE_EXTENSION = "webp";
 const FALLBACK_CARD_IMAGE = "/images/card-placeholder.svg";
 const PAGE_SIZE = 120;
 
+// ---- Debug toggle (set NEXT_PUBLIC_DEBUG=true to enable) ----
+const DEBUG = true;
+const dlog = (...args) => { if (DEBUG) console.debug("[BinderCollectionView]", ...args); };
+
+function safeKey(card) {
+  const id = String(card?.cardId ?? card?.externalId ?? card?.id ?? "");
+  const variation = (card?.variation == null || card?.variation === "") ? "normal" : String(card.variation);
+  const condition = card?.condition || "mint";
+  return `${id}::${variation}::${condition}`;
+}
+
+function collapseByKey(cards = []) {
+  const map = new Map();
+  for (const c of cards) {
+    if (!c) continue;
+    const k = (typeof getCardKey === "function" && getCardKey(c)) || safeKey(c);
+    const prev = map.get(k);
+    const qty = typeof c.quantity === "number" ? c.quantity : 1;
+    if (prev) {
+      prev.quantity += qty;
+    } else {
+      map.set(k, { ...c, quantity: qty });
+    }
+  }
+  return Array.from(map.values());
+}
+
 const BinderCollectionView = ({
   isOwnProfile,
   userEntireCollection,
@@ -17,25 +44,46 @@ const BinderCollectionView = ({
   isLoading = false,
   error = null,
 }) => {
+  useEffect(() => {
+    if (!DEBUG) return;
+    console.groupCollapsed("[BinderCollectionView] props snapshot");
+    console.debug("isOwnProfile:", isOwnProfile);
+    console.debug("userEntireCollection length:", Array.isArray(userEntireCollection) ? userEntireCollection.length : "(not array)");
+    console.debug("movedCards keys:", Object.keys(movedCards || {}).length);
+    console.groupEnd();
+  }, [isOwnProfile, userEntireCollection, movedCards]);
+
   // Compute which cards to show (collection minus those in binder)
   const filteredCards = useMemo(() => {
-    if (!userEntireCollection || !Array.isArray(userEntireCollection)) return [];
-    const quantities = {};
-    userEntireCollection.forEach((card) => {
-      const key = getCardKey(card);
-      quantities[key] =
-        (quantities[key] || 0) + (typeof card.quantity === "number" ? card.quantity : 1);
-    });
-    // Remove moved-to-binder
-    return Object.entries(quantities)
-      .map(([key, qty]) => {
-        const movedCount = movedCards?.[key] || 0;
-        const viewQty = Math.max(0, qty - movedCount);
-        if (viewQty <= 0) return null;
-        const card = userEntireCollection.find((c) => c && getCardKey(c) === key);
-        return card ? { ...card, quantity: viewQty } : null;
-      })
-      .filter(Boolean);
+    if (!userEntireCollection || !Array.isArray(userEntireCollection)) {
+      dlog("userEntireCollection not an array or missing.");
+      return [];
+    }
+
+    const collapsed = collapseByKey(userEntireCollection);
+    const result = [];
+    for (const card of collapsed) {
+      const key = (typeof getCardKey === "function" && getCardKey(card)) || safeKey(card);
+      const totalQty = typeof card.quantity === "number" ? card.quantity : 1;
+      const movedQty = (movedCards && movedCards[key]) ? movedCards[key] : 0;
+      const remaining = Math.max(0, totalQty - movedQty);
+      if (remaining > 0) {
+        result.push({ ...card, quantity: remaining });
+      }
+    }
+
+    if (DEBUG) {
+      console.groupCollapsed("[BinderCollectionView] filter step");
+      console.debug("collapsed count:", collapsed.length);
+      console.debug("result (remaining) count:", result.length);
+      if (result.length === 0 && collapsed.length > 0) {
+        console.debug("Filter produced 0; falling back to collapsed (unfiltered) so UI still shows cards.");
+      }
+      console.groupEnd();
+    }
+
+    // Graceful fallback if everything got filtered away
+    return result.length === 0 && collapsed.length > 0 ? collapsed : result;
   }, [userEntireCollection, movedCards]);
 
   // Pagination for large collections
@@ -46,11 +94,19 @@ const BinderCollectionView = ({
       ? filteredCards.slice(0, PAGE_SIZE * page)
       : filteredCards;
 
+  useEffect(() => {
+    if (!DEBUG) return;
+    console.groupCollapsed("[BinderCollectionView] render snapshot");
+    console.debug("filteredCards.length:", filteredCards.length);
+    console.debug("page:", page, "/", totalPages);
+    console.groupEnd();
+  }, [filteredCards, page, totalPages]);
+
   // DRAG: only needed for "drag from collection" to binder
   const handleDragStart = useCallback(
     (e, card) => {
       if (!isOwnProfile) return;
-      const cardKey = getCardKey(card);
+      const key = (typeof getCardKey === "function" && getCardKey(card)) || safeKey(card);
       const currentViewQuantity = card.quantity || 1;
       if (currentViewQuantity <= 0) {
         e.preventDefault();
@@ -67,10 +123,11 @@ const BinderCollectionView = ({
         tcgImageUrl: card.tcgImageUrl || card.imageUrl,
         setName: card.tcgSetName || card.setName,
         isCollectionDrag: true,
-        _cardKey: cardKey,
+        _cardKey: key,
         _originalQuantity: currentViewQuantity,
         _isNewDrag: true,
       };
+      if (DEBUG) dlog("DragStart:", { key, dragData });
       e.dataTransfer.setData("application/json", JSON.stringify(dragData));
       e.dataTransfer.setData("text/plain", JSON.stringify({ ...dragData }));
       e.currentTarget.dataset.onCardAdded = "true";
@@ -110,6 +167,7 @@ const BinderCollectionView = ({
       </div>
     );
   }
+
   // --- Error state (tokens only) ---
   if (error) {
     return (
@@ -118,6 +176,7 @@ const BinderCollectionView = ({
       </div>
     );
   }
+
   // --- Empty state (tokens only) ---
   if (!filteredCards || filteredCards.length === 0) {
     return (
@@ -132,7 +191,7 @@ const BinderCollectionView = ({
     );
   }
 
-  // MAIN GRID (all colors/borders/palette below are mapped to your tokens)
+  // MAIN GRID
   return (
     <div className="relative h-full">
       <div
@@ -151,7 +210,7 @@ const BinderCollectionView = ({
       >
         {paginatedCards.map((card) => {
           if (!card) return null;
-          const cardKey = getCardKey(card);
+          const key = (typeof getCardKey === "function" && getCardKey(card)) || safeKey(card);
           const cardName = card.tcgName || card.name || "Unnamed Card";
           const cardId = card.externalId || card.cardId || card.id || "";
           const setName = card.tcgSetName || card.setName || "";
@@ -162,7 +221,7 @@ const BinderCollectionView = ({
           if (viewQuantity <= 0) return null;
           return (
             <div
-              key={cardKey}
+              key={key}
               className="
                 flex flex-col items-center justify-center
                 rounded-2xl
@@ -195,6 +254,7 @@ const BinderCollectionView = ({
                   loading="lazy"
                   onError={(e) => {
                     e.target.src = FALLBACK_CARD_IMAGE;
+                    if (DEBUG) dlog("Image onError; using fallback for:", { key, cardName });
                   }}
                 />
                 <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
@@ -207,7 +267,8 @@ const BinderCollectionView = ({
           );
         })}
       </div>
-      {/* Pagination/load-more for large collections (button uses palette tokens) */}
+
+      {/* Pagination/load-more for large collections */}
       {filteredCards.length > PAGE_SIZE && page < totalPages && (
         <div className="text-center my-4">
           <button

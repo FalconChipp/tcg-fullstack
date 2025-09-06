@@ -1,196 +1,360 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { getCookie } from "@/utils/cookieUtils";
 import { formatVariation } from "@/utils/formatVariation";
 
 const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
 const TCG_GRAPHQL_URL = "https://tcg.sixbyfive.com/tcgdex/graphql";
 
-// --- Helper: normalize variation so empty string/undefined/null is always null (useful for backend consistency)
-const normalizeVariation = (v) => (!v || (typeof v === "string" && v.trim() === "")) ? null : v;
+// -------- helpers --------
+const normalizeVariation = (v) =>
+  v == null || (typeof v === "string" && v.trim() === "") ? null : String(v).trim();
 
-export default function EditCollectionCardModal({
-  card,
-  onClose,
-  onUpdated,
-  onRemoved,
-}) {
-  // Local state
+const toNumber = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+async function gqlFetch(url, query, variables, token) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+  const json = await res.json();
+  return json;
+}
+
+const VARIATION_LABELS = {
+  normal: "Normal",
+  reverse: "Reverse Holo",
+  holo: "Holo",
+  firstEdition: "1st Edition",
+};
+
+function normalizeVariations(v) {
+  try {
+    const obj = typeof v === "string" ? JSON.parse(v) : v;
+    if (!obj || typeof obj !== "object") return { normal: true };
+    return {
+      normal: !!(obj.normal ?? obj.Normal ?? true),
+      reverse: !!(obj.reverse || obj.reverseHolofoil || obj.Reverse),
+      holo: !!(obj.holo || obj.holofoil || obj.Holo),
+      firstEdition: !!obj.firstEdition,
+    };
+  } catch {
+    return { normal: true };
+  }
+}
+
+function hasUnknownArgError(json) {
+  return Array.isArray(json?.errors) && json.errors.some((e) =>
+    /unknown argument|unknown field|cannot query field/i.test(e?.message || "")
+  );
+}
+function isEntryNotFound(json) {
+  return Array.isArray(json?.errors) && json.errors.some((e) =>
+    /entry not found|not found/i.test(e?.message || "")
+  );
+}
+
+// -------- component --------
+export default function EditCollectionCardModal({ card, onClose, onUpdated, onRemoved }) {
   const [quantity, setQuantity] = useState(card.quantity || 1);
   const [condition, setCondition] = useState(card.condition || "mint");
-  // --- CHANGED: variation always comes from the original card.variation, but normalized to null if missing
-  const [variation, setVariation] = useState(card.variation ?? "");
-  const [isPublic, setIsPublic] = useState(!!card.isPublic);
-  const [wishlist, setWishlist] = useState(!!card.wishlist);
-  const [notes, setNotes] = useState(card.notes || "");
-  const [tags, setTags] = useState(card.tags ? card.tags.join(", ") : "");
+  const [variation, setVariation] = useState(normalizeVariation(card.variation)); // desired/new
+  const originalVariationRef = useRef(normalizeVariation(card.variation)); // lookup key
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [info, setInfo] = useState(null);
   const [enrichedCard, setEnrichedCard] = useState(card);
 
-  // Fetch TCGdex details
+  // Enrich minimal UI details (safe to keep)
   useEffect(() => {
+    let abort = false;
     async function fetchCardData() {
       if (!card.cardId) return;
-      const searchQ = `
+      const q = `
         query SearchCard($externalId: String!) {
-          pokemonCards(
-            externalId: $externalId
-            language: "en"
-            perPage: 1 
-          ) {
+          pokemonCards(externalId: $externalId, language: "en", perPage: 1) {
             externalId
             name
-            number
             image
-            setId
             setName
-            setSymbol
-            setLogo
             rarity
             variations
-            edition
             pricing {
-              cardmarket { average_sell low trend }
-              tcgplayer { low mid high market direct_low }
+              cardmarket { average_sell averageSell low lowPrice trend trendPrice }
+              tcgplayer {
+                low mid high market direct_low directLow
+                prices { normal { market } holofoil { market } reverseHolofoil { market } }
+              }
             }
           }
         }
       `;
       try {
-        const r = await fetch(TCG_GRAPHQL_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            query: searchQ,
-            variables: { externalId: card.cardId },
-          }),
-        });
-        const json = await r.json();
-        if (json.data?.pokemonCards && json.data.pokemonCards.length > 0) {
-          const matchedCard = json.data.pokemonCards[0];
-          setEnrichedCard({
-            ...card,
-            tcgName: matchedCard.name || card.tcgName || "",
-            tcgImageUrl: matchedCard.image ? matchedCard.image.trim() : card.tcgImageUrl || "",
-            tcgSetName: matchedCard.setName || card.tcgSetName || "",
-            tcgSetSymbolUrl: matchedCard.setSymbol ? matchedCard.setSymbol.trim() : card.tcgSetSymbolUrl || "",
-            tcgRarity: matchedCard.rarity || card.tcgRarity || "",
-            tcgplayerMarket: matchedCard.pricing?.tcgplayer?.market || card.tcgplayerMarket || null,
-            cardmarketAverageSell: matchedCard.pricing?.cardmarket?.average_sell || card.cardmarketAverageSell || null,
-          });
-        }
-      } catch (err) {
-        setEnrichedCard(card);
+        const json = await gqlFetch(TCG_GRAPHQL_URL, q, { externalId: card.cardId });
+        if (abort) return;
+        const c = json?.data?.pokemonCards?.[0];
+        if (!c) return;
+
+        const cm = c.pricing?.cardmarket || {};
+        const tp = c.pricing?.tcgplayer || {};
+        const tcgMarket =
+          toNumber(tp?.market) ??
+          toNumber(tp?.prices?.normal?.market) ??
+          toNumber(tp?.prices?.holofoil?.market) ??
+          toNumber(tp?.prices?.reverseHolofoil?.market);
+
+        setEnrichedCard((prev) => ({
+          ...prev,
+          tcgName: c.name || prev.tcgName || "",
+          tcgImageUrl: c.image?.trim?.() || prev.tcgImageUrl || "",
+          tcgSetName: c.setName || prev.tcgSetName || "",
+          tcgRarity: c.rarity || prev.tcgRarity || "",
+          ...(tcgMarket != null ? { tcgplayerMarket: tcgMarket } : {}),
+          ...(toNumber(cm?.average_sell) ?? toNumber(cm?.averageSell) != null
+            ? { cardmarketAverageSell: toNumber(cm?.average_sell) ?? toNumber(cm?.averageSell) }
+            : {}),
+          variations: normalizeVariations(c.variations),
+        }));
+      } catch {
+        // ignore
       }
     }
     fetchCardData();
+    return () => {
+      abort = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card.cardId]);
 
-  // -- Save handler
+  const variationOptions = useMemo(() => {
+    const v = normalizeVariations(enrichedCard?.variations);
+    const opts = [{ value: "", label: "— None —" }];
+    ["normal", "reverse", "holo", "firstEdition"].forEach((k) => {
+      if (v[k]) opts.push({ value: k, label: VARIATION_LABELS[k] });
+    });
+    const val = variation ?? "";
+    if (val && !opts.some((o) => o.value === val)) {
+      opts.push({ value: val, label: `Custom: ${formatVariation(val)}` });
+    }
+    return opts;
+  }, [enrichedCard?.variations, variation]);
+
+  // Minimal, schema-safe mutations (no wishlist/isPublic/notes/tags)
+  const UPDATE_BASE = `
+    mutation UpdateCollectionEntry(
+      $cardId: String!, $variation: String,
+      $quantity: Int, $condition: String
+    ) {
+      updateCollectionEntry(
+        cardId: $cardId, variation: $variation,
+        quantity: $quantity, condition: $condition
+      ) {
+        id
+        cardId
+        quantity
+        condition
+        variation
+      }
+    }
+  `;
+
+  // Attempt rename shape A (supported in some backends)
+  const UPDATE_RENAME_A = `
+    mutation UpdateCollectionEntry(
+      $cardId: String!, $variation: String, $newVariation: String,
+      $quantity: Int, $condition: String
+    ) {
+      updateCollectionEntry(
+        cardId: $cardId, variation: $variation, newVariation: $newVariation,
+        quantity: $quantity, condition: $condition
+      ) {
+        id
+        cardId
+        quantity
+        condition
+        variation
+      }
+    }
+  `;
+
+  // Attempt rename shape B (alt naming)
+  const UPDATE_RENAME_B = `
+    mutation UpdateCollectionEntry(
+      $cardId: String!, $fromVariation: String, $toVariation: String,
+      $quantity: Int, $condition: String
+    ) {
+      updateCollectionEntry(
+        cardId: $cardId, fromVariation: $fromVariation, toVariation: $toVariation,
+        quantity: $quantity, condition: $condition
+      ) {
+        id
+        cardId
+        quantity
+        condition
+        variation
+      }
+    }
+  `;
+
+  const REMOVE_MUTATION = `
+    mutation RemoveFromCollection($cardId: String!, $variation: String) {
+      removeFromCollection(cardId: $cardId, variation: $variation)
+    }
+  `;
+
   async function handleUpdate() {
     setLoading(true);
     setError(null);
+    setInfo(null);
+
     const token = getCookie("authToken");
     if (!token) {
       setError("You must be logged in.");
       setLoading(false);
       return;
     }
-    const mutation = `
-      mutation UpdateCollectionEntry($cardId: String!, $quantity: Int, $condition: String, $variation: String) {
-        updateCollectionEntry(cardId: $cardId, quantity: $quantity, condition: $condition, variation: $variation) {
-          id
-          cardId
-          quantity
-          condition
-          variation
-          wishlist
-        }
-      }
-    `;
-    // --- CHANGED: always normalize variation before sending
-    const variables = {
-      cardId: card.cardId || card.id,
-      quantity,
-      condition,
-      variation: normalizeVariation(variation),
-    };
+
+    const cardId = card.cardId || card.id;
+    const currentVariation = originalVariationRef.current;
+    const desiredVariation = normalizeVariation(variation);
 
     try {
-      const res = await fetch(WP_GRAPHQL_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ query: mutation, variables }),
-      });
-      const json = await res.json();
-      if (json?.data?.updateCollectionEntry) {
-        onUpdated(json.data.updateCollectionEntry);
-        onClose();
-      } else {
-        setError(json?.errors?.[0]?.message || "Update failed");
+      // Try rename if the variation changed
+      if (desiredVariation !== currentVariation) {
+        let json = await gqlFetch(
+          WP_GRAPHQL_URL,
+          UPDATE_RENAME_A,
+          {
+            cardId,
+            variation: currentVariation,
+            newVariation: desiredVariation,
+            quantity,
+            condition,
+          },
+          token
+        );
+
+        if (hasUnknownArgError(json)) {
+          json = await gqlFetch(
+            WP_GRAPHQL_URL,
+            UPDATE_RENAME_B,
+            {
+              cardId,
+              fromVariation: currentVariation,
+              toVariation: desiredVariation,
+              quantity,
+              condition,
+            },
+            token
+          );
+        }
+
+        if (json?.data?.updateCollectionEntry) {
+          onUpdated(json.data.updateCollectionEntry);
+          onClose();
+          return;
+        }
+
+        // Fall back to base update (no rename) using the ORIGINAL variation for lookup
+        const base = await gqlFetch(
+          WP_GRAPHQL_URL,
+          UPDATE_BASE,
+          {
+            cardId,
+            variation: currentVariation,
+            quantity,
+            condition,
+          },
+          token
+        );
+        if (!base?.data?.updateCollectionEntry) {
+          // Pass through server error if present
+          throw new Error(
+            base?.errors?.[0]?.message ||
+              json?.errors?.[0]?.message ||
+              "Update failed"
+          );
+        }
+
+        // Inform user that rename isn't supported
+        setInfo(
+          "Saved other changes, but your server doesn’t support renaming the variation. Remove this entry and re-add it with the new variation if you need to change it."
+        );
+        // Keep UI in sync with the persisted (original) variation
+        setVariation(currentVariation);
+        onUpdated(base.data.updateCollectionEntry);
+        return;
       }
+
+      // Simple update when variation is unchanged
+      const json = await gqlFetch(
+        WP_GRAPHQL_URL,
+        UPDATE_BASE,
+        {
+          cardId,
+          variation: currentVariation,
+          quantity,
+          condition,
+        },
+        token
+      );
+
+      if (!json?.data?.updateCollectionEntry) {
+        throw new Error(json?.errors?.[0]?.message || "Update failed");
+      }
+
+      onUpdated(json.data.updateCollectionEntry);
+      onClose();
     } catch (err) {
-      setError("Network error. See console.");
+      setError(err?.message || "Network error.");
     } finally {
       setLoading(false);
     }
   }
 
-  // -- Remove handler
   async function handleRemove() {
-    if (!confirm("Are you sure you want to remove this card?")) return;
+    if (!confirm("Remove this card from your collection?")) return;
     setLoading(true);
     setError(null);
+    setInfo(null);
     const token = getCookie("authToken");
     if (!token) {
       setError("You must be logged in.");
       setLoading(false);
       return;
     }
-    const mutation = `
-      mutation RemoveFromCollection($cardId: String!, $variation: String) {
-        removeFromCollection(cardId: $cardId, variation: $variation)
-      }
-    `;
-    // --- CHANGED: always send the actual variation value
-    const variables = { 
-      cardId: card.cardId || card.id, 
-      variation: normalizeVariation(card.variation) // Always send card.variation, not the component state!
-    };
-    // Debug: log exactly what you're sending
-    // console.log("Remove variables:", variables);
     try {
-      const res = await fetch(WP_GRAPHQL_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ query: mutation, variables }),
-      });
-      const json = await res.json();
+      const json = await gqlFetch(
+        WP_GRAPHQL_URL,
+        REMOVE_MUTATION,
+        { cardId: card.cardId || card.id, variation: originalVariationRef.current },
+        token
+      );
       if (json?.data?.removeFromCollection) {
         onRemoved(card.id);
         onClose();
       } else {
-        setError(json?.errors?.[0]?.message || "Remove failed");
+        throw new Error(json?.errors?.[0]?.message || "Remove failed");
       }
     } catch (err) {
-      setError("Network error. See console.");
+      setError(err?.message || "Network error.");
     } finally {
       setLoading(false);
     }
   }
 
-  // -- RENDER
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="
-        w-full max-w-sm bg-light-surface dark:bg-dark-surface
-        border border-light-border dark:border-dark-border
-        rounded-2xl shadow-2xl px-7 py-7 relative animate-fade-in
-        transition-colors
-      ">
+      <div className="w-full max-w-sm bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border rounded-2xl shadow-2xl px-7 py-7 relative animate-fade-in transition-colors">
         {/* Close */}
         <button
           onClick={onClose}
@@ -199,39 +363,47 @@ export default function EditCollectionCardModal({
           type="button"
         >
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-            <path d="M6 6l10 10M16 6L6 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            <path d="M6 6l10 10M16 6L6 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
         </button>
+
         <h2 className="text-xl font-bold text-light-primary dark:text-dark-primary mb-5 tracking-tight">
           Edit Collection Card
         </h2>
+
         {error && (
-          <div className="mb-5 text-sm rounded-lg bg-red-100 dark:bg-red-950 border border-red-400 dark:border-red-800 text-red-700 dark:text-red-200 px-3 py-2 flex items-center gap-2">
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-              <path d="M10 3.5l6.5 13H3.5l6.5-13zm0 7v3m0 2v.01" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-            </svg>
+          <div className="mb-4 text-sm rounded-lg bg-red-100 dark:bg-red-950 border border-red-400 dark:border-red-800 text-red-700 dark:text-red-200 px-3 py-2">
             {error}
           </div>
         )}
+        {info && (
+          <div className="mb-4 text-sm rounded-lg bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200 px-3 py-2">
+            {info}
+          </div>
+        )}
 
+        {/* Minimal, schema-safe fields */}
         <div className="space-y-4">
-          {/* Quantity */}
           <div>
-            <label className="block text-sm font-semibold text-light-textSecondary dark:text-dark-textSecondary mb-1">Quantity</label>
+            <label className="block text-sm font-semibold text-light-textSecondary dark:text-dark-textSecondary mb-1">
+              Quantity
+            </label>
             <input
               type="number"
-              min="1"
+              min={1}
               value={quantity}
-              onChange={e => setQuantity(parseInt(e.target.value, 10) || 1)}
+              onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
               className="w-full rounded-lg bg-light-alt dark:bg-dark-alt border border-light-border dark:border-dark-border px-3 py-2 text-light-text dark:text-dark-text focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm font-semibold"
             />
           </div>
-          {/* Condition */}
+
           <div>
-            <label className="block text-sm font-semibold text-light-textSecondary dark:text-dark-textSecondary mb-1">Condition</label>
+            <label className="block text-sm font-semibold text-light-textSecondary dark:text-dark-textSecondary mb-1">
+              Condition
+            </label>
             <select
               value={condition}
-              onChange={e => setCondition(e.target.value)}
+              onChange={(e) => setCondition(e.target.value)}
               className="w-full rounded-lg bg-light-alt dark:bg-dark-alt border border-light-border dark:border-dark-border px-3 py-2 text-light-text dark:text-dark-text focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm font-semibold"
             >
               <option value="mint">Mint</option>
@@ -240,53 +412,28 @@ export default function EditCollectionCardModal({
               <option value="poor">Poor</option>
             </select>
           </div>
-          {/* Variation */}
+
           <div>
-            <label className="block text-sm font-semibold text-light-textSecondary dark:text-dark-textSecondary mb-1">Variation</label>
-            <input
-              type="text"
-              value={formatVariation(variation)}
-              onChange={e => setVariation(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
-              placeholder="Reverse Holo, 1st Edition, etc."
-              className="w-full rounded-lg bg-light-alt dark:bg-dark-alt border border-light-border dark:border-dark-border px-3 py-2 text-light-text dark:text-dark-text focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm"
-            />
-          </div>
-          {/* Notes */}
-          <div>
-            <label className="block text-sm font-semibold text-light-textSecondary dark:text-dark-textSecondary mb-1">Notes</label>
-            <textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              placeholder="Any personal notes"
-              rows={2}
-              className="w-full rounded-lg bg-light-alt dark:bg-dark-alt border border-light-border dark:border-dark-border px-3 py-2 text-light-text dark:text-dark-text focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm resize-none"
-            />
-          </div>
-          {/* Tags */}
-          <div>
-            <label className="block text-sm font-semibold text-light-textSecondary dark:text-dark-textSecondary mb-1">Tags (comma-separated)</label>
-            <input
-              type="text"
-              value={tags}
-              onChange={e => setTags(e.target.value)}
-              placeholder="e.g. trade,rare"
-              className="w-full rounded-lg bg-light-alt dark:bg-dark-alt border border-light-border dark:border-dark-border px-3 py-2 text-light-text dark:text-dark-text focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm"
-            />
-          </div>
-          {/* Toggles */}
-          <div className="flex items-center gap-6 mt-1">
-            <label className="flex items-center gap-2 text-sm text-light-textMuted dark:text-dark-textMuted cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={wishlist}
-                onChange={() => setWishlist(!wishlist)}
-                className="form-checkbox h-4 w-4 rounded border-light-border dark:border-dark-border text-light-accent dark:text-dark-accent focus:ring-0"
-              />
-              Wishlist
+            <label className="block text-sm font-semibold text-light-textSecondary dark:text-dark-textSecondary mb-1">
+              Variation
             </label>
+            <select
+              value={variation ?? ""}
+              onChange={(e) => setVariation(e.target.value ? e.target.value : null)}
+              className="w-full rounded-lg bg-light-alt dark:bg-dark-alt border border-light-border dark:border-dark-border px-3 py-2 text-light-text dark:text-dark-text focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm"
+            >
+              {variationOptions.map((o) => (
+                <option key={String(o.value)} value={o.value ?? ""}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-light-textMuted dark:text-dark-textMuted">
+              Current on record: {formatVariation(originalVariationRef.current) || "None"}
+            </p>
           </div>
         </div>
-        {/* Buttons */}
+
         <div className="flex gap-3 mt-7">
           <button
             onClick={handleUpdate}
@@ -296,8 +443,8 @@ export default function EditCollectionCardModal({
           >
             {loading && (
               <svg className="animate-spin mr-1" width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" opacity="0.3"/>
-                <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="4"/>
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" opacity="0.3" />
+                <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="4" />
               </svg>
             )}
             {loading ? "Saving..." : "Save"}
@@ -309,7 +456,7 @@ export default function EditCollectionCardModal({
             type="button"
           >
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-              <path d="M5 6h10M8 9v4m4-4v4M3 6h14v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <path d="M5 6h10M8 9v4m4-4v4M3 6h14v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             </svg>
             Remove
           </button>

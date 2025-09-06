@@ -2,18 +2,17 @@ import { useState, useEffect } from "react";
 
 const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
 
-// Safely convert to number
+// ---------- utils ----------
 const toNumber = (value) => {
   if (value === null || value === undefined) return null;
-  const num = typeof value === 'string' ? parseFloat(value) : value;
+  const num = typeof value === "string" ? parseFloat(value) : value;
   return isNaN(num) ? null : num;
 };
 
-// Calculate the average price for a card, matching panel logic
 function getCardAveragePrice(card) {
   if (!card || !Array.isArray(card.prices)) return null;
   const selectedVariation = card.variation || "normal";
-  let priceObj = card.prices.find((p) => p && (p.variation === selectedVariation));
+  let priceObj = card.prices.find((p) => p && p.variation === selectedVariation);
   if (!priceObj && card.prices.length) priceObj = card.prices[0];
   if (!priceObj) return null;
   const tcg = toNumber(priceObj.tcgplayer);
@@ -23,16 +22,38 @@ function getCardAveragePrice(card) {
   return tcg != null ? tcg : cmk;
 }
 
-// Calculate total value for collection
 function getCollectionTotalValue(col = []) {
   return col.reduce((sum, card) => {
     const price = getCardAveragePrice(card) ?? 0;
     const quantity = card.quantity || 1;
-    return sum + (price * quantity);
+    return sum + price * quantity;
   }, 0);
 }
 
-// --- UPDATED HOOK: pass { userId, token } --- //
+function cacheKey(userId) {
+  return `sb5_collection_${String(userId)}`;
+}
+
+function readCache(userId) {
+  try {
+    const raw = localStorage.getItem(cacheKey(userId));
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(userId, data) {
+  try {
+    localStorage.setItem(
+      cacheKey(userId),
+      JSON.stringify({ ts: Date.now(), data })
+    );
+  } catch {}
+}
+
+// ---------- hook ----------
 export default function useProfileCollection({ userId, token }) {
   const [collection, setCollection] = useState([]);
   const [wishlist, setWishlist] = useState({ entries: [] });
@@ -47,10 +68,24 @@ export default function useProfileCollection({ userId, token }) {
   const refresh = () => setRefreshTrigger((p) => p + 1);
 
   useEffect(() => {
-    if (!userId) return;
-    (async () => {
-      setLoading(true);
+    if (!userId) {
+      console.warn("[useProfileCollection] No userId provided — collection will be empty.");
+    }
+    let aborted = false;
 
+    // 0) Stale-while-revalidate: show cached collection instantly if available
+    const cached = typeof window !== "undefined" ? readCache(userId) : null;
+    if (cached && cached.data && Array.isArray(cached.data)) {
+      setCollection(cached.data);
+      setCollectionValue(getCollectionTotalValue(cached.data));
+      setLoading(false); // show UI immediately
+    }
+
+    (async () => {
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers.Authorization = `Bearer ${token}`;
+
+      // 1) Fetch collection (DB-only pricing) — minimal shape
       const colQ = `
         query GetUserProfileCollection($userId: ID!) {
           collection(userId: $userId) {
@@ -80,6 +115,7 @@ export default function useProfileCollection({ userId, token }) {
                 variation
                 tcgplayer
                 cardmarket
+                gbp
                 updatedAt
               }
             }
@@ -87,50 +123,7 @@ export default function useProfileCollection({ userId, token }) {
         }
       `;
 
-      let rawCollectionData = [];
-      try {
-        const headers = { "Content-Type": "application/json" };
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-        const r = await fetch(WP_GRAPHQL_URL, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ query: colQ, variables: { userId: String(userId) } }),
-        });
-        const responseJson = await r.json();
-        rawCollectionData = responseJson.data?.collection || [];
-      } catch (_) {
-        rawCollectionData = [];
-      }
-
-      // Flatten & keep only non-wishlist
-      let col = [];
-      (rawCollectionData || []).forEach((entry) => {
-        if (!entry) return;
-        const isWishlistItem =
-          entry.wishlist === true ||
-          entry.wishlist === 1 ||
-          String(entry.wishlist).toLowerCase() === "true";
-        if (!isWishlistItem) {
-          const card = entry.card || {};
-          const prices = Array.isArray(card.prices) ? card.prices.filter(Boolean) : [];
-          const variations = card.variations && typeof card.variations === 'object' ? card.variations : null;
-          col.push({
-            ...entry,
-            ...card,
-            prices,
-            variations,
-            cardId: entry.cardId,
-            quantity: entry.quantity,
-            condition: entry.condition,
-            variation: entry.variation,
-            wishlist: entry.wishlist,
-            createdAt: entry.createdAt,
-            updatedAt: entry.updatedAt,
-          });
-        }
-      });
-
-      // Proper wishlist query
+      // 2) Fetch wishlist in parallel (does not block the collection render)
       const wishQ = `
         query Wishlist($userId: ID!) {
           wishlist(userId: $userId) {
@@ -153,28 +146,87 @@ export default function useProfileCollection({ userId, token }) {
           }
         }
       `;
-      let wish = { entries: [] };
+
       try {
-        const headers = { "Content-Type": "application/json" };
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-        const r = await fetch(WP_GRAPHQL_URL, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ query: wishQ, variables: { userId: String(userId) } }),
-        });
-        const responseJson = await r.json();
-        wish = responseJson.data?.wishlist ?? { entries: [] };
-      } catch (_) {
-        wish = { entries: [] };
+        const [colResp, wishResp] = await Promise.all([
+          fetch(WP_GRAPHQL_URL, {
+            method: "POST",
+            headers,
+            // force network (avoid cached fetches that could be stale)
+            cache: "no-store",
+            body: JSON.stringify({
+              query: colQ,
+              variables: { userId: String(userId) },
+            }),
+          }),
+          fetch(WP_GRAPHQL_URL, {
+            method: "POST",
+            headers,
+            cache: "no-store",
+            body: JSON.stringify({
+              query: wishQ,
+              variables: { userId: String(userId) },
+            }),
+          }),
+        ]);
+
+        const colJson = await colResp.json().catch(() => ({}));
+        const wishJson = await wishResp.json().catch(() => ({}));
+
+        if (aborted) return;
+
+        const rawCollection = Array.isArray(colJson?.data?.collection)
+          ? colJson.data.collection
+          : [];
+
+        // Flatten & keep only non-wishlist entries (we do NO upstream hydration here)
+        const flat = [];
+        for (const entry of rawCollection) {
+          if (!entry) continue;
+          const isWishlist =
+            entry.wishlist === true ||
+            entry.wishlist === 1 ||
+            String(entry.wishlist).toLowerCase() === "true";
+          if (isWishlist) continue;
+
+          const card = entry.card || {};
+          flat.push({
+            ...entry,
+            ...card,
+            prices: Array.isArray(card.prices) ? card.prices.filter(Boolean) : [],
+            variations:
+              card.variations && typeof card.variations === "object"
+                ? card.variations
+                : null,
+            cardId: entry.cardId,
+            quantity: entry.quantity,
+            condition: entry.condition,
+            variation: entry.variation,
+            wishlist: entry.wishlist,
+            createdAt: entry.createdAt,
+            updatedAt: entry.updatedAt,
+          });
+        }
+
+        // Update state immediately with DB prices only
+        setCollection(flat);
+        setCollectionValue(getCollectionTotalValue(flat));
+        writeCache(userId, flat);
+
+        // Wishlist (non-blocking)
+        const wish = wishJson?.data?.wishlist ?? { entries: [] };
+        setWishlist(wish);
+
+        // If there was no cache, flip loading off now
+        if (!cached) setLoading(false);
+      } catch {
+        if (!cached) setLoading(false);
       }
-
-      const totalValue = getCollectionTotalValue(col);
-
-      setCollection(col);
-      setWishlist(wish);
-      setCollectionValue(totalValue);
-      setLoading(false);
     })();
+
+    return () => {
+      aborted = true;
+    };
   }, [userId, token, refreshTrigger]);
 
   return {
@@ -184,7 +236,9 @@ export default function useProfileCollection({ userId, token }) {
     collectionValue: { value: collectionValue, set: setCollectionValue },
     refresh,
     status: { value: status, set: setStatus },
-    showCardDetails, setShowCardDetails,
-    cardDetails, setCardDetails,
+    showCardDetails,
+    setShowCardDetails,
+    cardDetails,
+    setCardDetails,
   };
 }

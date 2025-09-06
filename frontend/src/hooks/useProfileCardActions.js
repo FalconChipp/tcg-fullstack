@@ -3,7 +3,7 @@ const TCG_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
 
 /**
  * Handles profile actions for cards, including collection/wishlist edits.
- * Handles both array and object-with-.entries as state shape.
+ * Tolerates both array and object-with-.entries shapes.
  */
 export default function useProfileCardActions({
   isOwnProfile,
@@ -15,16 +15,28 @@ export default function useProfileCardActions({
   collection,
   wishlist,
   userId,
-  refresh
+  refresh,
+  // NEW: allow the hook to trigger a wishlist refetch when needed
+  refreshWishlist
 }) {
-  // Helper to get .entries or fallback to []
+  // --- Safe setters: accept function, or object with .set, or nothing
+  function ensureSetter(s) {
+    if (typeof s === 'function') return s;
+    if (s && typeof s.set === 'function') return s.set;
+    return null;
+  }
+  const setCollectionFn = ensureSetter(setCollection);
+  const setWishlistFn  = ensureSetter(setWishlist);
+  const setLoadingFn   = ensureSetter(setLoading);
+
+  // Helper to read entries
   function getEntries(objOrArray) {
     if (!objOrArray) return [];
     if (Array.isArray(objOrArray)) return objOrArray;
     if (Array.isArray(objOrArray.entries)) return objOrArray.entries;
     return [];
   }
-  // Helper to update entries in state, preserving paginated shape
+  // Helper to update entries while preserving paginated shape
   function updateEntries(prev, newEntries) {
     if (Array.isArray(prev)) return newEntries;
     if (prev && typeof prev === "object") {
@@ -41,21 +53,25 @@ export default function useProfileCardActions({
     }
     const updatedCard = { ...card, wishlist: false };
 
-    // CHANGED: Always use the actual .variation from the card, never default to null unless actually null/undefined
     const variables = {
       cardId: card.cardId,
       variation: card.variation ?? null
     };
 
-    // Optimistic UI update
-    setWishlist(prev => updateEntries(prev,
-      getEntries(prev).filter(x => x.id !== card.id || String(x.variation) !== String(card.variation))
-    ));
-    setCollection(prev => updateEntries(prev, [
-      ...getEntries(prev),
-      updatedCard
-    ]));
+    // Optimistic UI: only if setters exist
+    if (setWishlistFn) {
+      setWishlistFn(prev => updateEntries(prev,
+        getEntries(prev).filter(x => x.id !== card.id || String(x.variation) !== String(card.variation))
+      ));
+    }
+    if (setCollectionFn) {
+      setCollectionFn(prev => updateEntries(prev, [
+        ...getEntries(prev),
+        updatedCard
+      ]));
+    }
     setStatus({ type: "success", msg: "Moving to collection..." });
+    setLoadingFn?.(true);
 
     try {
       const mutation = `
@@ -77,46 +93,58 @@ export default function useProfileCardActions({
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          query: mutation,
-          variables, // CHANGED: Always pass the correct value
-        }),
+        body: JSON.stringify({ query: mutation, variables }),
       });
       const { data, errors } = await response.json();
 
       if (errors) {
         setStatus({ type: "error", msg: errors[0].message || "Failed to move card." });
-        // Roll back optimistic UI change
-        setWishlist(prev => updateEntries(prev, [...getEntries(prev), card]));
-        setCollection(prev => updateEntries(prev, getEntries(prev).filter(x => x.id !== card.id)));
+        // Roll back optimistic UI if we changed it
+        if (setWishlistFn) setWishlistFn(prev => updateEntries(prev, [...getEntries(prev), card]));
+        if (setCollectionFn) setCollectionFn(prev => updateEntries(prev, getEntries(prev).filter(x => x.id !== card.id)));
         return;
       }
-      const { moveToCollection } = data;
+
+      const { moveToCollection } = data || {};
       if (moveToCollection) {
         const serverCard = moveToCollection;
-        // Remove from wishlist again (for sync)
-        setWishlist(prev => updateEntries(prev,
-          getEntries(prev).filter(x => x.id !== card.id || String(x.variation) !== String(card.variation))
-        ));
-        setCollection(prev => {
-          const entries = getEntries(prev);
-          const exists = entries.some(x => x.id === card.id);
-          return updateEntries(
-            prev,
-            exists
-              ? entries.map(x => x.id === card.id ? { ...x, ...serverCard, wishlist: false } : x)
-              : [...entries, { ...serverCard, wishlist: false }]
-          );
-        });
+
+        // Ensure wishlist no longer shows this item
+        if (setWishlistFn) {
+          setWishlistFn(prev => updateEntries(prev,
+            getEntries(prev).filter(x => x.id !== card.id || String(x.variation) !== String(card.variation))
+          ));
+        }
+
+        // Ensure collection reflects server values
+        if (setCollectionFn) {
+          setCollectionFn(prev => {
+            const entries = getEntries(prev);
+            const exists = entries.some(x => x.id === card.id);
+            return updateEntries(
+              prev,
+              exists
+                ? entries.map(x => x.id === card.id ? { ...x, ...serverCard, wishlist: false } : x)
+                : [...entries, { ...serverCard, wishlist: false }]
+            );
+          });
+        }
+
+        // Ask parent to refresh aggregates / pages if provided
+        refresh?.();
+        refreshWishlist?.();
+
         setStatus({ type: "success", msg: "Moved to collection successfully!" });
       } else {
         throw new Error("Invalid server response");
       }
     } catch (error) {
       setStatus({ type: "error", msg: "Failed to move card. Please try again." });
-      // Roll back optimistic UI change
-      setWishlist(prev => updateEntries(prev, [...getEntries(prev), card]));
-      setCollection(prev => updateEntries(prev, getEntries(prev).filter(x => x.id !== card.id)));
+      // Roll back optimistic UI if we changed it
+      if (setWishlistFn) setWishlistFn(prev => updateEntries(prev, [...getEntries(prev), card]));
+      if (setCollectionFn) setCollectionFn(prev => updateEntries(prev, getEntries(prev).filter(x => x.id !== card.id)));
+    } finally {
+      setLoadingFn?.(false);
     }
   }
 
@@ -133,25 +161,29 @@ export default function useProfileCardActions({
       ? [...collection]
       : { ...(collection || {}) };
 
-    setCollection(prev => updateEntries(prev,
-      getEntries(prev)
-        .map(card =>
-          String(card.id) === String(collectionId)
-            ? { ...card, quantity: card.quantity - quantityToRemove }
-            : card
-        )
-        .filter(card => String(card.id) !== String(collectionId) || card.quantity > 0)
-    ));
+    if (setCollectionFn) {
+      setCollectionFn(prev => updateEntries(prev,
+        getEntries(prev)
+          .map(card =>
+            String(card.id) === String(collectionId)
+              ? { ...card, quantity: card.quantity - quantityToRemove }
+              : card
+          )
+          .filter(card => String(card.id) !== String(collectionId) || card.quantity > 0)
+      ));
+    }
 
-    setWishlist(prev => updateEntries(prev,
-      getEntries(prev)
-        .map(card =>
-          String(card.id) === String(collectionId)
-            ? { ...card, quantity: card.quantity - quantityToRemove }
-            : card
-        )
-        .filter(card => String(card.id) !== String(collectionId) || card.quantity > 0)
-    ));
+    if (setWishlistFn) {
+      setWishlistFn(prev => updateEntries(prev,
+        getEntries(prev)
+          .map(card =>
+            String(card.id) === String(collectionId)
+              ? { ...card, quantity: card.quantity - quantityToRemove }
+              : card
+          )
+          .filter(card => String(card.id) !== String(collectionId) || card.quantity > 0)
+      ));
+    }
 
     try {
       const mutation = `
@@ -161,7 +193,7 @@ export default function useProfileCardActions({
       `;
       const variables = {
         cardId: (cardObj?.cardId || cardObj?.id || collectionId).toString(),
-        variation: cardObj && typeof cardObj.variation === "string" && cardObj.variation.length > 0
+        variation: (cardObj && typeof cardObj.variation === "string" && cardObj.variation.length > 0)
           ? cardObj.variation
           : (cardObj?.variation === null ? null : undefined)
       };
@@ -172,21 +204,20 @@ export default function useProfileCardActions({
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          query: mutation,
-          variables,
-        }),
+        body: JSON.stringify({ query: mutation, variables }),
       });
       const { data, errors } = await response.json();
       if (errors || !data?.removeFromCollection) {
         setStatus({ type: "error", msg: "Failed to remove card from collection." });
-        setCollection(prevCollection); // Rollback
+        if (setCollectionFn) setCollectionFn(prevCollection); // Rollback
       } else {
         setStatus({ type: "success", msg: "Card removed from collection." });
+        refresh?.();
+        refreshWishlist?.();
       }
     } catch (error) {
       setStatus({ type: "error", msg: "An error occurred while removing the card." });
-      setCollection(prevCollection); // Rollback
+      if (setCollectionFn) setCollectionFn(prevCollection); // Rollback
     }
   }
 
@@ -210,10 +241,7 @@ export default function useProfileCardActions({
         },
         body: JSON.stringify({
           query: mutation,
-          variables: {
-            cardId,
-            variation: variation ?? null
-          },
+          variables: { cardId, variation: variation ?? null },
         }),
       });
       const { data, errors } = await response.json();
@@ -222,13 +250,16 @@ export default function useProfileCardActions({
         return;
       }
       if (data.removeFromWishlist) {
-        setWishlist(prev => updateEntries(prev,
-          getEntries(prev).filter(
-            card =>
-              String(card.cardId || card.id) !== String(cardId) ||
-              String(card.variation || null) !== String(variation || null)
-          )
-        ));
+        if (setWishlistFn) {
+          setWishlistFn(prev => updateEntries(prev,
+            getEntries(prev).filter(
+              card =>
+                String(card.cardId || card.id) !== String(cardId) ||
+                String(card.variation || null) !== String(variation || null)
+            )
+          ));
+        }
+        refreshWishlist?.();
         setStatus({ type: "success", msg: "Removed from wishlist" });
       }
     } catch (error) {
@@ -242,8 +273,7 @@ export default function useProfileCardActions({
     try {
       const mutation = `
         mutation AddToWishlist($cardId: String!, $variation: String) {
-          addToWishlist(cardId: $cardId, variation: $variation)
-          {
+          addToWishlist(cardId: $cardId, variation: $variation) {
             id
             wishlist
             cardId
@@ -274,10 +304,13 @@ export default function useProfileCardActions({
         return;
       }
       if (data?.addToWishlist) {
-        setWishlist(prev => updateEntries(prev, [
-          ...getEntries(prev),
-          data.addToWishlist
-        ]));
+        if (setWishlistFn) {
+          setWishlistFn(prev => updateEntries(prev, [
+            ...getEntries(prev),
+            data.addToWishlist
+          ]));
+        }
+        refreshWishlist?.();
         setStatus({ type: "success", msg: "Added to wishlist" });
       }
     } catch (error) {

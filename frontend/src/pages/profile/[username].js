@@ -15,6 +15,7 @@ import ProfileCollectionPanel from "@/components/UserProfile/ProfileCollectionPa
 import ProfileBindersPanel from "@/components/UserProfile/ProfileBindersPanel";
 import ProfileWishlistPanel from "@/components/UserProfile/ProfileWishlistPanel";
 import ProfileAchievements from "@/components/UserProfile/ProfileAchievements";
+import useWishlistData from "@/hooks/useWishlistData";
 
 // GraphQL endpoints
 const API_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
@@ -140,10 +141,24 @@ export default function ProfilePage({ user, error }) {
   }, [UID]);
 
   const {
-    collection, wishlist, loading, collectionValue,
+    collection, loading, collectionValue,
     refresh, status,
     showCardDetails, setShowCardDetails, cardDetails
-  } = useProfileCollection({ user: userForQueries, token });
+  } = useProfileCollection({ userId: UID, token });
+
+  // --- Wishlist data (provides wishlist state + setter) ---
+  const {
+    wishlist: wl,
+    setWishlist,             // <-- real setter
+    loading: wlLoading,
+    error: wlError,
+    refresh: refreshWishlist // <-- expose refetch function
+  } = useWishlistData({
+    isOwnProfile,
+    userId: UID,
+    token,
+    page: 1, pageSize: 25
+  });
 
   const {
     handleMoveToCollection, handleRemoveCard,
@@ -153,12 +168,13 @@ export default function ProfilePage({ user, error }) {
     token,
     setStatus: status.set,
     setCollection: collection.set,
-    setWishlist: wishlist.set,
+    setWishlist,            // <-- pass the real setter (fixes setWishlist crash)
     setLoading: loading.set,
     collection: collection.value,
-    wishlist: wishlist.value,
+    wishlist: wl,
     userId: UID,
-    refresh
+    refresh,
+    refreshWishlist         // <-- let actions refresh wishlist after mutations
   });
 
   // --- Render ---
@@ -261,7 +277,7 @@ export default function ProfilePage({ user, error }) {
 
           {activeTab === "wishlist" && (
             <ProfileWishlistPanel
-              wishlist={wishlist.value.entries || []}
+              wishlist={wl?.entries || []}  // safe access to entries
               user={userForQueries}
               isOwnProfile={isOwnProfile}
               onCardRemoved={handleRemoveFromWishlist}

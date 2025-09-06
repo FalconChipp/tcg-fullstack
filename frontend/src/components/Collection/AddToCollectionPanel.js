@@ -7,6 +7,8 @@ import Image from "next/image";
 import { executeMutation } from "@/utils/graphqlUtils";
 import StatusMessage from "@/components/UI/StatusMessage";
 import { getCardImageUrl } from "@/utils/imageUtils";
+// import { getVariationOptionsFromCard, formatVariation } from "@/utils/variationUtils";
+import { getVariationOptionsFromCard, formatVariation } from "@/utils/formatVariation";
 
 const FALLBACK_CARD_IMAGE =
   "https://cdn.pidgi.net/images/f/f6/Card_back_INTL_-_Pokemon_Trading_Card_Game.png";
@@ -23,74 +25,58 @@ export default function AddToCollectionPanel({ cardDetail, onClose }) {
   const [statusMessage, setStatusMessage] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Extract variation options (no changes here)
+  // Resolve a usable card id from either cardDetail.cardId or cardDetail.id
+  const effectiveCardId = cardDetail?.cardId || cardDetail?.id || null;
+
+  // Reliable image fallback with Next/Image (control the src in state)
+  const [imgSrc, setImgSrc] = useState(
+    getCardImageUrl(cardDetail?.image || cardDetail?.tcgImageUrl || cardDetail?.tcgImage)
+  );
   useEffect(() => {
-    let variationsArray = [];
-    if (
-      cardDetail?.tcgplayerVariations &&
-      typeof cardDetail.tcgplayerVariations === "object"
-    ) {
-      variationsArray = Object.keys(cardDetail.tcgplayerVariations).filter(
-        (k) => cardDetail.tcgplayerVariations[k] !== null && k !== "__typename"
-      );
-    } else if (cardDetail?.variations && typeof cardDetail.variations === "string") {
-      variationsArray = cardDetail.variations
-        .split(",")
-        .map((s) => s.trim().toLowerCase().replace(/\s+/g, "_"))
-        .filter(Boolean);
-    } else if (Array.isArray(cardDetail?.variations)) {
-      variationsArray = cardDetail.variations
-        .map((v) => v.toLowerCase().replace(/\s+/g, "_"))
-        .filter(Boolean);
-    }
-    if (variationsArray.length > 0) {
-      setVariationOptions(variationsArray);
-      if (!variation && variationsArray.includes("normal")) setVariation("normal");
-      else if (!variation) setVariation(variationsArray[0]);
-    } else {
-      setVariationOptions([]);
-      setVariation("");
-    }
-    // eslint-disable-next-line
+    setImgSrc(
+      getCardImageUrl(cardDetail?.image || cardDetail?.tcgImageUrl || cardDetail?.tcgImage)
+    );
   }, [cardDetail]);
 
-  function formatVariationText(variationKey) {
-    if (!variationKey) return "Standard";
-    return variationKey
-      .replace(/([A-Z])/g, " $1")
-      .replace(/^./, (str) => str.toUpperCase())
-      .replace(/Holofoil/g, "Holo")
-      .replace(/_/g, " ")
-      .trim();
-  }
+  // Extract variation options via shared helper (filters out __typename etc.)
+  useEffect(() => {
+    const opts = getVariationOptionsFromCard(cardDetail);
+    setVariationOptions(opts);
+    if (!variation) {
+      if (opts.includes("normal")) setVariation("normal");
+      else if (opts.length) setVariation(opts[0]);
+      else setVariation("");
+    } else if (variation && opts.length && !opts.includes(variation)) {
+      // if current variation becomes invalid (different card), reset gracefully
+      setVariation(opts.includes("normal") ? "normal" : opts[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardDetail]);
 
   function showStatus(type, message) {
     setStatusMessage({ type, message });
     setTimeout(() => setStatusMessage(null), 3200);
   }
 
-  // --- Main submit handler ---
   async function handleSubmit() {
     if (!token) {
       showStatus("error", "Authentication token not found. Please log in.");
       return;
     }
-    if (!cardDetail || !cardDetail.cardId) {
+    if (!cardDetail || !effectiveCardId) {
       showStatus("error", "Card details are missing. Cannot add.");
       return;
     }
+
     setIsSubmitting(true);
 
-    // Prepare variables
     const variables = {
-      cardId: cardDetail.cardId || cardDetail.id,
+      cardId: effectiveCardId,
       quantity,
       condition,
       variation: variation || null,
-      // wishlist and isPublic are REMOVED -- handled by which mutation is called
     };
 
-    // Define both mutations
     const addToCollectionMutation = `
       mutation AddToCollection(
         $cardId: String!
@@ -159,7 +145,6 @@ export default function AddToCollectionPanel({ cardDetail, onClose }) {
     `;
 
     try {
-      // CHANGED: Select mutation based on wishlist toggle
       let result, success;
       if (wishlist) {
         result = await executeMutation(addToWishlistMutation, variables, token);
@@ -168,11 +153,9 @@ export default function AddToCollectionPanel({ cardDetail, onClose }) {
         result = await executeMutation(addToCollectionMutation, variables, token);
         success = result?.addToCollection;
       }
+
       if (success) {
-        showStatus(
-          "success",
-          `Card added to your ${wishlist ? "wishlist" : "collection"}!`
-        );
+        showStatus("success", `Card added to your ${wishlist ? "wishlist" : "collection"}!`);
         setTimeout(() => {
           onClose && onClose();
         }, 1500);
@@ -182,7 +165,7 @@ export default function AddToCollectionPanel({ cardDetail, onClose }) {
         throw new Error(errorMessage);
       }
     } catch (err) {
-      showStatus("error", err.message || "Unexpected error. Try again.");
+      showStatus("error", err?.message || "Unexpected error. Try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -201,10 +184,7 @@ export default function AddToCollectionPanel({ cardDetail, onClose }) {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-black/60 flex items-end justify-end"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-end justify-end" onClick={onClose}>
       <div
         className="
           w-full max-w-sm sm:max-w-md
@@ -225,23 +205,19 @@ export default function AddToCollectionPanel({ cardDetail, onClose }) {
         >
           &times;
         </button>
+
         {/* Card preview */}
         <div className="flex gap-4 items-center mb-7">
           <div className="relative w-24 h-36 rounded-2xl bg-light-alt dark:bg-dark-alt overflow-hidden shadow border border-light-border dark:border-dark-border">
             <Image
-              src={getCardImageUrl(
-                cardDetail?.image ||
-                  cardDetail?.tcgImageUrl ||
-                  cardDetail?.tcgImage
-              )}
+              src={imgSrc || FALLBACK_CARD_IMAGE}
               alt={cardDetail?.name || "Card"}
               fill
               className="object-contain rounded-2xl"
               sizes="120px"
-              onError={(e) => {
-                e.target.src = FALLBACK_CARD_IMAGE;
-              }}
+              onError={() => setImgSrc(FALLBACK_CARD_IMAGE)}
               priority
+              unoptimized
             />
           </div>
           <div>
@@ -260,6 +236,7 @@ export default function AddToCollectionPanel({ cardDetail, onClose }) {
             </div>
           </div>
         </div>
+
         {/* Form */}
         <form
           className="flex flex-col gap-4"
@@ -285,7 +262,7 @@ export default function AddToCollectionPanel({ cardDetail, onClose }) {
               >
                 {variationOptions.map((opt) => (
                   <option key={opt} value={opt}>
-                    {formatVariationText(opt)}
+                    {formatVariation(opt)}
                   </option>
                 ))}
               </select>
@@ -302,6 +279,7 @@ export default function AddToCollectionPanel({ cardDetail, onClose }) {
               />
             )}
           </div>
+
           {/* Condition */}
           <div className="flex flex-col gap-1">
             <label
@@ -322,6 +300,7 @@ export default function AddToCollectionPanel({ cardDetail, onClose }) {
               <option value="poor">Poor</option>
             </select>
           </div>
+
           {/* Quantity */}
           <div className="flex flex-col gap-1">
             <label
@@ -341,6 +320,7 @@ export default function AddToCollectionPanel({ cardDetail, onClose }) {
               className="rounded-lg border border-light-border dark:border-dark-border px-3 py-2 bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text focus:outline-none focus:border-light-accent dark:focus:border-dark-accent"
             />
           </div>
+
           {/* Wishlist Toggle */}
           <div className="flex items-center gap-3 mt-2">
             <label className="relative flex items-center cursor-pointer select-none">
@@ -367,6 +347,7 @@ export default function AddToCollectionPanel({ cardDetail, onClose }) {
               Add to Wishlist
             </span>
           </div>
+
           {/* Submit */}
           <button
             type="submit"
@@ -380,6 +361,7 @@ export default function AddToCollectionPanel({ cardDetail, onClose }) {
               : "Add to Collection"}
           </button>
         </form>
+
         {/* Status message */}
         {statusMessage && (
           <div className="mt-5">

@@ -3,16 +3,13 @@ import { deepClonePages } from '../utils/deepClonePages';
 import { getCardKey } from '@/utils/cardUtils';
 import { AuthContext } from '@/components/Auth/AuthProvider';
 import { slotsTo2DArray } from '@/utils/slotsTo2DArray';
-// NEW: helper to convert API binder pages into 2D slot arrays while
-// preserving page metadata (id, title, layout, pageOrder)
 import { binderPagesTo2DArray } from '@/utils/binderPagesTo2DArray';
-// ADDED: Import uuid for unique slot IDs
 import { v4 as uuidv4 } from "uuid";
 
-/**
- * useBinderPages: Handles all binder editing state, including movedCards,
- * but no longer exposes any save handler.
- */
+// ---- Debug toggle (set NEXT_PUBLIC_DEBUG=true to enable) ----
+const DEBUG = true;
+const dlog = (...args) => { if (DEBUG) console.debug("[useBinderPages]", ...args); };
+
 export function useBinderPages({
   binder,
   settings,
@@ -24,10 +21,8 @@ export function useBinderPages({
   coverColor: initialCoverColor,
   accentColor: initialAccentColor
 }) {
-  // ---- GET AUTH TOKEN (adjust if you use a different context) ----
   const { token } = useContext(AuthContext);
 
-  // Layout setup
   const defaultLayout = '3x3';
   const newLayout = settings?.layout || defaultLayout;
   const initialLayout = binder?.layout || newLayout;
@@ -35,7 +30,7 @@ export function useBinderPages({
   const [rows, cols] = currentLayout.split('x').map(Number);
   const totalSlots = rows * cols;
 
-  // ----- Binder Cover and Accent Color State -----
+  // ----- Binder Cover/Accent -----
   const [coverColor, setCoverColor] = useState(
     initialCoverColor ?? binder?.coverColor ?? "#181822"
   );
@@ -43,11 +38,9 @@ export function useBinderPages({
     initialAccentColor ?? binder?.accentColor ?? "#7de95a"
   );
 
-  // Main state
   const [pages, setPages] = useState(() => {
     if (binder?.pages?.length) {
       if (Array.isArray(binder.pages[0])) return binder.pages;
-      // Convert API page objects to slot grids and keep metadata
       return binderPagesTo2DArray(binder.pages, totalSlots);
     }
     return [Array(totalSlots).fill(null)];
@@ -74,25 +67,38 @@ export function useBinderPages({
   const [movedCards, setMovedCards] = useState({});
   const [statusMessage, setStatusMessage] = useState(null);
 
-  // Ref for async
+  // Initial debug
+  useEffect(() => {
+    if (!DEBUG) return;
+    console.groupCollapsed("[useBinderPages] init");
+    console.debug("incoming userEntireCollection length:", Array.isArray(userEntireCollection) ? userEntireCollection.length : "(not array)");
+    console.debug("binder.pages:", binder?.pages);
+    console.debug("initial pages (derived):", pages);
+    console.groupEnd();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const currentPageRef = useRef(currentPage);
   useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
 
-  // Reset state if binder/settings change
+  // Reset when binder/settings change
   const prevBinderId = useRef(binder?.id);
   const prevSettingsString = useRef(JSON.stringify(settings));
   useEffect(() => {
     const settingsString = JSON.stringify(settings);
-    if (binder?.id !== prevBinderId.current || settingsString !== prevSettingsString.current) {
+    const binderChanged = binder?.id !== prevBinderId.current;
+    const settingsChanged = settingsString !== prevSettingsString.current;
+
+    if (binderChanged || settingsChanged) {
       const layout = binder?.layout || settings?.layout || defaultLayout;
       setCurrentLayout(layout);
       const [r, c] = layout.split('x').map(Number);
       const slots = (r * c) || 9;
+
       if (binder?.pages?.length) {
         if (Array.isArray(binder.pages[0])) {
           setPages(binder.pages);
         } else {
-          // Preserve page metadata when converting
           setPages(binderPagesTo2DArray(binder.pages, slots));
         }
       } else {
@@ -108,23 +114,33 @@ export function useBinderPages({
       );
       setBinderDescription(binder?.description || settings?.description || '');
 
-      setCoverColor(
-        initialCoverColor ?? binder?.coverColor ?? "#181822"
-      );
-      setAccentColor(
-        initialAccentColor ?? binder?.accentColor ?? "#7de95a"
-      );
+      setCoverColor(initialCoverColor ?? binder?.coverColor ?? "#181822");
+      setAccentColor(initialAccentColor ?? binder?.accentColor ?? "#7de95a");
 
       setCurrentPage(0);
       setHasUnsavedChanges(false);
       prevBinderId.current = binder?.id;
       prevSettingsString.current = settingsString;
+
+      if (DEBUG) {
+        console.groupCollapsed("[useBinderPages] binder/settings changed");
+        console.debug("layout:", layout, "→ slots:", slots);
+        console.debug("pages(updated):", binder?.pages);
+        console.groupEnd();
+      }
     }
+
     setCollection(userEntireCollection || []);
-    // eslint-disable-next-line
+    if (DEBUG) {
+      console.groupCollapsed("[useBinderPages] setCollection from props");
+      console.debug("userEntireCollection length:", Array.isArray(userEntireCollection) ? userEntireCollection.length : "(not array)");
+      console.debug("collection(updated) length:", Array.isArray(userEntireCollection) ? userEntireCollection.length : 0);
+      console.groupEnd();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [binder, settings, userEntireCollection, initialCoverColor, initialAccentColor]);
 
-  // --- Track ALL changes for unsaved state ---
+  // Track unsaved changes
   useEffect(() => {
     if (
       binderName !== (binder?.name || "") ||
@@ -139,7 +155,7 @@ export function useBinderPages({
 
   useEffect(() => {
     setHasUnsavedChanges(true);
-    // eslint-disable-next-line
+    if (DEBUG) dlog("pages changed; hasUnsavedChanges=true");
   }, [pages]);
 
   // --- Page nav drag & drop ---
@@ -178,12 +194,12 @@ export function useBinderPages({
     });
     setCurrentPage(prev => Math.max(0, prev - 1));
   }, [totalSlots]);
+
   const handleAddPage = useCallback(() => {
     setPages(p => {
       const np = deepClonePages(p);
       const newPage = Array(totalSlots).fill(null);
-      // keep metadata for saving later
-      newPage.layout = currentLayout;
+      newPage.layout = currentLayout; // keep metadata
       np.push(newPage);
       setHasUnsavedChanges(true);
       return np;
@@ -220,10 +236,7 @@ export function useBinderPages({
           } else {
             return [
               ...prev,
-              {
-                ...removedCard,
-                quantity: 1,
-              },
+              { ...removedCard, quantity: 1 },
             ];
           }
         });
@@ -236,9 +249,10 @@ export function useBinderPages({
     });
   }, []);
 
-  // --- Main card move/drop logic (NO SWAP, NO OVERWRITE) ---
+  // --- Main card move/drop logic ---
   const handleCardDropped = useCallback((card, targetSlotIdx, fromSlotIdx = null) => {
     if (!isOwnProfile) return;
+    if (DEBUG) dlog("handleCardDropped", { card, targetSlotIdx, fromSlotIdx });
 
     const isCollectionDrag = card.isCollectionDrag;
     setPages(prevPages => {
@@ -261,10 +275,9 @@ export function useBinderPages({
         return np;
       }
 
-      // CHANGED: Always assign a unique id to every slot
       const movingCard = {
         ...card,
-        id: card.id || uuidv4(), // ADDED: Ensure all slots have a unique id (backend needs this)
+        id: card.id || uuidv4(),
         page: pageIdx + 1,
         position: targetSlotIdx,
         quantity: card.quantity || 1,
@@ -292,10 +305,7 @@ export function useBinderPages({
           const updated = [...prevCollection];
           const currentQty = Number(updated[idx].quantity) || 1;
           if (currentQty > 1) {
-            updated[idx] = {
-              ...updated[idx],
-              quantity: currentQty - 1,
-            };
+            updated[idx] = { ...updated[idx], quantity: currentQty - 1 };
           } else {
             updated.splice(idx, 1);
           }
@@ -305,10 +315,11 @@ export function useBinderPages({
       });
 
       const cardKey = getCardKey(card);
-      setMovedCards(prev => ({
-        ...prev,
-        [cardKey]: (prev[cardKey] || 0) + 1
-      }));
+      setMovedCards(prev => {
+        const next = { ...prev, [cardKey]: (prev[cardKey] || 0) + 1 };
+        if (DEBUG) dlog("movedCards updated:", next);
+        return next;
+      });
     }
 
     if (onCardAddedToBinder) onCardAddedToBinder({
@@ -318,12 +329,21 @@ export function useBinderPages({
     });
   }, [isOwnProfile, onCardAddedToBinder]);
 
-  // --- Misc handlers ---
+  // Misc handlers
   const handlePageDragOver = useCallback(e => { e.preventDefault(); }, []);
   const handlePageDragLeave = useCallback(e => { e.preventDefault(); }, []);
   const handlePageDrop = useCallback(e => { e.preventDefault(); }, []);
 
-  // --- Return state and handlers (NO save handler!) ---
+  // Render-time trace
+  if (DEBUG) {
+    console.groupCollapsed("[useBinderPages] render");
+    console.debug("collection length:", Array.isArray(collection) ? collection.length : "(not array)");
+    console.debug("pages count:", pages?.length);
+    console.debug("currentLayout:", currentLayout, "| rows x cols:", rows, "x", cols);
+    console.debug("activeTab:", activeTab, "| hasUnsavedChanges:", hasUnsavedChanges);
+    console.groupEnd();
+  }
+
   return {
     binderName, setBinderName,
     binderDescription, setBinderDescription,

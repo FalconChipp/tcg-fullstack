@@ -1,6 +1,7 @@
+// frontend/src/components/Binder/BinderEditorModal.js
 "use client";
 
-import React, { useMemo, useState, useContext } from "react";
+import React, { useMemo, useState, useContext, useEffect } from "react";
 import { VIEW_MODES } from "@/utils/constants";
 import BinderEditorHeader from "@/components/Binder/BinderModal/Header";
 import PageGrid from "@/components/Binder/BinderModal/PageGrid";
@@ -16,6 +17,10 @@ import { executeMutation, COLLECTION_MUTATIONS } from "@/utils/graphqlUtils";
 import { binderPagesTo2DArray } from "@/utils/binderPagesTo2DArray";
 import { filterCollectionByBinderSlots } from "@/utils/filterCollectionByBinderSlots";
 
+// ---- Debug toggle (set NEXT_PUBLIC_DEBUG=true to enable) ----
+const DEBUG = true;
+const dlog = (...args) => { if (DEBUG) console.debug("[BinderEditorModal]", ...args); };
+
 export default function BinderEditorModal(props) {
   const {
     binder,
@@ -24,22 +29,27 @@ export default function BinderEditorModal(props) {
     onSave,
     onClose,
     onCardAddedToBinder,
-    userEntireCollection,
+    userEntireCollection, // ← array from parent (profile page)
   } = props;
+
+  // Initial logs on mount/prop change
+  useEffect(() => {
+    if (!DEBUG) return;
+    console.groupCollapsed("[BinderEditorModal] props snapshot");
+    console.debug("binder:", binder);
+    console.debug("settings:", settings);
+    console.debug("isOwnProfile:", isOwnProfile);
+    console.debug("userEntireCollection length:", Array.isArray(userEntireCollection) ? userEntireCollection.length : "(not array)");
+    console.groupEnd();
+  }, [binder, settings, isOwnProfile, userEntireCollection]);
 
   // Memoize initial colors so they do not recalc on every render
   const initialCoverColor = useMemo(
-    () =>
-      settings?.coverColor ??
-      binder?.coverColor ??
-      "#181822",
+    () => settings?.coverColor ?? binder?.coverColor ?? "#181822",
     [settings?.coverColor, binder?.coverColor]
   );
   const initialAccentColor = useMemo(
-    () =>
-      settings?.accentColor ??
-      binder?.accentColor ??
-      "#7de95a",
+    () => settings?.accentColor ?? binder?.accentColor ?? "#7de95a",
     [settings?.accentColor, binder?.accentColor]
   );
 
@@ -59,7 +69,7 @@ export default function BinderEditorModal(props) {
     searchResults, setSearchResults,
     searchPage, setSearchPage,
     hasMoreResults, setHasMoreResults,
-    collection,
+    collection, // may be seeded from userEntireCollection by the hook
     movedCards, setMovedCards,
     statusMessage, setStatusMessage,
     coverColor, setCoverColor,
@@ -71,7 +81,7 @@ export default function BinderEditorModal(props) {
     onSave,
     onClose,
     onCardAddedToBinder,
-    userEntireCollection,
+    userEntireCollection, // pass through to seed the hook
     coverColor: initialCoverColor,
     accentColor: initialAccentColor
   });
@@ -80,6 +90,21 @@ export default function BinderEditorModal(props) {
 
   // Color picker modal
   const [showCoverPicker, setShowCoverPicker] = useState(false);
+
+  // Prefer the prop if it already contains cards; otherwise fall back to the hook’s array
+  const sourceCollection = useMemo(() => {
+    const picked = (Array.isArray(userEntireCollection) && userEntireCollection.length)
+      ? userEntireCollection
+      : (Array.isArray(collection) ? collection : []);
+    if (DEBUG) {
+      console.groupCollapsed("[BinderEditorModal] sourceCollection decision");
+      console.debug("userEntireCollection length:", Array.isArray(userEntireCollection) ? userEntireCollection.length : "(not array)");
+      console.debug("hook.collection length:", Array.isArray(collection) ? collection.length : "(not array)");
+      console.debug("→ using sourceCollection length:", picked.length);
+      console.groupEnd();
+    }
+    return picked;
+  }, [userEntireCollection, collection]);
 
   // Find color object for the name display in nav
   const colorObj = STANDARD_COLOURS.find(
@@ -96,11 +121,21 @@ export default function BinderEditorModal(props) {
     onClose,
   });
 
-  // --- Compute filtered collection: only cards/quantities not currently in slots
-  const filteredCollection = useMemo(
-    () => filterCollectionByBinderSlots(collection, pages),
-    [collection, pages]
-  );
+  // Only filter by slots for the sidebar collection view
+  const filteredCollection = useMemo(() => {
+    const result = filterCollectionByBinderSlots(sourceCollection, pages);
+    if (DEBUG) {
+      console.groupCollapsed("[BinderEditorModal] filteredCollection");
+      console.debug("pages.length:", pages?.length);
+      console.debug("sourceCollection.length:", sourceCollection?.length);
+      console.debug("filteredCollection.length:", result?.length);
+      if (result?.length === 0 && sourceCollection?.length > 0) {
+        console.debug("NOTE: Filter produced 0 but source had items. Keys may not match (variation/condition/id).");
+      }
+      console.groupEnd();
+    }
+    return result;
+  }, [sourceCollection, pages]);
 
   // ======================
   // BATCH SAVE LOGIC BELOW
@@ -136,20 +171,21 @@ export default function BinderEditorModal(props) {
     try {
       const binderId = binder?.id;
       if (!binderId) throw new Error("No binder ID to save!");
+      if (DEBUG) {
+        console.groupCollapsed("[BinderEditorModal] SAVE payload");
+        console.debug("binderId:", binderId);
+        console.debug("inputPages:", inputPages);
+        console.groupEnd();
+      }
 
-      // Use the batch save mutation for ALL saves
       const res = await executeMutation(
         COLLECTION_MUTATIONS.SAVE_BINDER_PAGES_AND_SLOTS,
-        {
-          binderId,
-          pages: inputPages
-        },
+        { binderId, pages: inputPages },
         token
       );
 
-      // Success: refresh UI and notify
       setStatusMessage({ type: "success", message: "Binder saved!" });
-      // Optionally, update local state with fresh data:
+
       if (res?.saveBinderPagesAndSlots) {
         setPages(binderPagesTo2DArray(res.saveBinderPagesAndSlots.pages, rows * cols));
       }
@@ -159,11 +195,22 @@ export default function BinderEditorModal(props) {
       return true;
     } catch (err) {
       setStatusMessage({ type: "error", message: err.message || "Failed to save binder." });
+      if (DEBUG) console.error("[BinderEditorModal] SAVE error:", err);
       return false;
     }
   }
 
-  // --- Always pass handleSaveBinder to Nav and Header
+  // Trace key UI state each render (collapsed)
+  if (DEBUG) {
+    console.groupCollapsed("[BinderEditorModal] render");
+    console.debug("activeTab:", activeTab, "| layout:", currentLayout, "| rows x cols:", rows, "x", cols);
+    console.debug("pages:", pages);
+    console.debug("movedCards keys:", Object.keys(movedCards || {}).length);
+    console.debug("sourceCollection.length:", sourceCollection.length, "| filteredCollection.length:", filteredCollection.length);
+    console.groupEnd();
+  }
+
+  // --- Render
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
@@ -216,17 +263,21 @@ export default function BinderEditorModal(props) {
               totalSlots={rows * cols}
               viewMode={viewMode}
               isOwnProfile={isOwnProfile}
-              userCollection={collection}  // <-- always unfiltered for slot hydration!
+              // Always give slot hydration the *unfiltered* source
+              userCollection={sourceCollection}
             />
           </div>
+
           {/* Side tab: 1/3 */}
           <div className="col-span-1 min-h-0 flex flex-col overflow-y-auto">
             {/* Tab Switcher */}
-            <div className="
-              flex mb-4 border-b
-              border-light-border dark:border-dark-border
-              bg-transparent
-            ">
+            <div
+              className="
+                flex mb-4 border-b
+                border-light-border dark:border-dark-border
+                bg-transparent
+              "
+            >
               <button
                 onClick={() => setActiveTab("collection")}
                 className={`
@@ -252,12 +303,14 @@ export default function BinderEditorModal(props) {
                 Search
               </button>
             </div>
+
             {/* Tab Content */}
             <div className="flex-1 overflow-y-auto">
               {activeTab === "collection" ? (
                 <CollectionTab
                   isOwnProfile={isOwnProfile}
-                  userEntireCollection={filteredCollection}  // <-- always filtered!
+                  // Filtered view for the sidebar (subtract cards already in slots)
+                  userEntireCollection={filteredCollection}
                   gridColumns={gridColumns}
                   movedCards={movedCards}
                   setMovedCards={setMovedCards}
@@ -305,7 +358,7 @@ export default function BinderEditorModal(props) {
               <h3 className="text-xl font-bold mb-4 text-center">Choose Binder Colour</h3>
               <div className="max-h-72 overflow-y-auto overflow-x-hidden pr-2">
                 <div className="grid grid-cols-3 gap-4">
-                  {STANDARD_COLOURS.map((c, idx) => (
+                  {STANDARD_COLOURS.map((c) => (
                     <button
                       key={c.name}
                       type="button"

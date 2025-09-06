@@ -1,20 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import BinderCollectionView from "@/components/Binder/BinderCollectionView";
 
-/**
- * CollectionTab
- * 
- * Displays the user's available collection cards in a grid, minus any that are currently in the binder.
- * Props:
- *  - isOwnProfile: Boolean (can user drag/drop?)
- *  - userEntireCollection: Array of all user's cards (with quantity)
- *  - movedCards: Object mapping cardKey -> quantity moved to binder
- *  - setMovedCards: Function to update movedCards (comes from useBinderPages)
- *  - isLoading: Loading state (optional, default false)
- *  - error: Error message if fetch fails (optional)
- */
+// ---- Debug toggle (set NEXT_PUBLIC_DEBUG=true to enable) ----
+const DEBUG = true;
+
 export default function CollectionTab({
   isOwnProfile,
   userEntireCollection,
@@ -22,7 +13,18 @@ export default function CollectionTab({
   setMovedCards,
   isLoading = false,
   error = null,
+  gridColumns, // (not used directly here but keep signature intact)
 }) {
+  useEffect(() => {
+    if (!DEBUG) return;
+    console.groupCollapsed("[CollectionTab] props snapshot");
+    console.debug("isOwnProfile:", isOwnProfile);
+    console.debug("userEntireCollection length:", Array.isArray(userEntireCollection) ? userEntireCollection.length : "(not array)");
+    console.debug("movedCards keys:", Object.keys(movedCards || {}).length);
+    console.debug("isLoading:", isLoading, "| error:", error);
+    console.groupEnd();
+  }, [isOwnProfile, userEntireCollection, movedCards, isLoading, error]);
+
   return (
     <BinderCollectionView
       isOwnProfile={isOwnProfile}

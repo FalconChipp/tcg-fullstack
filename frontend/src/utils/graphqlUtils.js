@@ -226,3 +226,63 @@ export function formatCardForCollection(card) {
     variations: card.variations || {}
   };
 }
+
+// utils/graphqlUtils.js
+
+export const WISHLIST_QUERIES = {
+  MY_WISHLIST: `
+    query MyWishlist($page: Int, $pageSize: Int) {
+      myWishlist(page: $page, pageSize: $pageSize) {
+        entries {
+          id
+          cardId
+          variation
+          quantity
+          notes
+          createdAt
+          updatedAt
+          card {
+            id
+            name
+            image
+            setName
+            number
+          }
+        }
+        total
+        page
+        pageSize
+      }
+    }
+  `,
+  USER_WISHLIST: `
+    query Wishlist($userId: ID!, $page: Int, $pageSize: Int) {
+      wishlist(userId: $userId, page: $page, pageSize: $pageSize) {
+        entries {
+          id
+          cardId
+          variation
+          quantity
+          notes
+          createdAt
+          updatedAt
+          card {
+            id
+            name
+            image
+            setName
+            number
+          }
+        }
+        total
+        page
+        pageSize
+      }
+    }
+  `,
+};
+
+// Reuse your POST runner for queries too
+export async function executeQuery(query, variables, token) {
+  return executeMutation(query, variables, token);
+}

@@ -15,3 +15,4 @@ backend/schema.graphql
 backend/scripts/exportSchema.js
 frontend/.env
 frontend/.env
+/frontend/scripts

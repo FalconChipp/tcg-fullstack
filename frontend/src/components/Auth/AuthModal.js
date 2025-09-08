@@ -283,7 +283,7 @@ const [registerMutation] = useMutation(RegisterDocument);
       >
         {/* Close */}
         <button
-          className="absolute top-5 right-6 text-3xl text-light-textMuted dark:text-dark-textMuted hover:text-light-accent dark:hover:text-dark-accent transition"
+          className="absolute top-5 right-6 text-3xl text-light-textMuted dark:text-dark-textMuted hover:text-light-accent dark:hover:text-dark-accent transition focus:shadow-none"
           aria-label="Close modal"
           onClick={onClose}
           type="button"

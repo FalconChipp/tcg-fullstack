@@ -1,0 +1,1726 @@
+{
+  "code": "sv04.5",
+  "name": "Paldean Fates",
+  "era": "sv",
+  "releaseDate": "2024-01-26",
+  "totalCards": 245,
+  "abbreviation": "PAF",
+  "officialCardCount": 91,
+  "cards": [
+    {
+      "id": "sv04.5-001",
+      "number": "001",
+      "name": "Pineco",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/001/high.webp"
+    },
+    {
+      "id": "sv04.5-002",
+      "number": "002",
+      "name": "Forretress ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/002/high.webp"
+    },
+    {
+      "id": "sv04.5-003",
+      "number": "003",
+      "name": "Maractus",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/003/high.webp"
+    },
+    {
+      "id": "sv04.5-004",
+      "number": "004",
+      "name": "Toedscool",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/004/high.webp"
+    },
+    {
+      "id": "sv04.5-005",
+      "number": "005",
+      "name": "Toedscruel ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/005/high.webp"
+    },
+    {
+      "id": "sv04.5-006",
+      "number": "006",
+      "name": "Espathra ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/006/high.webp"
+    },
+    {
+      "id": "sv04.5-007",
+      "number": "007",
+      "name": "Charmander",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/007/high.webp"
+    },
+    {
+      "id": "sv04.5-008",
+      "number": "008",
+      "name": "Charmeleon",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/008/high.webp"
+    },
+    {
+      "id": "sv04.5-009",
+      "number": "009",
+      "name": "Magmar",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/009/high.webp"
+    },
+    {
+      "id": "sv04.5-010",
+      "number": "010",
+      "name": "Magmortar",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/010/high.webp"
+    },
+    {
+      "id": "sv04.5-011",
+      "number": "011",
+      "name": "Numel",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/011/high.webp"
+    },
+    {
+      "id": "sv04.5-012",
+      "number": "012",
+      "name": "Camerupt",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/012/high.webp"
+    },
+    {
+      "id": "sv04.5-013",
+      "number": "013",
+      "name": "Heat Rotom",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/013/high.webp"
+    },
+    {
+      "id": "sv04.5-014",
+      "number": "014",
+      "name": "Charcadet",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/014/high.webp"
+    },
+    {
+      "id": "sv04.5-015",
+      "number": "015",
+      "name": "Armarouge",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/015/high.webp"
+    },
+    {
+      "id": "sv04.5-016",
+      "number": "016",
+      "name": "Lapras",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/016/high.webp"
+    },
+    {
+      "id": "sv04.5-017",
+      "number": "017",
+      "name": "Frigibax",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/017/high.webp"
+    },
+    {
+      "id": "sv04.5-018",
+      "number": "018",
+      "name": "Pikachu",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/018/high.webp"
+    },
+    {
+      "id": "sv04.5-019",
+      "number": "019",
+      "name": "Raichu",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/019/high.webp"
+    },
+    {
+      "id": "sv04.5-020",
+      "number": "020",
+      "name": "Chinchou",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/020/high.webp"
+    },
+    {
+      "id": "sv04.5-021",
+      "number": "021",
+      "name": "Lanturn",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/021/high.webp"
+    },
+    {
+      "id": "sv04.5-022",
+      "number": "022",
+      "name": "Kilowattrel",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/022/high.webp"
+    },
+    {
+      "id": "sv04.5-023",
+      "number": "023",
+      "name": "Exeggcute",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/023/high.webp"
+    },
+    {
+      "id": "sv04.5-024",
+      "number": "024",
+      "name": "Exeggutor",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/024/high.webp"
+    },
+    {
+      "id": "sv04.5-025",
+      "number": "025",
+      "name": "Natu",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/025/high.webp"
+    },
+    {
+      "id": "sv04.5-026",
+      "number": "026",
+      "name": "Xatu",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/026/high.webp"
+    },
+    {
+      "id": "sv04.5-027",
+      "number": "027",
+      "name": "Ralts",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/027/high.webp"
+    },
+    {
+      "id": "sv04.5-028",
+      "number": "028",
+      "name": "Kirlia",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/028/high.webp"
+    },
+    {
+      "id": "sv04.5-029",
+      "number": "029",
+      "name": "Gardevoir ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/029/high.webp"
+    },
+    {
+      "id": "sv04.5-030",
+      "number": "030",
+      "name": "Chimecho",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/030/high.webp"
+    },
+    {
+      "id": "sv04.5-031",
+      "number": "031",
+      "name": "Mime Jr.",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/031/high.webp"
+    },
+    {
+      "id": "sv04.5-032",
+      "number": "032",
+      "name": "Woobat",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/032/high.webp"
+    },
+    {
+      "id": "sv04.5-033",
+      "number": "033",
+      "name": "Swoobat",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/033/high.webp"
+    },
+    {
+      "id": "sv04.5-034",
+      "number": "034",
+      "name": "Cottonee",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/034/high.webp"
+    },
+    {
+      "id": "sv04.5-035",
+      "number": "035",
+      "name": "Whimsicott",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/035/high.webp"
+    },
+    {
+      "id": "sv04.5-036",
+      "number": "036",
+      "name": "Dedenne",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/036/high.webp"
+    },
+    {
+      "id": "sv04.5-037",
+      "number": "037",
+      "name": "Mimikyu",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/037/high.webp"
+    },
+    {
+      "id": "sv04.5-038",
+      "number": "038",
+      "name": "Fidough",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/038/high.webp"
+    },
+    {
+      "id": "sv04.5-039",
+      "number": "039",
+      "name": "Dachsbun",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/039/high.webp"
+    },
+    {
+      "id": "sv04.5-040",
+      "number": "040",
+      "name": "Ceruledge",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/040/high.webp"
+    },
+    {
+      "id": "sv04.5-041",
+      "number": "041",
+      "name": "Flittle",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/041/high.webp"
+    },
+    {
+      "id": "sv04.5-042",
+      "number": "042",
+      "name": "Greavard",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/042/high.webp"
+    },
+    {
+      "id": "sv04.5-043",
+      "number": "043",
+      "name": "Houndstone",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/043/high.webp"
+    },
+    {
+      "id": "sv04.5-044",
+      "number": "044",
+      "name": "Gimmighoul",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/044/high.webp"
+    },
+    {
+      "id": "sv04.5-045",
+      "number": "045",
+      "name": "Mankey",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/045/high.webp"
+    },
+    {
+      "id": "sv04.5-046",
+      "number": "046",
+      "name": "Primeape",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/046/high.webp"
+    },
+    {
+      "id": "sv04.5-047",
+      "number": "047",
+      "name": "Annihilape",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/047/high.webp"
+    },
+    {
+      "id": "sv04.5-048",
+      "number": "048",
+      "name": "Phanpy",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/048/high.webp"
+    },
+    {
+      "id": "sv04.5-049",
+      "number": "049",
+      "name": "Donphan",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/049/high.webp"
+    },
+    {
+      "id": "sv04.5-050",
+      "number": "050",
+      "name": "Barboach",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/050/high.webp"
+    },
+    {
+      "id": "sv04.5-051",
+      "number": "051",
+      "name": "Clobbopus",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/051/high.webp"
+    },
+    {
+      "id": "sv04.5-052",
+      "number": "052",
+      "name": "Grapploct",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/052/high.webp"
+    },
+    {
+      "id": "sv04.5-053",
+      "number": "053",
+      "name": "Great Tusk ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/053/high.webp"
+    },
+    {
+      "id": "sv04.5-054",
+      "number": "054",
+      "name": "Charizard ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/054/high.webp"
+    },
+    {
+      "id": "sv04.5-055",
+      "number": "055",
+      "name": "Gastly",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/055/high.webp"
+    },
+    {
+      "id": "sv04.5-056",
+      "number": "056",
+      "name": "Haunter",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/056/high.webp"
+    },
+    {
+      "id": "sv04.5-057",
+      "number": "057",
+      "name": "Gengar",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/057/high.webp"
+    },
+    {
+      "id": "sv04.5-058",
+      "number": "058",
+      "name": "Paldean Wooper",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/058/high.webp"
+    },
+    {
+      "id": "sv04.5-059",
+      "number": "059",
+      "name": "Paldean Clodsire ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/059/high.webp"
+    },
+    {
+      "id": "sv04.5-060",
+      "number": "060",
+      "name": "Scraggy",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/060/high.webp"
+    },
+    {
+      "id": "sv04.5-061",
+      "number": "061",
+      "name": "Scrafty",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/061/high.webp"
+    },
+    {
+      "id": "sv04.5-062",
+      "number": "062",
+      "name": "Maschiff",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/062/high.webp"
+    },
+    {
+      "id": "sv04.5-063",
+      "number": "063",
+      "name": "Mabosstiff",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/063/high.webp"
+    },
+    {
+      "id": "sv04.5-064",
+      "number": "064",
+      "name": "Varoom",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/064/high.webp"
+    },
+    {
+      "id": "sv04.5-065",
+      "number": "065",
+      "name": "Revavroom",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/065/high.webp"
+    },
+    {
+      "id": "sv04.5-066",
+      "number": "066",
+      "name": "Iron Treads ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/066/high.webp"
+    },
+    {
+      "id": "sv04.5-067",
+      "number": "067",
+      "name": "Gholdengo",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/067/high.webp"
+    },
+    {
+      "id": "sv04.5-068",
+      "number": "068",
+      "name": "Noibat",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/068/high.webp"
+    },
+    {
+      "id": "sv04.5-069",
+      "number": "069",
+      "name": "Noivern ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/069/high.webp"
+    },
+    {
+      "id": "sv04.5-070",
+      "number": "070",
+      "name": "Cyclizar",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/070/high.webp"
+    },
+    {
+      "id": "sv04.5-071",
+      "number": "071",
+      "name": "Lechonk",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/071/high.webp"
+    },
+    {
+      "id": "sv04.5-072",
+      "number": "072",
+      "name": "Oinkologne",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/072/high.webp"
+    },
+    {
+      "id": "sv04.5-073",
+      "number": "073",
+      "name": "Tandemaus",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/073/high.webp"
+    },
+    {
+      "id": "sv04.5-074",
+      "number": "074",
+      "name": "Maushold",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/074/high.webp"
+    },
+    {
+      "id": "sv04.5-075",
+      "number": "075",
+      "name": "Squawkabilly ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/075/high.webp"
+    },
+    {
+      "id": "sv04.5-076",
+      "number": "076",
+      "name": "Artazon",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/076/high.webp"
+    },
+    {
+      "id": "sv04.5-077",
+      "number": "077",
+      "name": "Atticus",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/077/high.webp"
+    },
+    {
+      "id": "sv04.5-078",
+      "number": "078",
+      "name": "Clive",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/078/high.webp"
+    },
+    {
+      "id": "sv04.5-079",
+      "number": "079",
+      "name": "Electric Generator",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/079/high.webp"
+    },
+    {
+      "id": "sv04.5-080",
+      "number": "080",
+      "name": "Iono",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/080/high.webp"
+    },
+    {
+      "id": "sv04.5-081",
+      "number": "081",
+      "name": "Moonlit Hill",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/081/high.webp"
+    },
+    {
+      "id": "sv04.5-082",
+      "number": "082",
+      "name": "Nemona",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/082/high.webp"
+    },
+    {
+      "id": "sv04.5-083",
+      "number": "083",
+      "name": "Nemona's Backpack",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/083/high.webp"
+    },
+    {
+      "id": "sv04.5-084",
+      "number": "084",
+      "name": "Nest Ball",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/084/high.webp"
+    },
+    {
+      "id": "sv04.5-085",
+      "number": "085",
+      "name": "Paldean Student",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/085/high.webp"
+    },
+    {
+      "id": "sv04.5-086",
+      "number": "086",
+      "name": "Paldean Student",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/086/high.webp"
+    },
+    {
+      "id": "sv04.5-087",
+      "number": "087",
+      "name": "Professor's Research",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/087/high.webp"
+    },
+    {
+      "id": "sv04.5-088",
+      "number": "088",
+      "name": "Professor's Research",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/088/high.webp"
+    },
+    {
+      "id": "sv04.5-089",
+      "number": "089",
+      "name": "Rare Candy",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/089/high.webp"
+    },
+    {
+      "id": "sv04.5-090",
+      "number": "090",
+      "name": "Technical Machine: Crisis Punch",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/090/high.webp"
+    },
+    {
+      "id": "sv04.5-091",
+      "number": "091",
+      "name": "Ultra Ball",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/091/high.webp"
+    },
+    {
+      "id": "sv04.5-092",
+      "number": "092",
+      "name": "Oddish",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/092/high.webp"
+    },
+    {
+      "id": "sv04.5-093",
+      "number": "093",
+      "name": "Gloom",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/093/high.webp"
+    },
+    {
+      "id": "sv04.5-094",
+      "number": "094",
+      "name": "Vileplume",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/094/high.webp"
+    },
+    {
+      "id": "sv04.5-095",
+      "number": "095",
+      "name": "Scyther",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/095/high.webp"
+    },
+    {
+      "id": "sv04.5-096",
+      "number": "096",
+      "name": "Hoppip",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/096/high.webp"
+    },
+    {
+      "id": "sv04.5-097",
+      "number": "097",
+      "name": "Skiploom",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/097/high.webp"
+    },
+    {
+      "id": "sv04.5-098",
+      "number": "098",
+      "name": "Jumpluff",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/098/high.webp"
+    },
+    {
+      "id": "sv04.5-099",
+      "number": "099",
+      "name": "Pineco",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/099/high.webp"
+    },
+    {
+      "id": "sv04.5-100",
+      "number": "100",
+      "name": "Snover",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/100/high.webp"
+    },
+    {
+      "id": "sv04.5-101",
+      "number": "101",
+      "name": "Abomasnow",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/101/high.webp"
+    },
+    {
+      "id": "sv04.5-102",
+      "number": "102",
+      "name": "Smoliv",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/102/high.webp"
+    },
+    {
+      "id": "sv04.5-103",
+      "number": "103",
+      "name": "Dolliv",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/103/high.webp"
+    },
+    {
+      "id": "sv04.5-104",
+      "number": "104",
+      "name": "Arboliva",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/104/high.webp"
+    },
+    {
+      "id": "sv04.5-105",
+      "number": "105",
+      "name": "Toedscool",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/105/high.webp"
+    },
+    {
+      "id": "sv04.5-106",
+      "number": "106",
+      "name": "Capsakid",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/106/high.webp"
+    },
+    {
+      "id": "sv04.5-107",
+      "number": "107",
+      "name": "Scovillain",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/107/high.webp"
+    },
+    {
+      "id": "sv04.5-108",
+      "number": "108",
+      "name": "Rellor",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/108/high.webp"
+    },
+    {
+      "id": "sv04.5-109",
+      "number": "109",
+      "name": "Charmander",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/109/high.webp"
+    },
+    {
+      "id": "sv04.5-110",
+      "number": "110",
+      "name": "Charmeleon",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/110/high.webp"
+    },
+    {
+      "id": "sv04.5-111",
+      "number": "111",
+      "name": "Paldean Tauros",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/111/high.webp"
+    },
+    {
+      "id": "sv04.5-112",
+      "number": "112",
+      "name": "Entei",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/112/high.webp"
+    },
+    {
+      "id": "sv04.5-113",
+      "number": "113",
+      "name": "Oricorio",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/113/high.webp"
+    },
+    {
+      "id": "sv04.5-114",
+      "number": "114",
+      "name": "Charcadet",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/114/high.webp"
+    },
+    {
+      "id": "sv04.5-115",
+      "number": "115",
+      "name": "Armarouge",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/115/high.webp"
+    },
+    {
+      "id": "sv04.5-116",
+      "number": "116",
+      "name": "Slowpoke",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/116/high.webp"
+    },
+    {
+      "id": "sv04.5-117",
+      "number": "117",
+      "name": "Slowbro",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/117/high.webp"
+    },
+    {
+      "id": "sv04.5-118",
+      "number": "118",
+      "name": "Staryu",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/118/high.webp"
+    },
+    {
+      "id": "sv04.5-119",
+      "number": "119",
+      "name": "Starmie",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/119/high.webp"
+    },
+    {
+      "id": "sv04.5-120",
+      "number": "120",
+      "name": "Paldean Tauros",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/120/high.webp"
+    },
+    {
+      "id": "sv04.5-121",
+      "number": "121",
+      "name": "Wiglett",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/121/high.webp"
+    },
+    {
+      "id": "sv04.5-122",
+      "number": "122",
+      "name": "Wugtrio",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/122/high.webp"
+    },
+    {
+      "id": "sv04.5-123",
+      "number": "123",
+      "name": "Finizen",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/123/high.webp"
+    },
+    {
+      "id": "sv04.5-124",
+      "number": "124",
+      "name": "Palafin",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/124/high.webp"
+    },
+    {
+      "id": "sv04.5-125",
+      "number": "125",
+      "name": "Veluza",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/125/high.webp"
+    },
+    {
+      "id": "sv04.5-126",
+      "number": "126",
+      "name": "Dondozo",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/126/high.webp"
+    },
+    {
+      "id": "sv04.5-127",
+      "number": "127",
+      "name": "Tatsugiri",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/127/high.webp"
+    },
+    {
+      "id": "sv04.5-128",
+      "number": "128",
+      "name": "Frigibax",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/128/high.webp"
+    },
+    {
+      "id": "sv04.5-129",
+      "number": "129",
+      "name": "Arctibax",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/129/high.webp"
+    },
+    {
+      "id": "sv04.5-130",
+      "number": "130",
+      "name": "Baxcalibur",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/130/high.webp"
+    },
+    {
+      "id": "sv04.5-131",
+      "number": "131",
+      "name": "Pikachu",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/131/high.webp"
+    },
+    {
+      "id": "sv04.5-132",
+      "number": "132",
+      "name": "Raichu",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/132/high.webp"
+    },
+    {
+      "id": "sv04.5-133",
+      "number": "133",
+      "name": "Voltorb",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/133/high.webp"
+    },
+    {
+      "id": "sv04.5-134",
+      "number": "134",
+      "name": "Electrode",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/134/high.webp"
+    },
+    {
+      "id": "sv04.5-135",
+      "number": "135",
+      "name": "Shinx",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/135/high.webp"
+    },
+    {
+      "id": "sv04.5-136",
+      "number": "136",
+      "name": "Luxio",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/136/high.webp"
+    },
+    {
+      "id": "sv04.5-137",
+      "number": "137",
+      "name": "Luxray",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/137/high.webp"
+    },
+    {
+      "id": "sv04.5-138",
+      "number": "138",
+      "name": "Pachirisu",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/138/high.webp"
+    },
+    {
+      "id": "sv04.5-139",
+      "number": "139",
+      "name": "Thundurus",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/139/high.webp"
+    },
+    {
+      "id": "sv04.5-140",
+      "number": "140",
+      "name": "Toxel",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/140/high.webp"
+    },
+    {
+      "id": "sv04.5-141",
+      "number": "141",
+      "name": "Toxtricity",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/141/high.webp"
+    },
+    {
+      "id": "sv04.5-142",
+      "number": "142",
+      "name": "Pawmi",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/142/high.webp"
+    },
+    {
+      "id": "sv04.5-143",
+      "number": "143",
+      "name": "Pawmo",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/143/high.webp"
+    },
+    {
+      "id": "sv04.5-144",
+      "number": "144",
+      "name": "Pawmot",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/144/high.webp"
+    },
+    {
+      "id": "sv04.5-145",
+      "number": "145",
+      "name": "Wattrel",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/145/high.webp"
+    },
+    {
+      "id": "sv04.5-146",
+      "number": "146",
+      "name": "Kilowattrel",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/146/high.webp"
+    },
+    {
+      "id": "sv04.5-147",
+      "number": "147",
+      "name": "Wigglytuff",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/147/high.webp"
+    },
+    {
+      "id": "sv04.5-148",
+      "number": "148",
+      "name": "Abra",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/148/high.webp"
+    },
+    {
+      "id": "sv04.5-149",
+      "number": "149",
+      "name": "Kadabra",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/149/high.webp"
+    },
+    {
+      "id": "sv04.5-150",
+      "number": "150",
+      "name": "Cleffa",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/150/high.webp"
+    },
+    {
+      "id": "sv04.5-151",
+      "number": "151",
+      "name": "Natu",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/151/high.webp"
+    },
+    {
+      "id": "sv04.5-152",
+      "number": "152",
+      "name": "Xatu",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/152/high.webp"
+    },
+    {
+      "id": "sv04.5-153",
+      "number": "153",
+      "name": "Ralts",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/153/high.webp"
+    },
+    {
+      "id": "sv04.5-154",
+      "number": "154",
+      "name": "Kirlia",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/154/high.webp"
+    },
+    {
+      "id": "sv04.5-155",
+      "number": "155",
+      "name": "Drifloon",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/155/high.webp"
+    },
+    {
+      "id": "sv04.5-156",
+      "number": "156",
+      "name": "Drifblim",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/156/high.webp"
+    },
+    {
+      "id": "sv04.5-157",
+      "number": "157",
+      "name": "Mime Jr.",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/157/high.webp"
+    },
+    {
+      "id": "sv04.5-158",
+      "number": "158",
+      "name": "Spiritomb",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/158/high.webp"
+    },
+    {
+      "id": "sv04.5-159",
+      "number": "159",
+      "name": "Klefki",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/159/high.webp"
+    },
+    {
+      "id": "sv04.5-160",
+      "number": "160",
+      "name": "Mimikyu",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/160/high.webp"
+    },
+    {
+      "id": "sv04.5-161",
+      "number": "161",
+      "name": "Dachsbun",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/161/high.webp"
+    },
+    {
+      "id": "sv04.5-162",
+      "number": "162",
+      "name": "Ceruledge",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/162/high.webp"
+    },
+    {
+      "id": "sv04.5-163",
+      "number": "163",
+      "name": "Rabsca",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/163/high.webp"
+    },
+    {
+      "id": "sv04.5-164",
+      "number": "164",
+      "name": "Flittle",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/164/high.webp"
+    },
+    {
+      "id": "sv04.5-165",
+      "number": "165",
+      "name": "Tinkatink",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/165/high.webp"
+    },
+    {
+      "id": "sv04.5-166",
+      "number": "166",
+      "name": "Tinkatuff",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/166/high.webp"
+    },
+    {
+      "id": "sv04.5-167",
+      "number": "167",
+      "name": "Tinkaton",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/167/high.webp"
+    },
+    {
+      "id": "sv04.5-168",
+      "number": "168",
+      "name": "Houndstone",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/168/high.webp"
+    },
+    {
+      "id": "sv04.5-169",
+      "number": "169",
+      "name": "Mankey",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/169/high.webp"
+    },
+    {
+      "id": "sv04.5-170",
+      "number": "170",
+      "name": "Primeape",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/170/high.webp"
+    },
+    {
+      "id": "sv04.5-171",
+      "number": "171",
+      "name": "Annihilape",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/171/high.webp"
+    },
+    {
+      "id": "sv04.5-172",
+      "number": "172",
+      "name": "Paldean Tauros",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/172/high.webp"
+    },
+    {
+      "id": "sv04.5-173",
+      "number": "173",
+      "name": "Riolu",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/173/high.webp"
+    },
+    {
+      "id": "sv04.5-174",
+      "number": "174",
+      "name": "Lucario",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/174/high.webp"
+    },
+    {
+      "id": "sv04.5-175",
+      "number": "175",
+      "name": "Hawlucha",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/175/high.webp"
+    },
+    {
+      "id": "sv04.5-176",
+      "number": "176",
+      "name": "Nacli",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/176/high.webp"
+    },
+    {
+      "id": "sv04.5-177",
+      "number": "177",
+      "name": "Naclstack",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/177/high.webp"
+    },
+    {
+      "id": "sv04.5-178",
+      "number": "178",
+      "name": "Garganacl",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/178/high.webp"
+    },
+    {
+      "id": "sv04.5-179",
+      "number": "179",
+      "name": "Glimmet",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/179/high.webp"
+    },
+    {
+      "id": "sv04.5-180",
+      "number": "180",
+      "name": "Paldean Wooper",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/180/high.webp"
+    },
+    {
+      "id": "sv04.5-181",
+      "number": "181",
+      "name": "Murkrow",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/181/high.webp"
+    },
+    {
+      "id": "sv04.5-182",
+      "number": "182",
+      "name": "Sneasel",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/182/high.webp"
+    },
+    {
+      "id": "sv04.5-183",
+      "number": "183",
+      "name": "Weavile",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/183/high.webp"
+    },
+    {
+      "id": "sv04.5-184",
+      "number": "184",
+      "name": "Sableye",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/184/high.webp"
+    },
+    {
+      "id": "sv04.5-185",
+      "number": "185",
+      "name": "Pawniard",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/185/high.webp"
+    },
+    {
+      "id": "sv04.5-186",
+      "number": "186",
+      "name": "Bisharp",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/186/high.webp"
+    },
+    {
+      "id": "sv04.5-187",
+      "number": "187",
+      "name": "Kingambit",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/187/high.webp"
+    },
+    {
+      "id": "sv04.5-188",
+      "number": "188",
+      "name": "Mabosstiff",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/188/high.webp"
+    },
+    {
+      "id": "sv04.5-189",
+      "number": "189",
+      "name": "Shroodle",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/189/high.webp"
+    },
+    {
+      "id": "sv04.5-190",
+      "number": "190",
+      "name": "Grafaiai",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/190/high.webp"
+    },
+    {
+      "id": "sv04.5-191",
+      "number": "191",
+      "name": "Scizor",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/191/high.webp"
+    },
+    {
+      "id": "sv04.5-192",
+      "number": "192",
+      "name": "Varoom",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/192/high.webp"
+    },
+    {
+      "id": "sv04.5-193",
+      "number": "193",
+      "name": "Revavroom",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/193/high.webp"
+    },
+    {
+      "id": "sv04.5-194",
+      "number": "194",
+      "name": "Noibat",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/194/high.webp"
+    },
+    {
+      "id": "sv04.5-195",
+      "number": "195",
+      "name": "Cyclizar",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/195/high.webp"
+    },
+    {
+      "id": "sv04.5-196",
+      "number": "196",
+      "name": "Pidgey",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/196/high.webp"
+    },
+    {
+      "id": "sv04.5-197",
+      "number": "197",
+      "name": "Pidgeotto",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/197/high.webp"
+    },
+    {
+      "id": "sv04.5-198",
+      "number": "198",
+      "name": "Jigglypuff",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/198/high.webp"
+    },
+    {
+      "id": "sv04.5-199",
+      "number": "199",
+      "name": "Doduo",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/199/high.webp"
+    },
+    {
+      "id": "sv04.5-200",
+      "number": "200",
+      "name": "Dodrio",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/200/high.webp"
+    },
+    {
+      "id": "sv04.5-201",
+      "number": "201",
+      "name": "Ditto",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/201/high.webp"
+    },
+    {
+      "id": "sv04.5-202",
+      "number": "202",
+      "name": "Snorlax",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/202/high.webp"
+    },
+    {
+      "id": "sv04.5-203",
+      "number": "203",
+      "name": "Wingull",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/203/high.webp"
+    },
+    {
+      "id": "sv04.5-204",
+      "number": "204",
+      "name": "Pelipper",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/204/high.webp"
+    },
+    {
+      "id": "sv04.5-205",
+      "number": "205",
+      "name": "Skwovet",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/205/high.webp"
+    },
+    {
+      "id": "sv04.5-206",
+      "number": "206",
+      "name": "Greedent",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/206/high.webp"
+    },
+    {
+      "id": "sv04.5-207",
+      "number": "207",
+      "name": "Lechonk",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/207/high.webp"
+    },
+    {
+      "id": "sv04.5-208",
+      "number": "208",
+      "name": "Oinkologne",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/208/high.webp"
+    },
+    {
+      "id": "sv04.5-209",
+      "number": "209",
+      "name": "Tandemaus",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/209/high.webp"
+    },
+    {
+      "id": "sv04.5-210",
+      "number": "210",
+      "name": "Maushold",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/210/high.webp"
+    },
+    {
+      "id": "sv04.5-211",
+      "number": "211",
+      "name": "Flamigo",
+      "rarity": "Shiny rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/211/high.webp"
+    },
+    {
+      "id": "sv04.5-212",
+      "number": "212",
+      "name": "Forretress ex",
+      "rarity": "Shiny Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/212/high.webp"
+    },
+    {
+      "id": "sv04.5-213",
+      "number": "213",
+      "name": "Toedscruel ex",
+      "rarity": "Shiny Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/213/high.webp"
+    },
+    {
+      "id": "sv04.5-214",
+      "number": "214",
+      "name": "Espathra ex",
+      "rarity": "Shiny Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/214/high.webp"
+    },
+    {
+      "id": "sv04.5-215",
+      "number": "215",
+      "name": "Alakazam ex",
+      "rarity": "Shiny Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/215/high.webp"
+    },
+    {
+      "id": "sv04.5-216",
+      "number": "216",
+      "name": "Mew ex",
+      "rarity": "Shiny Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/216/high.webp"
+    },
+    {
+      "id": "sv04.5-217",
+      "number": "217",
+      "name": "Gardevoir ex",
+      "rarity": "Shiny Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/217/high.webp"
+    },
+    {
+      "id": "sv04.5-218",
+      "number": "218",
+      "name": "Glimmora ex",
+      "rarity": "Shiny Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/218/high.webp"
+    },
+    {
+      "id": "sv04.5-219",
+      "number": "219",
+      "name": "Paldean Clodsire ex",
+      "rarity": "Shiny Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/219/high.webp"
+    },
+    {
+      "id": "sv04.5-220",
+      "number": "220",
+      "name": "Noivern ex",
+      "rarity": "Shiny Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/220/high.webp"
+    },
+    {
+      "id": "sv04.5-221",
+      "number": "221",
+      "name": "Pidgeot ex",
+      "rarity": "Shiny Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/221/high.webp"
+    },
+    {
+      "id": "sv04.5-222",
+      "number": "222",
+      "name": "Wigglytuff ex",
+      "rarity": "Shiny Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/222/high.webp"
+    },
+    {
+      "id": "sv04.5-223",
+      "number": "223",
+      "name": "Squawkabilly ex",
+      "rarity": "Shiny Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/223/high.webp"
+    },
+    {
+      "id": "sv04.5-224",
+      "number": "224",
+      "name": "Wugtrio",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/224/high.webp"
+    },
+    {
+      "id": "sv04.5-225",
+      "number": "225",
+      "name": "Palafin",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/225/high.webp"
+    },
+    {
+      "id": "sv04.5-226",
+      "number": "226",
+      "name": "Pawmi",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/226/high.webp"
+    },
+    {
+      "id": "sv04.5-227",
+      "number": "227",
+      "name": "Clive",
+      "rarity": "Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/227/high.webp"
+    },
+    {
+      "id": "sv04.5-228",
+      "number": "228",
+      "name": "Judge",
+      "rarity": "Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/228/high.webp"
+    },
+    {
+      "id": "sv04.5-229",
+      "number": "229",
+      "name": "Nemona",
+      "rarity": "Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/229/high.webp"
+    },
+    {
+      "id": "sv04.5-230",
+      "number": "230",
+      "name": "Paldean Student",
+      "rarity": "Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/230/high.webp"
+    },
+    {
+      "id": "sv04.5-231",
+      "number": "231",
+      "name": "Paldean Student",
+      "rarity": "Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/231/high.webp"
+    },
+    {
+      "id": "sv04.5-232",
+      "number": "232",
+      "name": "Mew ex",
+      "rarity": "Special illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/232/high.webp"
+    },
+    {
+      "id": "sv04.5-233",
+      "number": "233",
+      "name": "Gardevoir ex",
+      "rarity": "Special illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/233/high.webp"
+    },
+    {
+      "id": "sv04.5-234",
+      "number": "234",
+      "name": "Charizard ex",
+      "rarity": "Special illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/234/high.webp"
+    },
+    {
+      "id": "sv04.5-235",
+      "number": "235",
+      "name": "Arven",
+      "rarity": "Special illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/235/high.webp"
+    },
+    {
+      "id": "sv04.5-236",
+      "number": "236",
+      "name": "Clive",
+      "rarity": "Special illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/236/high.webp"
+    },
+    {
+      "id": "sv04.5-237",
+      "number": "237",
+      "name": "Iono",
+      "rarity": "Special illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/237/high.webp"
+    },
+    {
+      "id": "sv04.5-238",
+      "number": "238",
+      "name": "Nemona",
+      "rarity": "Special illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/238/high.webp"
+    },
+    {
+      "id": "sv04.5-239",
+      "number": "239",
+      "name": "Penny",
+      "rarity": "Special illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/239/high.webp"
+    },
+    {
+      "id": "sv04.5-240",
+      "number": "240",
+      "name": "Wo-Chien ex",
+      "rarity": "Hyper rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/240/high.webp"
+    },
+    {
+      "id": "sv04.5-241",
+      "number": "241",
+      "name": "Chi-Yu ex",
+      "rarity": "Hyper rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/241/high.webp"
+    },
+    {
+      "id": "sv04.5-242",
+      "number": "242",
+      "name": "Chien-Pao ex",
+      "rarity": "Hyper rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/242/high.webp"
+    },
+    {
+      "id": "sv04.5-243",
+      "number": "243",
+      "name": "Miraidon ex",
+      "rarity": "Hyper rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/243/high.webp"
+    },
+    {
+      "id": "sv04.5-244",
+      "number": "244",
+      "name": "Ting-Lu ex",
+      "rarity": "Hyper rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/244/high.webp"
+    },
+    {
+      "id": "sv04.5-245",
+      "number": "245",
+      "name": "Koraidon ex",
+      "rarity": "Hyper rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv04.5/245/high.webp"
+    }
+  ]
+}

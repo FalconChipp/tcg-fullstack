@@ -2,6 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
+  experimental: { appDir: true },
 
   images: {
     // Smaller files on the wire

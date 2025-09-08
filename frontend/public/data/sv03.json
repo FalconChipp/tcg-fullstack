@@ -1,0 +1,1621 @@
+{
+  "code": "sv03",
+  "name": "Obsidian Flames",
+  "era": "sv",
+  "releaseDate": "2023-08-11",
+  "totalCards": 230,
+  "abbreviation": "OBF",
+  "officialCardCount": 197,
+  "cards": [
+    {
+      "id": "sv03-001",
+      "number": "001",
+      "name": "Oddish",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/001/high.webp"
+    },
+    {
+      "id": "sv03-002",
+      "number": "002",
+      "name": "Gloom",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/002/high.webp"
+    },
+    {
+      "id": "sv03-003",
+      "number": "003",
+      "name": "Bellossom",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/003/high.webp"
+    },
+    {
+      "id": "sv03-004",
+      "number": "004",
+      "name": "Scyther",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/004/high.webp"
+    },
+    {
+      "id": "sv03-005",
+      "number": "005",
+      "name": "Shuckle",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/005/high.webp"
+    },
+    {
+      "id": "sv03-006",
+      "number": "006",
+      "name": "Surskit",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/006/high.webp"
+    },
+    {
+      "id": "sv03-007",
+      "number": "007",
+      "name": "Masquerain",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/007/high.webp"
+    },
+    {
+      "id": "sv03-008",
+      "number": "008",
+      "name": "Combee",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/008/high.webp"
+    },
+    {
+      "id": "sv03-009",
+      "number": "009",
+      "name": "Foongus",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/009/high.webp"
+    },
+    {
+      "id": "sv03-010",
+      "number": "010",
+      "name": "Amoonguss",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/010/high.webp"
+    },
+    {
+      "id": "sv03-011",
+      "number": "011",
+      "name": "Phantump",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/011/high.webp"
+    },
+    {
+      "id": "sv03-012",
+      "number": "012",
+      "name": "Trevenant",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/012/high.webp"
+    },
+    {
+      "id": "sv03-013",
+      "number": "013",
+      "name": "Rowlet",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/013/high.webp"
+    },
+    {
+      "id": "sv03-014",
+      "number": "014",
+      "name": "Dartrix",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/014/high.webp"
+    },
+    {
+      "id": "sv03-015",
+      "number": "015",
+      "name": "Decidueye ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/015/high.webp"
+    },
+    {
+      "id": "sv03-016",
+      "number": "016",
+      "name": "Bounsweet",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/016/high.webp"
+    },
+    {
+      "id": "sv03-017",
+      "number": "017",
+      "name": "Steenee",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/017/high.webp"
+    },
+    {
+      "id": "sv03-018",
+      "number": "018",
+      "name": "Tsareena",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/018/high.webp"
+    },
+    {
+      "id": "sv03-019",
+      "number": "019",
+      "name": "Smoliv",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/019/high.webp"
+    },
+    {
+      "id": "sv03-020",
+      "number": "020",
+      "name": "Dolliv",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/020/high.webp"
+    },
+    {
+      "id": "sv03-021",
+      "number": "021",
+      "name": "Arboliva",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/021/high.webp"
+    },
+    {
+      "id": "sv03-022",
+      "number": "022",
+      "name": "Toedscruel ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/022/high.webp"
+    },
+    {
+      "id": "sv03-023",
+      "number": "023",
+      "name": "Capsakid",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/023/high.webp"
+    },
+    {
+      "id": "sv03-024",
+      "number": "024",
+      "name": "Capsakid",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/024/high.webp"
+    },
+    {
+      "id": "sv03-025",
+      "number": "025",
+      "name": "Scovillain",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/025/high.webp"
+    },
+    {
+      "id": "sv03-026",
+      "number": "026",
+      "name": "Charmander",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/026/high.webp"
+    },
+    {
+      "id": "sv03-027",
+      "number": "027",
+      "name": "Charmeleon",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/027/high.webp"
+    },
+    {
+      "id": "sv03-028",
+      "number": "028",
+      "name": "Vulpix",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/028/high.webp"
+    },
+    {
+      "id": "sv03-029",
+      "number": "029",
+      "name": "Ninetales",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/029/high.webp"
+    },
+    {
+      "id": "sv03-030",
+      "number": "030",
+      "name": "Entei",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/030/high.webp"
+    },
+    {
+      "id": "sv03-031",
+      "number": "031",
+      "name": "Numel",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/031/high.webp"
+    },
+    {
+      "id": "sv03-032",
+      "number": "032",
+      "name": "Camerupt",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/032/high.webp"
+    },
+    {
+      "id": "sv03-033",
+      "number": "033",
+      "name": "Victini ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/033/high.webp"
+    },
+    {
+      "id": "sv03-034",
+      "number": "034",
+      "name": "Darumaka",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/034/high.webp"
+    },
+    {
+      "id": "sv03-035",
+      "number": "035",
+      "name": "Darmanitan",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/035/high.webp"
+    },
+    {
+      "id": "sv03-036",
+      "number": "036",
+      "name": "Litwick",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/036/high.webp"
+    },
+    {
+      "id": "sv03-037",
+      "number": "037",
+      "name": "Lampent",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/037/high.webp"
+    },
+    {
+      "id": "sv03-038",
+      "number": "038",
+      "name": "Chandelure",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/038/high.webp"
+    },
+    {
+      "id": "sv03-039",
+      "number": "039",
+      "name": "Heatmor",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/039/high.webp"
+    },
+    {
+      "id": "sv03-040",
+      "number": "040",
+      "name": "Larvesta",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/040/high.webp"
+    },
+    {
+      "id": "sv03-041",
+      "number": "041",
+      "name": "Volcarona",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/041/high.webp"
+    },
+    {
+      "id": "sv03-042",
+      "number": "042",
+      "name": "Eiscue ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/042/high.webp"
+    },
+    {
+      "id": "sv03-043",
+      "number": "043",
+      "name": "Charcadet",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/043/high.webp"
+    },
+    {
+      "id": "sv03-044",
+      "number": "044",
+      "name": "Armarouge",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/044/high.webp"
+    },
+    {
+      "id": "sv03-045",
+      "number": "045",
+      "name": "Lapras",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/045/high.webp"
+    },
+    {
+      "id": "sv03-046",
+      "number": "046",
+      "name": "Carvanha",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/046/high.webp"
+    },
+    {
+      "id": "sv03-047",
+      "number": "047",
+      "name": "Sharpedo",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/047/high.webp"
+    },
+    {
+      "id": "sv03-048",
+      "number": "048",
+      "name": "Buizel",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/048/high.webp"
+    },
+    {
+      "id": "sv03-049",
+      "number": "049",
+      "name": "Floatzel",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/049/high.webp"
+    },
+    {
+      "id": "sv03-050",
+      "number": "050",
+      "name": "Tympole",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/050/high.webp"
+    },
+    {
+      "id": "sv03-051",
+      "number": "051",
+      "name": "Palpitoad",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/051/high.webp"
+    },
+    {
+      "id": "sv03-052",
+      "number": "052",
+      "name": "Seismitoad",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/052/high.webp"
+    },
+    {
+      "id": "sv03-053",
+      "number": "053",
+      "name": "Cubchoo",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/053/high.webp"
+    },
+    {
+      "id": "sv03-054",
+      "number": "054",
+      "name": "Beartic",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/054/high.webp"
+    },
+    {
+      "id": "sv03-055",
+      "number": "055",
+      "name": "Cryogonal",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/055/high.webp"
+    },
+    {
+      "id": "sv03-056",
+      "number": "056",
+      "name": "Froakie",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/056/high.webp"
+    },
+    {
+      "id": "sv03-057",
+      "number": "057",
+      "name": "Frogadier",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/057/high.webp"
+    },
+    {
+      "id": "sv03-058",
+      "number": "058",
+      "name": "Wiglett",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/058/high.webp"
+    },
+    {
+      "id": "sv03-059",
+      "number": "059",
+      "name": "Wugtrio",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/059/high.webp"
+    },
+    {
+      "id": "sv03-060",
+      "number": "060",
+      "name": "Finizen",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/060/high.webp"
+    },
+    {
+      "id": "sv03-061",
+      "number": "061",
+      "name": "Finizen",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/061/high.webp"
+    },
+    {
+      "id": "sv03-062",
+      "number": "062",
+      "name": "Palafin",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/062/high.webp"
+    },
+    {
+      "id": "sv03-063",
+      "number": "063",
+      "name": "Magnemite",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/063/high.webp"
+    },
+    {
+      "id": "sv03-064",
+      "number": "064",
+      "name": "Magneton",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/064/high.webp"
+    },
+    {
+      "id": "sv03-065",
+      "number": "065",
+      "name": "Magnezone",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/065/high.webp"
+    },
+    {
+      "id": "sv03-066",
+      "number": "066",
+      "name": "Tyranitar ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/066/high.webp"
+    },
+    {
+      "id": "sv03-067",
+      "number": "067",
+      "name": "Tynamo",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/067/high.webp"
+    },
+    {
+      "id": "sv03-068",
+      "number": "068",
+      "name": "Eelektrik",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/068/high.webp"
+    },
+    {
+      "id": "sv03-069",
+      "number": "069",
+      "name": "Eelektross",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/069/high.webp"
+    },
+    {
+      "id": "sv03-070",
+      "number": "070",
+      "name": "Thundurus",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/070/high.webp"
+    },
+    {
+      "id": "sv03-071",
+      "number": "071",
+      "name": "Toxel",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/071/high.webp"
+    },
+    {
+      "id": "sv03-072",
+      "number": "072",
+      "name": "Toxtricity",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/072/high.webp"
+    },
+    {
+      "id": "sv03-073",
+      "number": "073",
+      "name": "Pawmot ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/073/high.webp"
+    },
+    {
+      "id": "sv03-074",
+      "number": "074",
+      "name": "Tadbulb",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/074/high.webp"
+    },
+    {
+      "id": "sv03-075",
+      "number": "075",
+      "name": "Tadbulb",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/075/high.webp"
+    },
+    {
+      "id": "sv03-076",
+      "number": "076",
+      "name": "Tadbulb",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/076/high.webp"
+    },
+    {
+      "id": "sv03-077",
+      "number": "077",
+      "name": "Bellibolt",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/077/high.webp"
+    },
+    {
+      "id": "sv03-078",
+      "number": "078",
+      "name": "Bellibolt",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/078/high.webp"
+    },
+    {
+      "id": "sv03-079",
+      "number": "079",
+      "name": "Miraidon ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/079/high.webp"
+    },
+    {
+      "id": "sv03-080",
+      "number": "080",
+      "name": "Cleffa",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/080/high.webp"
+    },
+    {
+      "id": "sv03-081",
+      "number": "081",
+      "name": "Clefairy",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/081/high.webp"
+    },
+    {
+      "id": "sv03-082",
+      "number": "082",
+      "name": "Clefable ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/082/high.webp"
+    },
+    {
+      "id": "sv03-083",
+      "number": "083",
+      "name": "Togepi",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/083/high.webp"
+    },
+    {
+      "id": "sv03-084",
+      "number": "084",
+      "name": "Togetic",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/084/high.webp"
+    },
+    {
+      "id": "sv03-085",
+      "number": "085",
+      "name": "Togekiss",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/085/high.webp"
+    },
+    {
+      "id": "sv03-086",
+      "number": "086",
+      "name": "Espeon",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/086/high.webp"
+    },
+    {
+      "id": "sv03-087",
+      "number": "087",
+      "name": "Snubbull",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/087/high.webp"
+    },
+    {
+      "id": "sv03-088",
+      "number": "088",
+      "name": "Granbull",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/088/high.webp"
+    },
+    {
+      "id": "sv03-089",
+      "number": "089",
+      "name": "Mawile",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/089/high.webp"
+    },
+    {
+      "id": "sv03-090",
+      "number": "090",
+      "name": "Spoink",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/090/high.webp"
+    },
+    {
+      "id": "sv03-091",
+      "number": "091",
+      "name": "Grumpig",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/091/high.webp"
+    },
+    {
+      "id": "sv03-092",
+      "number": "092",
+      "name": "Lunatone",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/092/high.webp"
+    },
+    {
+      "id": "sv03-093",
+      "number": "093",
+      "name": "Solrock",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/093/high.webp"
+    },
+    {
+      "id": "sv03-094",
+      "number": "094",
+      "name": "Baltoy",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/094/high.webp"
+    },
+    {
+      "id": "sv03-095",
+      "number": "095",
+      "name": "Claydol",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/095/high.webp"
+    },
+    {
+      "id": "sv03-096",
+      "number": "096",
+      "name": "Vespiquen ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/096/high.webp"
+    },
+    {
+      "id": "sv03-097",
+      "number": "097",
+      "name": "Sinistea",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/097/high.webp"
+    },
+    {
+      "id": "sv03-098",
+      "number": "098",
+      "name": "Polteageist",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/098/high.webp"
+    },
+    {
+      "id": "sv03-099",
+      "number": "099",
+      "name": "Greavard",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/099/high.webp"
+    },
+    {
+      "id": "sv03-100",
+      "number": "100",
+      "name": "Greavard",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/100/high.webp"
+    },
+    {
+      "id": "sv03-101",
+      "number": "101",
+      "name": "Houndstone",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/101/high.webp"
+    },
+    {
+      "id": "sv03-102",
+      "number": "102",
+      "name": "Houndstone ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/102/high.webp"
+    },
+    {
+      "id": "sv03-103",
+      "number": "103",
+      "name": "Diglett",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/103/high.webp"
+    },
+    {
+      "id": "sv03-104",
+      "number": "104",
+      "name": "Dugtrio",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/104/high.webp"
+    },
+    {
+      "id": "sv03-105",
+      "number": "105",
+      "name": "Larvitar",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/105/high.webp"
+    },
+    {
+      "id": "sv03-106",
+      "number": "106",
+      "name": "Pupitar",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/106/high.webp"
+    },
+    {
+      "id": "sv03-107",
+      "number": "107",
+      "name": "Nosepass",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/107/high.webp"
+    },
+    {
+      "id": "sv03-108",
+      "number": "108",
+      "name": "Barboach",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/108/high.webp"
+    },
+    {
+      "id": "sv03-109",
+      "number": "109",
+      "name": "Whiscash",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/109/high.webp"
+    },
+    {
+      "id": "sv03-110",
+      "number": "110",
+      "name": "Bonsly",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/110/high.webp"
+    },
+    {
+      "id": "sv03-111",
+      "number": "111",
+      "name": "Drilbur",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/111/high.webp"
+    },
+    {
+      "id": "sv03-112",
+      "number": "112",
+      "name": "Stunfisk",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/112/high.webp"
+    },
+    {
+      "id": "sv03-113",
+      "number": "113",
+      "name": "Diggersby",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/113/high.webp"
+    },
+    {
+      "id": "sv03-114",
+      "number": "114",
+      "name": "Crabrawler",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/114/high.webp"
+    },
+    {
+      "id": "sv03-115",
+      "number": "115",
+      "name": "Crabominable",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/115/high.webp"
+    },
+    {
+      "id": "sv03-116",
+      "number": "116",
+      "name": "Rockruff",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/116/high.webp"
+    },
+    {
+      "id": "sv03-117",
+      "number": "117",
+      "name": "Lycanroc",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/117/high.webp"
+    },
+    {
+      "id": "sv03-118",
+      "number": "118",
+      "name": "Toedscool",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/118/high.webp"
+    },
+    {
+      "id": "sv03-119",
+      "number": "119",
+      "name": "Toedscruel",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/119/high.webp"
+    },
+    {
+      "id": "sv03-120",
+      "number": "120",
+      "name": "Klawf ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/120/high.webp"
+    },
+    {
+      "id": "sv03-121",
+      "number": "121",
+      "name": "Glimmet",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/121/high.webp"
+    },
+    {
+      "id": "sv03-122",
+      "number": "122",
+      "name": "Glimmet",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/122/high.webp"
+    },
+    {
+      "id": "sv03-123",
+      "number": "123",
+      "name": "Glimmora ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/123/high.webp"
+    },
+    {
+      "id": "sv03-124",
+      "number": "124",
+      "name": "Koraidon ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/124/high.webp"
+    },
+    {
+      "id": "sv03-125",
+      "number": "125",
+      "name": "Charizard ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/125/high.webp"
+    },
+    {
+      "id": "sv03-126",
+      "number": "126",
+      "name": "Paldean Wooper",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/126/high.webp"
+    },
+    {
+      "id": "sv03-127",
+      "number": "127",
+      "name": "Paldean Wooper",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/127/high.webp"
+    },
+    {
+      "id": "sv03-128",
+      "number": "128",
+      "name": "Paldean Clodsire",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/128/high.webp"
+    },
+    {
+      "id": "sv03-129",
+      "number": "129",
+      "name": "Paldean Clodsire",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/129/high.webp"
+    },
+    {
+      "id": "sv03-130",
+      "number": "130",
+      "name": "Umbreon",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/130/high.webp"
+    },
+    {
+      "id": "sv03-131",
+      "number": "131",
+      "name": "Houndour",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/131/high.webp"
+    },
+    {
+      "id": "sv03-132",
+      "number": "132",
+      "name": "Houndour",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/132/high.webp"
+    },
+    {
+      "id": "sv03-133",
+      "number": "133",
+      "name": "Houndoom",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/133/high.webp"
+    },
+    {
+      "id": "sv03-134",
+      "number": "134",
+      "name": "Houndoom ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/134/high.webp"
+    },
+    {
+      "id": "sv03-135",
+      "number": "135",
+      "name": "Absol ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/135/high.webp"
+    },
+    {
+      "id": "sv03-136",
+      "number": "136",
+      "name": "Darkrai",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/136/high.webp"
+    },
+    {
+      "id": "sv03-137",
+      "number": "137",
+      "name": "Inkay",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/137/high.webp"
+    },
+    {
+      "id": "sv03-138",
+      "number": "138",
+      "name": "Malamar",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/138/high.webp"
+    },
+    {
+      "id": "sv03-139",
+      "number": "139",
+      "name": "Salandit",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/139/high.webp"
+    },
+    {
+      "id": "sv03-140",
+      "number": "140",
+      "name": "Salazzle",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/140/high.webp"
+    },
+    {
+      "id": "sv03-141",
+      "number": "141",
+      "name": "Scizor",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/141/high.webp"
+    },
+    {
+      "id": "sv03-142",
+      "number": "142",
+      "name": "Skarmory",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/142/high.webp"
+    },
+    {
+      "id": "sv03-143",
+      "number": "143",
+      "name": "Mawile",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/143/high.webp"
+    },
+    {
+      "id": "sv03-144",
+      "number": "144",
+      "name": "Bronzor",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/144/high.webp"
+    },
+    {
+      "id": "sv03-145",
+      "number": "145",
+      "name": "Bronzong",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/145/high.webp"
+    },
+    {
+      "id": "sv03-146",
+      "number": "146",
+      "name": "Probopass",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/146/high.webp"
+    },
+    {
+      "id": "sv03-147",
+      "number": "147",
+      "name": "Excadrill",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/147/high.webp"
+    },
+    {
+      "id": "sv03-148",
+      "number": "148",
+      "name": "Pawniard",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/148/high.webp"
+    },
+    {
+      "id": "sv03-149",
+      "number": "149",
+      "name": "Bisharp",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/149/high.webp"
+    },
+    {
+      "id": "sv03-150",
+      "number": "150",
+      "name": "Kingambit",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/150/high.webp"
+    },
+    {
+      "id": "sv03-151",
+      "number": "151",
+      "name": "Togedemaru",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/151/high.webp"
+    },
+    {
+      "id": "sv03-152",
+      "number": "152",
+      "name": "Meltan",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/152/high.webp"
+    },
+    {
+      "id": "sv03-153",
+      "number": "153",
+      "name": "Melmetal ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/153/high.webp"
+    },
+    {
+      "id": "sv03-154",
+      "number": "154",
+      "name": "Varoom",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/154/high.webp"
+    },
+    {
+      "id": "sv03-155",
+      "number": "155",
+      "name": "Varoom",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/155/high.webp"
+    },
+    {
+      "id": "sv03-156",
+      "number": "156",
+      "name": "Revavroom ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/156/high.webp"
+    },
+    {
+      "id": "sv03-157",
+      "number": "157",
+      "name": "Dratini",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/157/high.webp"
+    },
+    {
+      "id": "sv03-158",
+      "number": "158",
+      "name": "Dragonair",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/158/high.webp"
+    },
+    {
+      "id": "sv03-159",
+      "number": "159",
+      "name": "Dragonite ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/159/high.webp"
+    },
+    {
+      "id": "sv03-160",
+      "number": "160",
+      "name": "Altaria",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/160/high.webp"
+    },
+    {
+      "id": "sv03-161",
+      "number": "161",
+      "name": "Drampa",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/161/high.webp"
+    },
+    {
+      "id": "sv03-162",
+      "number": "162",
+      "name": "Pidgey",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/162/high.webp"
+    },
+    {
+      "id": "sv03-163",
+      "number": "163",
+      "name": "Pidgeotto",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/163/high.webp"
+    },
+    {
+      "id": "sv03-164",
+      "number": "164",
+      "name": "Pidgeot ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/164/high.webp"
+    },
+    {
+      "id": "sv03-165",
+      "number": "165",
+      "name": "Kangaskhan",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/165/high.webp"
+    },
+    {
+      "id": "sv03-166",
+      "number": "166",
+      "name": "Eevee",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/166/high.webp"
+    },
+    {
+      "id": "sv03-167",
+      "number": "167",
+      "name": "Zigzagoon",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/167/high.webp"
+    },
+    {
+      "id": "sv03-168",
+      "number": "168",
+      "name": "Linoone",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/168/high.webp"
+    },
+    {
+      "id": "sv03-169",
+      "number": "169",
+      "name": "Swablu",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/169/high.webp"
+    },
+    {
+      "id": "sv03-170",
+      "number": "170",
+      "name": "Lillipup",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/170/high.webp"
+    },
+    {
+      "id": "sv03-171",
+      "number": "171",
+      "name": "Herdier",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/171/high.webp"
+    },
+    {
+      "id": "sv03-172",
+      "number": "172",
+      "name": "Stoutland",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/172/high.webp"
+    },
+    {
+      "id": "sv03-173",
+      "number": "173",
+      "name": "Audino",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/173/high.webp"
+    },
+    {
+      "id": "sv03-174",
+      "number": "174",
+      "name": "Bouffalant",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/174/high.webp"
+    },
+    {
+      "id": "sv03-175",
+      "number": "175",
+      "name": "Bunnelby",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/175/high.webp"
+    },
+    {
+      "id": "sv03-176",
+      "number": "176",
+      "name": "Yungoos",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/176/high.webp"
+    },
+    {
+      "id": "sv03-177",
+      "number": "177",
+      "name": "Gumshoos",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/177/high.webp"
+    },
+    {
+      "id": "sv03-178",
+      "number": "178",
+      "name": "Skwovet",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/178/high.webp"
+    },
+    {
+      "id": "sv03-179",
+      "number": "179",
+      "name": "Greedent ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/179/high.webp"
+    },
+    {
+      "id": "sv03-180",
+      "number": "180",
+      "name": "Lechonk",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/180/high.webp"
+    },
+    {
+      "id": "sv03-181",
+      "number": "181",
+      "name": "Lechonk",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/181/high.webp"
+    },
+    {
+      "id": "sv03-182",
+      "number": "182",
+      "name": "Lechonk",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/182/high.webp"
+    },
+    {
+      "id": "sv03-183",
+      "number": "183",
+      "name": "Oinkologne",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/183/high.webp"
+    },
+    {
+      "id": "sv03-184",
+      "number": "184",
+      "name": "Oinkologne",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/184/high.webp"
+    },
+    {
+      "id": "sv03-185",
+      "number": "185",
+      "name": "Flamigo",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/185/high.webp"
+    },
+    {
+      "id": "sv03-186",
+      "number": "186",
+      "name": "Arven",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/186/high.webp"
+    },
+    {
+      "id": "sv03-187",
+      "number": "187",
+      "name": "Brassius",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/187/high.webp"
+    },
+    {
+      "id": "sv03-188",
+      "number": "188",
+      "name": "Geeta",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/188/high.webp"
+    },
+    {
+      "id": "sv03-189",
+      "number": "189",
+      "name": "Letter of Encouragement",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/189/high.webp"
+    },
+    {
+      "id": "sv03-190",
+      "number": "190",
+      "name": "Ortega",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/190/high.webp"
+    },
+    {
+      "id": "sv03-191",
+      "number": "191",
+      "name": "Patrol Cap",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/191/high.webp"
+    },
+    {
+      "id": "sv03-192",
+      "number": "192",
+      "name": "Pokémon League Headquarters",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/192/high.webp"
+    },
+    {
+      "id": "sv03-193",
+      "number": "193",
+      "name": "Poppy",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/193/high.webp"
+    },
+    {
+      "id": "sv03-194",
+      "number": "194",
+      "name": "Ryme",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/194/high.webp"
+    },
+    {
+      "id": "sv03-195",
+      "number": "195",
+      "name": "Team Star Grunt",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/195/high.webp"
+    },
+    {
+      "id": "sv03-196",
+      "number": "196",
+      "name": "Town Store",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/196/high.webp"
+    },
+    {
+      "id": "sv03-197",
+      "number": "197",
+      "name": "Vengeful Punch",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/197/high.webp"
+    },
+    {
+      "id": "sv03-198",
+      "number": "198",
+      "name": "Gloom",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/198/high.webp"
+    },
+    {
+      "id": "sv03-199",
+      "number": "199",
+      "name": "Ninetales",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/199/high.webp"
+    },
+    {
+      "id": "sv03-200",
+      "number": "200",
+      "name": "Palafin",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/200/high.webp"
+    },
+    {
+      "id": "sv03-201",
+      "number": "201",
+      "name": "Bellibolt",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/201/high.webp"
+    },
+    {
+      "id": "sv03-202",
+      "number": "202",
+      "name": "Cleffa",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/202/high.webp"
+    },
+    {
+      "id": "sv03-203",
+      "number": "203",
+      "name": "Larvitar",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/203/high.webp"
+    },
+    {
+      "id": "sv03-204",
+      "number": "204",
+      "name": "Houndour",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/204/high.webp"
+    },
+    {
+      "id": "sv03-205",
+      "number": "205",
+      "name": "Scizor",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/205/high.webp"
+    },
+    {
+      "id": "sv03-206",
+      "number": "206",
+      "name": "Varoom",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/206/high.webp"
+    },
+    {
+      "id": "sv03-207",
+      "number": "207",
+      "name": "Pidgey",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/207/high.webp"
+    },
+    {
+      "id": "sv03-208",
+      "number": "208",
+      "name": "Pidgeotto",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/208/high.webp"
+    },
+    {
+      "id": "sv03-209",
+      "number": "209",
+      "name": "Lechonk",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/209/high.webp"
+    },
+    {
+      "id": "sv03-210",
+      "number": "210",
+      "name": "Eiscue ex",
+      "rarity": "Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/210/high.webp"
+    },
+    {
+      "id": "sv03-211",
+      "number": "211",
+      "name": "Tyranitar ex",
+      "rarity": "Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/211/high.webp"
+    },
+    {
+      "id": "sv03-212",
+      "number": "212",
+      "name": "Vespiquen ex",
+      "rarity": "Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/212/high.webp"
+    },
+    {
+      "id": "sv03-213",
+      "number": "213",
+      "name": "Glimmora ex",
+      "rarity": "Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/213/high.webp"
+    },
+    {
+      "id": "sv03-214",
+      "number": "214",
+      "name": "Absol ex",
+      "rarity": "Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/214/high.webp"
+    },
+    {
+      "id": "sv03-215",
+      "number": "215",
+      "name": "Charizard ex",
+      "rarity": "Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/215/high.webp"
+    },
+    {
+      "id": "sv03-216",
+      "number": "216",
+      "name": "Revavroom ex",
+      "rarity": "Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/216/high.webp"
+    },
+    {
+      "id": "sv03-217",
+      "number": "217",
+      "name": "Pidgeot ex",
+      "rarity": "Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/217/high.webp"
+    },
+    {
+      "id": "sv03-218",
+      "number": "218",
+      "name": "Geeta",
+      "rarity": "Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/218/high.webp"
+    },
+    {
+      "id": "sv03-219",
+      "number": "219",
+      "name": "Ortega",
+      "rarity": "Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/219/high.webp"
+    },
+    {
+      "id": "sv03-220",
+      "number": "220",
+      "name": "Poppy",
+      "rarity": "Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/220/high.webp"
+    },
+    {
+      "id": "sv03-221",
+      "number": "221",
+      "name": "Ryme",
+      "rarity": "Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/221/high.webp"
+    },
+    {
+      "id": "sv03-222",
+      "number": "222",
+      "name": "Eiscue ex",
+      "rarity": "Special illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/222/high.webp"
+    },
+    {
+      "id": "sv03-223",
+      "number": "223",
+      "name": "Charizard ex",
+      "rarity": "Special illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/223/high.webp"
+    },
+    {
+      "id": "sv03-224",
+      "number": "224",
+      "name": "Revavroom ex",
+      "rarity": "Special illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/224/high.webp"
+    },
+    {
+      "id": "sv03-225",
+      "number": "225",
+      "name": "Pidgeot ex",
+      "rarity": "Special illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/225/high.webp"
+    },
+    {
+      "id": "sv03-226",
+      "number": "226",
+      "name": "Geeta",
+      "rarity": "Special illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/226/high.webp"
+    },
+    {
+      "id": "sv03-227",
+      "number": "227",
+      "name": "Poppy",
+      "rarity": "Special illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/227/high.webp"
+    },
+    {
+      "id": "sv03-228",
+      "number": "228",
+      "name": "Charizard ex",
+      "rarity": "Hyper rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/228/high.webp"
+    },
+    {
+      "id": "sv03-229",
+      "number": "229",
+      "name": "Artazon",
+      "rarity": "Hyper rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/229/high.webp"
+    },
+    {
+      "id": "sv03-230",
+      "number": "230",
+      "name": "Basic Fire Energy",
+      "rarity": "Hyper rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv03/230/high.webp"
+    }
+  ]
+}

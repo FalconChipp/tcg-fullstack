@@ -122,8 +122,8 @@ export default function Header({ onStartTour }) {
                 <HeaderNavLink id="about-discord-link" href="/about" isActive={pathname === "/about"}>
                   About
                 </HeaderNavLink>
-                <HeaderNavLink id="subscriptions-link" href="/subscriptions" isActive={pathname === "/subscriptions"}>
-                  Subscriptions
+                <HeaderNavLink id="subscriptions-link" href="/sets" isActive={pathname === "/sets"}>
+                  All Sets
                 </HeaderNavLink>
               </nav>
             </div>
@@ -336,7 +336,7 @@ export default function Header({ onStartTour }) {
           <nav className="flex flex-col space-y-4 flex-grow" aria-label="Mobile Primary">
             <HeaderNavLink href="/" isActive={pathname === "/"}>Home</HeaderNavLink>
             <HeaderNavLink href="/about" isActive={pathname === "/about"}>About</HeaderNavLink>
-            <HeaderNavLink href="/subscriptions" isActive={pathname === "/subscriptions"}>Subscriptions</HeaderNavLink>
+            <HeaderNavLink href="/sets" isActive={pathname === "/sets"}>All Sets</HeaderNavLink>
           </nav>
 
           <div className="mt-auto pt-8">

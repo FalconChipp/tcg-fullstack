@@ -1,4 +1,9 @@
 /** @type {import('next').NextConfig} */
+
+// NEW: central regex for common crawlers we should NOT block
+// Uses inline case-insensitive group (?i:...) which Next supports in redirect matchers
+const BOT_UA_REGEX = "(?i:Googlebot|bingbot|DuckDuckBot|Applebot|YandexBot|Baiduspider)";
+
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
@@ -18,6 +23,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'backendtcg.sixbyfive.com' },
       { protocol: 'https', hostname: 'tcg.sixbyfive.com' },
       { protocol: 'https', hostname: 'placehold.co' },
+      // dev
       { protocol: 'http', hostname: 'localhost' },
       { protocol: 'http', hostname: '127.0.0.1' },
     ],
@@ -40,27 +46,40 @@ const nextConfig = {
     },
   ],
 
-  // NEW: Redirect rules that don't rely on middleware
+  // NEW/CHANGED: Redirect rules that avoid bots and do NOT use UA regex for blocking.
+  // We ONLY redirect when:
+  //  - QA flag ?forceMobile=1 is present, OR
+  //  - Chromium client hint sec-ch-ua-mobile == ?1 (real mobile browser),
+  // AND it's NOT a bot UA, AND no bypass cookie is set.
   async redirects() {
     return [
-      // 1) QA: force via query (?forceMobile=1), unless bypass cookie set
+      // 1) QA force via query (?forceMobile=1), unless bypass cookie set OR bot UA (CHANGED)
       {
-        // Exclude the block page and bypass route themselves
+        // Exclude the block page and any bypass route from being redirected
         source: '/:path((?!mobile-block)(?!allow-desktop).*)',
         has: [{ type: 'query', key: 'forceMobile', value: '1' }],
-        missing: [{ type: 'cookie', key: 'allowMobileWeb', value: '1' }],
+        missing: [
+          { type: 'cookie', key: 'allowMobileWeb', value: '1' },               // keep bypass
+          { type: 'header', key: 'user-agent', value: BOT_UA_REGEX },          // NEW: skip bots
+        ],
         destination: '/mobile-block',
-        permanent: false, // 307 in dev/prod
+        permanent: false, // 307
       },
-      // 2) Chromium client hint says "mobile"
+
+      // 2) Chromium client hint says "mobile" (?1), unless bypass cookie set OR bot UA (CHANGED)
       {
         source: '/:path((?!mobile-block)(?!allow-desktop).*)',
         has: [{ type: 'header', key: 'sec-ch-ua-mobile', value: '\\?1' }],
-        missing: [{ type: 'cookie', key: 'allowMobileWeb', value: '1' }],
+        missing: [
+          { type: 'cookie', key: 'allowMobileWeb', value: '1' },
+          { type: 'header', key: 'user-agent', value: BOT_UA_REGEX },          // NEW: skip bots
+        ],
         destination: '/mobile-block',
         permanent: false,
       },
 
+      // REMOVED: UA-string regex fallback redirect.
+      // (Per your request: "not block bots or UA" — we no longer redirect based on UA matches.)
     ];
   },
 

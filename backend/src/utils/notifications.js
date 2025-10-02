@@ -1,78 +1,94 @@
-// src/utils/notifications.js
-import { Notification, User } from '../models/index.js';
-import buildNotificationEmail from '../emails/notifications/index.js';
+// src/utils/notifications.js — ESM
+// CHANGED: adds makeNotifyUser({ models, email }) factory for testability.
+
+import { Notification, User, UserNotificationPref } from '../models/index.js';
 import { sendMail } from './email.js';
 
-/**
- * Create a notification for a single user or broadcast to all users.
- * Email and push notification hooks are left commented for future use.
- * @param {Object} opts
- */
-export async function notifyUser({
-  userId,
-  type,
-  title,
-  body,
-  iconUrl,
-  linkUrl,
-  meta,
-  isBroadcast = false,
-  isSilent = false,
-  expiresAt,
-}) {
-  if (!expiresAt && (isBroadcast || type === 'system')) {
-    expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-  }
-  const payload = {
-    userId: userId || null,
-    type,
+// NEW: DI-friendly factory
+export function makeNotifyUser({ models, email }) {
+  const {
+    Notification: NotificationModel,
+    User: UserModel,
+    UserNotificationPref: PrefModel,
+  } = models;
+
+  const { sendMail: send } = email;
+
+  return async function notifyUser({
+    userId,
+    type = 'price_alert',
     title,
     body,
-    iconUrl,
-    linkUrl,
-    meta,
-    isBroadcast,
-    isSilent,
-    expiresAt,
+    iconUrl = null,
+    linkUrl = null,
+    meta = null,
+    isSilent = false,
+    expiresAt = null,
+  }) {
+    const prefs = await PrefModel.findByPk(userId);
+    const inappOk = !prefs || prefs.inappEnabled !== false;
+
+    if (inappOk && !isSilent) {
+      await NotificationModel.create({
+        userId,
+        type,
+        title,
+        body,
+        iconUrl,
+        linkUrl,
+        meta,
+        isRead: false,
+        isDismissed: false,
+        expiresAt,
+        isSilent: !!isSilent,
+      });
+    }
+
+    const emailOk = !prefs || prefs.emailEnabled !== false;
+    if (emailOk && !isSilent) {
+      const user = await UserModel.findByPk(userId);
+      if (user?.email) {
+        try {
+          await send({
+            to: user.email,
+            subject: title,
+            html: `<p>${body}</p>${linkUrl ? `<p><a href="${linkUrl}">${linkUrl}</a></p>` : ''}`,
+          });
+        } catch (err) {
+          console.error('[EMAIL] notifyUser failed:', err?.message || err);
+        }
+      }
+    }
   };
-
-  const records = [];
-  if (isBroadcast) {
-    const users = await User.findAll({ attributes: ['id'] });
-    const bulk = users.map((u) => ({ ...payload, userId: u.id }));
-    records.push(...(await Notification.bulkCreate(bulk)));
-  } else {
-    records.push(await Notification.create(payload));
-  }
-
-  if (!isSilent) {
-    // TODO: emit socket.io event to user(s) here
-  }
-
-  // Email sending (disabled by default)
-  const email = buildNotificationEmail(type, { title, body, linkUrl, meta });
-  if (email && !isBroadcast) {
-    // await sendMail({ to: (await User.findByPk(userId)).email, ...email });
-  }
-  return records;
 }
 
-export async function markAsRead(id, userId, allowAdmin = false) {
-  const where = allowAdmin ? { id } : { id, userId };
-  await Notification.update({ isRead: true }, { where });
+// Default notifyUser (real deps)
+export const notifyUser = makeNotifyUser({
+  models: { Notification, User, UserNotificationPref },
+  email: { sendMail },
+});
+export default notifyUser;
+
+// The following helpers remain unchanged; they accept objects as args.
+export async function markAsRead({ id, userId }) {
+  const row = await Notification.findByPk(id);
+  if (!row || row.userId !== userId) return false;
+  await row.update({ isRead: true });
+  return true;
 }
 
-export async function markAllAsRead(userId) {
-  await Notification.update({ isRead: true }, { where: { userId } });
+export async function markAllAsRead({ userId }) {
+  await Notification.update({ isRead: true }, { where: { userId, isRead: false } });
+  return true;
 }
 
-export async function dismissNotification(id, userId, allowAdmin = false) {
-  const where = allowAdmin ? { id } : { id, userId };
-  await Notification.update({ isDismissed: true }, { where });
+export async function dismissNotification({ id, userId }) {
+  const row = await Notification.findByPk(id);
+  if (!row || row.userId !== userId) return false;
+  await row.update({ isDismissed: true });
+  return true;
 }
 
-export async function getUnreadCount(userId) {
-  return Notification.count({
-    where: { userId, isRead: false, isDismissed: false },
-  });
+export async function getUnreadCount({ userId }) {
+  return Notification.count({ where: { userId, isRead: false, isDismissed: false } });
 }

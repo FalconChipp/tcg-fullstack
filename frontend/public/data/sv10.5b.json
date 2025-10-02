@@ -8,1208 +8,2928 @@
   "officialCardCount": 86,
   "cards": [
     {
-      "id": "sv10.5b-001",
-      "number": "001",
-      "name": "Snivy",
+      "id": "sv10.5b-006",
+      "number": "006",
+      "name": "Petilil",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/001/high.webp"
-    },
-    {
-      "id": "sv10.5b-002",
-      "number": "002",
-      "name": "Servine",
-      "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/002/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/006/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-003",
       "number": "003",
       "name": "Serperior ex",
       "rarity": "Double rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/003/high.webp"
-    },
-    {
-      "id": "sv10.5b-004",
-      "number": "004",
-      "name": "Pansage",
-      "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/004/high.webp"
-    },
-    {
-      "id": "sv10.5b-005",
-      "number": "005",
-      "name": "Simisage",
-      "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/005/high.webp"
-    },
-    {
-      "id": "sv10.5b-006",
-      "number": "006",
-      "name": "Petilil",
-      "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/006/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/003/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-007",
       "number": "007",
       "name": "Lilligant",
       "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/007/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/007/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-008",
       "number": "008",
       "name": "Maractus",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/008/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/008/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-009",
       "number": "009",
       "name": "Karrablast",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/009/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/009/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-010",
       "number": "010",
       "name": "Foongus",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/010/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/010/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-011",
       "number": "011",
       "name": "Amoonguss",
       "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/011/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/011/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-012",
       "number": "012",
       "name": "Victini",
       "rarity": "Rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/012/high.webp"
-    },
-    {
-      "id": "sv10.5b-013",
-      "number": "013",
-      "name": "Darumaka",
-      "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/013/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/012/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-014",
       "number": "014",
       "name": "Darmanitan",
       "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/014/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/014/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-015",
-      "number": "015",
-      "name": "Larvesta",
+      "id": "sv10.5b-013",
+      "number": "013",
+      "name": "Darumaka",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/015/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/013/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-005",
+      "number": "005",
+      "name": "Simisage",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/005/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-001",
+      "number": "001",
+      "name": "Snivy",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/001/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-016",
       "number": "016",
       "name": "Volcarona",
       "rarity": "Rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/016/high.webp"
-    },
-    {
-      "id": "sv10.5b-017",
-      "number": "017",
-      "name": "Panpour",
-      "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/017/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/016/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-018",
       "number": "018",
       "name": "Simipour",
       "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/018/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/018/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-019",
       "number": "019",
       "name": "Tympole",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/019/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/019/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-020",
       "number": "020",
       "name": "Palpitoad",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/020/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/020/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-017",
+      "number": "017",
+      "name": "Panpour",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/017/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-021",
       "number": "021",
       "name": "Seismitoad",
       "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/021/high.webp"
-    },
-    {
-      "id": "sv10.5b-022",
-      "number": "022",
-      "name": "Tirtouga",
-      "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/022/high.webp"
-    },
-    {
-      "id": "sv10.5b-023",
-      "number": "023",
-      "name": "Carracosta",
-      "rarity": "Rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/023/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/021/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-024",
       "number": "024",
       "name": "Alomomola",
       "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/024/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/024/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-002",
+      "number": "002",
+      "name": "Servine",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/002/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-022",
+      "number": "022",
+      "name": "Tirtouga",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/022/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-023",
+      "number": "023",
+      "name": "Carracosta",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/023/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-025",
       "number": "025",
       "name": "Cubchoo",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/025/high.webp"
-    },
-    {
-      "id": "sv10.5b-026",
-      "number": "026",
-      "name": "Beartic",
-      "rarity": "Rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/026/high.webp"
-    },
-    {
-      "id": "sv10.5b-027",
-      "number": "027",
-      "name": "Cryogonal",
-      "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/027/high.webp"
-    },
-    {
-      "id": "sv10.5b-028",
-      "number": "028",
-      "name": "Kyurem ex",
-      "rarity": "Double rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/028/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/025/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-029",
       "number": "029",
       "name": "Emolga",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/029/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/029/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-030",
-      "number": "030",
-      "name": "Tynamo",
-      "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/030/high.webp"
+      "id": "sv10.5b-028",
+      "number": "028",
+      "name": "Kyurem ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/028/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-031",
       "number": "031",
       "name": "Eelektrik",
       "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/031/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/031/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-032",
-      "number": "032",
-      "name": "Eelektross",
-      "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/032/high.webp"
+      "id": "sv10.5b-030",
+      "number": "030",
+      "name": "Tynamo",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/030/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-033",
       "number": "033",
       "name": "Thundurus",
       "rarity": "Rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/033/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/033/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-034",
-      "number": "034",
-      "name": "Zekrom ex",
-      "rarity": "Double rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/034/high.webp"
+      "id": "sv10.5b-032",
+      "number": "032",
+      "name": "Eelektross",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/032/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-035",
       "number": "035",
       "name": "Munna",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/035/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/035/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-034",
+      "number": "034",
+      "name": "Zekrom ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/034/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-036",
       "number": "036",
       "name": "Musharna",
       "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/036/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/036/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-037",
-      "number": "037",
-      "name": "Solosis",
-      "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/037/high.webp"
-    },
-    {
-      "id": "sv10.5b-038",
-      "number": "038",
-      "name": "Duosion",
-      "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/038/high.webp"
+      "id": "sv10.5b-026",
+      "number": "026",
+      "name": "Beartic",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/026/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-039",
       "number": "039",
       "name": "Reuniclus",
       "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/039/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/039/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-040",
       "number": "040",
       "name": "Elgyem",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/040/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/040/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-041",
-      "number": "041",
-      "name": "Beheeyem",
+      "id": "sv10.5b-027",
+      "number": "027",
+      "name": "Cryogonal",
       "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/041/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/027/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-042",
       "number": "042",
       "name": "Golett",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/042/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/042/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-037",
+      "number": "037",
+      "name": "Solosis",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/037/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-043",
       "number": "043",
       "name": "Golurk",
       "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/043/high.webp"
-    },
-    {
-      "id": "sv10.5b-044",
-      "number": "044",
-      "name": "Meloetta ex",
-      "rarity": "Double rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/044/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/043/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-045",
       "number": "045",
       "name": "Drilbur",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/045/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/045/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-046",
-      "number": "046",
-      "name": "Excadrill ex",
+      "id": "sv10.5b-044",
+      "number": "044",
+      "name": "Meloetta ex",
       "rarity": "Double rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/046/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/044/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-047",
       "number": "047",
       "name": "Timburr",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/047/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/047/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-048",
       "number": "048",
       "name": "Gurdurr",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/048/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/048/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-049",
       "number": "049",
       "name": "Conkeldurr",
       "rarity": "Rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/049/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/049/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-050",
       "number": "050",
       "name": "Throh",
       "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/050/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/050/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-051",
       "number": "051",
       "name": "Dwebble",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/051/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/051/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-052",
       "number": "052",
       "name": "Crustle",
       "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/052/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/052/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-053",
       "number": "053",
       "name": "Landorus",
       "rarity": "Rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/053/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/053/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-054",
-      "number": "054",
-      "name": "Venipede",
+      "id": "sv10.5b-015",
+      "number": "015",
+      "name": "Larvesta",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/054/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/015/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-055",
-      "number": "055",
-      "name": "Whirlipede",
+      "id": "sv10.5b-004",
+      "number": "004",
+      "name": "Pansage",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/055/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/004/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-056",
       "number": "056",
       "name": "Scolipede",
       "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/056/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/056/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-057",
-      "number": "057",
-      "name": "Sandile",
+      "id": "sv10.5b-055",
+      "number": "055",
+      "name": "Whirlipede",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/057/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/055/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-058",
       "number": "058",
       "name": "Krokorok",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/058/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/058/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-059",
-      "number": "059",
-      "name": "Krookodile",
-      "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/059/high.webp"
+      "id": "sv10.5b-046",
+      "number": "046",
+      "name": "Excadrill ex",
+      "rarity": "Double rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/046/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-057",
+      "number": "057",
+      "name": "Sandile",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/057/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-060",
       "number": "060",
       "name": "Escavalier",
       "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/060/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/060/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-061",
       "number": "061",
       "name": "Klink",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/061/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/061/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-062",
       "number": "062",
       "name": "Klang",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/062/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/062/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-063",
       "number": "063",
       "name": "Klinklang",
       "rarity": "Rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/063/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/063/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-064",
       "number": "064",
       "name": "Pawniard",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/064/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/064/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-065",
       "number": "065",
       "name": "Bisharp",
       "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/065/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/065/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-066",
       "number": "066",
       "name": "Cobalion",
       "rarity": "Rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/066/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/066/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-067",
       "number": "067",
       "name": "Genesect ex",
       "rarity": "Double rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/067/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/067/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-068",
-      "number": "068",
-      "name": "Axew",
+      "id": "sv10.5b-038",
+      "number": "038",
+      "name": "Duosion",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/068/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/038/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-069",
-      "number": "069",
-      "name": "Fraxure",
-      "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/069/high.webp"
-    },
-    {
-      "id": "sv10.5b-070",
-      "number": "070",
-      "name": "Haxorus",
-      "rarity": "Rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/070/high.webp"
+      "id": "sv10.5b-041",
+      "number": "041",
+      "name": "Beheeyem",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/041/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-071",
       "number": "071",
       "name": "Pidove",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/071/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/071/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-072",
-      "number": "072",
-      "name": "Tranquill",
-      "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/072/high.webp"
+      "id": "sv10.5b-070",
+      "number": "070",
+      "name": "Haxorus",
+      "rarity": "Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/070/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-073",
       "number": "073",
       "name": "Unfezant",
       "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/073/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/073/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-074",
-      "number": "074",
-      "name": "Audino",
+      "id": "sv10.5b-072",
+      "number": "072",
+      "name": "Tranquill",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/074/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/072/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-054",
+      "number": "054",
+      "name": "Venipede",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/054/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-075",
       "number": "075",
       "name": "Minccino",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/075/high.webp"
-    },
-    {
-      "id": "sv10.5b-076",
-      "number": "076",
-      "name": "Cinccino",
-      "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/076/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/075/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-077",
       "number": "077",
       "name": "Rufflet",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/077/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/077/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-078",
       "number": "078",
       "name": "Braviary",
       "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/078/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/078/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-079",
-      "number": "079",
-      "name": "Air Balloon",
+      "id": "sv10.5b-076",
+      "number": "076",
+      "name": "Cinccino",
       "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/079/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/076/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-074",
+      "number": "074",
+      "name": "Audino",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/074/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-080",
       "number": "080",
       "name": "Antique Cover Fossil",
       "rarity": "Common",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/080/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/080/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "H",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-081",
       "number": "081",
       "name": "Energy Coin",
       "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/081/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/081/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-082",
       "number": "082",
       "name": "Fennel",
       "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/082/high.webp"
-    },
-    {
-      "id": "sv10.5b-083",
-      "number": "083",
-      "name": "N's Plan",
-      "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/083/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/082/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-084",
       "number": "084",
       "name": "Pokégear 3.0",
       "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/084/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/084/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-085",
-      "number": "085",
-      "name": "Professor's Research",
+      "id": "sv10.5b-083",
+      "number": "083",
+      "name": "N's Plan",
       "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/085/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/083/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-086",
       "number": "086",
       "name": "Prism Energy",
       "rarity": "Uncommon",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/086/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/086/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-087",
       "number": "087",
       "name": "Snivy",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/087/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/087/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-088",
-      "number": "088",
-      "name": "Servine",
-      "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/088/high.webp"
+      "id": "sv10.5b-085",
+      "number": "085",
+      "name": "Professor's Research",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/085/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "G",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-068",
+      "number": "068",
+      "name": "Axew",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/068/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-059",
+      "number": "059",
+      "name": "Krookodile",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/059/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-089",
       "number": "089",
       "name": "Pansage",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/089/high.webp"
-    },
-    {
-      "id": "sv10.5b-090",
-      "number": "090",
-      "name": "Simisage",
-      "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/090/high.webp"
-    },
-    {
-      "id": "sv10.5b-091",
-      "number": "091",
-      "name": "Petilil",
-      "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/091/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/089/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-092",
       "number": "092",
       "name": "Lilligant",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/092/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/092/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-093",
       "number": "093",
       "name": "Maractus",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/093/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/093/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-094",
       "number": "094",
       "name": "Karrablast",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/094/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/094/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-091",
+      "number": "091",
+      "name": "Petilil",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/091/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-090",
+      "number": "090",
+      "name": "Simisage",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/090/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-095",
       "number": "095",
       "name": "Foongus",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/095/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/095/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-096",
       "number": "096",
       "name": "Amoonguss",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/096/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/096/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-097",
       "number": "097",
       "name": "Darumaka",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/097/high.webp"
-    },
-    {
-      "id": "sv10.5b-098",
-      "number": "098",
-      "name": "Darmanitan",
-      "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/098/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/097/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-099",
       "number": "099",
       "name": "Larvesta",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/099/high.webp"
-    },
-    {
-      "id": "sv10.5b-100",
-      "number": "100",
-      "name": "Volcarona",
-      "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/100/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/099/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-101",
       "number": "101",
       "name": "Panpour",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/101/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/101/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-102",
       "number": "102",
       "name": "Simipour",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/102/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/102/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-103",
       "number": "103",
       "name": "Tympole",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/103/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/103/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-104",
       "number": "104",
       "name": "Palpitoad",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/104/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/104/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-105",
       "number": "105",
       "name": "Seismitoad",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/105/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/105/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-106",
       "number": "106",
       "name": "Tirtouga",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/106/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/106/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-107",
-      "number": "107",
-      "name": "Carracosta",
+      "id": "sv10.5b-069",
+      "number": "069",
+      "name": "Fraxure",
+      "rarity": "Common",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/069/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-079",
+      "number": "079",
+      "name": "Air Balloon",
+      "rarity": "Uncommon",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/079/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-088",
+      "number": "088",
+      "name": "Servine",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/107/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/088/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-108",
       "number": "108",
       "name": "Alomomola",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/108/high.webp"
-    },
-    {
-      "id": "sv10.5b-109",
-      "number": "109",
-      "name": "Cubchoo",
-      "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/109/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/108/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-110",
       "number": "110",
       "name": "Beartic",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/110/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/110/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-111",
-      "number": "111",
-      "name": "Cryogonal",
+      "id": "sv10.5b-098",
+      "number": "098",
+      "name": "Darmanitan",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/111/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/098/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-112",
-      "number": "112",
-      "name": "Emolga",
+      "id": "sv10.5b-100",
+      "number": "100",
+      "name": "Volcarona",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/112/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/100/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-113",
       "number": "113",
       "name": "Tynamo",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/113/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/113/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-114",
-      "number": "114",
-      "name": "Eelektrik",
+      "id": "sv10.5b-112",
+      "number": "112",
+      "name": "Emolga",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/114/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/112/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-115",
-      "number": "115",
-      "name": "Eelektross",
+      "id": "sv10.5b-111",
+      "number": "111",
+      "name": "Cryogonal",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/115/high.webp"
-    },
-    {
-      "id": "sv10.5b-116",
-      "number": "116",
-      "name": "Munna",
-      "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/116/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/111/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-117",
       "number": "117",
       "name": "Musharna",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/117/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/117/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-118",
       "number": "118",
       "name": "Solosis",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/118/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/118/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-119",
       "number": "119",
       "name": "Duosion",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/119/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/119/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-120",
       "number": "120",
       "name": "Elgyem",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/120/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/120/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-121",
       "number": "121",
       "name": "Beheeyem",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/121/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/121/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-122",
       "number": "122",
       "name": "Golett",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/122/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/122/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-123",
       "number": "123",
       "name": "Golurk",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/123/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/123/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-124",
       "number": "124",
       "name": "Drilbur",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/124/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/124/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-125",
       "number": "125",
       "name": "Timburr",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/125/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/125/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-126",
-      "number": "126",
-      "name": "Gurdurr",
+      "id": "sv10.5b-107",
+      "number": "107",
+      "name": "Carracosta",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/126/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/107/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-127",
       "number": "127",
       "name": "Conkeldurr",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/127/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/127/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-128",
       "number": "128",
       "name": "Throh",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/128/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/128/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-129",
       "number": "129",
       "name": "Dwebble",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/129/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/129/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-130",
       "number": "130",
       "name": "Crustle",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/130/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/130/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-131",
       "number": "131",
       "name": "Landorus",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/131/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/131/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-132",
-      "number": "132",
-      "name": "Venipede",
+      "id": "sv10.5b-109",
+      "number": "109",
+      "name": "Cubchoo",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/132/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/109/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-133",
-      "number": "133",
-      "name": "Whirlipede",
+      "id": "sv10.5b-114",
+      "number": "114",
+      "name": "Eelektrik",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/133/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/114/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-134",
       "number": "134",
       "name": "Scolipede",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/134/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/134/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-135",
       "number": "135",
       "name": "Sandile",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/135/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/135/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-136",
       "number": "136",
       "name": "Krokorok",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/136/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/136/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-132",
+      "number": "132",
+      "name": "Venipede",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/132/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-116",
+      "number": "116",
+      "name": "Munna",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/116/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-137",
       "number": "137",
       "name": "Krookodile",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/137/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/137/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-138",
       "number": "138",
       "name": "Escavalier",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/138/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/138/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-139",
       "number": "139",
       "name": "Klink",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/139/high.webp"
-    },
-    {
-      "id": "sv10.5b-140",
-      "number": "140",
-      "name": "Klang",
-      "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/140/high.webp"
-    },
-    {
-      "id": "sv10.5b-141",
-      "number": "141",
-      "name": "Klinklang",
-      "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/141/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/139/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-142",
       "number": "142",
       "name": "Pawniard",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/142/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/142/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-141",
+      "number": "141",
+      "name": "Klinklang",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/141/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-143",
       "number": "143",
       "name": "Bisharp",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/143/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/143/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-144",
       "number": "144",
       "name": "Cobalion",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/144/high.webp"
-    },
-    {
-      "id": "sv10.5b-145",
-      "number": "145",
-      "name": "Axew",
-      "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/145/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/144/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-146",
       "number": "146",
       "name": "Fraxure",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/146/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/146/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-147",
-      "number": "147",
-      "name": "Haxorus",
+      "id": "sv10.5b-145",
+      "number": "145",
+      "name": "Axew",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/147/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/145/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-148",
       "number": "148",
       "name": "Pidove",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/148/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/148/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-149",
-      "number": "149",
-      "name": "Tranquill",
+      "id": "sv10.5b-115",
+      "number": "115",
+      "name": "Eelektross",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/149/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/115/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-150",
       "number": "150",
       "name": "Unfezant",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/150/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/150/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-151",
       "number": "151",
       "name": "Audino",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/151/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/151/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-152",
       "number": "152",
       "name": "Minccino",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/152/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/152/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-153",
       "number": "153",
       "name": "Cinccino",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/153/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/153/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-154",
       "number": "154",
       "name": "Rufflet",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/154/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/154/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-155",
       "number": "155",
       "name": "Braviary",
       "rarity": "Illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/155/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/155/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-156",
       "number": "156",
       "name": "Serperior ex",
       "rarity": "Ultra Rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/156/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/156/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-157",
       "number": "157",
       "name": "Kyurem ex",
       "rarity": "Ultra Rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/157/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/157/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-158",
-      "number": "158",
-      "name": "Zekrom ex",
-      "rarity": "Ultra Rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/158/high.webp"
+      "id": "sv10.5b-133",
+      "number": "133",
+      "name": "Whirlipede",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/133/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-159",
-      "number": "159",
-      "name": "Meloetta ex",
-      "rarity": "Ultra Rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/159/high.webp"
+      "id": "sv10.5b-140",
+      "number": "140",
+      "name": "Klang",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/140/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-149",
+      "number": "149",
+      "name": "Tranquill",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/149/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-160",
       "number": "160",
       "name": "Excadrill ex",
       "rarity": "Ultra Rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/160/high.webp"
-    },
-    {
-      "id": "sv10.5b-161",
-      "number": "161",
-      "name": "Genesect ex",
-      "rarity": "Ultra Rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/161/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/160/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-162",
       "number": "162",
       "name": "Fennel",
       "rarity": "Ultra Rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/162/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/162/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-161",
+      "number": "161",
+      "name": "Genesect ex",
+      "rarity": "Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/161/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-159",
+      "number": "159",
+      "name": "Meloetta ex",
+      "rarity": "Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/159/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-163",
       "number": "163",
       "name": "N's Plan",
       "rarity": "Ultra Rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/163/high.webp"
-    },
-    {
-      "id": "sv10.5b-164",
-      "number": "164",
-      "name": "Serperior ex",
-      "rarity": "Special illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/164/high.webp"
-    },
-    {
-      "id": "sv10.5b-165",
-      "number": "165",
-      "name": "Kyurem ex",
-      "rarity": "Special illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/165/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/163/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-166",
       "number": "166",
       "name": "Zekrom ex",
       "rarity": "Special illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/166/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/166/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-167",
       "number": "167",
       "name": "Meloetta ex",
       "rarity": "Special illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/167/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/167/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
-      "id": "sv10.5b-168",
-      "number": "168",
-      "name": "Excadrill ex",
+      "id": "sv10.5b-165",
+      "number": "165",
+      "name": "Kyurem ex",
       "rarity": "Special illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/168/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/165/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-169",
       "number": "169",
       "name": "Genesect ex",
       "rarity": "Special illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/169/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/169/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-170",
       "number": "170",
       "name": "N's Plan",
       "rarity": "Special illustration rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/170/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/170/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-171",
       "number": "171",
       "name": "Victini",
       "rarity": "Black White Rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/171/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/171/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     },
     {
       "id": "sv10.5b-172",
       "number": "172",
       "name": "Zekrom ex",
       "rarity": "Black White Rare",
-      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/172/high.webp"
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/172/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-164",
+      "number": "164",
+      "name": "Serperior ex",
+      "rarity": "Special illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/164/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-126",
+      "number": "126",
+      "name": "Gurdurr",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/126/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-147",
+      "number": "147",
+      "name": "Haxorus",
+      "rarity": "Illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/147/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-158",
+      "number": "158",
+      "name": "Zekrom ex",
+      "rarity": "Ultra Rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/158/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
+    },
+    {
+      "id": "sv10.5b-168",
+      "number": "168",
+      "name": "Excadrill ex",
+      "rarity": "Special illustration rare",
+      "imageUrl": "https://assets.tcgdex.net/en/sv/sv10.5b/168/high.webp",
+      "variants": [
+        "normal",
+        "reverse",
+        "holo"
+      ],
+      "regulationMark": "I",
+      "legality": {
+        "standard": true,
+        "expanded": true
+      }
     }
   ]
 }

@@ -1,0 +1,173 @@
+<!-- src/modules/cardsearch/admin/partials/dashboard.html
+     Dashboard header + KPI strip + Jobs panel (FX, Ingest, Collect, Rollups).
+     NOTE: IDs and classes match adminScript.js logic. -->
+
+<section class="section-head">
+  <div class="title">
+    <h1>Card Search • Admin</h1>
+    <span class="tag">v1</span>
+  </div>
+  <div class="row nogrow" style="gap:8px">
+    <button id="refreshAll" class="btn-accent nogrow">Refresh</button>
+  </div>
+</section>
+
+<!-- KPI Strip -->
+<section class="kpi" id="kpi">
+  <div class="card">
+    <div class="muted small">Scheduler tasks</div>
+    <div class="num" id="kpiTasks">–</div>
+  </div>
+  <div class="card">
+    <div class="muted small">Enabled sets</div>
+    <div class="num" id="kpiSets">–</div>
+  </div>
+  <div class="card">
+    <div class="muted small">Last action</div>
+    <div id="kpiLast" class="small muted mono">–</div>
+  </div>
+</section>
+
+<!-- Jobs + Scheduler (left: jobs form, right: scheduler table placeholder) -->
+<section class="grid cols-2" style="margin-top:16px">
+  <!-- Jobs panel -->
+  <div class="panel">
+    <h2>Jobs</h2>
+    <p class="help">Run ad-hoc jobs. These call your server-side jobs behind the scenes.</p>
+
+    <h3 style="margin-top:12px">FX Daily</h3>
+    <div class="row">
+      <div>
+        <label>Backfill FX days (1–365)</label>
+        <input type="number" id="fxBackfill" min="1" max="365" placeholder="e.g., 30" />
+      </div>
+      <div class="nogrow" style="align-self:flex-end">
+        <button class="btn-ok" id="runFxDaily">Run FX</button>
+      </div>
+    </div>
+
+    <h3 style="margin-top:16px">Ingest Set (TCGdex)</h3>
+    <div class="row">
+      <div>
+        <label>Set (abbr / tcgdex / ptcg / name)</label>
+        <input id="ingestSetInput" placeholder="e.g., SSP or sv08 or 'Surging Sparks'" />
+      </div>
+      <div>
+        <label>Refresh live</label>
+        <select id="ingestRefresh">
+          <option value="false">Use cache if present</option>
+          <option value="true">Bypass cache (live)</option>
+        </select>
+      </div>
+      <div>
+        <label>Dry run</label>
+        <select id="ingestDry">
+          <option value="false" selected>No</option>
+          <option value="true">Yes</option>
+        </select>
+      </div>
+      <div class="nogrow" style="align-self:flex-end">
+        <button class="btn-ok" id="runIngestSet">Ingest</button>
+      </div>
+    </div>
+
+    <h3 style="margin-top:16px">Collect Prices</h3>
+    <div class="row">
+      <div>
+        <label>Set (abbr / tcgdex / ptcg / name)</label>
+        <input id="collectSetInput" placeholder="e.g., SSP or sv08" />
+      </div>
+      <div>
+        <label>Since (YYYY-MM-DD)</label>
+        <input id="collectSince" placeholder="2025-09-01" />
+      </div>
+      <div>
+        <label>Prewarm FX (gap-fill)</label>
+        <select id="collectPrewarmFx">
+          <option value="true" selected>Yes</option>
+          <option value="false">No</option>
+        </select>
+      </div>
+      <div>
+        <label>FX backfill days</label>
+        <input type="number" id="collectBackfillFxDays" min="0" max="365" placeholder="e.g., 30" />
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Pause between provider calls (ms)</label>
+        <input type="number" id="collectPauseMs" min="0" step="100" placeholder="e.g., 250" />
+      </div>
+      <div>
+        <label>Dry run</label>
+        <select id="collectDry">
+          <option value="false" selected>No</option>
+          <option value="true">Yes</option>
+        </select>
+      </div>
+      <div class="nogrow" style="align-self:flex-end">
+        <button class="btn-ok" id="runCollect">Collect</button>
+      </div>
+    </div>
+
+    <h3 style="margin-top:16px">Price Rollups (1/7/30/90)</h3>
+    <div class="row">
+      <div>
+        <label>Scope (blank = global)</label>
+        <select id="rollupScope">
+          <option value="">Global</option>
+          <option value="set">By Set</option>
+          <option value="card">By Card</option>
+        </select>
+      </div>
+      <div>
+        <label>Set or CardId (if scope chosen)</label>
+        <input id="rollupTarget" placeholder="sv08 OR sv08-123" />
+      </div>
+      <div>
+        <label>Variant (if card scope)</label>
+        <input id="rollupVariant" placeholder="normal" />
+      </div>
+      <div>
+        <label>asOf (YYYY-MM-DD)</label>
+        <input id="rollupAsOf" placeholder="today" />
+      </div>
+      <div>
+        <label>Batch size</label>
+        <input id="rollupBatch" type="number" min="1" placeholder="e.g., 500" />
+      </div>
+      <div class="nogrow" style="align-self:flex-end">
+        <button class="btn-ok" id="runRollups">Rebuild</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scheduler panel shell (table lives in tables.html) -->
+  <div class="panel">
+    <div class="section-head">
+      <h2>Scheduler</h2>
+      <div class="btn-row">
+        <button id="refreshTasks" class="btn-accent">Refresh</button>
+      </div>
+    </div>
+    <div class="muted small">View and control in-process scheduled jobs.</div>
+    <div id="tasksTableWrap" style="margin-top:8px; max-height:420px; overflow:auto">
+      <!-- The <table> element is provided by partials/tables.html -->
+      <table>
+        <thead>
+          <tr>
+            <th>Task</th>
+            <th>Plan</th>
+            <th>Status</th>
+            <th>Last / Next</th>
+            <th>Tries</th>
+            <th class="right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tasksTbody">
+          <tr><td colspan="6" class="muted">No tasks loaded.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>

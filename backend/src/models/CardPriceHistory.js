@@ -1,4 +1,6 @@
 // src/models/CardPriceHistory.js — ESM factory (default export)
+
+// --- DEPRECATED --- 
 import { DataTypes } from 'sequelize';
 
 const CardPriceHistoryFactory = (sequelize) => {

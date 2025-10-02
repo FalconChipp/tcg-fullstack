@@ -1,0 +1,189 @@
+# src/modules/cardsearch/graphql/types.gql
+# Object types & root schema for the Card Search module.
+
+# Reuse these scalars alongside inputs.gql
+scalar Date
+scalar DateTime
+scalar JSON
+
+# ---------------------------------------------------------------------------
+# Core domain types
+# ---------------------------------------------------------------------------
+
+type Set {
+  code: String!
+  abbr: String
+  name: String!
+  series: String
+  releasedAt: Date
+  total: Int
+  lang: String
+}
+
+type Card {
+  id: ID!            # convenience (same as cardId)
+  cardId: ID!        # "${setCode}-${number}"
+  setCode: String!
+  number: String!
+  name: String!
+  rarity: String
+  supertype: String
+  subtype: String
+  regulationMark: String
+  illustrator: String
+  images: CardImages
+
+  # Resolved fields
+  set: Set!
+  variants: [CardVariant!]!
+  latestPrices: [PriceLatest!]!
+}
+
+type CardImages {
+  small: String
+  large: String
+}
+
+type CardVariant {
+  cardId: ID!
+  variant: String!        # normalized key (e.g., "normal", "reverse", "holo")
+  displayName: String
+}
+
+# ---------------------------------------------------------------------------
+# Pricing
+# ---------------------------------------------------------------------------
+
+type PriceLatest {
+  cardId: ID!
+  variant: String!
+  currency: String!       # e.g., "GBP"
+  low: Float
+  mid: Float
+  high: Float
+  market: Float
+  updatedAt: DateTime!
+  provider: String
+}
+
+type PriceObservation {
+  cardId: ID!
+  variant: String!
+  date: Date!             # YYYY-MM-DD
+  currency: String!       # "GBP"
+  low: Float
+  mid: Float
+  high: Float
+  market: Float
+  provider: String
+}
+
+type PriceLatestSnapshot {
+  date: Date
+  low: Float
+  mid: Float
+  high: Float
+  market: Float
+}
+
+type PriceWindowStats {
+  startDate: Date
+  endDate: Date
+  count: Int!
+  min: Float
+  max: Float
+  avg: Float
+  change: Float
+  changePct: Float
+}
+
+type PriceRollups {
+  cardId: ID!
+  variant: String!
+  currency: String!       # "GBP"
+  latest: PriceLatestSnapshot
+  d1: PriceWindowStats
+  d7: PriceWindowStats
+  d30: PriceWindowStats
+  d90: PriceWindowStats
+}
+
+# ---------------------------------------------------------------------------
+# Search & pagination wrappers
+# ---------------------------------------------------------------------------
+
+type SearchCardsResult {
+  total: Int!
+  limit: Int!
+  offset: Int!
+  items: [Card!]!
+}
+
+# ---------------------------------------------------------------------------
+# Admin / Jobs payloads
+# ---------------------------------------------------------------------------
+
+type AdminRunJobPayload {
+  ok: Boolean!
+  message: String!
+  stats: JSON
+  startedAt: DateTime
+  finishedAt: DateTime
+}
+
+type AdminSetTogglePayload {
+  set: Set!
+  hasCache: Boolean
+  lastIngestAt: DateTime
+  lastPriceCollectAt: DateTime
+  lastRollupAt: DateTime
+  cardCount: Int
+  variantCount: Int
+  latestCoveragePct: Float
+  observationsCount: Int
+  staleDays: Int
+  enabled: Boolean!
+}
+
+# ---------------------------------------------------------------------------
+# Root schema
+# ---------------------------------------------------------------------------
+
+type Query {
+  # Unified search (supports: Name, Name+Set, Name+Number, Number+Set, Number, Set)
+  searchCards(input: SearchCardsInput!): SearchCardsResult!
+
+  # Fetch one card by canonical ID
+  cardById(cardId: ID!): Card
+
+  # Latest prices (optional variant filter)
+  priceLatest(cardId: ID!, variant: String): [PriceLatest!]!
+
+  # Precomputed 1/7/30/90 rollups
+  priceRollups(cardId: ID!, variant: String): PriceRollups
+
+  # Raw observations window (paged)
+  priceObservations(
+    cardId: ID!
+    variant: String
+    startDate: Date
+    endDate: Date
+    limit: Int = 365
+    offset: Int = 0
+  ): [PriceObservation!]!
+
+  # Sets lookup
+  setByCode(code: String!): Set
+  sets(query: String, limit: Int = 100, offset: Int = 0): [Set!]!
+}
+
+type Mutation {
+  # Generic job runner used by the admin UI (scheduler integration behind the scenes)
+  adminRunJob(input: AdminRunJobInput!): AdminRunJobPayload!
+
+  # Toggle scheduling/enablement for a set (UI convenience)
+  adminToggleSet(code: String!, enabled: Boolean!): AdminSetTogglePayload!
+
+  # Rebuild price rollups for a set (or globally if set omitted)
+  adminRebuildRollups(set: String): AdminRunJobPayload!
+}

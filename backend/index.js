@@ -1,4 +1,5 @@
-// index.js
+﻿// index.js
+
 import 'dotenv/config';
 import express from 'express';
 import http from 'http';
@@ -20,36 +21,77 @@ import fs from 'fs';
 import path from 'path';
 import jwt from 'jsonwebtoken';
 import cron from 'node-cron';
+import os from 'os';
+import dns from 'node:dns';
+dns.setDefaultResultOrder?.('ipv4first');
+
 import { startExpiredMessageCleanup } from './src/jobs/messageCleanup.js';
 // import { startUnreadReminderJob } from './src/jobs/unreadReminder.js';
 import { startNotificationCleanup } from './src/jobs/notificationCleanup.js';
 
 import { typeDefs, resolvers } from './src/schema.js';
-import { sequelize, User, Profile } from './src/models/index.js';
+import {
+  sequelize,
+  User,
+  Profile,
+  // marketdata2 models used by admin debug
+  m_PriceDaily,
+  m_PriceLatest,
+  m_PriceObservation,
+  m_PriceRollup,
+} from './src/models/index.js';
 import * as models from './src/models/index.js';
-import { updateCardPricesDaily } from './src/tasks/updateCardPrices.js';
-import { refreshExchangeRates } from './src/modules/search/api/exchangeRates.js'; // ⬅️ NEW
+
+// 🆕 MD2 admin page/js (rewired earlier)
+import { adminPageHtml } from './src/admin/adminPage.js';
+import { adminScriptJs } from './src/admin/adminScript.js';
+
+// 🆕 MD2: ticks + jobs + fx
+import { metadataTick, pricingTick, patchTick } from './src/modules/marketdata2/services/scheduler.service.js';
+import ingestSetJob from './src/modules/marketdata2/jobs/ingestSet.job.js';
+import collectPricesJob from './src/modules/marketdata2/jobs/collectPrices.job.js';
+import { getFxRatesGBP } from './src/modules/marketdata2/services/fx.service.js';
+import priceRollupJob from './src/modules/marketdata2/jobs/priceRollup.job.js';
+
+// Admin data helpers
+import { getIndex } from './src/modules/marketdata2/services/setIndex.service.js';
+import Providers from './src/modules/marketdata2/services/providers.health.service.js';
+
+// [CARDSEARCH] — Module + scheduler registration
+import cardsearch from './src/modules/cardsearch/index.js';
+import { registerCardsearchSchedules } from './src/tasks/cardsearch.schedule.js';
 
 // --- Logger Setup ---
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
   format: winston.format.combine(
     winston.format.timestamp(),
-    winston.format.printf(({ level, message, timestamp }) =>
-      `[${timestamp}] [${level}] ${message}`
-    )
+    winston.format.printf(({ level, message, timestamp }) => `[${timestamp}] [${level}] ${message}`)
   ),
   transports: [new winston.transports.Console()],
 });
+
+let startMarketdata2Schedule = null;
+let getMarketdata2ScheduleSnapshot = () => ({ startedAt: null, stoppedAt: null, eras: {}, rollup: {} });
+let previewSetSchedule = async () => [];
+
+try {
+  const mod = await import('./src/tasks/marketdata2.schedule.js');
+  if (typeof mod.startMarketdata2Schedule === 'function') startMarketdata2Schedule = mod.startMarketdata2Schedule;
+  if (typeof mod.getMarketdata2ScheduleSnapshot === 'function') getMarketdata2ScheduleSnapshot = mod.getMarketdata2ScheduleSnapshot;
+  if (typeof mod.previewSetSchedule === 'function') previewSetSchedule = mod.previewSetSchedule;
+} catch {
+  logger.warn('[MD2] marketdata2.schedule.js not present or failed to load; using minimal admin schedule.');
+}
 
 // --- Express + HTTP Server ---
 const app = express();
 const httpServer = http.createServer(app);
 
-// CHANGED: honor X-Forwarded-* (fixes rate-limit IP + cookie/secure stuff behind proxy)
+// Honor X-Forwarded-* when behind a proxy (rate limit, TLS, etc.)
 app.set('trust proxy', ['loopback', '127.0.0.1', '::1']);
 
-// Serve static assets
+// Static assets
 app.use('/achievements', express.static('public/achievements'));
 
 // --- Socket.IO ---
@@ -58,9 +100,32 @@ const io = new SocketIOServer(httpServer, {
 });
 app.set('io', io);
 
-// ======================================================================
-// STRIPE WEBHOOKS MUST COME **BEFORE** JSON BODY PARSING
-// ======================================================================
+// Small helper to broadcast admin activity
+function emitActivity(type, payload) {
+  try { io.emit('md2:activity', { type, at: new Date().toISOString(), ...payload }); } catch {}
+}
+
+/* ============================
+   Admin auth helpers
+   ============================ */
+const ADMIN_HEADER = 'x-admin-token';
+function extractAdminToken(req) {
+  const value = req.headers[ADMIN_HEADER];
+  if (Array.isArray(value)) return value[0] || '';
+  if (typeof value === 'string') return value;
+  return value ? String(value) : '';
+}
+function requireAdmin(req, res, next) {
+  const expected = process.env.ADMIN_API_TOKEN;
+  if (!expected) return res.status(500).json({ ok: false, error: 'ADMIN_API_TOKEN not configured' });
+  const provided = extractAdminToken(req).trim();
+  if (!provided || provided !== expected) return res.status(401).json({ ok: false, error: 'unauthorized' });
+  return next();
+}
+
+/* ============================
+   STRIPE WEBHOOK (raw body)
+   ============================ */
 app.post(
   '/webhooks/stripe',
   express.raw({ type: 'application/json' }),
@@ -68,11 +133,7 @@ app.post(
     const sig = req.headers['stripe-signature'];
     try {
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-      const event = stripe.webhooks.constructEvent(
-        req.body,
-        sig,
-        process.env.STRIPE_WEBHOOK_SECRET
-      );
+      const event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
       // await handleStripeWebhook(event);
       res.json({ received: true });
     } catch (err) {
@@ -82,72 +143,94 @@ app.post(
   }
 );
 
-// --- CORS / Security / Parsers ---
-// ADDED: log incoming Origin (helps you see exactly what to allow)
+/* ============================
+   CORS / Security / Parsers
+   ============================ */
+// Log incoming Origin (debug who is calling)
 app.use((req, _res, next) => {
   if (req.headers.origin) logger.info(`[CORS] Origin: ${req.headers.origin}`);
   next();
 });
 
-// CHANGED: parse allow-list from .env (comma separated)
-const allowedOrigins = (process.env.CORS_ORIGINS || '')
-  .split(',')
-  .map(o => o.trim())
-  .filter(Boolean);
+function normalizeOrigin(s) {
+  if (!s) return '';
+  return String(s).trim().toLowerCase().replace(/\/+$/, '');
+}
 
-// robust CORS options with header reflection + global preflight
-const corsOptions = {
-  origin: (origin, cb) => {
-    if (!origin) return cb(null, true); // allow no-origin tools (curl, server-to-server)
-    if (allowedOrigins.length === 0) return cb(null, true); // allow-all if no allow-list configured
-    if (allowedOrigins.includes(origin)) return cb(null, true);
-    return cb(new Error(`Not allowed by CORS: ${origin}`));
-  },
+const allowedOriginsRaw = process.env.CORS_ORIGINS || '';
+const allowedOrigins = allowedOriginsRaw.split(',').map(normalizeOrigin).filter(Boolean);
+const extraDev = (process.env.CORS_EXTRA_ORIGINS || '').split(',').map(normalizeOrigin).filter(Boolean);
+const ALLOWED = Array.from(new Set([...allowedOrigins, ...extraDev]));
+logger.info(`[CORS] Allow-list parsed (${ALLOWED.length}): ${ALLOWED.join(', ') || '(none)'}`);
+
+const baseCorsOptions = {
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   exposedHeaders: ['Authorization'],
   preflightContinue: false,
   optionsSuccessStatus: 204,
 };
+function corsWithReq(req, res, next) {
+  const opts = {
+    ...baseCorsOptions,
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      const norm = normalizeOrigin(origin);
+      if (ALLOWED.length === 0 || ALLOWED.includes(norm)) return cb(null, true);
 
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // handle preflight globally
+      const host = (req.headers.host || '').toLowerCase();
+      const hostFromOrigin = norm.replace(/^https?:\/\//, '');
+      if (host && hostFromOrigin === host) return cb(null, true);
 
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'cross-origin' },
-}));
+      return cb(new Error(`Not allowed by CORS: ${origin}`));
+    },
+  };
+  return cors(opts)(req, res, next);
+}
+app.use(corsWithReq);
+app.options('*', corsWithReq);
+
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(compression());
 
-// JSON/body parsers come AFTER Stripe raw route
+// Parsers AFTER Stripe raw route
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 app.use(expressStatusMonitor({ path: '/status' }));
 
-// rate limit (skip OPTIONS so preflight never gets 429)
+// Rate limit (skip preflights)
 const limiter = rateLimit({
   windowMs: 60 * 1000,
   max: 600,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) =>
-    req.ip ||
-    req.headers['x-forwarded-for'] ||
-    req.socket?.remoteAddress ||
-    'unknown',
+  keyGenerator: (req) => req.ip || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown',
   skipFailedRequests: true,
   skip: (req) => req.method === 'OPTIONS',
 });
 app.use(limiter);
 
-// Logging
-app.use(
-  morgan('combined', {
-    stream: { write: (msg) => logger.info(msg.trim()) },
-  })
-);
+// ---- Logging: hide noisy admin data GETs, log a concise "refreshed" instead ----
+// (extended to include /admin/cardsearch/*)
+const NOISY_RE = /^\/admin\/(md2\/(sets|schedule|fx|providers|rules)|cardsearch\/(sets|scheduler\/tasks|ui|adminScript\.js))\b/;
+app.use(morgan('combined', {
+  skip: (req) => req.method === 'GET' && NOISY_RE.test(req.path),
+  stream: { write: (msg) => logger.info(msg.trim()) },
+}));
 
-// --- AVATAR UPLOAD SETUP ---
+let lastRefreshedLogAt = 0;
+function logRefreshedOncePer(minMs, label = 'admin-ui') {
+  const now = Date.now();
+  if (now - lastRefreshedLogAt >= minMs) {
+    logger.info(`[${label}] refreshed`);
+    lastRefreshedLogAt = now;
+  }
+}
+
+/* ============================
+   Avatar upload
+   ============================ */
 const AVATAR_DIR = path.join(process.cwd(), 'uploads', 'avatars');
 fs.mkdirSync(AVATAR_DIR, { recursive: true });
 
@@ -167,7 +250,6 @@ const storage = multer.diskStorage({
   filename: async (req, file, cb) => {
     try {
       let userId = getUserIdFromAuthHeader(req.headers.authorization);
-
       let username = req.body.username || 'user';
       if (userId && (!req.body.username || req.body.username === 'user')) {
         const user = await User.findByPk(userId);
@@ -199,30 +281,18 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    if (
-      file.mimetype === 'image/jpeg' ||
-      file.mimetype === 'image/png' ||
-      file.mimetype === 'image/webp'
-    ) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files (jpeg, png, webp) are allowed!'));
-    }
+  fileFilter: (_req, file, cb) => {
+    if (['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Only image files (jpeg, png, webp) are allowed!'));
   },
 });
 
-// --- Avatar Upload API ---
+// Upload API
 app.post('/upload/avatar', upload.single('avatar'), async (req, res) => {
   try {
     const userId = getUserIdFromAuthHeader(req.headers.authorization);
-
-    if (!userId) {
-      return res.status(401).json({ success: false, error: 'No user ID found' });
-    }
-    if (!req.file?.filename) {
-      return res.status(400).json({ success: false, error: 'No file uploaded' });
-    }
+    if (!userId) return res.status(401).json({ success: false, error: 'No user ID found' });
+    if (!req.file?.filename) return res.status(400).json({ success: false, error: 'No file uploaded' });
 
     let profile = await Profile.findOne({ where: { userId } });
     if (!profile) profile = await Profile.create({ userId });
@@ -231,32 +301,60 @@ app.post('/upload/avatar', upload.single('avatar'), async (req, res) => {
     await profile.save();
 
     logger.info(`Avatar uploaded: userId=${userId} file=${req.file.filename}`);
-    res.json({
-      success: true,
-      filename: req.file.filename,
-      avatar: `/uploads/avatars/${req.file.filename}`,
-    });
+    res.json({ success: true, filename: req.file.filename, avatar: `/uploads/avatars/${req.file.filename}` });
   } catch (err) {
     logger.error(`Avatar upload failed: ${err.message}`);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Serve avatar images statically
+// Serve avatars
 app.use('/uploads/avatars', express.static(AVATAR_DIR));
 
-// --- Health Check Route ---
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: Date.now() });
-});
-
-// Optional: GET /graphql landing (for uptime checks)
+/* ============================
+   Health + simple endpoints
+   ============================ */
+app.get('/health', (_req, res) => res.json({ status: 'ok', timestamp: Date.now() }));
 app.get('/graphql', (_req, res) => res.status(200).send('OK'));
 
-// --- GraphQL Apollo Setup ---
+// Admin UI (static HTML/JS via functions you ship)
+// app.get('/admin', (_req, res) => {
+//   res.set('Cache-Control', 'no-store');
+//   res.type('text/html; charset=utf-8').send(adminPageHtml());
+// });
+// app.get('/admin/admin.js', (_req, res) => {
+//   res.set('Cache-Control', 'no-store');
+//   res.type('application/javascript; charset=utf-8').send(adminScriptJs());
+// });
+
+// [CARDSEARCH] Mount admin routes with UI allowlist:
+// - UI endpoints (/ui, /adminScript.js, /partials/*) are public.
+// - All other /admin/cardsearch/* endpoints require x-admin-token.
+try {
+  const { publicRouter, apiRouter } = await import('./src/modules/cardsearch/admin/routes.js');
+
+  // Public assets/pages (no auth)
+  app.use('/admin/cardsearch', publicRouter());
+
+  // Protected JSON API (requires x-admin-token)
+  app.use('/admin/cardsearch', requireAdmin, apiRouter());
+
+  // Optional convenience redirects
+  app.get('/admin', (_req, res) => res.redirect(302, '/admin/cardsearch/ui'));
+  app.get('/admin/cardsearch', (_req, res) => res.redirect(302, '/admin/cardsearch/ui'));
+
+  logger.info('[Cardsearch] admin routes mounted at /admin/cardsearch (public UI + protected API)');
+} catch (e) {
+  logger.warn(`[Cardsearch] admin routes not available: ${e?.message || e}`);
+}
+
+
+/* ============================
+   GraphQL (Apollo)
+   ============================ */
 const apolloServer = new ApolloServer({
-  typeDefs,
-  resolvers,
+  typeDefs,          // cardsearch SDL is merged inside src/schema.js
+  resolvers,         // cardsearch resolvers too
   plugins: [],
   formatError: (err) => {
     logger.warn(`[GraphQL Error] ${err.message}`);
@@ -301,20 +399,18 @@ app.use(
   })
 );
 
-// --- Start DB, then Server ---
+/* ============================
+   Boot + Scheduler + Cron
+   ============================ */
 const PORT = Number(process.env.PORT || 4000);
 
-// Align with proxy timeouts to avoid premature closes → 504
+// Align with proxy timeouts
 httpServer.keepAliveTimeout = 70 * 1000;
 httpServer.headersTimeout = 75 * 1000;
 httpServer.requestTimeout = 0;
 
-process.on('unhandledRejection', (reason) => {
-  logger.error(`UnhandledRejection: ${reason?.stack || reason}`);
-});
-process.on('uncaughtException', (err) => {
-  logger.error(`UncaughtException: ${err.stack || err.message}`);
-});
+process.on('unhandledRejection', (reason) => logger.error(`UnhandledRejection: ${reason?.stack || reason}`));
+process.on('uncaughtException', (err) => logger.error(`UncaughtException: ${err.stack || err.message}`));
 
 try {
   await sequelize.authenticate();
@@ -327,39 +423,40 @@ try {
     startNotificationCleanup(logger),
   ];
 
-  // -------------------- CRON JOBS --------------------
-  // Configure timezone for cron (defaults to UTC if not provided)
+  // 🟢 Start marketdata2 background schedule loop (if present)
+  // Set MARKETDATA_SCHED_DISABLE=1 to keep it off.
+  let stopMarketdata2 = null;
+  if (process.env.MARKETDATA_SCHED_DISABLE !== '1') {
+    stopMarketdata2 = await (startMarketdata2Schedule?.() || Promise.resolve(null));
+  }
+
+  // [CARDSEARCH] Start Card Search recurring schedules (FX, collect, rollups, ingest, patch)
+  if (process.env.CARDSEARCH_SCHED_DISABLE !== '1') {
+    try {
+      registerCardsearchSchedules();
+      logger.info('[Cardsearch] scheduler registered.');
+    } catch (e) {
+      logger.warn(`[Cardsearch] scheduler not started: ${e?.message || e}`);
+    }
+  }
+
+  // CRONs — example (disabled)
   const CRON_TZ = process.env.CRON_TZ || 'UTC';
+  // cron.schedule('*/15 * * * *', async () => {
+  //   try { await metadataTick({ limit: Number(process.env.MD2_METADATA_PER_TICK || 2) }); } catch {}
+  //   try { await pricingTick({ limit: Number(process.env.MD2_PRICING_PER_TICK || 2) }); } catch {}
+  // }, { timezone: CRON_TZ });
 
-  // (A) Prime exchange rates on boot (non-blocking; safe if it fails)
-  refreshExchangeRates({ timeoutMs: 8000 })
-    .then(() => logger.info('[BOOT] Exchange rates refreshed'))
-    .catch(e => logger.warn(`[BOOT] FX refresh failed: ${e.message}`));
+  // Boot diagnostics
+  const now = new Date();
+  logger.info(`[BOOT] Host: ${os.hostname()} | PID ${process.pid}`);
+  logger.info(`[BOOT] Now: ${now.toISOString()} (tz: ${Intl.DateTimeFormat().resolvedOptions().timeZone || 'unknown'})`);
+  logger.info(`[BOOT] CRON_TZ=${CRON_TZ}`);
 
-  // (B) Daily job: refresh FX, then update prices (sequential, once a day)
-  // Runs at 03:00 every day in CRON_TZ
-  cron.schedule('0 3 * * *', async () => {
-    logger.info('[CRON] Starting daily FX refresh + card price update...');
-    try {
-      await refreshExchangeRates({ timeoutMs: 8000 });
-      logger.info('[CRON] Exchange rates refreshed.');
-    } catch (e) {
-      // Continue even if FX fetch fails; update job will fall back to cached/env/defaults.
-      logger.warn(`[CRON] FX refresh failed: ${e.message}`);
-    }
-
-    try {
-      const result = await updateCardPricesDaily();
-      logger.info(`[CRON] Daily price update done. Updated=${result?.updated ?? 0}, Skipped=${result?.skipped ?? 0}`);
-    } catch (e) {
-      logger.error(`[CRON] Daily price update failed: ${e.message}`);
-    }
-  }, { timezone: CRON_TZ });
-
-  // ---------------------------------------------------
-
+  // Graceful shutdown
   function shutdown() {
     logger.info('Shutdown requested, draining...');
+    stopMarketdata2?.();
     cleanupIntervals.forEach(clearInterval);
     httpServer.close(() => {
       sequelize.close().finally(() => {
@@ -372,13 +469,11 @@ try {
       process.exit(1);
     }, 10_000).unref();
   }
-
   process.on('SIGTERM', shutdown);
   process.on('SIGINT', shutdown);
 
   httpServer.listen(PORT, () => {
     logger.info(`Server listening at http://localhost:${PORT}/graphql`);
-    logger.info(`[CRON] Timezone: ${CRON_TZ} — Daily job scheduled at 03:00`);
   });
 } catch (err) {
   logger.error(`Database connection failed: ${err.message}`);

@@ -4,6 +4,8 @@
  *   import CardFactory from './Card.js';
  *   const Card = CardFactory(sequelize);
  */
+
+// --- DEPRECATED --- 
 import { DataTypes } from 'sequelize';
 
 const CardFactory = (sequelize) => {

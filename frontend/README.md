@@ -1,145 +1,164 @@
-# TCG Collection Manager
+# Frontend (Public Web App)
 
-A modern web application for managing and organizing trading card game collections, built with Next.js and React.
-This app communicates with the GraphQL backend located in `../backend`.
+The frontend is the customer-facing Next.js 14 application for the SixByFive TCG platform. It provides authentication, collection management, binder tooling, marketplace browsing, subscriptions, and supporting UI flows. This document explains how the app is structured, configured, and extended.
 
-## Features
+## Table of Contents
 
-### User Authentication & Security
-- **Google OAuth Integration**: Seamless login with Google accounts
-- **Secure Session Management**: Protected routes and API endpoints
-- **Cookie Consent**: GDPR-compliant cookie management
-- **User Profile Management**: Customizable profiles with avatar support
+1. [Feature Overview](#feature-overview)
+2. [Tech Stack](#tech-stack)
+3. [Project Structure](#project-structure)
+4. [Environment Configuration](#environment-configuration)
+5. [Getting Started](#getting-started)
+6. [NPM Scripts](#npm-scripts)
+7. [Key Modules & Patterns](#key-modules--patterns)
+8. [GraphQL & Data Layer](#graphql--data-layer)
+9. [Styling & Theming](#styling--theming)
+10. [Authentication Flow](#authentication-flow)
+11. [Testing & Quality](#testing--quality)
+12. [Deployment Notes](#deployment-notes)
+13. [Troubleshooting](#troubleshooting)
 
-### Collection Management
-- **Card Catalog**: Browse and search through your card collection
-- **Card Details**: View comprehensive card information including:
-  - Card images with zoom functionality
-  - Card statistics and attributes
-  - Market prices and value tracking
-  - Condition tracking
-- **Bulk Operations**: Import/export collections in various formats
-- **Collection Statistics**: Track collection value and growth over time
+## Feature Overview
 
-### Binder Organization
-- **Drag-and-Drop Interface**: Intuitive card organization
-- **Custom Binder Layouts**: Create and manage multiple binder views
-- **Card Sorting**: Sort by name, rarity, value, or custom criteria
-- **Visual Organization**: Grid and list view options
-- **Quick Search**: Find cards within your binders instantly
-
-### User Interface
-- **Responsive Design**: Optimized for desktop, tablet, and mobile devices
-- **Dark/Light Mode**: Choose your preferred theme
-- **Smooth Animations**: Enhanced user experience with fluid transitions
-- **Accessibility**: WCAG 2.1 compliant design
-- **Loading States**: Skeleton screens and loading indicators
-
-### Advanced Features
-- **Card Market Integration**: Track card values and market trends
-- **Collection Analytics**: Detailed insights into your collection
-- **Wishlist Management**: Track cards you want to acquire
-- **Trading Tools**: Manage trade offers and negotiations
-- **Export Options**: Generate reports and share collection data
+- **Authentication**: NextAuth.js with Google OAuth, session persistence, protected routes, and cookie consent flows.
+- **Collections & Binders**: Drag-and-drop binder editor (powered by DnD Kit), card search, detail modals, and statistics.
+- **Marketplace**: Browsing listings, filtering, cart interactions (where supported by backend).
+- **Notifications & Messaging**: Hooks prepared for real-time updates (Socket.IO integration toggled via providers).
+- **Subscriptions**: UI for viewing and purchasing subscription tiers backed by Stripe.
+- **SEO & Marketing**: Meta tags, sitemap generation, public marketing pages (About, Contact, Privacy, Terms, Roadmap).
 
 ## Tech Stack
 
-- **Frontend Framework**: Next.js 14
-- **UI Library**: React 18
-- **Styling**: Tailwind CSS
-- **State Management**: Apollo Client
-- **Authentication**: NextAuth.js
-- **Form Handling**: React Hook Form
-- **Drag and Drop**: DnD Kit
-- **Image Handling**: React Zoom Pan Pinch
-- **Deployment**: Netlify
+| Concern             | Technology                        |
+|---------------------|-----------------------------------|
+| Framework           | Next.js 14 (pages router primary) |
+| Language            | React 18 + modern JSX             |
+| Data Layer          | Apollo Client 3                   |
+| State Management    | Component-local + hooks           |
+| Styling             | Tailwind CSS + custom CSS         |
+| Forms               | React Hook Form                   |
+| Auth                | NextAuth.js + Google OAuth        |
+| Drag & Drop         | @dnd-kit suite                  |
+| Visual Enhancements | Framer Motion, Swiper, Lucide/Heroicons |
 
 ## Project Structure
 
-```
-src/
-├── app/            # Next.js app router pages and API routes
-├── components/     # Reusable React components
-│   ├── Auth/       # Authentication components
-│   ├── Binder/     # Card binder view components
-│   ├── Collection/ # Collection management components
-│   ├── Cookies/    # Cookie consent components
-│   ├── Layout/     # Layout components
-│   ├── UI/         # Generic UI components
-│   └── UserProfile/# User profile components
-├── hooks/          # Custom React hooks
-├── pages/          # Legacy pages (if any)
-├── styles/         # Global styles
-└── utils/          # Utility functions
-```
+`
+frontend/
++-- app/                 # Minimal app router entry (layout, error, etc.)
++-- public/              # Static assets (favicons, logos, etc.)
++-- scripts/             # Build/deploy helper scripts
++-- src/
+�   +-- app/             # Shared client setup (Apollo client)
+�   +-- components/      # UI modules grouped by feature (Auth, Binder, Collection, Home, Layout, Marketplace, Messenger, Notifications, Subscriptions, UI, etc.)
+�   +-- graphql/         # Queries/mutations consumed by components
+�   +-- hooks/           # Custom React hooks (theme, marketplace cart, notifications, binder helpers)
+�   +-- pages/           # Pages router routes (legacy & marketing pages)
+�   +-- styles/          # Tailwind/global stylesheets
+�   +-- utils/           # Shared utilities (auth token helpers, formatting, dataset maps)
++-- next.config.js       # Next.js configuration (image domains, headers, rewrites)
++-- tailwind.config.js   # Tailwind theme & content scanning
++-- eslint.config.mjs    # ESLint configuration
+`
 
-## Getting Started
+## Environment Configuration
 
-### Prerequisites
+Create frontend/.env.local (or update .env) with the following keys:
 
-- Node.js 18.x or later
-- npm or yarn
-
-### Installation
-
-1. Clone the repository:
-```bash
-git clone [repository-url]
-```
-
-2. Install dependencies:
-```bash
-npm install
-# or
-yarn install
-```
-
-3. Set up environment variables:
-Create a `.env.local` file in the root directory with the following variables:
-```
+`
+NEXT_PUBLIC_GRAPHQL_ENDPOINT=http://localhost:4000/graphql
+NEXT_PUBLIC_BACKEND_URL=http://localhost:4000/      # optional, for uploads
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=your-secret-key
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
-NEXT_PUBLIC_GRAPHQL_ENDPOINT=http://localhost:4000/graphql
-```
+`
 
-4. Run the development server:
-```bash
+Other optional values:
+
+- NODE_AUTH_TOKEN (only needed when installing private packages).
+- NEXT_PUBLIC_SENTRY_DSN, NEXT_PUBLIC_ANALYTICS_ID, etc., if you integrate monitoring.
+
+## Getting Started
+
+`ash
+npm install
 npm run dev
-# or
-yarn dev
-```
+`
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
+Visit http://localhost:3000 to interact with the app. Ensure the backend is running at the endpoint configured in NEXT_PUBLIC_GRAPHQL_ENDPOINT.
 
-## Development
+## NPM Scripts
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
+| Script            | Description |
+|-------------------|-------------|
+| 
+pm run dev     | Start Next.js dev server (hot reload).
+| 
+pm run build   | Compile production bundle.
+| 
+pm run start   | Run the production server locally with compiled assets.
+| 
+pm run lint    | Execute ESLint.
+| 
+pm run postbuild | Generate sitemap using 
+ext-sitemap (runs automatically after uild).
 
-## Deployment
+## Key Modules & Patterns
 
-This project is configured for deployment on Netlify. The deployment settings are defined in `netlify.toml`.
+- **Providers**: src/pages/_app.js wires ThemeProvider, AuthProvider, ApolloProvider, and Google OAuth provider. Adjust here when adding global context.
+- **Apollo Client**: pp/apolloClient.js configures HTTP link, auth header injection (reads uthToken cookie), error logging, and caching policies.
+- **Auth Components**: Located in src/components/Auth (modal, provider). Ensure new protected routes leverage <ProtectedRoute> or NextAuth session checks.
+- **Binder Suite**: src/components/Binder contains binder modals, settings, drag-drop slots, and detail panels. Utilities for binder grids live under src/utils/* (e.g., inderPagesTo2DArray, deepClonePages).
+- **Marketplace**: Components under src/components/Marketplace coordinate GraphQL queries with filters and cart hooks (useMarketplaceCart).
+- **Notifications & Messenger**: Hooks in src/hooks/useNotifications.js and components/Messenger/*; the provider is currently commented out in _app.js but can be re-enabled when the backend socket is ready.
 
-## Testing
+## GraphQL & Data Layer
 
-Lint the codebase to catch common issues:
+- Queries defined under src/graphql are consumed via @apollo/client hooks (useQuery, useMutation).
+- utils/apiClient.js and utils/graphqlUtils.js centralize request helpers.
+- useSetPrices, useProfileCollection, useWishlistData, etc., coordinate GraphQL data with component state.
+- When adding new queries, colocate GraphQL documents with the feature or place in src/graphql/<domain>.js for reuse.
 
-```bash
-npm run lint
-```
+## Styling & Theming
 
-## Contributing
+- Tailwind CSS handles utility-first styling; configured for dark mode by default (class-based toggling).
+- Global rules live in src/styles/global.css; card condition colors in src/styles/condition.css.
+- ThemeProvider manages user-selected themes; currently forces dark mode on mount.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+## Authentication Flow
 
-## License
+1. Users authenticate via Google OAuth (or email/password if implemented) through NextAuth.
+2. Backend issues JWT stored in cookies (uthToken) used by Apollo Client for GraphQL requests.
+3. Protected routes should either use Next.js middleware (optional) or React guards inside pages/components.
+4. AuthProvider supplies session data and helper methods across the component tree.
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+For admin/staff-only pages, gate via backend roles (e.g., iewer.isAdmin) and redirect accordingly.
+
+## Testing & Quality
+
+- 
+pm run lint must pass before deployment.
+- Add storybook or component tests as needed (not currently included).
+- Consider integrating Playwright/Cypress for end-to-end coverage (especially binder and marketplace flows).
+
+## Deployment Notes
+
+- The project is configured for Netlify (
+etlify.toml, _redirects). For Vercel, adjust environment variables via dashboard and ensure 
+ext.config.js aligns with hosting requirements.
+- Set NEXT_PUBLIC_GRAPHQL_ENDPOINT to the production backend URL.
+- Provide Google OAuth credentials and NextAuth secret in the hosting environment.
+- If deploying as static export, confirm all dynamic routes are supported; otherwise run the Next.js server in SSR mode.
+
+## Troubleshooting
+
+| Issue | Resolution |
+|-------|------------|
+| GraphQL CORS errors | Confirm backend CORS_ORIGINS includes the frontend host. |
+| Auth token missing | Inspect cookies for uthToken; ensure backend sets SameSite/Domain values compatible with your domain. |
+| Apollo errors | Check console warnings from polloClient errorLink for GraphQL or network diagnostics. |
+| Stale card data | Backend caches drive results; trigger marketdata refresh via admin dashboard if necessary. |
+| Tailwind styles missing | Ensure 	ailwind.config.js content paths cover new directories; restart dev server after config changes. |
+
+For architecture questions or design changes, consult the ackend/README.md to understand API expectations and marketdata behaviors.

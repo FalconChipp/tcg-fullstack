@@ -1,18 +1,18 @@
-import { Sequelize } from 'sequelize';
+// models/index.js
+// CHANGES:
+// - ADDED: init_m_PriceRollup import + initialization + export
+// - KEPT: legacy app models
+// - REMOVED: any old-marketdata model imports (CardPriceCache, CardPriceHistory, etc. remain commented out)
+// - ADDED: explicit association for m_Card <-> m_PriceLatest (as: 'price')
+
+import { Sequelize, DataTypes } from 'sequelize';
 import path from 'path';
 import process from 'process';
 
-// --- DB Connection: MySQL from .env or fallback SQLite ---
-// Use process.env vars for MySQL (preferred)
+/* ---------------- DB Connection: MySQL from .env or fallback SQLite ---------------- */
 let sequelize;
 
-if (
-  process.env.DB_HOST &&
-  process.env.DB_USER &&
-  process.env.DB_PASS &&
-  process.env.DB_NAME
-) {
-  // MySQL
+if (process.env.DB_HOST && process.env.DB_USER && process.env.DB_PASS && process.env.DB_NAME) {
   sequelize = new Sequelize(
     process.env.DB_NAME,
     process.env.DB_USER,
@@ -29,15 +29,12 @@ if (
   );
   console.log('[DB] Connecting to MySQL:', process.env.DB_HOST, process.env.DB_NAME);
 } else {
-  // Fallback SQLite for dev
   const DB_URL = `sqlite:${path.join(process.cwd(), 'sixbyfive-tcg.sqlite')}`;
-  sequelize = new Sequelize(DB_URL, {
-    logging: (msg) => console.log(`[DB] ${msg}`),
-  });
+  sequelize = new Sequelize(DB_URL, { logging: (msg) => console.log(`[DB] ${msg}`) });
   console.log('[DB] Connecting to SQLite:', DB_URL);
 }
 
-// --- Import all model factories ---
+/* ---------------- Legacy models (kept) ---------------- */
 import UserFactory from './User.js';
 import ProfileFactory from './Profile.js';
 import CardFactory from './Card.js';
@@ -58,71 +55,93 @@ import SubscriptionFactory from './Subscription.js';
 import SubscriptionTierFactory from './SubscriptionTier.js';
 import TransactionFactory from './Transaction.js';
 import ShippingLabelFactory from './ShippingLabel.js';
-import CardPriceCacheFactory from './CardPriceCache.js';
-import CardPriceHistoryFactory from './CardPriceHistory.js';
-import SubscriptionAddOnFactory from "./SubscriptionAddOn.js";
+// Legacy cache/history (INTENTIONALLY not imported)
+// import CardPriceCacheFactory from './CardPriceCache.js';
+// import CardPriceHistoryFactory from './CardPriceHistory.js';
+import SubscriptionAddOnFactory from './SubscriptionAddOn.js';
 import AdminActionFactory from './AdminAction.js';
 import RewardFactory from './Reward.js';
 import BinderFactory from './Binder.js';
 import BinderPageFactory from './BinderPage.js';
 import BinderSlotFactory from './BinderSlot.js';
+import PriceAlertFactory from './PriceAlert.js';
+import UserNotificationPrefFactory from './UserNotificationPref.js';
+// Legacy snapshot (INTENTIONALLY not imported)
+// import CardPriceFactory from './CardPrices.js';
 
-// --- Initialize models ---
-const User = UserFactory(sequelize);
-const Profile = ProfileFactory(sequelize);
-const Card = CardFactory(sequelize);
-const Collection = CollectionFactory(sequelize);
-const Wishlist = WishlistFactory(sequelize);
-const Listing = ListingFactory(sequelize);
-const Offer = OfferFactory(sequelize);
-const { Trade, TradeCard, TradeProof, TradeDispute } = TradeFactory(sequelize);
-const UserReputation = UserReputationFactory(sequelize);
-const Message = MessageFactory(sequelize);
-const ChatAgreement = ChatAgreementFactory(sequelize);
-const ReportedUser = ReportedUserFactory(sequelize);
-const Notification = NotificationFactory(sequelize);
-const AuditLog = AuditLogFactory(sequelize);
-const Achievement = AchievementFactory(sequelize);
-const UserAchievement = UserAchievementFactory(sequelize);
-const Subscription = SubscriptionFactory(sequelize);
-const SubscriptionTier = SubscriptionTierFactory(sequelize);
-const Transaction = TransactionFactory(sequelize);
-const ShippingLabel = ShippingLabelFactory(sequelize);
-const CardPriceCache = CardPriceCacheFactory(sequelize);
-const CardPriceHistory = CardPriceHistoryFactory(sequelize);
-const AdminAction = AdminActionFactory(sequelize);
-const SubscriptionAddOn = SubscriptionAddOnFactory(sequelize);
-const Reward = RewardFactory(sequelize);
-const Binder = BinderFactory(sequelize);
-const BinderPage = BinderPageFactory(sequelize);
-const BinderSlot = BinderSlotFactory(sequelize);
+/* ---------------- New marketdata2 models (m_*) ---------------- */
+import init_m_Card from './m_Card.js';
+import init_m_PriceDaily from './m_PriceDaily.js';
+import init_m_PriceLatest from './m_PriceLatest.js';
+import init_m_CardVariant from './m_CardVariant.js';
+import init_m_Set from './m_Set.js';
+import init_m_PriceObservation from './m_PriceObservation.js';
+// NEW: rollups table for fast 7/30/90 reads
+import init_m_PriceRollup from './m_PriceRollup.js';
 
-// ---- Associations ----
+/* ---------------- Initialize (legacy) ---------------- */
+const User = UserFactory(sequelize, DataTypes);
+const Profile = ProfileFactory(sequelize, DataTypes);
+const Card = CardFactory(sequelize, DataTypes);
+const Collection = CollectionFactory(sequelize, DataTypes);
+const Wishlist = WishlistFactory(sequelize, DataTypes);
+const Listing = ListingFactory(sequelize, DataTypes);
+const Offer = OfferFactory(sequelize, DataTypes);
+const { Trade, TradeCard, TradeProof, TradeDispute } = TradeFactory(sequelize, DataTypes);
+const UserReputation = UserReputationFactory(sequelize, DataTypes);
+const Message = MessageFactory(sequelize, DataTypes);
+const ChatAgreement = ChatAgreementFactory(sequelize, DataTypes);
+const ReportedUser = ReportedUserFactory(sequelize, DataTypes);
+const Notification = NotificationFactory(sequelize, DataTypes);
+const AuditLog = AuditLogFactory(sequelize, DataTypes);
+const Achievement = AchievementFactory(sequelize, DataTypes);
+const UserAchievement = UserAchievementFactory(sequelize, DataTypes);
+const Subscription = SubscriptionFactory(sequelize, DataTypes);
+const SubscriptionTier = SubscriptionTierFactory(sequelize, DataTypes);
+const Transaction = TransactionFactory(sequelize, DataTypes);
+const ShippingLabel = ShippingLabelFactory(sequelize, DataTypes);
+const AdminAction = AdminActionFactory(sequelize, DataTypes);
+const SubscriptionAddOn = SubscriptionAddOnFactory(sequelize, DataTypes);
+const Reward = RewardFactory(sequelize, DataTypes);
+const Binder = BinderFactory(sequelize, DataTypes);
+const BinderPage = BinderPageFactory(sequelize, DataTypes);
+const BinderSlot = BinderSlotFactory(sequelize, DataTypes);
+const PriceAlert = PriceAlertFactory(sequelize, DataTypes);
+const UserNotificationPref = UserNotificationPrefFactory(sequelize, DataTypes);
 
+/* ---------------- Initialize (marketdata2) ---------------- */
+const m_Set = init_m_Set(sequelize, DataTypes);
+const m_Card = init_m_Card(sequelize, DataTypes);
+const m_CardVariant = init_m_CardVariant(sequelize, DataTypes);
+const m_PriceObservation = init_m_PriceObservation(sequelize, DataTypes);
+const m_PriceDaily = init_m_PriceDaily(sequelize, DataTypes);
+const m_PriceLatest = init_m_PriceLatest(sequelize, DataTypes);
+const m_PriceRollup = init_m_PriceRollup(sequelize, DataTypes); // ADDED
+
+/* ---------------- Associations (legacy) ---------------- */
 // User/Profile: 1:1
 User.hasOne(Profile, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Profile.belongsTo(User, { foreignKey: 'userId' });
 
-// Referrals: User -> Referrer (self-reference)
+// Referrals
 User.belongsTo(User, { as: 'referrer', foreignKey: 'referrerId' });
 User.hasMany(User, { as: 'referrals', foreignKey: 'referrerId' });
 
 // User/Collection/Listing/Wishlist
 User.hasMany(Collection, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Collection.belongsTo(User, { foreignKey: 'userId' });
-Card.hasMany(Collection, {
-  foreignKey: 'cardId',
-  as: 'collections',
-  onDelete: 'CASCADE'
-});
+
+Card.hasMany(Collection, { foreignKey: 'cardId', as: 'collections', onDelete: 'CASCADE' });
 Collection.belongsTo(Card, { foreignKey: 'cardId', as: 'card' });
 
 User.hasMany(Listing, { foreignKey: 'userId', as: 'listings', onDelete: 'CASCADE' });
 Listing.belongsTo(User, { foreignKey: 'userId', as: 'seller' });
 User.hasMany(Listing, { foreignKey: 'buyerId', as: 'purchases' });
 Listing.belongsTo(User, { foreignKey: 'buyerId', as: 'buyer' });
+
 Card.hasMany(Listing, { foreignKey: 'cardId', onDelete: 'CASCADE' });
 Listing.belongsTo(Card, { foreignKey: 'cardId' });
+
 Listing.hasMany(Offer, { foreignKey: 'listingId', as: 'offers', onDelete: 'CASCADE' });
 Offer.belongsTo(Listing, { foreignKey: 'listingId' });
 Offer.belongsTo(User, { foreignKey: 'buyerId', as: 'buyer' });
@@ -130,13 +149,11 @@ User.hasMany(Offer, { foreignKey: 'buyerId', as: 'offers' });
 
 User.hasMany(Wishlist, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Wishlist.belongsTo(User, { foreignKey: 'userId' });
-Card.hasMany(Wishlist, {
-  foreignKey: 'cardId',
-  as: 'wishlists',
-  onDelete: 'CASCADE'
-});
+
+Card.hasMany(Wishlist, { foreignKey: 'cardId', as: 'wishlists', onDelete: 'CASCADE' });
 Wishlist.belongsTo(Card, { foreignKey: 'cardId', as: 'card' });
 
+// Binders
 User.hasMany(Binder, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Binder.belongsTo(User, { foreignKey: 'userId' });
 Binder.hasMany(BinderPage, { foreignKey: 'binderId', as: 'pages', onDelete: 'CASCADE' });
@@ -171,11 +188,11 @@ TradeDispute.belongsTo(Trade, { foreignKey: 'tradeId' });
 TradeDispute.belongsTo(User, { foreignKey: 'raisedById', as: 'raisedBy' });
 User.hasMany(TradeDispute, { foreignKey: 'raisedById', as: 'tradeDisputes' });
 
-// Reputation (UserReputation: 1:1)
+// Reputation
 User.hasOne(UserReputation, { foreignKey: 'userId', onDelete: 'CASCADE' });
 UserReputation.belongsTo(User, { foreignKey: 'userId' });
 
-// Message/Chat (fields: senderId, receiverId)
+// Messaging
 User.hasMany(Message, { foreignKey: 'senderId', as: 'sentMessages' });
 User.hasMany(Message, { foreignKey: 'receiverId', as: 'receivedMessages' });
 Message.belongsTo(User, { foreignKey: 'senderId', as: 'sender' });
@@ -198,7 +215,7 @@ Notification.belongsTo(User, { foreignKey: 'userId' });
 User.hasMany(AuditLog, { foreignKey: 'userId' });
 AuditLog.belongsTo(User, { foreignKey: 'userId' });
 
-// User <-> Achievement (many-to-many through UserAchievement)
+// Achievements (M:N)
 User.belongsToMany(Achievement, {
   through: UserAchievement,
   foreignKey: 'userId',
@@ -211,8 +228,6 @@ Achievement.belongsToMany(User, {
   otherKey: 'userId',
   as: 'users'
 });
-
-// Also add 1:M for UserAchievement <-> Achievement/User for eager loading
 User.hasMany(UserAchievement, { foreignKey: 'userId' });
 UserAchievement.belongsTo(User, { foreignKey: 'userId' });
 Achievement.hasMany(UserAchievement, { foreignKey: 'achievementId' });
@@ -229,8 +244,8 @@ User.hasMany(Subscription, { foreignKey: 'userId' });
 Subscription.belongsTo(User, { foreignKey: 'userId' });
 Subscription.belongsTo(SubscriptionTier, { foreignKey: 'tierId' });
 SubscriptionTier.hasMany(Subscription, { foreignKey: 'tierId' });
-User.hasMany(SubscriptionAddOn, { foreignKey: "userId" });
-SubscriptionAddOn.belongsTo(User, { foreignKey: "userId" });
+User.hasMany(SubscriptionAddOn, { foreignKey: 'userId' });
+SubscriptionAddOn.belongsTo(User, { foreignKey: 'userId' });
 
 // Transactions/Payments
 User.hasMany(Transaction, { foreignKey: 'userId', onDelete: 'CASCADE' });
@@ -244,30 +259,55 @@ Transaction.belongsTo(Listing, { foreignKey: 'relatedId', constraints: false, as
 User.hasMany(ShippingLabel, { foreignKey: 'userId', onDelete: 'CASCADE' });
 ShippingLabel.belongsTo(User, { foreignKey: 'userId' });
 
-// Card Price Cache
-Card.hasOne(CardPriceCache, { foreignKey: 'cardId', onDelete: 'CASCADE' });
-CardPriceCache.belongsTo(Card, { foreignKey: 'cardId' });
+/* ---------------- Legacy price/search cleanup ---------------- */
+// All CardPrice*, CardPriceCache, CardPriceHistory, and any old search models are removed.
 
-// Card Price History
-Card.hasMany(CardPriceHistory, { foreignKey: 'cardId', onDelete: 'CASCADE' });
-CardPriceHistory.belongsTo(Card, { foreignKey: 'cardId' });
+/* ---------------- NEW marketdata2 associations ---------------- */
+// m_Set 1:M m_Card
+m_Set.hasMany(m_Card, { foreignKey: 'set_code', sourceKey: 'code' });
+m_Card.belongsTo(m_Set, { foreignKey: 'set_code', targetKey: 'code' });
 
-// Admin Actions (AdminAction fields: adminId, targetUserId)
-User.hasMany(AdminAction, { foreignKey: 'adminId', as: 'adminActions' });
-AdminAction.belongsTo(User, { foreignKey: 'adminId', as: 'admin' });
-User.hasMany(AdminAction, { foreignKey: 'targetUserId', as: 'receivedAdminActions' });
-AdminAction.belongsTo(User, { foreignKey: 'targetUserId', as: 'targetUser' });
+// m_Card 1:M m_CardVariant
+m_Card.hasMany(m_CardVariant, { foreignKey: 'card_id', sourceKey: 'id' });
+m_CardVariant.belongsTo(m_Card, { foreignKey: 'card_id', targetKey: 'id' });
 
-// ---- Export ----
+// m_Card 1:1 m_PriceLatest (latest snapshot)
+m_Card.hasOne(m_PriceLatest, {
+  foreignKey: 'card_id',
+  sourceKey: 'id',
+  as: 'price', // ← use include: [{ model: m_PriceLatest, as: 'price' }]
+});
+m_PriceLatest.belongsTo(m_Card, {
+  foreignKey: 'card_id',
+  targetKey: 'id',
+  as: 'card',
+});
+
+// (Optional) m_Card 1:M m_PriceDaily (raw daily timeline)
+m_Card.hasMany(m_PriceDaily, { foreignKey: 'card_id', sourceKey: 'id', as: 'daily' });
+m_PriceDaily.belongsTo(m_Card, { foreignKey: 'card_id', targetKey: 'id', as: 'card' });
+
+// (Optional) m_Card 1:M m_PriceRollup (precomputed windows 1/7/30/90)
+m_Card.hasMany(m_PriceRollup, { foreignKey: 'card_id', sourceKey: 'id', as: 'rollups' });
+m_PriceRollup.belongsTo(m_Card, { foreignKey: 'card_id', targetKey: 'id', as: 'card' });
+
+/* ---------------- Exports ---------------- */
 export {
-  sequelize, User, Profile, Card,
+  sequelize,
+  // legacy app models
+  User, Profile, Card,
   Collection, Wishlist, Listing,
   Trade, TradeCard, TradeProof, TradeDispute,
   UserReputation, Message,
   Notification, AuditLog, Achievement, Subscription,
-  SubscriptionTier, Transaction, ShippingLabel, CardPriceCache, CardPriceHistory,
+  SubscriptionTier, Transaction, ShippingLabel,
+  PriceAlert, UserNotificationPref,
   AdminAction, UserAchievement, Offer, SubscriptionAddOn,
-  Reward,
-  ChatAgreement, ReportedUser,
-  Binder, BinderPage, BinderSlot
+  Reward, ChatAgreement, ReportedUser,
+  Binder, BinderPage, BinderSlot,
+
+  // marketdata2 models
+  m_Set, m_Card, m_CardVariant,
+  m_PriceObservation, m_PriceDaily, m_PriceLatest,
+  m_PriceRollup, // ADDED
 };

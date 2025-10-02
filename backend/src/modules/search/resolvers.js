@@ -1,4 +1,3 @@
-// src/modules/search/resolvers.js
 // DB-first search + connection with bulletproof pricing + 7-day freshness refresh
 
 import {
@@ -7,9 +6,8 @@ import {
   tcgdexImageUrl,
   getSetUniqueCardCount,
   getAllRarities,
-  getCardPriceCache,            // <-- use cache if cards.pricing is empty
+  getCardPriceCache,
   tcgdexToPtcgId,
-  hydrateCard,
   encodeCursor,
   decodeCursor,
   normalizeImage,
@@ -19,9 +17,9 @@ import { fetchTCGDexCards, fetchTCGDexCardById } from './api/tcgdex.js';
 import { fetchPTCGCardById, fetchPTCGCardPrices } from './api/pokemontcg.js';
 import { getExchangeRates } from './api/exchangeRates.js';
 import { saveOrUpdateCard } from './cardPersistence.js';
-import { SET_MAPPING } from './SetMapping.js';
+import { SET_MAPPING } from '../marketdata/utils/SetMapping.js';
 
-import { Card, Listing, Collection, CardPriceHistory } from '../../models/index.js';
+import { Card, Listing, Collection } from '../../models/index.js';
 import { Op } from 'sequelize';
 import pLimit from 'p-limit';
 
@@ -34,23 +32,26 @@ const DEBUG_PRICE = process.env.DEBUG_PRICE ? Number(process.env.DEBUG_PRICE) : 
 const ENRICH_CONCURRENCY = Number(process.env.PRICE_CONCURRENCY || 6);
 const PREVIEW_CONCURRENCY = Number(process.env.PREVIEW_PRICE_CONCURRENCY || 4);
 
-// Hard rule: DB rows older than this are "stale" (refresh in background)
 const STALE_DAYS = Number(process.env.SEARCH_STALE_DAYS || 7);
 const STALE_MS = STALE_DAYS * 24 * 60 * 60 * 1000;
 
-// Preview network hits (for items with no pricing at all) — default small
-const PREVIEW_PRICE_TIMEOUT_MS = Number(process.env.SEARCH_PREVIEW_TIMEOUT_MS || 1200);
+// Raise preview timeout to be more forgiving
+const PREVIEW_PRICE_TIMEOUT_MS = Number(process.env.SEARCH_PREVIEW_TIMEOUT_MS ?? 5000);
 const PREVIEW_PRICE_BUDGET = Number(
   process.env.SEARCH_PRICE_PREVIEW_BUDGET != null ? process.env.SEARCH_PRICE_PREVIEW_BUDGET : 4
 );
 
-// Upstream page sizing when we need to discover brand new cards
 const PROVIDER_PAGE_SIZE = Math.min(Number(process.env.TCGDEX_PROVIDER_MAX_PAGE_SIZE || 100), 100);
 
-// Minimal fallback names for sets that may be missing from SET_MAPPING
 const FALLBACK_SET_NAMES = {
   svp: 'SVP Black Star Promos',
 };
+
+const PTCG_FLOOR_MS = Number(
+  process.env.PTCG_TIMEOUT_MS ??
+  process.env.PRICE_TIMEOUT_MS ??
+  12000
+);
 
 /* =========================
    Timing + small utils
@@ -79,13 +80,6 @@ const parseMaybeJSON = (v) => {
 
 const canonSet = (v) => (v ? String(normalizeSetCode(String(v))).toLowerCase() : null);
 const getSetId = (c) => (typeof c?.set === 'object' ? c.set?.id : c?.set) || null;
-
-const exactSetMatch = (cardOrSetId, setCode) => {
-  if (!setCode) return true;
-  const setId = typeof cardOrSetId === 'string' ? cardOrSetId : getSetId(cardOrSetId);
-  if (!setId) return false;
-  return canonSet(setId) === canonSet(setCode);
-};
 
 const safeSetVal = (setField, id) => {
   const raw = (typeof setField === 'object' ? setField?.id : setField) ?? null;
@@ -149,14 +143,15 @@ function pickPreviewVariation(tpPrices, cmPrices) {
 
 async function fetchPricesWithFallback(ptcgId, { timeoutMs } = {}) {
   let lastErr = null;
-  const tPrice = timeoutMs || 7000;
-  const tById = Math.max(tPrice, 9000);
+  const tPrice = Math.max(Number(timeoutMs || 0), PTCG_FLOOR_MS);
+  const tById  = Math.max(tPrice, PTCG_FLOOR_MS + 3000);
 
   try {
     const prices = await fetchPTCGCardPrices(ptcgId, { timeoutMs: tPrice });
     if (prices && (prices.tcgplayer || prices.cardmarket)) {
-      if (DEBUG_PRICE) console.log(`[PRICE][OK] ${ptcgId} via prices endpoint`);
-      return { tcgplayer: prices.tcgplayer || null, cardmarket: prices.cardmarket || null };
+      if (DEBUG_PRICE) console.log(`[PRICE][OK] ${ptcgId} via prices (normalized map)`);
+      // shape it like vendor blob to feed persistence
+      return { tcgplayer: { prices: prices.tcgplayer || {} }, cardmarket: { prices: prices.cardmarket || {} } };
     }
   } catch (e) { lastErr = e; }
 
@@ -164,7 +159,7 @@ async function fetchPricesWithFallback(ptcgId, { timeoutMs } = {}) {
     const card = await fetchPTCGCardById(ptcgId, { timeoutMs: tById }).catch(() => null);
     const data = card?.data || card;
     if (data && (data.tcgplayer || data.cardmarket)) {
-      if (DEBUG_PRICE) console.log(`[PRICE][OK] ${ptcgId} via card-by-id fallback`);
+      if (DEBUG_PRICE) console.log(`[PRICE][OK] ${ptcgId} via card-by-id fast path`);
       return { tcgplayer: data.tcgplayer || null, cardmarket: data.cardmarket || null };
     }
   } catch (e) { lastErr = e; }
@@ -224,20 +219,17 @@ async function fetchPreviewLatestGBP(ptcgId, rates, timeoutMs) {
    Pricing builders from DB / cache
    ========================= */
 
-// Build a minimal "pricing.latest" from numeric GBP columns on `cards`
 function pricingFromDbNumeric(db) {
   const tp =
     toNum(db.tcgplayerMarket) ??
     toNum(db.tcgplayerMid) ??
     toNum(db.tcgplayerLow) ??
-    toNum(db.tcgplayerHigh) ??
-    null;
+    toNum(db.tcgplayerHigh) ?? null;
 
   const cm =
     toNum(db.cardmarketTrendPrice) ??
     toNum(db.cardmarketAverageSell) ??
-    toNum(db.cardmarketLowPrice) ??
-    null;
+    toNum(db.cardmarketLowPrice) ?? null;
 
   if (tp == null && cm == null) return null;
 
@@ -258,22 +250,21 @@ function pricingFromDbNumeric(db) {
   };
 }
 
-// Build a "pricing.latest" from cached vendor JSON (GBP-converted if rates exist)
-function pricingFromCacheBlobs(tpBlob, cmBlob, rates) {
-  const tp = parseMaybeJSON(tpBlob) ?? tpBlob ?? null;
-  const cm = parseMaybeJSON(cmBlob) ?? cmBlob ?? null;
+function pricingFromCacheBlobs(tpBlob, cmBlob) {
+  const tp = typeof tpBlob === 'string' ? parseMaybeJSON(tpBlob) : tpBlob;
+  const cm = typeof cmBlob === 'string' ? parseMaybeJSON(cmBlob) : cmBlob;
 
   const tpPrices = tp?.prices || {};
   const cmPrices = cm?.prices || {};
 
   const variation = pickPreviewVariation(tpPrices, cmPrices);
 
-  const tcgUSD =
+  const tpGBP =
     toNum(tpPrices?.normal?.market) ??
     toNum(tpPrices?.holofoil?.market) ??
     toNum(tpPrices?.reverseHolofoil?.market) ?? null;
 
-  const cmEUR =
+  const cmGBP =
     toNum(cmPrices?.trendPrice) ??
     toNum(cmPrices?.averageSellPrice) ??
     toNum(cmPrices?.reverseHoloTrend) ?? null;
@@ -282,26 +273,20 @@ function pricingFromCacheBlobs(tpBlob, cmBlob, rates) {
   const cmUpdated = parseVendorDate(cm?.updatedAt);
   const updatedAt = maxIsoDate(tpUpdated, cmUpdated) || new Date().toISOString();
 
-  const gbpTp = rates ? gbpFromUSD(tcgUSD, rates) : null;
-  const gbpCmk = rates ? gbpFromEUR(cmEUR, rates) : null;
+  if (tpGBP == null && cmGBP == null) return null;
 
-  // If we have at least one vendor signal, return a latest entry
-  if (tcgUSD != null || cmEUR != null || gbpTp != null || gbpCmk != null) {
-    return {
-      latest: [
-        {
-          variation,
-          // Put numeric values directly so the normalizer doesn't need to re-extract
-          tcgplayer: (gbpTp ?? tcgUSD) ?? null,
-          cardmarket: (gbpCmk ?? cmEUR) ?? null,
-          gbp: (gbpTp ?? gbpCmk ?? tcgUSD ?? cmEUR) ?? null,
-          currency: (gbpTp != null || gbpCmk != null) ? 'GBP' : null,
-          updatedAt,
-        },
-      ],
-    };
-  }
-  return null;
+  return {
+    latest: [
+      {
+        variation,
+        tcgplayer: tpGBP,
+        cardmarket: cmGBP,
+        gbp: tpGBP ?? cmGBP ?? null,
+        currency: 'GBP',
+        updatedAt,
+      },
+    ],
+  };
 }
 
 /* =========================
@@ -324,16 +309,14 @@ function extractVendorGBP(vendor, which) {
       return (
         toNum(p?.normal?.market) ??
         toNum(p?.holofoil?.market) ??
-        toNum(p?.reverseHolofoil?.market) ??
-        null
+        toNum(p?.reverseHolofoil?.market) ?? null
       );
     }
     if (which === 'cardmarket' && p && typeof p === 'object') {
       return (
         toNum(p?.trendPrice) ??
         toNum(p?.averageSellPrice) ??
-        toNum(p?.reverseHoloTrend) ??
-        null
+        toNum(p?.reverseHoloTrend) ?? null
       );
     }
   }
@@ -472,24 +455,25 @@ async function applyListedForTradeFilters(rows, { listed, forTrade }) {
 }
 
 /* =========================
-   Map DB row -> API node (DB-first; fill from cache if pricing empty)
+   Map DB row -> API node (hardened for set objects)
    ========================= */
 
-function completeSetMeta(setId, setName, setLogo) {
-  const s = canonSet(setId);
+function completeSetMeta(setIdLike, setName, setLogo) {
+  const setCode = typeof setIdLike === 'object' ? setIdLike?.id : setIdLike;
+  const s = setCode ? canonSet(setCode) : null;
   return {
     set: s,
-    setName: setName ?? SET_MAPPING[s]?.name ?? FALLBACK_SET_NAMES[s] ?? null,
-    setLogo: setLogo ?? SET_MAPPING[s]?.logo ?? null,
+    setName: setName ?? (s ? (SET_MAPPING[s]?.name ?? FALLBACK_SET_NAMES[s] ?? null) : null),
+    setLogo: setLogo ?? (s ? (SET_MAPPING[s]?.logo ?? null) : null),
   };
 }
 
 function mapDbRowToCard(db, { rates } = {}) {
-  // Use getCol to avoid Sequelize method collisions
+  // Use getCol to avoid Sequelize instance method collisions
   const id = getCol(db, 'id');
   const name = getCol(db, 'name');
   const number = getCol(db, 'number');
-  const setRaw = getCol(db, 'set');
+  const setRaw = getCol(db, 'set'); // may be string or object
   const setNameRaw = getCol(db, 'setName');
   const setLogoRaw = getCol(db, 'setLogo');
   const rarity = getCol(db, 'rarity') || null;
@@ -508,20 +492,18 @@ function mapDbRowToCard(db, { rates } = {}) {
     }
   }
 
-  // If still empty, try cache blobs (GBP-converted if we have rates)
-  // NOTE: getCardPriceCache returns null if stale (>24h) per helpers.js; that’s fine.
-  // This path ensures TCGplayer shows up even if cards.pricing isn't populated yet.
-  const maybeFromCache = getCol(db, '__from_cache__'); // (not used; just documenting)
   return {
     id,
     name,
     number,
-    ...completeSetMeta(set, setName, setLogo),
+    set,
+    setName,
+    setLogo,
     image: normalizeImage(imageRaw || tcgdexImageUrl({ id, set, number })),
     rarity,
     variations: variationsRaw || null,
-    pricing, // may still be null; we'll lift cache in connection/search mapping where we have rates
-    _needsCacheLift: !pricing, // flag for a follow-up pass
+    pricing,
+    _needsCacheLift: !pricing,
     _updatedAt: updatedAt,
   };
 }
@@ -535,7 +517,7 @@ async function hydrateAndSaveNewCard(tcgdexCard, rates) {
   let full = tcgdexCard;
   if (!full?.rarity || !full?.image || !full?.set || !full?.setName) {
     try {
-      const byId = await withTimeout(fetchTCGDexCardById(tcgdexCard.id), 6000, 'tcgdex-byid-timeout');
+      const byId = await withTimeout(fetchTCGDexCardById(tcgdexCard.id), 9000, 'tcgdex-byid-timeout');
       if (byId) full = { ...byId, ...full };
     } catch {}
   }
@@ -544,7 +526,8 @@ async function hydrateAndSaveNewCard(tcgdexCard, rates) {
   const ptId = tcgdexToPtcgId(full.id);
   let rawPrices = { tcgplayer: null, cardmarket: null };
   if (ptId) {
-    const fetched = await fetchPricesWithFallback(ptId, { timeoutMs: 8000 });
+    const hydrateMs = Number(process.env.SEARCH_HYDRATE_TIMEOUT_MS || PTCG_FLOOR_MS);
+    const fetched = await fetchPricesWithFallback(ptId, { timeoutMs: hydrateMs });
     if (fetched) rawPrices = fetched;
   }
 
@@ -556,10 +539,10 @@ async function hydrateAndSaveNewCard(tcgdexCard, rates) {
 }
 
 /* =========================
-   Optional preview pricing for items with no pricing at all
+   Optional preview pricing
    ========================= */
 
-async function attachPreviewPrices(cards, budget = 0, timeoutMs = 1200) {
+async function attachPreviewPrices(cards, budget = 0, timeoutMs = 5000) {
   if (!budget) return;
   const limit = pLimit(PREVIEW_CONCURRENCY);
   let rates = null;
@@ -584,7 +567,7 @@ async function attachPreviewPrices(cards, budget = 0, timeoutMs = 1200) {
 }
 
 /* =========================
-   Legacy paged search (DB-first + optional upstream fill)
+   Legacy paged search
    ========================= */
 
 async function searchCardsResolver(_, { input }) {
@@ -623,7 +606,7 @@ async function searchCardsResolver(_, { input }) {
     try {
       const cache = await getCardPriceCache(c.id);
       if (cache && (cache.tcgplayer || cache.cardmarket)) {
-        const built = pricingFromCacheBlobs(cache.tcgplayer, cache.cardmarket, rates);
+        const built = pricingFromCacheBlobs(cache.tcgplayer, cache.cardmarket);
         if (built) cards[idx].pricing = built;
       }
     } catch {}
@@ -662,7 +645,7 @@ async function searchCardsResolver(_, { input }) {
         page: 1,
         pageSize: PROVIDER_PAGE_SIZE,
       }),
-      Number(process.env.SEARCH_FETCH_TIMEOUT_MS || 8000),
+      Number(process.env.SEARCH_FETCH_TIMEOUT_MS || 9000),
       'tcgdex-search-timeout'
     ).catch(() => ({ cards: [], total: 0 }));
 
@@ -721,9 +704,33 @@ function cmpForKeyset(a, b) {
   return 0;
 }
 
+// Translate legacy cursors { id, set, number } into an offset
+async function legacyCursorToOffset({ where, listed, forTrade }, legacy) {
+  const MAX_SCAN = 2000;
+  let rows = await Card.findAll({
+    where,
+    order: [['set','ASC'], ['number','ASC'], ['id','ASC']],
+    limit: MAX_SCAN,
+    offset: 0,
+    raw: true,
+  });
+  rows = await applyListedForTradeFilters(rows, { listed, forTrade });
+  const idx = rows.findIndex(r =>
+    String(r.id).toLowerCase() === String(legacy.id || '').toLowerCase()
+  );
+  return idx >= 0 ? idx : 0;
+}
+
 async function dbConnectionWindow({ where, after, first, listed, forTrade, rates }) {
   const cur = after ? decodeCursor(after) : null;
-  const startOffset = cur && Number.isInteger(cur.offset) && cur.offset >= 0 ? cur.offset + 1 : 0;
+
+  let startOffset = 0;
+  if (cur && Number.isInteger(cur.offset) && cur.offset >= 0) {
+    startOffset = cur.offset + 1;
+  } else if (cur && (cur.id || (cur.set && cur.number))) {
+    // legacy cursor -> compute offset
+    startOffset = (await legacyCursorToOffset({ where, listed, forTrade }, cur)) + 1;
+  }
 
   let rows = await Card.findAll({
     where,
@@ -747,7 +754,7 @@ async function dbConnectionWindow({ where, after, first, listed, forTrade, rates
     try {
       const cache = await getCardPriceCache(node.id);
       if (cache && (cache.tcgplayer || cache.cardmarket)) {
-        const built = pricingFromCacheBlobs(cache.tcgplayer, cache.cardmarket, rates);
+        const built = pricingFromCacheBlobs(cache.tcgplayer, cache.cardmarket);
         if (built) nodes[idx].pricing = built;
       }
     } catch {}
@@ -765,7 +772,7 @@ async function dbConnectionWindow({ where, after, first, listed, forTrade, rates
   }
 
   const edges = nodes.map((node, i) => ({
-    cursor: encodeCursor({ offset: startOffset + i, id: node.id }),
+    cursor: encodeCursor({ offset: startOffset + i, id: node.id, set: node.set, number: node.number }),
     node: {
       ...node,
       // Strip private markers
@@ -834,7 +841,7 @@ async function searchCardsConnectionResolver(_, { input }) {
         page: 1,
         pageSize: PROVIDER_PAGE_SIZE,
       }),
-      Number(process.env.SEARCH_FETCH_TIMEOUT_MS || 8000),
+      Number(process.env.SEARCH_FETCH_TIMEOUT_MS || 9000),
       'tcgdex-connection-timeout'
     ).catch(() => ({ cards: [], total: 0 }));
 
@@ -872,7 +879,7 @@ async function searchCardsConnectionResolver(_, { input }) {
 
     const startOffset = after ? (decodeCursor(after)?.offset ?? -1) + 1 : 0;
     const newEdges = toAdd.map((node, i) => ({
-      cursor: encodeCursor({ offset: startOffset + edges.length + i, id: node.id }),
+      cursor: encodeCursor({ offset: startOffset + edges.length + i, id: node.id, set: node.set, number: node.number }),
       node,
     }));
 
@@ -938,10 +945,9 @@ async function cardByIdResolver(_, { id }) {
     // Lift from cache if empty
     if (!mapped.pricing) {
       try {
-        const rates = await getExchangeRates().catch(() => null);
         const cache = await getCardPriceCache(mapped.id);
         if (cache && (cache.tcgplayer || cache.cardmarket)) {
-          const built = pricingFromCacheBlobs(cache.tcgplayer, cache.cardmarket, rates || undefined);
+          const built = pricingFromCacheBlobs(cache.tcgplayer, cache.cardmarket || undefined);
           if (built) mapped.pricing = built;
         }
       } catch {}
@@ -952,7 +958,7 @@ async function cardByIdResolver(_, { id }) {
 
   // Not in DB — fully hydrate (blocking) to avoid nulls
   let tcg = null;
-  try { tcg = await withTimeout(fetchTCGDexCardById(id), 6000, 'tcgdex-byid-timeout'); } catch {}
+  try { tcg = await withTimeout(fetchTCGDexCardById(id), 9000, 'tcgdex-byid-timeout'); } catch {}
   if (!tcg) {
     logTiming('cardById.total', { ms: delta(tStart), id, result: 'null' });
     return null;
@@ -968,7 +974,7 @@ async function cardByIdResolver(_, { id }) {
 async function getSetResolver(_, { code }) {
   const canon = canonSet(code);
   if (isSetBlocked(canon)) return null;
-  const res = await withTimeout(fetchTCGDexCards({ set: canon }), 8000, 'tcgdex-set-timeout').catch(() => ({ cards: [] }));
+  const res = await withTimeout(fetchTCGDexCards({ set: canon }), 9000, 'tcgdex-set-timeout').catch(() => ({ cards: [] }));
   const cards = (res.cards || []).filter((card) => {
     const setId = safeSetVal(typeof card.set === 'object' ? card.set?.id : card.set, card.id);
     return setId && !isSetBlocked(setId);
@@ -988,7 +994,7 @@ async function cardSetCompletionResolver(_, { userId, set }) {
   const canon = canonSet(set);
   const ownedCards = await Collection.findAll({ where: { userId, set: canon }, raw: true });
   const totalOwned = new Set(ownedCards.map((card) => card.cardId)).size;
-  const allSetCards = await withTimeout(fetchTCGDexCards({ set: canon }), 8000, 'tcgdex-set-timeout').catch(() => ({
+  const allSetCards = await withTimeout(fetchTCGDexCards({ set: canon }), 9000, 'tcgdex-set-timeout').catch(() => ({
     cards: [],
   }));
   const total = getSetUniqueCardCount(canon, allSetCards.cards || [], true);
@@ -1000,45 +1006,38 @@ async function getExchangeRatesResolver() {
 }
 
 /* =========================
-   Price history
+   Price history (inline only)
    ========================= */
 
-function mapVariationKey(v) {
-  switch (v) {
-    case 'reverse': return 'reverseHolofoil';
-    case 'holo': return 'holofoil';
-    case 'firstEdition': return 'firstEdition';
-    case 'wPromo': return 'normal';
-    default: return 'normal';
-  }
-}
-function cardmarketPriceForVariation(variation, cmk) {
-  if (!cmk) return null;
-  const tk = mapVariationKey(variation);
-  if (tk === 'normal') return cmk.trendPrice ?? cmk.averageSellPrice ?? null;
-  if (tk === 'reverseHolofoil') return cmk.reverseHoloTrend ?? cmk.reverseHoloSell ?? null;
-  if (tk === 'holofoil') return cmk.trendPrice ?? cmk.averageSellPrice ?? null;
-  if (tk === 'firstEdition') return cmk.trendPrice ?? null;
-  return null;
-}
-async function fetchHistoryFromTable(cardId, days) {
-  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-  const rows = await CardPriceHistory.findAll({
-    where: { cardId, fetchedAt: { [Op.gte]: since } },
-    order: [['fetchedAt', 'ASC']],
-    raw: true,
-  });
-  return rows.map((r) => ({
-    date: new Date(r.fetchedAt).toISOString().slice(0, 10),
-    variation: r.variation,
-    gbp: r.gbp == null ? null : parseFloat(r.gbp),
-    tcgplayer: r.tcgplayer?.market ?? null,
-    cardmarket: cardmarketPriceForVariation(r.variation, r.cardmarket),
-  }));
-}
 async function cardPriceHistoryResolver(_, { cardId, days = 30 }) {
   const limit = Math.min(days, 30);
-  return fetchHistoryFromTable(cardId, limit);
+  const row = await Card.findByPk(cardId, { attributes: ['pricing'], raw: true });
+  if (!row?.pricing) return [];
+  let obj = row.pricing;
+  try { if (typeof obj === 'string') obj = JSON.parse(obj); } catch { return []; }
+  const history = Array.isArray(obj?.history) ? obj.history : [];
+  if (!history.length) return [];
+
+  const slice = history.slice(-limit);
+  const out = [];
+  for (const h of slice) {
+    const date = h?.date || null;
+    for (const p of (h?.prices || [])) {
+      const tcg = toNum(extractVendorGBP(p.tcgplayer, 'tcgplayer'));
+      const cmk = toNum(extractVendorGBP(p.cardmarket, 'cardmarket'));
+      const gbp = toNum(p.gbp ?? tcg ?? cmk);
+      if (gbp != null) {
+        out.push({
+          date,
+          variation: p.variation ?? 'normal',
+          gbp,
+          tcgplayer: tcg,
+          cardmarket: cmk,
+        });
+      }
+    }
+  }
+  return out;
 }
 
 /* =========================
@@ -1089,36 +1088,36 @@ const resolvers = {
       return normalizePricesField(built);
     },
 
+    // Inline-only history; no DB fallback
     priceHistory: async (card, { days = 30 }) => {
       const limit = Math.min(days, 30);
       const raw = card.pricing;
-      if (raw) {
-        try {
-          const obj = typeof raw === 'string' ? JSON.parse(raw) : raw;
-          if (obj && Array.isArray(obj.history) && obj.history.length) {
-            const slice = obj.history.slice(-limit);
-            const out = [];
-            for (const h of slice) {
-              for (const p of (h.prices || [])) {
-                const tcg = toNum(extractVendorGBP(p.tcgplayer, 'tcgplayer'));
-                const cmk = toNum(extractVendorGBP(p.cardmarket, 'cardmarket'));
-                const gbp = toNum(p.gbp ?? tcg ?? cmk);
-                if (gbp != null) {
-                  out.push({
-                    date: h.date,
-                    variation: p.variation ?? 'normal',
-                    gbp,
-                    tcgplayer: tcg,
-                    cardmarket: cmk,
-                  });
-                }
+      if (!raw) return [];
+      try {
+        const obj = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (obj && Array.isArray(obj.history) && obj.history.length) {
+          const slice = obj.history.slice(-limit);
+          const out = [];
+          for (const h of slice) {
+            for (const p of (h.prices || [])) {
+              const tcg = toNum(extractVendorGBP(p.tcgplayer, 'tcgplayer'));
+              const cmk = toNum(extractVendorGBP(p.cardmarket, 'cardmarket'));
+              const gbp = toNum(p.gbp ?? tcg ?? cmk);
+              if (gbp != null) {
+                out.push({
+                  date: h.date,
+                  variation: p.variation ?? 'normal',
+                  gbp,
+                  tcgplayer: tcg,
+                  cardmarket: cmk,
+                });
               }
             }
-            return out;
           }
-        } catch {}
-      }
-      return fetchHistoryFromTable(card.id, limit);
+          return out;
+        }
+      } catch {}
+      return [];
     },
 
     setName: (card) => {

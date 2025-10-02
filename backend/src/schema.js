@@ -6,7 +6,7 @@ import { mergeResolvers } from '@graphql-tools/merge';
 // ---- Import typeDefs from all modules ----
 import authTypeDefs from './modules/auth/typeDefs.js';
 import usersTypeDefs from './modules/users/typeDefs.js';
-import searchTypeDefs from './modules/search/typeDefs.js';
+// import searchTypeDefs from './modules/search/typeDefs.js';                    // --- DEPRECATED ---
 import collectionsTypeDefs from './modules/collection/typeDefs.js';
 import wishlistTypeDefs from './modules/wishlist/typeDefs.js';
 import achievementsTypeDefs from './modules/achievements/typeDefs.js';
@@ -20,11 +20,12 @@ import notificationsTypeDefs from './modules/notifications/typeDefs.js';
 import subscriptionsTypeDefs from './modules/subscriptions/typeDefs.js';
 import shippingTypeDefs from './modules/shipping/typeDefs.js';
 import adminTypeDefs from './modules/admin/typeDefs.js';
+import cardsearchTypeDefs from './modules/cardsearch/typeDefs.js';
 
 // ---- Import resolvers from all modules ----
 import authResolvers from './modules/auth/resolvers.js';
 import usersResolvers from './modules/users/resolvers.js';
-import searchResolvers from './modules/search/resolvers.js';
+// import searchResolvers from './modules/search/resolvers.js';                  // --- DEPRECATED ---
 import collectionsResolvers from './modules/collection/resolvers.js';
 import wishlistResolvers from './modules/wishlist/resolvers.js';
 import achievementsResolvers from './modules/achievements/resolvers.js';
@@ -38,12 +39,13 @@ import notificationsResolvers from './modules/notifications/resolvers.js';
 import subscriptionsResolvers from './modules/subscriptions/resolvers.js';
 import shippingResolvers from './modules/shipping/resolvers.js';
 import adminResolvers from './modules/admin/resolvers.js';
+import cardsearchResolvers from './modules/cardsearch/resolvers.js';
 
 // ---- Merge all typeDefs ----
 export const typeDefs = mergeTypeDefs([
   authTypeDefs,
   usersTypeDefs,
-  searchTypeDefs,
+  // searchTypeDefs,         // --- DEPRECATED ---
   collectionsTypeDefs,
   marketplaceTypeDefs,
   tradingTypeDefs,
@@ -57,13 +59,14 @@ export const typeDefs = mergeTypeDefs([
   subscriptionsTypeDefs,
   shippingTypeDefs,
   adminTypeDefs,
+  cardsearchTypeDefs,
 ]);
 
 // ---- Merge all resolvers ----
 export const resolvers = mergeResolvers([
   authResolvers,
   usersResolvers,
-  searchResolvers,
+  // searchResolvers,        // --- DEPRECATED ---
   collectionsResolvers,
   marketplaceResolvers,
   tradingResolvers,
@@ -77,4 +80,5 @@ export const resolvers = mergeResolvers([
   subscriptionsResolvers,
   shippingResolvers,
   adminResolvers,
+  cardsearchResolvers,
 ]);

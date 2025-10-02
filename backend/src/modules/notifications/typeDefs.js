@@ -27,6 +27,15 @@ export default gql`
     pageSize: Int!
   }
 
+  type NotificationPref {
+    inappEnabled: Boolean!
+    emailEnabled: Boolean!
+    pushEnabled: Boolean!
+    digest: String!
+    quietStart: String
+    quietEnd: String
+  }
+
   input NotificationInput {
     userId: ID
     type: String!
@@ -44,6 +53,7 @@ export default gql`
     myNotifications(page: Int, pageSize: Int, filter: JSON): NotificationPage!
     notification(id: ID!): Notification
     unreadNotificationCount: Int!
+    myNotificationPrefs: NotificationPref!
   }
 
   extend type Mutation {
@@ -52,5 +62,13 @@ export default gql`
     dismissNotification(id: ID!): Boolean!
     adminSendBroadcastNotification(input: NotificationInput!): Boolean!
     adminDeleteNotification(id: ID!): Boolean!
+    setNotificationPrefs(
+      inappEnabled: Boolean
+      emailEnabled: Boolean
+      pushEnabled: Boolean
+      digest: String
+      quietStart: String
+      quietEnd: String
+    ): Boolean!
   }
 `;

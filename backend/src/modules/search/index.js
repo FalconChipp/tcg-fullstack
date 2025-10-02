@@ -1,9 +1,9 @@
-// src/modules/search/index.js
-
-import typeDefs from './typeDefs.js';
-import resolvers from './resolvers.js';
-
+// TEMP STUB: disable legacy search boot while marketdata comes online.
 export default {
-  typeDefs,
-  resolvers,
+  id: "search-legacy",
+  async init() {
+    console.log("[search-legacy] disabled init (temporary)");
+  },
+  schema: undefined,
+  resolvers: {},
 };

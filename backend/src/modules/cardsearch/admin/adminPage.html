@@ -1,357 +1,764 @@
 <!-- src/modules/cardsearch/admin/adminPage.html
-     Admin UI for Card Search module.
-     - No external dependencies (single file shell).
-     - Talks to /admin/cardsearch REST endpoints (see adminScript.js).
-     - Lets you run jobs (FX daily, Ingest Set, Collect Prices, Rollups),
-       view & manage scheduler tasks, and toggle sets.
-
-     If your server routes differ, adjust the BASE constant inside adminScript.js.
+     Card Search admin control center UI.
+     Standalone page served from the backend with no external dependencies.
 -->
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Card Search • Admin</title>
+  <title>Card Search - Admin Control Center</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="color-scheme" content="dark light" />
+  <meta name="color-scheme" content="light dark" />
   <style>
-    :root{
-      --bg:#0b0f14; --panel:#121821; --muted:#8892a6; --text:#e7edf5; --accent:#7cc4ff;
-      --ok:#34d399; --warn:#f59e0b; --err:#ef4444; --border:#1e2633; --chip:#1b2330;
-      --btn:#1a2432; --btn2:#0f1722;
+    :root {
+      color-scheme: light dark;
+      --bg:#f4f6fb;
+      --bg-alt:#eef1f8;
+      --surface:#ffffff;
+      --surface-muted:#f9fbff;
+      --border:#d6deed;
+      --border-strong:#c3cde2;
+      --text:#17223a;
+      --muted:#53627f;
+      --muted-strong:#364360;
+      --accent:#2563eb;
+      --accent-soft:rgba(37,99,235,0.12);
+      --ok:#15803d;
+      --warn:#d97706;
+      --err:#dc2626;
+      --shadow:0 28px 60px -40px rgba(15,25,40,0.45);
+      --radius-lg:18px;
+      --radius:12px;
+      --radius-sm:8px;
     }
-    *{box-sizing:border-box}
-    html,body{height:100%}
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:#081019;
+        --bg-alt:#0d1827;
+        --surface:#111d30;
+        --surface-muted:#172942;
+        --border:#1f3554;
+        --border-strong:#2f476d;
+        --text:#e6ecf9;
+        --muted:#8fa2c1;
+        --muted-strong:#bdcbe3;
+        --accent:#7bb6ff;
+        --accent-soft:rgba(123,182,255,0.12);
+        --ok:#2dd17c;
+        --warn:#f4b76b;
+        --err:#ff7c7c;
+        --shadow:0 28px 60px -46px rgba(0,0,0,0.8);
+      }
+    }
+    *{box-sizing:border-box;}
+    html,body{min-height:100%;}
     body{
-      margin:0; background:var(--bg); color:var(--text);
-      font:14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, "Helvetica Neue", Arial;
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font:14px/1.6 "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      -webkit-font-smoothing:antialiased;
     }
-    a{color:var(--accent); text-decoration:none}
-    h1,h2,h3{margin:0 0 .5rem}
-    h1{font-size:20px}
-    h2{font-size:16px; color:#cfe4ff}
-    h3{font-size:14px; color:#cfe4ff}
-    .wrap{max-width:1440px; margin:0 auto; padding:16px}
-    .grid{display:grid; gap:16px}
-    .cols-2{grid-template-columns:repeat(2,1fr)}
+    img{max-width:100%;}
+    a{color:var(--accent);}
+    h1,h2,h3{margin:0;}
+    h1{font-size:28px; line-height:1.2; font-weight:700;}
+    h2{font-size:18px; line-height:1.3; font-weight:600;}
+    h3{font-size:16px; line-height:1.3; font-weight:600;}
+    p{margin:0;}
+    ul{margin:8px 0 0 18px; padding:0;}
+    li{margin:0 0 4px;}
+    .page{min-height:100vh; display:flex; flex-direction:column;}
+    .wrap{width:100%; max-width:1240px; margin:0 auto; padding:0 24px;}
+    .page__header{
+      background:linear-gradient(135deg,#111a2f 0%,#1a2844 50%,#203756 100%);
+      color:#f8fafc;
+      padding:44px 0 36px;
+      box-shadow:var(--shadow);
+    }
+    .header-wrap{display:flex; flex-wrap:wrap; gap:40px; align-items:flex-start; justify-content:space-between;}
+    .header-intro{flex:1 1 420px; display:flex; flex-direction:column; gap:16px;}
+    .eyebrow{display:inline-flex; align-items:center; gap:8px; padding:4px 10px; border-radius:999px; background:rgba(255,255,255,0.16); font-size:12px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase;}
+    .header-intro p{max-width:560px; color:rgba(248,250,252,0.86);}
+    .header-actions{display:flex; flex-wrap:wrap; gap:12px; align-items:center;}
+    .page__main{flex:1; padding:52px 0 72px; background:var(--bg);}
+    .stack{display:flex; flex-direction:column; gap:28px;}
     .panel{
-      background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:16px;
-      box-shadow:0 1px 0 rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.02);
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:var(--radius-lg);
+      padding:24px;
+      box-shadow:0 18px 42px -40px rgba(15,25,40,0.5);
     }
-    .row{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
-    .row > *{flex:1}
-    .row .grow{flex:1} .row .nogrow{flex:0 0 auto}
-    label{display:block; font-size:12px; color:var(--muted); margin-bottom:4px}
-    input,select,button,textarea{
-      width:100%; background:var(--btn2); color:var(--text);
-      border:1px solid var(--border); border-radius:10px; padding:10px; outline:none;
+    .panel__title{display:flex; flex-direction:column; gap:6px; margin-bottom:20px;}
+    .panel__title span{color:var(--muted); font-size:13px;}
+    .panel__title h2{display:flex; align-items:center; gap:12px;}
+    .panel__title .badge{font-size:12px; padding:4px 8px; border-radius:999px; background:var(--accent-soft); color:var(--accent);}
+    .panel__toolbar{display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; margin-bottom:18px;}
+    .panel__toolbar .muted{max-width:640px;}
+    .panel--kpi{padding-bottom:20px;}
+    .kpi-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:18px;}
+    .kpi-card{
+      background:var(--surface-muted);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:18px 20px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
     }
-    input::placeholder{color:#6c7280}
+    .kpi-label{font-size:12px; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); font-weight:600;}
+    .kpi-value{font-size:26px; font-weight:700; color:var(--text);}
+    .kpi-value--small{font-size:16px; font-weight:600; color:var(--muted-strong);}
+    .kpi-hint{font-size:12px; color:var(--muted);}
+    #kpiLast[data-kind="ok"]{color:var(--ok);}
+    #kpiLast[data-kind="warn"]{color:var(--warn);}
+    #kpiLast[data-kind="err"]{color:var(--err);}
+    .layout-grid{
+      display:grid;
+      gap:28px;
+      grid-template-columns:minmax(0,2fr) minmax(0,1fr);
+      align-items:start;
+    }
+    .job-card{
+      background:var(--surface-muted);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:20px;
+      display:flex;
+      flex-direction:column;
+      gap:18px;
+      margin-bottom:18px;
+    }
+    .job-card:last-of-type{margin-bottom:0;}
+    .job-card header{display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start; justify-content:space-between;}
+    .job-card header h3{font-size:15px;}
+    .job-card header p{font-size:13px; color:var(--muted); max-width:420px;}
+    .job-card__body{display:flex; flex-direction:column; gap:16px;}
+    .form-grid{display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(200px,1fr));}
+    .field{display:flex; flex-direction:column; gap:6px;}
+    .field label{font-size:12px; letter-spacing:0.02em; text-transform:uppercase; color:var(--muted); font-weight:600;}
+    .field.checkbox-field{flex-direction:row; align-items:center; gap:10px;}
+    .field.checkbox-field label{margin:0; font-size:13px; letter-spacing:0; text-transform:none; color:var(--text); display:flex; align-items:center; gap:8px;}
+    .field.checkbox-field input[type="checkbox"]{width:auto; height:auto; accent-color:var(--accent);}
+    .field .hint{font-size:12px; color:var(--muted); font-weight:400; text-transform:none;}
+    label{font-weight:600;}
+    input,select,textarea{
+      font:14px/1.5 inherit;
+      color:var(--text);
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:var(--radius-sm);
+      padding:10px 12px;
+      outline:none;
+      transition:border .15s ease, box-shadow .15s ease;
+    }
+    input:focus,select:focus,textarea:focus{
+      border-color:var(--accent);
+      box-shadow:0 0 0 3px var(--accent-soft);
+    }
+    input::placeholder,textarea::placeholder{color:rgba(82,99,124,0.6);}
     button{
-      cursor:pointer; background:#152034; border-color:#243148;
-      transition:transform .05s ease, filter .2s ease, background .2s ease;
+      font:600 14px/1.2 inherit;
+      letter-spacing:0.01em;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      border-radius:12px;
+      padding:11px 18px;
+      border:1px solid transparent;
+      background:var(--surface-muted);
+      color:var(--text);
+      cursor:pointer;
+      transition:transform .15s ease, box-shadow .2s ease, filter .2s ease;
     }
-    button:hover{filter:brightness(1.1)}
-    button:active{transform:translateY(1px)}
-    .btn-row{display:flex; gap:8px; flex-wrap:wrap}
-    .btn-ok{background:linear-gradient(180deg,#183b2f,#112a23); border-color:#214739}
-    .btn-warn{background:linear-gradient(180deg,#3a300c,#291f07); border-color:#4a3a10}
-    .btn-err{background:linear-gradient(180deg,#3b1515,#2a0e0e); border-color:#512020}
-    .btn-accent{background:linear-gradient(180deg,#1c2f4a,#142239); border-color:#264363}
-    .kpi{display:flex; gap:16px; flex-wrap:wrap}
-    .kpi .card{background:var(--chip); border:1px solid var(--border); border-radius:12px; padding:12px 14px}
-    .kpi .num{font-weight:700; font-size:18px}
-    .chip{display:inline-flex; align-items:center; gap:6px; background:var(--chip); border:1px solid var(--border); padding:4px 8px; border-radius:999px; font-size:12px; color:#b7c6e3}
-    .chip.ok{border-color:#1f3a31; background:#11231d; color:#8df1c8}
-    .chip.warn{border-color:#3b2c10; background:#241a08; color:#ffd38b}
-    .chip.err{border-color:#3f1616; background:#241010; color:#ffb1b1}
-    .muted{color:var(--muted)}
-    table{width:100%; border-collapse:separate; border-spacing:0; font-size:13px}
-    thead th{position:sticky; top:0; background:#0e1520; z-index:1}
-    th,td{padding:10px 8px; border-bottom:1px solid var(--border); vertical-align:top}
-    tbody tr:hover{background:#0f1722}
-    .actions{display:flex; gap:6px; flex-wrap:wrap}
-    .right{margin-left:auto}
-    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
-    .toast{position:fixed; right:16px; bottom:16px; display:flex; flex-direction:column; gap:8px; z-index:99999}
-    .toast .t{background:#0e1520; border:1px solid var(--border); color:#cfe4ff; padding:10px 12px; border-radius:10px; max-width:420px; box-shadow:0 6px 30px rgba(0,0,0,.3)}
-    .t.ok{border-color:#1f3a31} .t.err{border-color:#3f1616} .t.warn{border-color:#3b2c10}
-    .help{font-size:12px; color:#9fb1cf}
-    .section-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px}
-    .section-head .title{display:flex; align-items:center; gap:12px}
-    .small{font-size:12px}
-    .tag{background:#0f1722; border:1px solid var(--border); padding:2px 6px; border-radius:6px; color:#a8b6cf}
-    .searchbar{display:flex; gap:8px}
-    .link{cursor:pointer; color:var(--accent); text-decoration:underline}
-    .token-wrap{display:flex; gap:8px; align-items:center}
-    .token-wrap input{width:240px}
-    .token-ind{font-size:12px; padding:4px 8px; border-radius:999px; border:1px solid var(--border); background:var(--chip); color:#b7c6e3}
-    .token-ind.ok{border-color:#1f3a31; background:#11231d; color:#8df1c8}
-    .token-ind.err{border-color:#3f1616; background:#241010; color:#ffb1b1}
-
-    /* Prevent header jump when sticky */
-    thead th::after{content:""; display:block; height:0; margin-bottom:-1px}
+    button:hover{transform:translateY(-1px); box-shadow:0 10px 24px -18px rgba(15,23,42,0.6);}
+    button:active{transform:translateY(0);}
+    .btn-primary,.btn-accent,.btn-ok,.btn-warn,.btn-err{color:#fff;}
+    .btn-primary{background:linear-gradient(135deg,var(--accent),#1d4ed8);}
+    .btn-muted{background:var(--surface); border-color:var(--border); color:var(--muted);}
+    .btn-ghost{background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.25); color:#f1f5f9;}
+    .btn-ghost:hover{filter:brightness(1.08);}
+    .btn-accent{background:linear-gradient(135deg,var(--accent),#1d4ed8);}
+    .btn-ok{background:linear-gradient(135deg,var(--ok),#0f7a33);}
+    .btn-warn{background:linear-gradient(135deg,var(--warn),#b45309);}
+    .btn-err{background:linear-gradient(135deg,var(--err),#b91c1c);}
+    .btn-outline{background:transparent; border:1px solid var(--border); color:var(--text);}
+    .token-panel{
+      flex:0 1 320px;
+      background:rgba(15,25,45,0.25);
+      border-radius:var(--radius);
+      padding:22px;
+      backdrop-filter:blur(12px);
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,0.16);
+    }
+    .token-panel h2{font-size:16px; font-weight:600;}
+    .token-panel p{font-size:13px; color:rgba(248,250,252,0.85);}
+    .token-panel input{background:rgba(15,23,42,0.45); border:1px solid rgba(255,255,255,0.32); color:#fff;}
+    .token-panel input::placeholder{color:rgba(248,250,252,0.65);}
+    .token-panel .token-panel__buttons{display:flex; gap:10px; flex-wrap:wrap;}
+    .token-panel .btn-muted{color:#fff; border-color:rgba(255,255,255,0.4); background:rgba(255,255,255,0.12);}
+    .token-panel .btn-muted:hover{filter:brightness(1.08);}
+    .token-pill{display:flex; align-items:center; gap:10px; background:rgba(15,23,42,0.25); border-radius:999px; padding:6px 14px; font-size:12px; color:#f8fafc;}
+    .token-pill .label{font-weight:600; text-transform:uppercase; letter-spacing:0.04em;}
+    .token-ind{font-size:12px; font-weight:600; padding:4px 10px; border-radius:999px; border:1px solid rgba(255,255,255,0.35); background:rgba(15,23,42,0.25);}
+    .token-ind.ok{background:rgba(16,185,129,0.22); border-color:rgba(16,185,129,0.45); color:#ecfdf6;}
+    .token-ind.err{background:rgba(220,38,38,0.18); border-color:rgba(248,113,113,0.55); color:#fee2e2;}
+    .muted{color:var(--muted);}
+    .small{font-size:12px;}
+    .card-list{display:grid; gap:18px; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); margin-top:18px;}
+    .empty{
+      padding:26px;
+      border:1px dashed var(--border);
+      border-radius:var(--radius);
+      text-align:center;
+      color:var(--muted);
+      background:var(--surface-muted);
+      font-size:13px;
+    }
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      font-size:12px;
+      font-weight:600;
+      padding:4px 10px;
+      border-radius:999px;
+      background:var(--surface);
+      border:1px solid var(--border);
+      color:var(--muted);
+    }
+    .chip.ok{color:var(--ok); border-color:rgba(21,128,61,0.35); background:rgba(21,128,61,0.08);}
+    .chip.warn{color:var(--warn); border-color:rgba(217,119,6,0.35); background:rgba(217,119,6,0.1);}
+    .chip.err{color:var(--err); border-color:rgba(220,38,38,0.35); background:rgba(220,38,38,0.1);}
+    .chip.busy{color:var(--accent); border-color:rgba(37,99,235,0.35); background:var(--accent-soft);}
+    .label{font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;}
+    .task-card,
+    .set-card {
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:16px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      box-shadow:0 12px 30px -32px rgba(15,25,40,0.45);
+    }
+    .task-card__header,
+    .set-card__header {
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      align-items:flex-start;
+    }
+    .task-card__title,
+    .set-card__title {
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+    .task-card__planline {
+      display:flex;
+      gap:8px;
+      align-items:flex-start;
+    }
+    .task-card__planline .label {
+      margin-bottom:0;
+      min-width:72px;
+    }
+    .task-card__plantext {
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      font-size:13px;
+      color:var(--muted);
+    }
+    .task-card__facts {
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      margin:0;
+      padding:0;
+      list-style:none;
+      font-size:12px;
+    }
+    .task-card__facts li {
+      flex:1 1 120px;
+      min-width:120px;
+    }
+    .task-card__facts li span:last-child {
+      margin-top:2px;
+      color:var(--text);
+      font-size:13px;
+    }
+    .task-card__section {
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .task-card__actions {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:4px;
+    }
+    .schedule-form {
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:12px;
+      background:var(--surface-muted);
+      margin-top:10px;
+    }
+    .schedule-form.hidden {
+      display:none;
+    }
+    .schedule-form [data-variant] {
+      display:none;
+    }
+    .schedule-form [data-variant].is-visible {
+      display:flex;
+    }
+    .schedule-actions {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:10px;
+    }
+    .task-card__details {
+      margin-top:10px;
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      background:var(--surface-muted);
+      padding:8px 12px;
+    }
+    .task-card__details summary {
+      cursor:pointer;
+      font-weight:600;
+      color:var(--muted-strong);
+    }
+    .task-card__details[open] summary {
+      margin-bottom:6px;
+    }
+    .task-card__details-body {
+      display:grid;
+      gap:10px;
+    }
+    .set-card__body{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; font-size:13px;}
+    .set-card__actions{display:flex; justify-content:flex-end;}
+    pre.payload{
+      background:var(--bg-alt);
+      border:1px dashed var(--border);
+      border-radius:var(--radius-sm);
+      padding:12px;
+      font-size:12px;
+      line-height:1.45;
+      color:var(--muted-strong);
+      max-height:220px;
+      overflow:auto;
+      margin:0;
+      white-space:pre-wrap;
+      word-break:break-word;
+    }
+    table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      font-size:13px;
+    }
+    thead th{
+      position:sticky;
+      top:0;
+      background:var(--surface);
+      border-bottom:1px solid var(--border-strong);
+      padding:10px 12px;
+      text-align:left;
+      font-weight:600;
+      color:var(--muted-strong);
+    }
+    tbody td{
+      border-bottom:1px solid var(--border);
+      padding:10px 12px;
+      color:var(--text);
+    }
+    tbody tr:last-child td{border-bottom:none;}
+    tbody tr:hover{background:var(--surface-muted);}
+    .table-wrap{max-height:360px; overflow:auto; margin-top:16px; border-radius:var(--radius); border:1px solid var(--border);}
+    .table-wrap table{background:var(--surface);}
+    .search-bar{display:flex; flex-wrap:wrap; gap:12px; align-items:center;}
+    .search-bar input{flex:1 1 260px;}
+    .search-bar button{flex:0 0 auto;}
+    .section-foot{font-size:12px; color:var(--muted);}
+    .monospace{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;}
+    .toast{
+      position:fixed;
+      right:20px;
+      bottom:20px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      z-index:9999;
+      align-items:flex-end;
+    }
+    .toast .t{
+      background:var(--surface);
+      border:1px solid var(--border-strong);
+      border-radius:var(--radius);
+      padding:12px 16px;
+      min-width:220px;
+      color:var(--text);
+      box-shadow:0 16px 42px -32px rgba(15,25,40,0.65);
+    }
+    .toast .t.ok{border-color:rgba(21,128,61,0.35);}    
+    .toast .t.warn{border-color:rgba(217,119,6,0.35);}    
+    .toast .t.err{border-color:rgba(220,38,38,0.35);}    
+    .visually-hidden{
+      position:absolute!important;
+      width:1px!important;
+      height:1px!important;
+      padding:0!important;
+      margin:-1px!important;
+      overflow:hidden!important;
+      clip:rect(0,0,0,0)!important;
+      border:0!important;
+    }
+    @media (max-width:980px){
+      .layout-grid{grid-template-columns:1fr;}
+      .page__main{padding:40px 0 60px;}
+      .header-wrap{gap:24px;}
+      .token-panel{flex:1 1 100%;}
+    }
+    @media (max-width:600px){
+      .wrap{padding:0 18px;}
+      .job-card header{flex-direction:column;}
+      button{width:100%;}
+      .header-actions{flex-direction:column; align-items:flex-start;}
+      .token-pill{width:100%; justify-content:space-between;}
+      .token-panel .token-panel__buttons button{flex:1 1 auto;}
+    }
   </style>
 </head>
 <body>
-  <noscript>
-    <div style="padding:12px; margin:12px; border:1px solid var(--border); border-radius:8px; background:#271a1a; color:#ffb1b1">
-      JavaScript is required for the admin UI to function.
-    </div>
-  </noscript>
-
-  <div class="wrap">
-    <div class="section-head">
-      <div class="title">
-        <h1>Card Search • Admin</h1>
-        <span class="tag">v1</span>
-      </div>
-      <div class="row nogrow" style="gap:8px; align-items:flex-end">
-        <div class="token-wrap nogrow">
-          <div>
-            <label for="adminToken">Admin token</label>
-            <input id="adminToken" placeholder="Paste ADMIN_API_TOKEN" />
-          </div>
-          <div class="nogrow" style="display:flex; gap:8px; align-items:flex-end">
-            <button id="saveToken" class="btn-accent" type="button">Save</button>
-            <button id="clearToken" class="btn-warn" type="button">Clear</button>
-            <span id="tokenStatus" class="token-ind">no token</span>
+  <div class="page">
+    <header class="page__header">
+      <div class="wrap header-wrap">
+        <div class="header-intro">
+          <span class="eyebrow">Card Search Admin</span>
+          <h1>Operations control center</h1>
+          <p>Monitor ingestion, pricing, and foreign exchange pipelines with a dedicated workspace built for the card search team.</p>
+          <div class="header-actions">
+            <button id="refreshAll" type="button" class="btn-ghost">Refresh everything</button>
+            <div class="token-pill">
+              <span class="label">Token</span>
+              <span id="tokenStatus" class="token-ind">-</span>
+            </div>
           </div>
         </div>
-        <button id="refreshAll" class="btn-accent nogrow" type="button">Refresh</button>
-      </div>
-    </div>
-
-    <!-- KPI Strip -->
-    <div class="kpi" id="kpi" role="region" aria-label="KPIs">
-      <div class="card">
-        <div class="muted small">Scheduler tasks</div>
-        <div class="num" id="kpiTasks">–</div>
-      </div>
-      <div class="card">
-        <div class="muted small">Enabled sets</div>
-        <div class="num" id="kpiSets">–</div>
-      </div>
-      <div class="card">
-        <div class="muted small">Last action</div>
-        <div id="kpiLast" class="small muted mono">–</div>
-      </div>
-    </div>
-
-    <div class="grid cols-2" style="margin-top:16px">
-      <!-- Jobs panel -->
-      <div class="panel" role="region" aria-label="Jobs">
-        <h2>Jobs</h2>
-        <p class="help">Run ad-hoc jobs. These call your GraphQL/REST admin endpoints behind the scenes.</p>
-
-        <h3 style="margin-top:12px">FX Daily</h3>
-        <div class="row">
-          <div>
-            <label for="fxBackfill">Backfill FX days (1–365)</label>
-            <input type="number" id="fxBackfill" min="1" max="365" placeholder="e.g., 30" />
-          </div>
-          <div class="nogrow" style="align-self:flex-end">
-            <button class="btn-ok" id="runFxDaily" type="button">Run FX</button>
-          </div>
-        </div>
-
-        <h3 style="margin-top:16px">Ingest Set (TCGdex)</h3>
-        <div class="row">
-          <div>
-            <label for="ingestSetInput">Set (abbr / tcgdex / ptcg / name)</label>
-            <input id="ingestSetInput" placeholder="e.g., SSP or sv08 or 'Surging Sparks'" />
-          </div>
-          <div>
-            <label for="ingestRefresh">Refresh live</label>
-            <select id="ingestRefresh">
-              <option value="false">Use cache if present</option>
-              <option value="true">Bypass cache (live)</option>
-            </select>
-          </div>
-          <div>
-            <label for="ingestDry">Dry run</label>
-            <select id="ingestDry">
-              <option value="false" selected>No</option>
-              <option value="true">Yes</option>
-            </select>
-          </div>
-          <div class="nogrow" style="align-self:flex-end">
-            <button class="btn-ok" id="runIngestSet" type="button">Ingest</button>
-          </div>
-        </div>
-
-        <h3 style="margin-top:16px">Collect Prices</h3>
-        <div class="row">
-          <div>
-            <label for="collectSetInput">Set (abbr / tcgdex / ptcg / name)</label>
-            <input id="collectSetInput" placeholder="e.g., SSP or sv08" />
-          </div>
-          <div>
-            <label for="collectSince">Since (YYYY-MM-DD)</label>
-            <input id="collectSince" placeholder="2025-09-01" />
-          </div>
-          <div>
-            <label for="collectPrewarmFx">Prewarm FX (gap-fill)</label>
-            <select id="collectPrewarmFx">
-              <option value="true" selected>Yes</option>
-              <option value="false">No</option>
-            </select>
-          </div>
-          <div>
-            <label for="collectBackfillFxDays">FX backfill days</label>
-            <input type="number" id="collectBackfillFxDays" min="0" max="365" placeholder="e.g., 30" />
-          </div>
-        </div>
-        <div class="row">
-          <div>
-            <label for="collectPauseMs">Pause between provider calls (ms)</label>
-            <input type="number" id="collectPauseMs" min="0" step="100" placeholder="e.g., 250" />
-          </div>
-          <div>
-            <label for="collectDry">Dry run</label>
-            <select id="collectDry">
-              <option value="false" selected>No</option>
-              <option value="true">Yes</option>
-            </select>
-          </div>
-          <div class="nogrow" style="align-self:flex-end">
-            <button class="btn-ok" id="runCollect" type="button">Collect</button>
-          </div>
-        </div>
-
-        <h3 style="margin-top:16px">Price Rollups (1/7/30/90)</h3>
-        <div class="row">
-          <div>
-            <label for="rollupScope">Scope (blank = global)</label>
-            <select id="rollupScope">
-              <option value="">Global</option>
-              <option value="set">By Set</option>
-              <option value="card">By Card</option>
-            </select>
-          </div>
-          <div>
-            <label for="rollupTarget">Set or CardId (if scope chosen)</label>
-            <input id="rollupTarget" placeholder="sv08 OR sv08-123" />
-          </div>
-          <div>
-            <label for="rollupVariant">Variant (if card scope)</label>
-            <input id="rollupVariant" placeholder="normal" />
-          </div>
-          <div>
-            <label for="rollupAsOf">asOf (YYYY-MM-DD)</label>
-            <input id="rollupAsOf" placeholder="today" />
-          </div>
-          <div>
-            <label for="rollupBatch">Batch size</label>
-            <input id="rollupBatch" type="number" min="1" placeholder="e.g., 500" />
-          </div>
-          <div class="nogrow" style="align-self:flex-end">
-            <button class="btn-ok" id="runRollups" type="button">Rebuild</button>
+        <div class="token-panel">
+          <h2>Access token</h2>
+          <p>Stored locally in your browser and sent as <span class="monospace">x-admin-token</span> with each request.</p>
+          <label class="visually-hidden" for="adminToken">Admin token</label>
+          <input id="adminToken" placeholder="Paste admin token here" autocomplete="off" />
+          <div class="token-panel__buttons">
+            <button id="saveToken" type="button" class="btn-primary">Save token</button>
+            <button id="clearToken" type="button" class="btn-muted">Clear</button>
           </div>
         </div>
       </div>
+    </header>
 
-      <!-- Scheduler panel -->
-      <div class="panel" role="region" aria-label="Scheduler">
-        <div class="section-head">
-          <h2>Scheduler</h2>
-          <div class="btn-row">
-            <button id="refreshTasks" class="btn-accent" type="button">Refresh</button>
+    <main class="page__main">
+      <div class="wrap stack">
+        <section class="panel panel--kpi">
+          <div class="panel__title">
+            <h2>At a glance</h2>
+            <span>Key metrics update whenever data refreshes or a job completes.</span>
           </div>
-        </div>
-        <div class="muted small">View and control in-process scheduled jobs. "Run now" executes immediately using the saved token.</div>
-        <div id="tasksTableWrap" style="margin-top:8px; max-height:420px; overflow:auto">
-          <table aria-label="Scheduler tasks">
-            <thead>
-              <tr>
-                <th>Task</th>
-                <th>Plan</th>
-                <th>Status</th>
-                <th>Last / Next</th>
-                <th>Tries</th>
-                <th class="right">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="tasksTbody">
-              <tr><td colspan="6" class="muted">No tasks loaded.</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- FX Rates panel -->
-      <div class="panel" role="region" aria-label="FX Rates">
-        <div class="section-head">
-          <div class="title">
-            <h2>FX Rates (ECB)</h2>
-            <div id="fxMeta" class="muted small">–</div>
+          <div class="kpi-grid">
+            <article class="kpi-card">
+              <span class="kpi-label">Scheduler tasks</span>
+              <span class="kpi-value" id="kpiTasks">-</span>
+              <span class="kpi-hint">Registered and ready</span>
+            </article>
+            <article class="kpi-card">
+              <span class="kpi-label">Enabled sets</span>
+              <span class="kpi-value" id="kpiSets">-</span>
+              <span class="kpi-hint">Available for search and pricing</span>
+            </article>
+            <article class="kpi-card">
+              <span class="kpi-label">Latest action</span>
+              <span class="kpi-value kpi-value--small" id="kpiLast">Awaiting activity</span>
+              <span class="kpi-hint">Updates after each toast</span>
+            </article>
           </div>
-          <div class="btn-row" style="gap:8px">
-            <input id="fxDate" type="date" class="small" style="max-width:150px" />
-            <button id="fxFetch" class="btn-accent" type="button">Load</button>
+        </section>
+
+        <section class="panel scheduler-panel">
+          <div class="panel__title">
+            <h2>Scheduler</h2>
+            <span>View recurring jobs, tweak cron schedules, and trigger runs without leaving the page.</span>
           </div>
-        </div>
-        <div class="muted small">Latest available ECB EUR base rates. Leave date blank for the most recent fix.</div>
-        <div id="fxTableWrap" style="margin-top:8px; max-height:320px; overflow:auto">
-          <table aria-label="FX rates">
-            <thead>
-              <tr>
-                <th>Currency</th>
-                <th>Rate vs EUR</th>
-              </tr>
-            </thead>
-            <tbody id="fxRatesTbody">
-              <tr><td colspan="2" class="muted">No rates loaded.</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+          <div class="panel__toolbar">
+            <span class="muted small">Use <strong>Edit schedule</strong> to change cadence or pause tasks. Updates save instantly.</span>
+            <button id="refreshTasks" type="button" class="btn-outline">Refresh list</button>
+          </div>
+          <div id="tasksList" class="card-list">
+            <div class="empty">No tasks loaded yet.</div>
+          </div>
+        </section>
 
-      <!-- Sets section --><!-- Sets section -->
-    <div class="panel" style="margin-top:16px" role="region" aria-label="Sets">
-      <div class="section-head">
-        <h2>Sets</h2>
-        <div class="searchbar">
-          <label class="visually-hidden" for="setsQuery">Search sets</label>
-          <input id="setsQuery" placeholder="Search by name / abbr / code…" />
-          <button id="searchSets" class="btn-accent" type="button">Search</button>
-        </div>
-      </div>
-      <div id="setsTableWrap" style="margin-top:8px; max-height:480px; overflow:auto">
-        <table aria-label="Sets">
-          <thead>
-            <tr>
-              <th>Code</th>
-              <th>Abbr</th>
-              <th>Name</th>
-              <th>Series</th>
-              <th>Released</th>
-              <th>Total</th>
-              <th class="right">Toggle</th>
-            </tr>
-          </thead>
-          <tbody id="setsTbody">
-            <tr><td colspan="7" class="muted">Run a search to load sets…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+        <div class="layout-grid">
+          <section class="panel jobs-panel">
+            <div class="panel__title">
+              <h2>Run one-off jobs</h2>
+              <span>Queue targeted maintenance jobs without touching the CLI.</span>
+            </div>
 
-    <!-- Footer -->
-    <div class="muted small" style="margin-top:16px">
-      Tips:
-      <ul>
-        <li>Use <span class="mono">SSP</span>, <span class="mono">sv08</span>, or a name fragment like <span class="mono">Surging</span> for set inputs.</li>
-        <li>“Collect Prices” reads TCGdex / ptcgio (with PPT gap-fill) then stores GBP prices using FX daily.</li>
-        <li>“Rollups” aggregates 1/7/30/90 day windows so the app can respond without heavy queries.</li>
-      </ul>
-    </div>
+            <article class="job-card">
+              <header>
+                <div>
+                  <h3>FX Daily</h3>
+                  <p>Fetch the latest ECB base rates and optionally backfill missing days.</p>
+                </div>
+                <button id="runFxDaily" type="button" class="btn-primary">Queue FX daily</button>
+              </header>
+              <div class="job-card__body">
+                <div class="form-grid">
+                  <div class="field">
+                    <label for="fxBackfill">Backfill days (0-365)</label>
+                    <input id="fxBackfill" type="number" min="0" max="365" placeholder="0" />
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article class="job-card">
+              <header>
+                <div>
+                  <h3>Ingest set (TCGdex)</h3>
+                  <p>Pull metadata for a single set and sync it into the card search index.</p>
+                </div>
+                <button id="runIngestSet" type="button" class="btn-accent">Queue ingest</button>
+              </header>
+              <div class="job-card__body">
+                <div class="form-grid">
+                  <div class="field">
+                    <label for="ingestSetInput">Set identifier</label>
+                    <input id="ingestSetInput" placeholder="SSP / sv08 / Surging Sparks" />
+                  </div>
+                  <div class="field">
+                    <label for="ingestRefresh">Refresh type</label>
+                    <select id="ingestRefresh">
+                      <option value="false">Use cache when possible</option>
+                      <option value="true">Bypass cache (live fetch)</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="ingestDry">Dry run</label>
+                    <select id="ingestDry">
+                      <option value="false" selected>No</option>
+                      <option value="true">Yes</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article class="job-card">
+              <header>
+                <div>
+                  <h3>Collect prices</h3>
+                  <p>Request provider pricing for a set and write it to storage with FX normalization.</p>
+                </div>
+                <button id="runCollect" type="button" class="btn-ok">Queue collection</button>
+              </header>
+              <div class="job-card__body">
+                <div class="form-grid">
+                  <div class="field">
+                    <label for="collectSetInput">Set identifier</label>
+                    <input id="collectSetInput" placeholder="SSP / sv08 / Surging Sparks" />
+                  </div>
+                  <div class="field">
+                    <label for="collectSince">Since (YYYY-MM-DD)</label>
+                    <input id="collectSince" placeholder="2024-12-01" />
+                  </div>
+                  <div class="field">
+                    <label for="collectPrewarmFx">Prewarm FX</label>
+                    <select id="collectPrewarmFx">
+                      <option value="true" selected>Yes - ensure FX coverage</option>
+                      <option value="false">No - skip FX prewarm</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="collectBackfillFxDays">FX backfill days</label>
+                    <input id="collectBackfillFxDays" type="number" min="0" max="365" placeholder="30" />
+                  </div>
+                  <div class="field">
+                    <label for="collectPauseMs">Pause between provider calls (ms)</label>
+                    <input id="collectPauseMs" type="number" min="0" step="100" placeholder="250" />
+                  </div>
+                  <div class="field">
+                    <label for="collectDry">Dry run</label>
+                    <select id="collectDry">
+                      <option value="false" selected>No</option>
+                      <option value="true">Yes</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article class="job-card">
+              <header>
+                <div>
+                  <h3>Verify data health</h3>
+                  <p>Audit coverage, prices, and rollups; optionally apply safe fixes.</p>
+                </div>
+                <button id="runVerifyHealth" type="button" class="btn-accent">Run health check</button>
+              </header>
+              <div class="job-card__body">
+                <div class="form-grid">
+                  <div class="field">
+                    <label for="healthScope">Scope</label>
+                    <select id="healthScope">
+                      <option value="all" selected>All data</option>
+                      <option value="set">Single set</option>
+                      <option value="card">Single card</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="healthTarget">Target</label>
+                    <input id="healthTarget" placeholder="Not required for all scope" />
+                  </div>
+                  <div class="field">
+                    <label for="healthWarnStale">Warn if stale (days)</label>
+                    <input id="healthWarnStale" type="number" min="0" step="1" value="2" />
+                  </div>
+                  <div class="field checkbox-field">
+                    <label>
+                      <input id="healthFixVariants" type="checkbox" />
+                      <span>Fix missing variants</span>
+                    </label>
+                  </div>
+                  <div class="field checkbox-field">
+                    <label>
+                      <input id="healthRebuildRollups" type="checkbox" />
+                      <span>Rebuild missing rollups</span>
+                    </label>
+                  </div>
+                  <div class="field checkbox-field">
+                    <label>
+                      <input id="healthDryRun" type="checkbox" />
+                      <span>Dry run</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article class="job-card">
+              <header>
+                <div>
+                  <h3>Price rollups</h3>
+                  <p>Recompute 1/7/30/90 day rollups for the selected scope.</p>
+                </div>
+                <button id="runRollups" type="button" class="btn-accent">Rebuild rollups</button>
+              </header>
+              <div class="job-card__body">
+                <div class="form-grid">
+                  <div class="field">
+                    <label for="rollupScope">Scope</label>
+                    <select id="rollupScope">
+                      <option value="">Global</option>
+                      <option value="set">By set</option>
+                      <option value="card">By card</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="rollupTarget">Target</label>
+                    <input id="rollupTarget" placeholder="sv08 or sv08-123" />
+                  </div>
+                  <div class="field">
+                    <label for="rollupVariant">Variant</label>
+                    <input id="rollupVariant" placeholder="normal" />
+                  </div>
+                  <div class="field">
+                    <label for="rollupAsOf">asOf (YYYY-MM-DD)</label>
+                    <input id="rollupAsOf" placeholder="today" />
+                  </div>
+                  <div class="field">
+                    <label for="rollupBatch">Batch size</label>
+                    <input id="rollupBatch" type="number" min="1" placeholder="500" />
+                  </div>
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <section class="panel fx-panel">
+            <div class="panel__title">
+              <h2>FX rates (ECB)</h2>
+              <span id="fxMeta" class="muted">-</span>
+            </div>
+            <div class="search-bar" style="margin-bottom:12px;">
+              <div class="field" style="flex:1 1 auto;">
+                <label for="fxDate">Fix date</label>
+                <input id="fxDate" type="date" />
+              </div>
+              <button id="fxFetch" type="button" class="btn-accent">Load rates</button>
+            </div>
+            <p class="muted small">Leave the date blank to pull the most recent available fix. Rates are EUR base.</p>
+            <div class="table-wrap">
+              <table aria-label="FX rates">
+                <thead>
+                  <tr>
+                    <th>Currency</th>
+                    <th>Rate vs EUR</th>
+                  </tr>
+                </thead>
+                <tbody id="fxRatesTbody">
+                  <tr><td colspan="2" class="muted">No rates loaded.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <section class="panel sets-panel">
+          <div class="panel__title">
+            <h2>Set toggles</h2>
+            <span>Enable or disable availability in the card search experience.</span>
+          </div>
+          <div class="search-bar">
+            <label class="visually-hidden" for="setsQuery">Search sets</label>
+            <input id="setsQuery" placeholder="Search by name, abbreviation, or code" />
+            <button id="searchSets" type="button" class="btn-accent">Search sets</button>
+          </div>
+          <div id="setsList" class="card-list">
+            <div class="empty">Run a search to load sets.</div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel__title">
+            <h2>Tips</h2>
+            <span>Quick reminders while running maintenance tasks.</span>
+          </div>
+          <ul class="muted small">
+            <li>Try codes like <span class="monospace">SSP</span>, <span class="monospace">sv08</span>, or words like <span class="monospace">Surging</span> to find sets quickly.</li>
+            <li><strong>Collect prices</strong> pulls from TCGdex, PTCG.io, and fills gaps with PPT before applying GBP FX.</li>
+            <li><strong>Rollups</strong> rebuild the 1/7/30/90 day aggregates so downstream queries stay fast.</li>
+          </ul>
+        </section>
+      </div>
+    </main>
   </div>
 
-  <!-- Toasts -->
   <div class="toast" id="toast" aria-live="polite" aria-atomic="true"></div>
-
-  <!-- External script drives all behavior -->
   <script src="./adminScript.js" type="module"></script>
 </body>
 </html>

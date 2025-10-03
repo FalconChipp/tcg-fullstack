@@ -16,3 +16,4 @@ backend/scripts/exportSchema.js
 frontend/.env
 frontend/.env
 /frontend/scripts
+backend/logs/cardsearch-2025-10-03.00.log

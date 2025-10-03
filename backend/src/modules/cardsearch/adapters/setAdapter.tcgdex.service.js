@@ -49,6 +49,12 @@ function normAbbr(v) {
   return String(v);
 }
 
+function normName(v) {
+  if (v == null) return null;
+  if (typeof v === "object") return v.en || Object.values(v)[0] || null;
+  return String(v);
+}
+
 function toNullableInt(value) {
   if (value == null) return null;
   if (typeof value === "number") {
@@ -74,16 +80,18 @@ function toNullableInt(value) {
 
 /** Normalize TCGdex Set -> our m_Set shape */
 function normalizeSet(set) {
+  const officialCount = toNullableInt(set?.officialCount);
+  const totalCards = toNullableInt(set?.cardCount ?? set?.total ?? set?.card_counts);
   return {
     code: set?.id || set?.code || set?.shortCode || null, // TCGdex commonly uses "id" like 'sv02'
     abbreviation: normAbbr(set?.abbreviation ?? set?.abbr ?? set?.shortCode),
     name: normName(set?.name),
     era: set?.series || null,
     release_date: set?.releaseDate || null,
-    official_count: set?.officialCount ?? null,
-    total_cards: set?.cardCount ?? null,
-    set_logo: set?.images?.logo ?? null,
-    set_symbol: set?.images?.symbol ?? null,
+    official_count: officialCount,
+    total_cards: totalCards ?? officialCount,
+    set_logo: set?.images?.logo ?? set?.logo ?? null,
+    set_symbol: set?.images?.symbol ?? set?.symbol ?? null,
     source_at: new Date().toISOString(),
     generator_version: "tcgdex-v2",
   };

@@ -318,14 +318,14 @@ app.get('/health', (_req, res) => res.json({ status: 'ok', timestamp: Date.now()
 app.get('/graphql', (_req, res) => res.status(200).send('OK'));
 
 // Admin UI (static HTML/JS via functions you ship)
-// app.get('/admin', (_req, res) => {
-//   res.set('Cache-Control', 'no-store');
-//   res.type('text/html; charset=utf-8').send(adminPageHtml());
-// });
-// app.get('/admin/admin.js', (_req, res) => {
-//   res.set('Cache-Control', 'no-store');
-//   res.type('application/javascript; charset=utf-8').send(adminScriptJs());
-// });
+app.get('/admin', (_req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.type('text/html; charset=utf-8').send(adminPageHtml());
+});
+app.get('/admin/admin.js', (_req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.type('application/javascript; charset=utf-8').send(adminScriptJs());
+});
 
 // [CARDSEARCH] Mount admin routes with UI allowlist:
 // - UI endpoints (/ui, /adminScript.js, /partials/*) are public.
@@ -340,7 +340,6 @@ try {
   app.use('/admin/cardsearch', requireAdmin, apiRouter());
 
   // Optional convenience redirects
-  app.get('/admin', (_req, res) => res.redirect(302, '/admin/cardsearch/ui'));
   app.get('/admin/cardsearch', (_req, res) => res.redirect(302, '/admin/cardsearch/ui'));
 
   logger.info('[Cardsearch] admin routes mounted at /admin/cardsearch (public UI + protected API)');

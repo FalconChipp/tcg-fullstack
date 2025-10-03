@@ -8,6 +8,7 @@ export default (sequelize, DataTypes) => {
     abbreviation: DataTypes.STRING(32),
     official_count: DataTypes.INTEGER,
     total_cards: DataTypes.INTEGER,
+    enabled: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     set_logo: DataTypes.TEXT,
     set_symbol: DataTypes.TEXT,
     source_at: DataTypes.DATE,

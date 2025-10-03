@@ -13,3 +13,17 @@
 {"time":1759434062474,"level":"warn","name":"tcgdex.adapter","msg":"tcgdex.cards.fallback","extra":{"set":"sv02","url":"https://api.tcgdex.net/v2/en/sets/sv02/cards"},"pid":753492}
 {"time":1759434451433,"level":"info","name":"tcgdex.adapter","msg":"tcgdex.refresh","extra":{"requested":"sv08","usedCode":"sv08","via":"cards-query"},"pid":756084}
 {"time":1759434452275,"level":"warn","name":"tcgdex.adapter","msg":"tcgdex.cards.fallback","extra":{"set":"sv08","url":"https://api.tcgdex.net/v2/en/sets/sv08/cards"},"pid":756084}
+{"time":1759434575032,"level":"info","name":"tcgdex.adapter","msg":"tcgdex.refresh","extra":{"requested":"sv02","usedCode":"sv02","via":"cards-query"},"pid":757784}
+{"time":1759434576093,"level":"warn","name":"tcgdex.adapter","msg":"tcgdex.cards.fallback","extra":{"set":"sv02","url":"https://api.tcgdex.net/v2/en/sets/sv02/cards"},"pid":757784}
+{"time":1759434587146,"level":"info","name":"tcgdex.adapter","msg":"tcgdex.refresh","extra":{"requested":"sv02","usedCode":"sv02","via":"cards-query"},"pid":758160}
+{"time":1759434588278,"level":"warn","name":"tcgdex.adapter","msg":"tcgdex.cards.fallback","extra":{"set":"sv02","url":"https://api.tcgdex.net/v2/en/sets/sv02/cards"},"pid":758160}
+{"time":1759435367059,"level":"info","name":"tcgdex.adapter","msg":"tcgdex.refresh","extra":{"requested":"sv02","usedCode":"sv02","via":"cards-query"},"pid":761432}
+{"time":1759435368097,"level":"warn","name":"tcgdex.adapter","msg":"tcgdex.cards.fallback","extra":{"set":"sv02","url":"https://api.tcgdex.net/v2/en/sets/sv02/cards"},"pid":761432}
+{"time":1759435639696,"level":"info","name":"tcgdex.adapter","msg":"tcgdex.refresh","extra":{"requested":"sv08","usedCode":"sv08","via":"cards-query"},"pid":758580}
+{"time":1759435640810,"level":"warn","name":"tcgdex.adapter","msg":"tcgdex.cards.fallback","extra":{"set":"sv08","url":"https://api.tcgdex.net/v2/en/sets/sv08/cards"},"pid":758580}
+{"time":1759435783304,"level":"info","name":"tcgdex.adapter","msg":"tcgdex.refresh","extra":{"requested":"sv02","usedCode":"sv02","via":"cards-query"},"pid":758580}
+{"time":1759435784306,"level":"warn","name":"tcgdex.adapter","msg":"tcgdex.cards.fallback","extra":{"set":"sv02","url":"https://api.tcgdex.net/v2/en/sets/sv02/cards"},"pid":758580}
+{"time":1759436100017,"level":"info","name":"tcgdex.adapter","msg":"tcgdex.refresh","extra":{"requested":"sv03.5","usedCode":"sv03.5","via":"cards-query"},"pid":758580}
+{"time":1759436100018,"level":"info","name":"tcgdex.adapter","msg":"tcgdex.refresh","extra":{"requested":"sv06","usedCode":"sv06","via":"cards-query"},"pid":758580}
+{"time":1759436100832,"level":"warn","name":"tcgdex.adapter","msg":"tcgdex.cards.fallback","extra":{"set":"sv06","url":"https://api.tcgdex.net/v2/en/sets/sv06/cards"},"pid":758580}
+{"time":1759436100833,"level":"warn","name":"tcgdex.adapter","msg":"tcgdex.cards.fallback","extra":{"set":"sv03.5","url":"https://api.tcgdex.net/v2/en/sets/sv03.5/cards"},"pid":758580}

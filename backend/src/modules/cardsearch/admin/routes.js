@@ -20,6 +20,106 @@ const ADMIN_DIR = __dirname;
 const HTML_FILE = path.join(ADMIN_DIR, "adminPage.html");
 const SCRIPT_FILE = path.join(ADMIN_DIR, "adminScript.js");
 
+const SET_TASK_PREFIXES = ["ingest", "collect", "rollup"];
+
+let setEnabledColumnState = null;
+let setEnabledColumnPromise = null;
+let setEnabledDescribeWarned = false;
+
+async function ensureSetEnabledColumn() {
+  if (setEnabledColumnState !== null) {
+    return setEnabledColumnState;
+  }
+  if (!setEnabledColumnPromise) {
+    setEnabledColumnPromise = (async () => {
+      let hasColumn = true;
+      try {
+        const desc = typeof m_Set.describe === "function" ? await m_Set.describe() : null;
+        hasColumn = !!desc?.enabled;
+      } catch (err) {
+        if (!setEnabledDescribeWarned) {
+          console.warn("[cardsearch admin] m_sets.describe failed, assuming no 'enabled' column", err?.message || err);
+          setEnabledDescribeWarned = true;
+        }
+        hasColumn = false;
+      }
+      if (!hasColumn && typeof m_Set.removeAttribute === "function" && m_Set.rawAttributes?.enabled) {
+        m_Set.removeAttribute("enabled");
+        if (typeof m_Set.refreshAttributes === "function") {
+          m_Set.refreshAttributes();
+        }
+      }
+      setEnabledColumnState = hasColumn;
+      setEnabledColumnPromise = null;
+      return hasColumn;
+    })();
+  }
+  return setEnabledColumnPromise;
+}
+
+function isTaskNotFoundError(err) {
+  return !!(err && typeof err.message === "string" && err.message.toLowerCase().includes("task not found"));
+}
+
+function safeSchedulerList() {
+  if (Scheduler && typeof Scheduler.list === "function") {
+    try {
+      return Scheduler.list() || [];
+    } catch (err) {
+      console.warn("[cardsearch admin] scheduler.list failed", err?.message || err);
+    }
+  }
+  return [];
+}
+
+function isSetEnabledFromScheduler(code, tasks) {
+  if (!code) return false;
+  const list = Array.isArray(tasks) ? tasks : [];
+  const suffix = `:${code}`;
+  let seen = false;
+  for (const task of list) {
+    if (!task) continue;
+    const id = typeof task.id === "string" ? task.id : "";
+    const payload = task.payload || {};
+    const matchesId = id.endsWith(suffix);
+    const matchesPayloadSet = typeof payload.set === "string" && payload.set === code;
+    const matchesPayloadSets = Array.isArray(payload.sets) && payload.sets.includes(code);
+    if (!(matchesId || matchesPayloadSet || matchesPayloadSets)) continue;
+    seen = true;
+    const status = typeof task.status === "string" ? task.status.toLowerCase() : "";
+    if (status !== "paused") return true;
+  }
+  return seen ? false : false;
+}
+
+async function syncSchedulerForSet(code, enabled) {
+  if (!code || !Scheduler) return;
+  const ids = SET_TASK_PREFIXES.map((prefix) => `${prefix}:${code}`);
+  if (enabled) {
+    if (typeof Scheduler.ensureSetTasks === "function") {
+      await Scheduler.ensureSetTasks(code);
+    }
+    if (typeof Scheduler.resume === "function") {
+      for (const id of ids) {
+        try {
+          Scheduler.resume(id);
+        } catch (err) {
+          if (!isTaskNotFoundError(err)) throw err;
+        }
+      }
+    }
+  } else if (typeof Scheduler.pause === "function") {
+    for (const id of ids) {
+      try {
+        Scheduler.pause(id);
+      } catch (err) {
+        if (!isTaskNotFoundError(err)) throw err;
+      }
+    }
+  }
+}
+
+
 // ---------------- Public UI ----------------
 export function publicRouter() {
   const r = express.Router();
@@ -88,6 +188,19 @@ export function apiRouter() {
           jobName = "priceRollups";
           payload = { scope: "set", set: String(req.body?.set || "").trim() };
           break;
+        case "VERIFY_HEALTH": {
+          jobName = "verifyDataHealth";
+          payload = {
+            scope: (req.body?.scope || "all").toLowerCase(),
+            target: req.body?.target || undefined,
+            warnStaleDays: Number(req.body?.warnStaleDays) || 2,
+            fixMissingVariants: !!req.body?.fixMissingVariants,
+            rebuildRollups: !!req.body?.rebuildRollups,
+            dryRun: !!req.body?.dryRun,
+          };
+          break;
+        }
+
         default:
           return res.status(400).json({ ok: false, error: `Unknown kind: ${kind}` });
       }
@@ -129,6 +242,49 @@ export function apiRouter() {
     try {
       await Scheduler.resume(String(req.params.id || ""));
       res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err?.message || String(err) });
+    }
+  });
+
+  r.put("/scheduler/:id", express.json(), async (req, res) => {
+    try {
+      const id = String(req.params.id || "").trim();
+      if (!id) return res.status(400).json({ ok: false, error: "id is required" });
+
+      const body = req.body || {};
+      const cronExp = typeof body.cronExp === "string" ? body.cronExp.trim() : undefined;
+      let timezone;
+      if (Object.prototype.hasOwnProperty.call(body, "timezone")) {
+        if (body.timezone === null) {
+          timezone = null;
+        } else if (typeof body.timezone === "string") {
+          const trimmed = body.timezone.trim();
+          timezone = trimmed.length ? trimmed : null;
+        } else {
+          timezone = undefined;
+        }
+      }
+      let description;
+      if (Object.prototype.hasOwnProperty.call(body, "description")) {
+        if (body.description === null) {
+          description = null;
+        } else if (typeof body.description === "string") {
+          const trimmedDesc = body.description.trim();
+          description = trimmedDesc.length ? trimmedDesc : null;
+        } else {
+          description = undefined;
+        }
+      }
+      const enabled = typeof body.enabled === "boolean" ? body.enabled : undefined;
+
+      const task = await Scheduler.updateCron(id, {
+        cronExp,
+        timezone,
+        description,
+        enabled,
+      });
+      res.json({ ok: true, task });
     } catch (err) {
       res.status(500).json({ ok: false, error: err?.message || String(err) });
     }
@@ -185,23 +341,28 @@ export function apiRouter() {
           { name: { [Op.like]: like } },
         ];
       }
+
+      const hasEnabledColumn = await ensureSetEnabledColumn();
       const rows = await m_Set.findAll({
         where,
         order: [["release_date", "DESC"]],
         limit,
       });
 
+      const schedulerTasks = hasEnabledColumn ? null : safeSchedulerList();
+
       const items = rows.map((r) => {
         const x = r.get();
+        const code = x.code;
         return {
-          code: x.code,
+          code,
           abbr: x.abbreviation ?? null,
           name: x.name ?? null,
           series: null,
           releasedAt: x.release_date ?? null,
           total: x.total_cards ?? x.official_count ?? null,
           lang: null,
-          enabled: !!x.enabled,
+          enabled: hasEnabledColumn ? !!x.enabled : isSetEnabledFromScheduler(code, schedulerTasks),
         };
       });
       res.json(items);
@@ -213,30 +374,33 @@ export function apiRouter() {
   r.post("/sets/toggle", express.json(), async (req, res) => {
     try {
       const code = String(req.body?.code || "").trim();
-      const enabled = !!req.body?.enabled;
+      const requestedEnabled = !!req.body?.enabled;
       if (!code) return res.status(400).json({ ok: false, error: "code is required" });
 
+      const hasEnabledColumn = await ensureSetEnabledColumn();
       const row = await m_Set.findOne({ where: { code } });
       if (!row) return res.status(404).json({ ok: false, error: `Set not found: ${code}` });
 
-      if ("enabled" in row.get()) {
-        row.set("enabled", enabled);
+      if (hasEnabledColumn && typeof row.set === "function") {
+        row.set("enabled", requestedEnabled);
         await row.save();
       }
 
-      if (enabled && Scheduler?.ensureSetTasks) {
-        await Scheduler.ensureSetTasks(code);
-      }
+      await syncSchedulerForSet(code, requestedEnabled);
+
+      const data = row.get();
+      const schedulerTasks = hasEnabledColumn ? null : safeSchedulerList();
+      const effectiveEnabled = hasEnabledColumn ? !!data.enabled : isSetEnabledFromScheduler(code, schedulerTasks);
 
       res.json({
         ok: true,
         set: {
-          code: row.get("code"),
-          abbr: row.get("abbreviation") ?? null,
-          name: row.get("name") ?? null,
-          releasedAt: row.get("release_date") ?? null,
-          total: row.get("total_cards") ?? row.get("official_count") ?? null,
-          enabled,
+          code: data.code,
+          abbr: data.abbreviation ?? null,
+          name: data.name ?? null,
+          releasedAt: data.release_date ?? null,
+          total: data.total_cards ?? data.official_count ?? null,
+          enabled: effectiveEnabled,
         },
       });
     } catch (err) {

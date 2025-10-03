@@ -97,10 +97,6 @@ export async function ingestSet(opts) {
           "image_large",
           "set_code",
           "number",
-          "images",
-          "illustrator",
-          "types",
-          "subtypes",
         ],
       });
     }
@@ -118,10 +114,6 @@ export async function ingestSet(opts) {
           "image_large",
           "set_code",
           "number",
-          "images",
-          "illustrator",
-          "types",
-          "subtypes",
         ],
       });
     }
@@ -212,6 +204,12 @@ async function upsertSet(s, t) {
   if (dirty) await existing.save({ transaction: t });
 }
 
+async function planDiffs(setCode, cards, variantsByCardId) {
+  const cardDiff = await computeCardDiff(setCode, cards, null);
+  const variantPlan = await computeVariantPlan(setCode, variantsByCardId, null);
+  return { cardDiff, variantPlan };
+}
+
 async function computeCardDiff(setCode, desiredCards, t) {
   const existingRows = await m_Card.findAll({
     where: { set_code: setCode },
@@ -226,10 +224,6 @@ async function computeCardDiff(setCode, desiredCards, t) {
       "regulation_mark",
       "image_small",
       "image_large",
-      "images",
-      "illustrator",
-      "types",
-      "subtypes",
     ],
     transaction: t,
   });
@@ -313,7 +307,6 @@ async function countVariantsForSet(setCode, t) {
 
 function sameCard(a, b) {
   const norm = (x) => (x == null ? null : String(x).trim());
-  const normObj = (o) => (o == null ? null : JSON.stringify(o));
   return (
     a.set_code === b.set_code &&
     a.number === b.number &&
@@ -323,11 +316,7 @@ function sameCard(a, b) {
     norm(a.subtype) === norm(b.subtype) &&
     norm(a.regulation_mark) === norm(b.regulation_mark) &&
     norm(a.image_small) === norm(b.image_small) &&
-    norm(a.image_large) === norm(b.image_large) &&
-    norm(a.illustrator) === norm(b.illustrator) &&
-    normObj(a.images) === normObj(b.images) &&
-    normObj(a.types) === normObj(b.types) &&
-    normObj(a.subtypes) === normObj(b.subtypes)
+    norm(a.image_large) === norm(b.image_large)
   );
 }
 

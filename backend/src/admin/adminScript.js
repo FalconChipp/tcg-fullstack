@@ -1,315 +1,676 @@
-﻿﻿// src/admin/adminScript.js
-// ORIGINAL UI kept.
-// FIXES (based on your sv08.json):
-// - Code: uses `code` (falls back to setCode/id)
-// - Name: uses top-level `name`
-// - Abbr: uses `abbreviation.official`
-// - Cards: uses `totalCardsComputed` (fallbacks to cards.length, officialCardCount, etc.)
-// - Variants: sums cards[i].variants.length across the set
-// - Cards last: uses `sourceAt`
-// - Prices last: left blank unless backend provides a price timestamp
-//
-// Everything else (providers, FX, rules, logs, schedule fallback) unchanged.
+// src/admin/adminScript.js
+// Cardsearch-focused admin client script for the redesigned UI.
 
 export function adminScriptJs() {
   return `
-const $  = (q, el=document) => el.querySelector(q);
-const $$ = (q, el=document) => Array.from(el.querySelectorAll(q));
+const BASE = '/admin/cardsearch';
+const TOKEN_KEY = 'CARDSEARCH_ADMIN_TOKEN';
+
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
 const state = {
-  token: localStorage.getItem('md2_admin_token') || '',
-  erasOrder: ['sv','swsh','sm','xy','bw','dp','ex','neo','gym','base','other'],
-  socket: null,
-  setsCache: []
+  token: localStorage.getItem(TOKEN_KEY) || '',
+  tasks: [],
+  sets: [],
+  fx: null,
 };
 
-const headers = () => state.token ? { 'x-admin-token': state.token } : {};
+const els = {
+  tokenInput: $('#admintoken'),
+  saveToken: $('#saveToken'),
+  refreshAll: $('#refreshAll'),
+  fxDaily: $('#fxRefresh'),
+  rollups: $('#rollupRebuild'),
+  toast: $('#toast'),
+  lastRefresh: $('#lastRefreshValue'),
+  setsSummary: $('#setsSnapshot'),
+  tasksSummary: $('#scheduleSnapshot'),
+  schedulerSummary: $('#providersSnapshot'),
+  log: $('#liveLog'),
+};
 
-async function fetchJSON(url, opts={}, scope='') {
-  let res, text;
+const headers = () => (state.token ? { 'x-admin-token': state.token } : {});
+
+async function fetchJSON(url, opts = {}, scope = '') {
+  let res;
+  let text;
   try {
-    res  = await fetch(url, { ...opts, headers: { ...headers(), ...(opts.headers||{}) } });
+    res = await fetch(url, {
+      cache: 'no-store',
+      ...opts,
+      headers: {
+        'Content-Type': 'application/json',
+        ...headers(),
+        ...(opts.headers || {}),
+      },
+    });
     text = await res.text();
     if (!res.ok) {
-      appendLog('warn', \`\${scope} \${res.status}: \${(text||'').slice(0,160)}\`);
-      return { ok:false, data:null };
+      appendLog('warn', \`\${scope} \${res.status}: \${(text || '').slice(0, 180)}\`);
+      throw new Error(\`HTTP \${res.status}\`);
     }
-    try { return { ok:true, data: JSON.parse(text) }; }
-    catch { appendLog('warn', \`\${scope} 200 but invalid JSON\`); return { ok:false, data:null }; }
-  } catch (e) {
-    appendLog('err', \`\${scope} failed: \${String(e)}\`);
-    return { ok:false, data:null };
+    if (!text) return null;
+    try { return JSON.parse(text); }
+    catch {
+      appendLog('warn', \`\${scope} returned non-JSON payload\`);
+      return text;
+    }
+  } catch (error) {
+    const message = error?.message || String(error);
+    appendLog('err', \`\${scope} failed: \${message}\`);
+    throw error;
   }
 }
 
-function setToast(text='Refreshed'){ const t=$('#toast'); t.textContent=text; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),900); }
-function fmtDate(s){ if(!s) return ''; const d=new Date(s); return isNaN(+d)?'':d.toLocaleString(); }
-function pick(){ for (let i=0;i<arguments.length;i++){ const v=arguments[i]; if (v!==undefined && v!==null && v!=='') return v; } return undefined; }
-function detectEra(code=''){ const c=String(code).toLowerCase();
-  if(c.startsWith('sv')) return 'sv'; if(c.startsWith('swsh')) return 'swsh'; if(c.startsWith('sm')) return 'sm';
-  if(c.startsWith('xy')) return 'xy'; if(c.startsWith('bw')) return 'bw'; if(c.startsWith('dp')) return 'dp';
-  if(c.startsWith('ex')) return 'ex'; if(c.startsWith('neo')) return 'neo'; if(c.startsWith('gym')) return 'gym';
-  if(c.startsWith('base')) return 'base'; return 'other';
+function setToast(message = 'Refreshed', tone = 'ok') {
+  if (!els.toast) return;
+  els.toast.textContent = message;
+  els.toast.classList.remove('ok', 'warn', 'err');
+  els.toast.classList.add('show', tone);
+  setTimeout(() => els.toast?.classList.remove('show'), 1200);
 }
-function groupByEra(items, getEra){ const m=new Map(); (items||[]).forEach(x=>{const e=getEra(x)||'other'; (m.get(e)||m.set(e,[]).get(e)).push(x);}); return m;}
-function td(v, cls){ const e=document.createElement('td'); if(cls) e.className=cls; e.textContent = (v===0||v) ? String(v) : (v || '—'); return e; }
-function buildTabs(container, eras, onPick){
+
+function appendLog(level, message) {
+  if (!els.log) return;
+  const ts = new Date().toLocaleTimeString();
+  els.log.textContent += \`[\${ts}] [\${String(level || 'info').toUpperCase()}] \${message || ''}\n\`;
+  els.log.scrollTop = els.log.scrollHeight;
+}
+
+function fmtDate(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  return Number.isNaN(+d) ? '' : d.toLocaleString();
+}
+
+function toDate(value) {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(+d) ? null : d;
+}
+
+function timeAgo(value) {
+  const d = toDate(value);
+  if (!d) return '';
+  const diff = Date.now() - d.getTime();
+  if (diff < 0) return 'future';
+  const mins = Math.round(diff / 6e4);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return \`\${mins}m ago\`;
+  const hours = Math.round(diff / 36e5);
+  if (hours < 48) return \`\${hours}h ago\`;
+  const days = Math.round(diff / 8.64e7);
+  return \`\${days}d ago\`;
+}
+
+function timeUntil(value) {
+  const d = toDate(value);
+  if (!d) return '';
+  const diff = d.getTime() - Date.now();
+  if (diff < 0) return 'overdue';
+  const mins = Math.round(diff / 6e4);
+  if (mins < 1) return 'now';
+  if (mins < 60) return \`\${mins}m\`;
+  const hours = Math.round(diff / 36e5);
+  if (hours < 48) return \`\${hours}h\`;
+  const days = Math.round(diff / 8.64e7);
+  return \`\${days}d\`;
+}
+
+function titleize(value) {
+  if (!value) return '';
+  return String(value)
+    .replace(/[_:-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
+
+function formatNumber(value) {
+  if (value === undefined || value === null) return '0';
+  const num = Number(value);
+  if (Number.isNaN(num)) return String(value);
+  return num.toLocaleString();
+}
+
+function renderSummary(host, items) {
+  if (!host) return;
+  host.innerHTML = '';
+  if (!items || !items.length) {
+    const span = document.createElement('span');
+    span.className = 'mini';
+    span.textContent = 'Waiting for data';
+    host.appendChild(span);
+    return;
+  }
+  items.forEach((item) => {
+    const chip = document.createElement('div');
+    chip.className = 'chip' + (item.tone ? \` \${item.tone}\` : '');
+    const val = document.createElement('strong');
+    val.textContent = item.value;
+    chip.appendChild(val);
+    const label = document.createElement('span');
+    label.textContent = item.label;
+    chip.appendChild(label);
+    if (item.meta) {
+      const meta = document.createElement('small');
+      meta.textContent = item.meta;
+      chip.appendChild(meta);
+    }
+    host.appendChild(chip);
+  });
+}
+
+function setsSummaryData(sets) {
+  if (!sets.length) return [];
+  const enabled = sets.filter((s) => s.enabled).length;
+  const disabled = sets.length - enabled;
+  const latest = sets[0];
+  return [
+    { value: formatNumber(sets.length), label: 'Total sets', meta: 'Cardsearch catalogue' },
+    { value: formatNumber(enabled), label: 'Enabled', tone: disabled ? 'warn' : '', meta: disabled ? \`\${disabled} disabled\` : 'All active' },
+    disabled ? { value: formatNumber(disabled), label: 'Disabled', tone: 'warn', meta: 'Review coverage' } : null,
+    latest ? { value: latest.releasedAt ? latest.releasedAt.slice(0, 10) : '--', label: 'Latest release', meta: latest.code || '' } : null,
+  ].filter(Boolean);
+}
+
+function scheduleSummaryData(tasks) {
+  if (!tasks.length) return [];
+  const cronTasks = tasks.filter((t) => t.plan?.kind === 'cron');
+  const paused = cronTasks.filter((t) => t.status === 'paused').length;
+  const running = tasks.filter((t) => t.status === 'running').length;
+  const errorCount = tasks.filter((t) => t.status === 'error').length;
+  const nextTimes = tasks
+    .map((t) => toDate(t.nextRunAt))
+    .filter(Boolean)
+    .sort((a, b) => a.getTime() - b.getTime());
+  const next = nextTimes[0];
+  return [
+    { value: formatNumber(tasks.length), label: 'Total tasks', meta: \`\${formatNumber(cronTasks.length)} cron\` },
+    { value: formatNumber(running), label: 'Running now', tone: running ? 'warn' : '', meta: running ? 'Active execution' : 'Idle' },
+    { value: formatNumber(paused), label: 'Paused', tone: paused ? 'warn' : '', meta: paused ? 'Temporarily disabled' : 'All enabled' },
+    errorCount ? { value: formatNumber(errorCount), label: 'Errors', tone: 'danger', meta: 'Last check' } : null,
+    next ? { value: timeUntil(next), label: 'Next run', meta: next.toLocaleString() } : null,
+  ].filter(Boolean);
+}
+
+function schedulerSnapshotRows(tasks) {
+  const host = $('#providers');
+  if (!host) return;
+  host.innerHTML = '';
+  if (!tasks.length) {
+    const div = document.createElement('div');
+    div.className = 'empty-state';
+    div.textContent = 'No tasks registered.';
+    host.appendChild(div);
+    return;
+  }
+  const table = document.createElement('table');
+  table.innerHTML = '<thead><tr><th>Task</th><th>Status</th><th>Next</th></tr></thead>';
+  const tbody = document.createElement('tbody');
+  tasks.slice(0, 8).forEach((task) => {
+    const tr = document.createElement('tr');
+    const name = titleize(task.name || task.id);
+    tr.appendChild(td(name));
+    tr.appendChild(td(task.status ? titleize(task.status) : '-', task.status === 'error' ? 'err' : task.status === 'paused' ? 'warn' : 'muted'));
+    tr.appendChild(td(task.nextRunAt ? fmtDate(task.nextRunAt) : '-', 'muted'));
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  host.appendChild(table);
+}
+
+function renderCronList(tasks) {
+  const list = $('#rulesList');
+  if (!list) return;
+  list.innerHTML = '';
+  if (!tasks.length) {
+    const li = document.createElement('li');
+    li.textContent = 'No cron tasks configured.';
+    list.appendChild(li);
+    return;
+  }
+  tasks
+    .filter((task) => task.plan?.kind === 'cron')
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    .slice(0, 12)
+    .forEach((task) => {
+      const li = document.createElement('li');
+      const expr = task.plan?.cronExp || '';
+      const tz = task.plan?.timezone ? \` (\${task.plan.timezone})\` : '';
+      li.innerHTML = \`<strong>\${titleize(task.name || task.id)}</strong> ? \${expr || 'custom'}\${tz}\`;
+      list.appendChild(li);
+    });
+}
+
+function td(value, cls) {
+  const el = document.createElement('td');
+  if (cls) el.className = cls;
+  el.textContent = value ?? '';
+  return el;
+}
+
+async function loadSets() {
+  try {
+    const data = await fetchJSON(\`\${BASE}/sets?limit=500\`, {}, 'sets');
+    const sets = Array.isArray(data) ? data : [];
+    state.sets = sets;
+    renderSummary(els.setsSummary, setsSummaryData(sets));
+    renderSetsTable(sets);
+  } catch (error) {
+    renderSummary(els.setsSummary, []);
+    $('#setsTables')?.replaceChildren();
+  }
+}
+
+function renderSetsTable(sets) {
+  const container = $('#setsTables');
+  if (!container) return;
   container.innerHTML = '';
-  eras.forEach((era,i)=>{
-    const b=document.createElement('button');
-    b.className='tab'+(i===0?' active':''); b.dataset.era=era; b.textContent=era.toUpperCase();
-    b.onclick = () => { $$('.tab', container).forEach(x=>x.classList.remove('active')); b.classList.add('active'); onPick(era); };
-    container.appendChild(b);
-  });
-}
-
-/* ---------------- Token / Top buttons ---------------- */
-$('#admintoken').value = state.token;
-$('#saveToken').onclick     = () => { state.token=$('#admintoken').value.trim(); localStorage.setItem('md2_admin_token', state.token); setToast('Saved token'); refreshAll(); };
-$('#refreshAll').onclick    = () => refreshAll(true);
-$('#fxRefresh').onclick     = async () => { await fetchJSON('/admin/md2/fx/refresh',{method:'POST'}, 'fx/refresh'); await loadFx(); setToast('FX refreshed'); };
-$('#rollupRebuild').onclick = async () => { await fetchJSON('/admin/md2/rollups/rebuild',{method:'POST'}, 'rollups/rebuild'); setToast('Rollups rebuild started'); };
-
-/* ---------------- Jobs ---------------- */
-$('#btnIngest').onclick = () => runJob('ingest-set');
-$('#btnPrices').onclick = () => runJob('collect-prices');
-$('#btnBoth').onclick   = () => runJob('collect-both');
-
-function runJob(kind){
-  const setCode = $('#setCodeInput').value.trim();
-  if(!setCode){ appendLog('warn','Please enter a set code'); return; }
-  const url = (kind==='ingest-set') ? '/admin/md2/ingest-set'
-            : (kind==='collect-prices') ? '/admin/md2/collect-prices'
-            : '/admin/md2/collect-both';
-  appendLog('info','▶ ' + kind + ' for ' + setCode);
-  fetchJSON(url,{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ setCode }) }, kind)
-    .then(({ok,data}) => appendLog(ok ? 'ok':'err', ok ? 'started' : (data && data.error) || 'error'));
-}
-
-/* ---------------- Providers / FX / Rules ---------------- */
-async function loadProviders(){
-  const {ok, data} = await fetchJSON('/admin/md2/providers?t='+Date.now(), {}, 'providers');
-  if (!ok) return;
-  const list = data || [];
-  const host = $('#providers'); host.innerHTML='';
-  const table=document.createElement('table');
-  table.innerHTML='<thead><tr><th>Provider</th><th>Status</th><th>Latency</th><th>Checked</th></tr></thead>';
-  const tb=document.createElement('tbody');
-  list.forEach(x=>{
-    const tr=document.createElement('tr');
-    tr.appendChild(td(x.name||''));
-    tr.appendChild(td((x.ok?'OK':'Issue') + (x.message?' — '+x.message:''), x.ok?'ok':'err'));
-    tr.appendChild(td(x.latencyMs!=null ? (x.latencyMs+' ms') : ''));
-    tr.appendChild(td(fmtDate(x.checkedAt),'muted'));
-    tb.appendChild(tr);
-  });
-  table.appendChild(tb); host.appendChild(table);
-}
-
-async function loadFx(){
-  const {ok, data} = await fetchJSON('/admin/md2/fx?t='+Date.now(), {}, 'fx');
-  if (!ok) return;
-  const fx = data || {};
-  const tb=$('#fxTable tbody'); tb.innerHTML='';
-  Object.keys(fx).sort().forEach(k=>{ const tr=document.createElement('tr'); tr.appendChild(td(k)); tr.appendChild(td(String(fx[k]))); tb.appendChild(tr); });
-}
-
-async function loadRules(){
-  const {ok, data} = await fetchJSON('/admin/md2/rules?t='+Date.now(), {}, 'rules');
-  if (!ok) return;
-  const ul=$('#rulesList'); ul.innerHTML='';
-  (data||[]).forEach(s=>{ const li=document.createElement('li'); li.textContent=s; ul.appendChild(li); });
-}
-
-/* ---------------- Sets: map to your svXX JSON fields ---------------- */
-
-// accept: [..], {sets:[..]}, {sets:{code:meta}}, {ok:true, sets:[..]|{..}}
-function normalizeSetsPayload(j){
-  if (Array.isArray(j)) return j;
-  if (j && typeof j==='object') {
-    if (Array.isArray(j.sets)) return j.sets;
-    if (j.sets && typeof j.sets==='object')
-      return Object.entries(j.sets).map(([code, meta]) => ({ code, ...meta }));
+  if (!sets.length) {
+    return;
   }
-  return [];
+  const table = document.createElement('table');
+  table.innerHTML = '<thead><tr><th>Code</th><th>Name</th><th>Abbr</th><th>Total</th><th>Status</th><th>Action</th></tr></thead>';
+  const tbody = document.createElement('tbody');
+  sets.forEach((set) => {
+    const tr = document.createElement('tr');
+    tr.appendChild(td(set.code || ''));
+    tr.appendChild(td(set.name || set.code || ''));
+    tr.appendChild(td(set.abbr || ''));
+    tr.appendChild(td(set.total != null ? formatNumber(set.total) : '-', 'muted'));
+    const status = set.enabled ? 'Enabled' : 'Disabled';
+    tr.appendChild(td(status, set.enabled ? 'ok' : 'warn'));
+    const actionCell = document.createElement('td');
+    const btn = document.createElement('button');
+    btn.className = 'btn secondary';
+    btn.textContent = set.enabled ? 'Disable' : 'Enable';
+    btn.dataset.setCode = set.code;
+    btn.dataset.enabled = set.enabled ? '1' : '0';
+    actionCell.appendChild(btn);
+    tr.appendChild(actionCell);
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  container.appendChild(table);
 }
 
-// CHANGED: compute variants from cards[].variants.length, prefer totalCardsComputed, name, and abbreviation.official
-function mapSetRecord(raw){
-  const code = pick(raw.setCode, raw.code, raw.id, '');
-  const name = pick(raw.name, raw.title, raw.displayName, code); // ← use top-level name from your file
-  const abbr = pick(
-    raw.abbr,
-    (raw.abbreviation && (raw.abbreviation.official || raw.abbreviation.short || raw.abbreviation.value)),
-    raw.abbreviation, // if it’s a plain string on some sets
-    ''
-  );
-  const era = pick(raw.era, detectEra(code));
+async function toggleSet(code, enable) {
+  const res = await fetchJSON(\`\${BASE}/sets/toggle\`, {
+    method: 'POST',
+    body: JSON.stringify({ code, enabled: enable }),
+  }, \`sets.toggle:\${code}\`);
+  const payload = res && typeof res === 'object' ? res.set || res : null;
+  appendLog('info', \`\${enable ? 'Enabled' : 'Disabled'} set \${code}\`);
+  setToast(enable ? \`Enabled \${code}\` : \`Disabled \${code}\`, enable ? 'ok' : 'warn');
+  await loadSets();
+  return payload;
+}
 
-  // Cards count
-  const cardsFromArray = Array.isArray(raw.cards) ? raw.cards.length : undefined;
-  const cards = pick(
-    raw.totalCardsComputed,   // ← your file
-    raw.totalCards,
-    raw.officialCardCount,
-    raw.cardsCount,
-    raw.counts && raw.counts.cards,
-    cardsFromArray
-  );
-
-  // Variants count (sum variants per card)
-  let variantsComputed;
-  if (Array.isArray(raw.cards)) {
-    variantsComputed = raw.cards.reduce((acc, c) => acc + (Array.isArray(c?.variants) ? c.variants.length : 0), 0);
+async function loadTasks() {
+  try {
+    const data = await fetchJSON(\`\${BASE}/scheduler/tasks\`, {}, 'tasks');
+    const tasks = Array.isArray(data) ? data : [];
+    state.tasks = tasks;
+    renderSummary(els.tasksSummary, scheduleSummaryData(tasks));
+    renderSummary(els.schedulerSummary, scheduleSummaryData(tasks));
+    schedulerSnapshotRows(tasks);
+    renderCronList(tasks);
+    renderTasksTable(tasks);
+  } catch (error) {
+    renderSummary(els.tasksSummary, []);
+    renderSummary(els.schedulerSummary, []);
+    $('#scheduleTables')?.replaceChildren();
+    $('#providers')?.replaceChildren();
+    $('#rulesList')?.replaceChildren();
   }
-  const variants = pick(
-    raw.totalVariantsComputed,
-    raw.variantsCount,
-    raw.counts && raw.counts.variants,
-    variantsComputed
-  );
-
-  // Last timestamps
-  const cardsLast  = pick(raw.cardsLastIngestedAt, raw.lastIngestAt, raw.lastFetchedCardsAt, raw.cardsLast, raw.sourceAt /* ← your file */);
-  const pricesLast = pick(raw.pricesLastFetchedAt, raw.lastPricesFetchedAt, raw.lastCollectAt, raw.pricesLast);
-
-  return {
-    ...raw,
-    setCode: code,   // normalize for UI
-    era,
-    name,
-    abbr: (typeof abbr === 'string') ? abbr : String(abbr || ''),
-    cardsCount: (cards===undefined ? undefined : Number(cards)),
-    variantsCount: (variants===undefined ? undefined : Number(variants)),
-    _cardsLast: cardsLast,
-    _pricesLast: pricesLast
-  };
 }
 
-async function loadSets(){
-  const {ok, data} = await fetchJSON('/admin/md2/sets?t='+Date.now(), {}, 'sets');
-  if (!ok) { $('#setsEmpty').classList.remove('hide'); return; }
+function taskScope(task) {
+  const scope = [];
+  if (Array.isArray(task.payload?.sets) && task.payload.sets.length) scope.push(task.payload.sets.join(', '));
+  if (task.payload?.set) scope.push(task.payload.set);
+  if (task.payload?.scope && task.payload.scope !== 'all') scope.push(task.payload.scope);
+  return scope.length ? scope.join(' | ') : '-';
+}
 
-  let sets = normalizeSetsPayload(data).map(mapSetRecord);
+function taskSchedule(task) {
+  if (task.plan?.kind === 'cron') return task.plan?.cronExp || 'cron';
+  if (task.plan?.kind === 'once') return 'one-off';
+  return task.plan?.kind || 'adhoc';
+}
 
-  state.setsCache = sets.slice();
+function renderTasksTable(tasks) {
+  const container = $('#scheduleTables');
+  if (!container) return;
+  container.innerHTML = '';
+  if (!tasks.length) return;
+  const table = document.createElement('table');
+  table.innerHTML = '<thead><tr><th>#</th><th>Task</th><th>Scope</th><th>Schedule</th><th>Next run</th><th>Last run</th><th>Status</th><th>Actions</th></tr></thead>';
+  const tbody = document.createElement('tbody');
+  tasks.forEach((task, idx) => {
+    const tr = document.createElement('tr');
+    tr.appendChild(td(String(idx + 1)));
+    tr.appendChild(td(titleize(task.name || task.id)));
+    tr.appendChild(td(taskScope(task)));
+    tr.appendChild(td(taskSchedule(task), 'muted'));
+    const nextCell = td(task.nextRunAt ? fmtDate(task.nextRunAt) : '-', 'muted');
+    nextCell.title = task.nextRunAt ? fmtDate(task.nextRunAt) : '';
+    tr.appendChild(nextCell);
+    const lastCell = td(task.lastRunAt ? timeAgo(task.lastRunAt) : '-', 'muted');
+    lastCell.title = task.lastRunAt ? fmtDate(task.lastRunAt) : '';
+    tr.appendChild(lastCell);
+    const statusClass = task.status === 'error' ? 'err' : task.status === 'paused' ? 'warn' : 'ok';
+    tr.appendChild(td(titleize(task.status || 'unknown'), statusClass));
+    const actions = document.createElement('td');
+    actions.className = 'row';
+    const runBtn = document.createElement('button');
+    runBtn.className = 'btn secondary';
+    runBtn.textContent = 'Run';
+    runBtn.dataset.action = 'run';
+    runBtn.dataset.taskId = task.id;
+    actions.appendChild(runBtn);
+    if (task.plan?.kind === 'cron') {
 
-  const byEra = groupByEra(sets, x=>x.era);
-  let eras = state.erasOrder.filter(e=>byEra.has(e))
-              .concat(Array.from(byEra.keys()).filter(e=>!state.erasOrder.includes(e)));
-  if (!eras.length && sets.length) eras = ['all'];
+      const editBtn = document.createElement('button');
 
-  $('#setsEmpty').classList.toggle('hide', sets.length>0);
-  buildTabs($('#eraTabs'), eras, showEra);
-  if (eras.length) renderEra(eras[0]);
+      editBtn.className = 'btn secondary';
 
-  function renderEra(era){
-    const host = $('#setsTables'); host.innerHTML='';
-    const rows = (era==='all') ? sets : (byEra.get(era) || []);
-    const table = document.createElement('table');
-    table.innerHTML = '<thead><tr>'
-      + '<th>Code</th><th>Name</th><th>Abbr</th>'
-      + '<th class="muted">Cards</th><th class="muted">Variants</th>'
-      + '<th>Cards last</th><th>Prices last</th>'
-      + '</tr></thead>';
-    const tb = document.createElement('tbody');
-    rows.forEach(s=>{
-      const tr=document.createElement('tr');
-      tr.appendChild(td(s.setCode || ''));
-      tr.appendChild(td(s.name || s.setCode));
-      tr.appendChild(td(s.abbr || ''));
-      tr.appendChild(td(s.cardsCount, 'muted'));
-      tr.appendChild(td(s.variantsCount, 'muted'));
-      tr.appendChild(td(fmtDate(s._cardsLast), 'muted'));
-      tr.appendChild(td(fmtDate(s._pricesLast), 'muted'));
-      tb.appendChild(tr);
+      editBtn.textContent = 'Edit';
+
+      editBtn.dataset.action = 'edit';
+
+      editBtn.dataset.taskId = task.id;
+
+      actions.appendChild(editBtn);
+
+
+
+      const toggleBtn = document.createElement('button');
+
+      toggleBtn.className = 'btn secondary';
+
+      toggleBtn.textContent = task.status === 'paused' ? 'Resume' : 'Pause';
+
+      toggleBtn.dataset.action = task.status === 'paused' ? 'resume' : 'pause';
+
+      toggleBtn.dataset.taskId = task.id;
+
+      actions.appendChild(toggleBtn);
+
+    }
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'btn secondary';
+    deleteBtn.textContent = 'Delete';
+    deleteBtn.dataset.action = 'delete';
+    deleteBtn.dataset.taskId = task.id;
+    actions.appendChild(deleteBtn);
+    tr.appendChild(actions);
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  container.appendChild(table);
+}
+
+async function editTask(id) {
+
+  const task = state.tasks.find((t) => t.id === id);
+
+  if (!task) {
+
+    setToast('Task not found', 'warn');
+
+    return;
+
+  }
+
+  if (task.plan?.kind !== 'cron') {
+
+    setToast('Only cron tasks can be edited here', 'warn');
+
+    return;
+
+  }
+
+  const currentCron = task.plan?.cronExp || '';
+
+  const cronInput = prompt('Cron expression (required)', currentCron);
+
+  if (cronInput === null) return;
+
+  const cronExp = cronInput.trim();
+
+  if (!cronExp) {
+
+    setToast('Cron expression is required', 'warn');
+
+    return;
+
+  }
+
+  const timezoneInput = prompt('Timezone (optional, e.g. UTC)', task.plan?.timezone || '');
+
+  if (timezoneInput === null) return;
+
+  const descriptionInput = prompt('Description (optional)', task.plan?.description || '');
+
+  if (descriptionInput === null) return;
+
+  const enabledInput = prompt('Enable task? (yes/no)', task.status === 'paused' ? 'no' : 'yes');
+
+  if (enabledInput === null) return;
+
+  const timezone = timezoneInput.trim();
+
+  const description = descriptionInput.trim();
+
+  const enabled = enabledInput.trim().toLowerCase() !== 'no';
+
+  try {
+
+    await fetchJSON(BASE + '/scheduler/' + id, {
+
+      method: 'PUT',
+
+      body: JSON.stringify({
+
+        cronExp,
+
+        timezone: timezone ? timezone : null,
+
+        description: description ? description : null,
+
+        enabled,
+
+      }),
+
+    }, 'task.update');
+
+    appendLog('ok', 'Updated task ' + id);
+
+    setToast('Task updated', 'ok');
+
+    await loadTasks();
+
+  } catch (error) {
+
+    appendLog('err', error.message || String(error));
+
+    setToast('Failed to update task', 'err');
+
+  }
+
+}
+
+
+
+async function taskAction(action, id) {
+  if (action === 'edit') {
+
+    await editTask(id);
+
+    return;
+
+  }
+
+  let method = 'POST';
+  let path = '';
+  switch (action) {
+    case 'run':
+      path = \`/scheduler/run-now/\${id}\`;
+      break;
+    case 'pause':
+      path = \`/scheduler/pause/\${id}\`;
+      break;
+    case 'resume':
+      path = \`/scheduler/resume/\${id}\`;
+      break;
+    case 'delete':
+      method = 'DELETE';
+      path = \`/scheduler/\${id}\`;
+      break;
+    default:
+      throw new Error(\`Unknown task action: \${action}\`);
+  }
+  await fetchJSON(\`\${BASE}\${path}\`, { method }, \`task.\${action}\`);
+  appendLog('info', \`\${action} task \${id}\`);
+  setToast(\`Task \${action}\`, 'ok');
+  await loadTasks();
+}
+
+async function loadFx() {
+  try {
+    const data = await fetchJSON(\`\${BASE}/fx/rates\`, {}, 'fx');
+    state.fx = data;
+    const tbody = $('#fxTable tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!data || !data.rates) {
+      return;
+    }
+    const entries = Object.entries(data.rates).sort(([a], [b]) => a.localeCompare(b));
+    entries.forEach(([ccy, rate]) => {
+      const tr = document.createElement('tr');
+      tr.appendChild(td(ccy));
+      tr.appendChild(td(typeof rate === 'number' ? rate.toFixed(6) : String(rate)));
+      tbody.appendChild(tr);
     });
-    table.appendChild(tb); host.appendChild(table);
+  } catch (error) {
+    const tbody = $('#fxTable tbody');
+    if (tbody) tbody.innerHTML = '';
   }
-  function showEra(e){ renderEra(e); }
-  $$('#eraTabs .tab').forEach(b => b.onclick = () => {
-    $$('#eraTabs .tab').forEach(x=>x.classList.remove('active')); b.classList.add('active'); showEra(b.dataset.era);
+}
+
+async function runJob(kind, payload = {}, label = kind) {
+  try {
+    appendLog('info', \`Job \${label} requested\`);
+    const body = { kind, ...payload };
+    await fetchJSON(\`\${BASE}/run-job\`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, \`job:\${kind}\`);
+    appendLog('ok', \`Job \${label} started\`);
+    setToast(\`Started \${label}\`, 'ok');
+  } catch (error) {
+    setToast(\`Job \${label} failed\`, 'err');
+    throw error;
+  }
+}
+
+function bindTokenHandlers() {
+  if (els.tokenInput) els.tokenInput.value = state.token;
+  els.saveToken?.addEventListener('click', () => {
+    state.token = (els.tokenInput?.value || '').trim();
+    localStorage.setItem(TOKEN_KEY, state.token);
+    setToast('Token saved', 'ok');
+    refreshAll(false);
   });
 }
 
-/* ---------------- Schedule: preview + sets fallback ---------------- */
-function normalizeSchedulePayload(j){
-  if (Array.isArray(j)) return j;
-  if (j && typeof j==='object' && Array.isArray(j.orderedSets)) return j.orderedSets;
-  return [];
-}
+function bindQuickActions() {
+  els.refreshAll?.addEventListener('click', () => refreshAll(true));
+  els.fxDaily?.addEventListener('click', () => runJob('FX_DAILY', { backfillFxDays: 0 }, 'FX daily').catch((err) => appendLog('err', err.message)));
+  els.rollups?.addEventListener('click', () => runJob('ROLLUP_ALL', { scope: 'all' }, 'Rollup all').catch((err) => appendLog('err', err.message)));
 
-async function loadSchedule(){
-  const {ok, data} = await fetchJSON('/admin/md2/schedule?t='+Date.now(), {}, 'schedule');
-  let ordered = ok ? normalizeSchedulePayload(data) : [];
+  $('#btnIngest')?.addEventListener('click', () => {
+    const set = ($('#setCodeInput')?.value || '').trim();
+    if (!set) return setToast('Enter a set code', 'warn');
+    runJob('INGEST_SET', { set }, \`Ingest \${set}\`).catch((err) => appendLog('err', err.message));
+  });
 
-  if (!ordered.length && state.setsCache.length){
-    const t = v => v ? Date.parse(v) : Number.POSITIVE_INFINITY;
-    ordered = state.setsCache.map(s => ({
-      era: s.era || detectEra(s.setCode),
-      set: s.setCode,
-      nextFetchAt: pick(s.cardsNextScheduledAt, s.nextFetchAt),
-      nextCollectAt: pick(s.pricesNextScheduledAt, s.nextCollectAt),
-    }))
-    .sort((a,b)=> (t(a.nextCollectAt)-t(b.nextCollectAt)) || (t(a.nextFetchAt)-t(b.nextFetchAt)) || String(a.set).localeCompare(String(b.set)));
-  }
+  $('#btnPrices')?.addEventListener('click', () => {
+    const set = ($('#setCodeInput')?.value || '').trim();
+    if (!set) return setToast('Enter a set code', 'warn');
+    runJob('COLLECT_PRICES', { set }, \`Collect \${set}\`).catch((err) => appendLog('err', err.message));
+  });
 
-  const byEra = groupByEra(ordered, x => x.era || detectEra(x.set || x.setCode));
-  let eras = state.erasOrder.filter(e=>byEra.has(e))
-              .concat(Array.from(byEra.keys()).filter(e=>!state.erasOrder.includes(e)));
-  if (!eras.length && ordered.length) eras = ['all'];
-
-  $('#scheduleEmpty').classList.toggle('hide', ordered.length>0);
-  buildTabs($('#schEraTabs'), eras, showEra);
-  if (eras.length) renderEra(eras[0]);
-
-  function renderEra(era){
-    const host = $('#scheduleTables'); host.innerHTML='';
-    const rows = (era==='all') ? ordered : (byEra.get(era) || []);
-    const table = document.createElement('table');
-    table.innerHTML = '<thead><tr><th>#</th><th>Set</th><th>Next cards</th><th>Next prices</th></tr></thead>';
-    const tb = document.createElement('tbody');
-    rows.forEach((r,i)=>{
-      const tr=document.createElement('tr');
-      tr.appendChild(td(String(i+1)));
-      tr.appendChild(td(r.set || r.setCode || ''));
-      tr.appendChild(td(fmtDate(r.nextFetchAt),'muted'));
-      tr.appendChild(td(fmtDate(r.nextCollectAt),'muted'));
-      tb.appendChild(tr);
-    });
-    table.appendChild(tb); host.appendChild(table);
-  }
-  function showEra(e){ renderEra(e); }
-  $$('#schEraTabs .tab').forEach(b => b.onclick = () => {
-    $$('#schEraTabs .tab').forEach(x=>x.classList.remove('active')); b.classList.add('active'); showEra(b.dataset.era);
+  $('#btnBoth')?.addEventListener('click', async () => {
+    const set = ($('#setCodeInput')?.value || '').trim();
+    if (!set) return setToast('Enter a set code', 'warn');
+    try {
+      await runJob('INGEST_SET', { set }, \`Ingest \${set}\`);
+      await runJob('COLLECT_PRICES', { set, prewarmFx: true }, \`Collect \${set}\`);
+    } catch (err) {
+      appendLog('err', err.message || String(err));
+    }
   });
 }
 
-/* ---------------- Logs ---------------- */
-const logEl = $('#liveLog');
-function appendLog(level, msg, scope){
-  const ts=new Date().toLocaleTimeString();
-  logEl.textContent += '['+ts+'] ['+(String(level||'info').toUpperCase())+']'+(scope?' ['+scope+']':'')+' '+(msg||'')+'\\n';
-  logEl.scrollTop = logEl.scrollHeight;
-}
-function connectSocket(){
-  try{
-    const s = io();
-    state.socket = s;
-    s.on('connect', ()=>appendLog('ok','socket connected'));
-    s.on('disconnect', ()=>appendLog('warn','socket disconnected'));
-    s.on('md2:log', e=>{ if(!e) return; appendLog(e.level||'info', e.msg||e.message||'', e.scope||null); });
-  }catch(e){ appendLog('warn','socket init failed: ' + String(e)); }
+function bindTableHandlers() {
+  $('#setsTables')?.addEventListener('click', (event) => {
+    const btn = event.target.closest('button[data-set-code]');
+    if (!btn || btn.disabled) return;
+    const code = btn.dataset.setCode;
+    const enable = btn.dataset.enabled !== '1';
+    btn.disabled = true;
+    toggleSet(code, enable)
+      .then((payload) => {
+        const row = btn.closest('tr');
+        if (!row || !payload) return;
+        const cells = row.querySelectorAll('td');
+        const statusCell = cells[cells.length - 2];
+        if (statusCell) {
+          statusCell.textContent = payload.enabled ? 'Enabled' : 'Disabled';
+          statusCell.className = payload.enabled ? 'ok' : 'warn';
+        }
+        btn.textContent = payload.enabled ? 'Disable' : 'Enable';
+        btn.dataset.enabled = payload.enabled ? '1' : '0';
+      })
+      .catch((err) => appendLog('err', err.message))
+      .finally(() => { btn.disabled = false; });
+  });
+
+  $('#scheduleTables')?.addEventListener('click', (event) => {
+    const btn = event.target.closest('button[data-task-id]');
+    if (!btn) return;
+    const id = btn.dataset.taskId;
+    const action = btn.dataset.action;
+    taskAction(action, id).catch((err) => appendLog('err', err.message));
+  });
 }
 
-/* ---------------- Boot ---------------- */
-connectSocket();
-refreshAll(true);
-setInterval(()=>refreshAll(false), 15000);
-
-async function refreshAll(showToast){
-  await Promise.all([loadProviders(), loadFx(), loadRules(), loadSets(), loadSchedule()]);
-  if (showToast) setToast('Panels refreshed');
+async function refreshAll(showToast) {
+  await Promise.allSettled([loadTasks(), loadSets(), loadFx()]);
+  if (els.lastRefresh) els.lastRefresh.textContent = new Date().toLocaleTimeString();
+  if (showToast) setToast('Panels refreshed', 'ok');
 }
+
+function init() {
+  state.token = (state.token || '').trim();
+  bindTokenHandlers();
+  bindQuickActions();
+  bindTableHandlers();
+  refreshAll(true).catch((err) => appendLog('err', err.message));
+  setInterval(() => refreshAll(false), 30000);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init, { once: true });
+} else {
+  init();
+}
+
 `;
 }

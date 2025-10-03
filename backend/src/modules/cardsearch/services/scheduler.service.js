@@ -1,13 +1,21 @@
 // src/modules/cardsearch/services/scheduler.service.js
 // Tiny in-process scheduler with cron + ad-hoc job registry tailored for the Card Search module.
 
+import fs from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import cron from "node-cron";
 import { v4 as uuid } from "uuid";
 
 import { fxDaily } from "../jobs/fxDaily.job.js";
 import { ingestSet } from "../jobs/ingestSet.job.js";
 import { collectBoth } from "../jobs/collectBoth.job.js";
+import { verifyDataHealth } from "../jobs/verifyDataHealth.job.js";
 import { rebuildPriceRollups } from "../jobs/priceRollup.job.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const STATE_FILE = path.resolve(__dirname, "../../../..", ".cache", "cardsearch", "scheduler.tasks.json");
 
 const JOBS = {
   fxDaily: async (payload) => {
@@ -31,6 +39,11 @@ const JOBS = {
       pauseMs: Number(payload?.pauseMs || 400),
     });
   },
+  verifyDataHealth: async (payload = {}) => {
+    // payload may include: scope ('all'|'set'|'card'), target, warnStaleDays, fixMissingVariants, rebuildRollups, dryRun
+    return await verifyDataHealth(payload);
+  },
+
   priceRollups: async (payload) => {
     const scope = payload?.scope || "all";
     return rebuildPriceRollups({
@@ -54,6 +67,87 @@ const KEYS = {
   LAST_ERROR: "lastError",
 };
 
+let isRestoring = false;
+let persistTimer = null;
+
+async function ensureStateDir() {
+  try {
+    await fs.mkdir(path.dirname(STATE_FILE), { recursive: true });
+  } catch {}
+}
+
+async function writeStateToDisk() {
+  if (isRestoring) return;
+  const payload = {
+    version: 1,
+    tasks: Array.from(_tasks.values())
+      .filter((t) => t.plan?.kind === "cron")
+      .map((t) => ({
+        id: t.id,
+        name: t.name,
+        cronExp: t.cronExp,
+        payload: t.payload || null,
+        timezone: t.plan?.timezone || null,
+        description: t.plan?.description || null,
+        enabled: t[KEYS.STATUS] !== "paused",
+      })),
+  };
+  await ensureStateDir();
+  await fs.writeFile(STATE_FILE, JSON.stringify(payload, null, 2), "utf8");
+}
+
+function schedulePersist() {
+  if (isRestoring) return;
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    writeStateToDisk().catch((err) => {
+      console.error("[scheduler] persist failed", err);
+    });
+  }, 250);
+}
+
+async function loadPersistedTasks() {
+  let raw;
+  try {
+    raw = await fs.readFile(STATE_FILE, "utf8");
+  } catch (err) {
+    if (err && err.code === "ENOENT") return;
+    console.error("[scheduler] failed to read tasks file", err);
+    return;
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    console.error("[scheduler] invalid tasks file", err);
+    return;
+  }
+  const tasks = Array.isArray(parsed?.tasks) ? parsed.tasks : [];
+  if (!tasks.length) return;
+
+  isRestoring = true;
+  try {
+    for (const record of tasks) {
+      if (!record?.cronExp || !record?.name) continue;
+      try {
+        Scheduler.addCron(record.cronExp, record.name, record.payload || {}, {
+          id: record.id,
+          timezone: record.timezone || undefined,
+          description: record.description || undefined,
+          enabled: record.enabled !== false,
+          autoStart: record.enabled !== false,
+        });
+      } catch (err) {
+        console.error("[scheduler] restore failed", record, err);
+      }
+    }
+  } finally {
+    isRestoring = false;
+    schedulePersist();
+  }
+}
+
 function nowISO() {
   return new Date().toISOString();
 }
@@ -63,27 +157,27 @@ function toIso(value) {
   if (typeof value === "string") return value;
   if (value instanceof Date) return value.toISOString();
   if (typeof value.toISOString === "function") {
-    try { return value.toISOString(); } catch { /* ignore */ }
+    try {
+      return value.toISOString();
+    } catch {}
   }
   if (typeof value.toISO === "function") {
-    try { return value.toISO(); } catch { /* ignore */ }
+    try {
+      return value.toISO();
+    } catch {}
   }
   if (typeof value.toDate === "function") {
     try {
       const d = value.toDate();
       if (d && typeof d.toISOString === "function") return d.toISOString();
-    } catch { /* ignore */ }
+    } catch {}
   }
-  try {
-    const d = new Date(value);
-    if (!Number.isNaN(d.getTime())) return d.toISOString();
-  } catch { /* ignore */ }
   return null;
 }
 
 function scheduleNextRun(task) {
   try {
-    if (task.plan?.kind === "cron") {
+    if (task.plan?.kind === "cron" && task.handle && task[KEYS.STATUS] !== "paused") {
       const matcher = task.handle?.timeMatcher;
       if (matcher?.getNextMatch) {
         const next = matcher.getNextMatch(new Date());
@@ -117,6 +211,26 @@ function serializeError(err) {
     } catch {}
   }
   return { message: String(err) };
+}
+
+function createCronRunner(task, fn) {
+  return async () => {
+    task[KEYS.STATUS] = "running";
+    task[KEYS.LAST_RUN_AT] = nowISO();
+    task[KEYS.TRIES] += 1;
+    try {
+      await fn(task.payload || {});
+      task[KEYS.STATUS] = "idle";
+      task[KEYS.LAST_ERROR] = null;
+    } catch (error) {
+      task[KEYS.STATUS] = "error";
+      task[KEYS.LAST_ERROR] = serializeError(error);
+      console.error(`[scheduler] job failed name=${task.name}`, error);
+    } finally {
+      scheduleNextRun(task);
+      schedulePersist();
+    }
+  };
 }
 
 export const Scheduler = {
@@ -178,20 +292,25 @@ export const Scheduler = {
     const fn = JOBS[name];
     if (!fn) throw new Error(`Unknown job name for cron: ${name}`);
 
+    const expr = String(cronExp || "").trim();
+    if (!expr) throw new Error("cron expression is required");
+    if (!cron.validate(expr)) throw new Error(`Invalid cron expression: ${expr}`);
+
     const id = opts.id || uuid();
     const enabled = opts.enabled !== undefined ? !!opts.enabled : true;
+    const timezone = opts.timezone || process.env.CRON_TZ || null;
 
     if (_tasks.has(id)) return id;
 
     const task = {
       id,
       name,
-      cronExp,
+      cronExp: expr,
       payload,
       plan: {
         kind: "cron",
-        expr: cronExp,
-        timezone: opts.timezone || process.env.CRON_TZ || null,
+        expr,
+        timezone,
         description: opts.description || null,
       },
       [KEYS.STATUS]: enabled ? "idle" : "paused",
@@ -200,33 +319,77 @@ export const Scheduler = {
       [KEYS.NEXT_RUN_AT]: null,
       [KEYS.LAST_ERROR]: null,
       handle: null,
+      jobFn: fn,
+      runner: null,
     };
 
-    const runner = async () => {
-      task[KEYS.STATUS] = "running";
-      task[KEYS.LAST_RUN_AT] = nowISO();
-      task[KEYS.TRIES] += 1;
-      try {
-        await fn(task.payload);
-        task[KEYS.STATUS] = "idle";
-        task[KEYS.LAST_ERROR] = null;
-      } catch (error) {
-        task[KEYS.STATUS] = "error";
-        task[KEYS.LAST_ERROR] = serializeError(error);
-        console.error(`[scheduler] job failed name=${name}`, error);
-      } finally {
-        scheduleNextRun(task);
-      }
-    };
+    task.runner = createCronRunner(task, fn);
 
-    task.handle = cron.schedule(cronExp, runner, { scheduled: enabled });
+    task.handle = cron.schedule(expr, task.runner, {
+      scheduled: enabled,
+      timezone: timezone || undefined,
+    });
     if (enabled && typeof task.handle?.start === "function" && opts.autoStart !== false) {
       task.handle.start();
     }
 
     scheduleNextRun(task);
     _tasks.set(id, task);
+    schedulePersist();
     return id;
+  },
+
+  updateCron(id, options = {}) {
+    const task = _tasks.get(id);
+    if (!task) throw new Error("Task not found");
+    if (task.plan?.kind !== "cron") throw new Error("Task is not cron-scheduled");
+
+    const fn = task.jobFn || JOBS[task.name];
+    if (!fn) throw new Error(`Unknown job for cron task: ${task.name}`);
+
+    const baseExpr = task.cronExp || task.plan?.expr || "";
+    const incoming = typeof options.cronExp === "string" ? options.cronExp.trim() : "";
+    const expr = incoming || baseExpr;
+    if (!expr) throw new Error("cron expression is required");
+    if (!cron.validate(expr)) throw new Error(`Invalid cron expression: ${expr}`);
+
+    const timezoneRaw = options.timezone !== undefined && options.timezone !== null
+      ? String(options.timezone).trim()
+      : task.plan?.timezone || null;
+    const timezone = timezoneRaw ? timezoneRaw : null;
+
+    if (options.payload !== undefined) {
+      task.payload = options.payload;
+    }
+
+    const description = options.description !== undefined
+      ? (options.description ? String(options.description).trim() : null)
+      : task.plan?.description || null;
+
+    const enabled = options.enabled !== undefined ? !!options.enabled : task[KEYS.STATUS] !== "paused";
+
+    if (typeof task.handle?.stop === "function") task.handle.stop();
+
+    task.cronExp = expr;
+    task.plan = {
+      kind: "cron",
+      expr,
+      timezone,
+      description,
+    };
+    task.jobFn = fn;
+    task.runner = createCronRunner(task, fn);
+
+    task.handle = cron.schedule(expr, task.runner, {
+      scheduled: enabled,
+      timezone: timezone || undefined,
+    });
+    if (enabled && typeof task.handle?.start === "function") task.handle.start();
+    task[KEYS.STATUS] = enabled ? "idle" : "paused";
+
+    scheduleNextRun(task);
+    schedulePersist();
+    return this.list().find((t) => t.id === id) || null;
   },
 
   addTask(name, payload = {}, opts = {}) {
@@ -250,13 +413,14 @@ export const Scheduler = {
     };
 
     _tasks.set(id, task);
+    schedulePersist();
     return id;
   },
 
   async runNow(id) {
     const task = _tasks.get(id);
     if (!task) throw new Error("Task not found");
-    const fn = JOBS[task.name];
+    const fn = task.jobFn || JOBS[task.name];
     if (!fn) throw new Error(`Unknown job: ${task.name}`);
 
     task[KEYS.STATUS] = "running";
@@ -274,6 +438,7 @@ export const Scheduler = {
       console.error(`[scheduler] runNow failed id=${id} name=${task.name}`, error);
     } finally {
       scheduleNextRun(task);
+      schedulePersist();
     }
   },
 
@@ -283,6 +448,7 @@ export const Scheduler = {
     if (typeof task.handle?.stop === "function") task.handle.stop();
     task[KEYS.STATUS] = "paused";
     scheduleNextRun(task);
+    schedulePersist();
   },
 
   resume(id) {
@@ -291,6 +457,7 @@ export const Scheduler = {
     if (typeof task.handle?.start === "function") task.handle.start();
     task[KEYS.STATUS] = "idle";
     scheduleNextRun(task);
+    schedulePersist();
   },
 
   cancel(id) {
@@ -298,6 +465,7 @@ export const Scheduler = {
     if (!task) throw new Error("Task not found");
     if (typeof task.handle?.stop === "function") task.handle.stop();
     _tasks.delete(id);
+    schedulePersist();
   },
 
   async ensureSetTasks(setCode) {
@@ -333,5 +501,9 @@ export const Scheduler = {
     }
   },
 };
+
+await loadPersistedTasks().catch((err) => {
+  console.error("[scheduler] failed to restore tasks", err);
+});
 
 export default Scheduler;

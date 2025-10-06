@@ -100,7 +100,14 @@ export async function buildCardWhere(input) {
 
   // NUMBER filtering (exact)
   if (number) {
-    predicates.push(ciEqualPredicate("m_Card.number", number)); // CHANGED: qualified
+    // Accept numbers entered without leading zeros by matching padded variants.
+    const variants = buildNumberQueryVariants(number);
+    const variantPredicates = variants.map((value) => ciEqualPredicate("m_Card.number", value));
+    if (variantPredicates.length === 1) {
+      predicates.push(variantPredicates[0]);
+    } else if (variantPredicates.length > 1) {
+      predicates.push({ [Op.or]: variantPredicates });
+    }
   }
 
   // NAME filtering
@@ -160,6 +167,37 @@ export function buildSetWhere(input) {
 /* -----------------------------------------------------------------------------
  * Internals
  * -------------------------------------------------------------------------- */
+
+function buildNumberQueryVariants(value) {
+  const raw = norm(value);
+  if (!raw) return [];
+
+  const variants = new Set([raw]);
+  const match = raw.match(/^0*(\d+)(.*)$/i);
+
+  if (match) {
+    const [, digits, suffix = ""] = match;
+
+    if (digits) {
+      const numericValue = Number(digits);
+      if (Number.isFinite(numericValue)) {
+        const normalizedDigits = String(numericValue);
+        variants.add(`${normalizedDigits}${suffix}`);
+
+        const lengths = new Set([digits.length]);
+        if (digits.length < 2) lengths.add(2);
+        if (digits.length < 3) lengths.add(3);
+
+        for (const len of lengths) {
+          variants.add(`${digits.padStart(len, "0")}${suffix}`);
+          variants.add(`${normalizedDigits.padStart(len, "0")}${suffix}`);
+        }
+      }
+    }
+  }
+
+  return Array.from(variants).filter(Boolean);
+}
 
 /**
  * Resolve a user-provided set input (abbr | tcgdex | ptcg | name fragment) to canonical tcgdex code.

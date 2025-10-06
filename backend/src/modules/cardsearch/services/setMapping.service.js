@@ -9,10 +9,10 @@ export const ALIASES = Object.freeze({
   // Scarlet & Violet sets:
   'SVP':   { tcgdex: 'svp',      ptcg: 'svp' },           // Scarlet & Violet Promos
   'SVI':   { tcgdex: 'sv01',     ptcg: 'sv1' },           // Scarlet & Violet Base Set
-  'SVE':   { tcgdex: null,       ptcg: null },            // Scarlet & Violet Energy (Not in API)
+  'SVE':   { tcgdex: null,       ptcg: null },            // Scarlet & Violet Energy (In API?)
   'PAL':   { tcgdex: 'sv02',     ptcg: 'sv2' },           // Paldea Evolved
   'OBF':   { tcgdex: 'sv03',     ptcg: 'sv3' },           // Obsidian Flames
-  'M23':   { tcgdex: null,       ptcg: null },            // McDonald's Match Battle 2023 (Not in API)
+  'M23':   { tcgdex: null,       ptcg: null },            // McDonald's Match Battle 2023 (In API?)
   'MEW':   { tcgdex: 'sv03.5',   ptcg: 'sv3pt5' },        // 151
   'PAR':   { tcgdex: 'sv04',     ptcg: 'sv4' },           // Paradox Rift
   'PAF':   { tcgdex: 'sv04.5',   ptcg: 'sv4pt5' },        // Paldean Fates 

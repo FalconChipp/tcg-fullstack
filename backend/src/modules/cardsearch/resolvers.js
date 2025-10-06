@@ -370,7 +370,10 @@ const resolvers = {
         where: { card_id: parent.cardId },
         order: [["updated_at", "DESC"]],
       });
-      return rows.map((r) => {
+
+      if (!rows.length) return [];
+
+      const mapRow = (r) => {
         const x = r.get();
         return {
           cardId: x.card_id,
@@ -383,7 +386,62 @@ const resolvers = {
           updatedAt: x.updated_at,
           provider: x.provider ?? null,
         };
-      });
+      };
+
+      const normalize = (value) => String(value ?? '').trim().toLowerCase();
+
+      let allowed = null;
+      if (Array.isArray(parent.variants) && parent.variants.length) {
+        allowed = new Set(
+          parent.variants
+            .map((v) => (typeof v === 'string' ? v : v?.variant))
+            .filter(Boolean)
+            .map(normalize)
+        );
+      }
+
+      if (!allowed || !allowed.size) {
+        const variantRows = await m_CardVariant.findAll({
+          where: { card_id: parent.cardId },
+          attributes: ["variant"],
+          raw: true,
+        });
+        if (variantRows.length) {
+          allowed = new Set(
+            variantRows
+              .map((row) => normalize(row.variant))
+              .filter(Boolean)
+          );
+        }
+      }
+
+      const prices = rows.map(mapRow);
+
+      const dedupe = (list) => {
+        const out = [];
+        const seen = new Set();
+        for (const item of list) {
+          const key = normalize(item.variant);
+          if (seen.has(key)) continue;
+          seen.add(key);
+          out.push(item);
+        }
+        return out;
+      };
+
+      if (allowed && allowed.size) {
+        const filtered = [];
+        const seen = new Set();
+        for (const price of prices) {
+          const key = normalize(price.variant);
+          if (!allowed.has(key) || seen.has(key)) continue;
+          seen.add(key);
+          filtered.push(price);
+        }
+        if (filtered.length) return filtered;
+      }
+
+      return dedupe(prices);
     },
   },
 };

@@ -9,20 +9,51 @@ export function mapCardToDetail(card) {
   if (!card) return {};
 
   // If new backend prices array provided, convert to legacy fields
-  if (Array.isArray(card.prices) && !card.tcgplayerVariations) {
-    card.tcgplayerVariations = {};
-    card.cardmarketVariations = {};
+  if (Array.isArray(card.prices)) {
+    if (!card.tcgplayerVariations) card.tcgplayerVariations = {};
+    if (!card.cardmarketVariations) card.cardmarketVariations = {};
+    if (!card.pricing) card.pricing = { tcgplayer: {}, cardmarket: {}, updated_at: null };
+    if (!card.pricing.tcgplayer) card.pricing.tcgplayer = card.pricing.tcgplayer || {};
+    if (!card.pricing.cardmarket) card.pricing.cardmarket = card.pricing.cardmarket || {};
+
     for (const p of card.prices) {
-      const key = p.variation || "normal";
+      if (!p) continue;
+      const rawKey = String(p.variation || p.variant || 'normal').toLowerCase();
+      const key = rawKey === 'reverse' || rawKey === 'reverse holo' || rawKey === 'reverse-holo' ? 'reverseHolofoil'
+        : rawKey === 'holo' || rawKey === 'holofoil' ? 'holofoil'
+        : rawKey;
       if (!card.tcgplayerVariations[key]) card.tcgplayerVariations[key] = {};
       if (!card.cardmarketVariations[key]) card.cardmarketVariations[key] = {};
-      if (p.tcgplayer !== undefined) card.tcgplayerVariations[key].market = p.tcgplayer;
-      if (p.cardmarket !== undefined) card.cardmarketVariations[key].average_sell = p.cardmarket;
-      if (!card.pricing) card.pricing = { tcgplayer: {}, cardmarket: {}, updated_at: p.updatedAt };
-      if (key === "normal") {
-        if (p.tcgplayer !== undefined) card.pricing.tcgplayer.market = p.tcgplayer;
-        if (p.cardmarket !== undefined) card.pricing.cardmarket.average_sell = p.cardmarket;
-        card.pricing.updated_at = p.updatedAt;
+
+      const provider = typeof p.provider === 'string' ? p.provider.toLowerCase() : '';
+      const preferred = (typeof p.tcgplayer === 'number' && Number.isFinite(p.tcgplayer)) ? p.tcgplayer
+        : (typeof p.cardmarket === 'number' && Number.isFinite(p.cardmarket)) ? p.cardmarket
+        : (typeof p.market === 'number' && Number.isFinite(p.market)) ? p.market
+        : (typeof p.mid === 'number' && Number.isFinite(p.mid)) ? p.mid
+        : (typeof p.low === 'number' && Number.isFinite(p.low)) ? p.low
+        : (typeof p.high === 'number' && Number.isFinite(p.high)) ? p.high
+        : null;
+
+      const tcgValue =
+        typeof p.tcgplayer === 'number' && Number.isFinite(p.tcgplayer)
+          ? p.tcgplayer
+          : provider.includes('tcg')
+            ? preferred
+            : null;
+      const cardmarketValue =
+        typeof p.cardmarket === 'number' && Number.isFinite(p.cardmarket)
+          ? p.cardmarket
+          : provider.includes('cardmarket')
+            ? preferred
+            : null;
+
+      if (tcgValue != null) card.tcgplayerVariations[key].market = tcgValue;
+      if (cardmarketValue != null) card.cardmarketVariations[key].average_sell = cardmarketValue;
+
+      if (key === 'normal') {
+        if (tcgValue != null) card.pricing.tcgplayer.market = tcgValue;
+        if (cardmarketValue != null) card.pricing.cardmarket.average_sell = cardmarketValue;
+        if (p.updatedAt) card.pricing.updated_at = p.updatedAt;
       }
     }
   }
@@ -33,8 +64,9 @@ export function mapCardToDetail(card) {
 
   // -- Variations (always array, always same order for frontend UI) --
   const defaultVariations = ["normal", "reverseHolofoil", "holofoil"];
+  const variationArray = Array.isArray(card.variations) ? card.variations.map((v) => String(v).toLowerCase()) : [];
   const availableVariations = Array.isArray(card.variations)
-    ? defaultVariations.filter(v => card.variations.includes(v))
+    ? defaultVariations.filter((v) => variationArray.includes(v.toLowerCase()))
     : [];
 
   // -- Build TCGDex image URL from card and set IDs --   
@@ -82,6 +114,14 @@ export function mapCardToDetail(card) {
     card.cardmarketVariations?.normal?.average_sell ??
     firstAvailableCMKT() ??
     null;
+
+  if (card.pricing) {
+    const average =
+      tcgplayerMarket != null && cardmarketAverageSell != null
+        ? (tcgplayerMarket + cardmarketAverageSell) / 2
+        : tcgplayerMarket ?? cardmarketAverageSell ?? null;
+    card.pricing.average = average;
+  }
 
   return {
     // --- Names and numbers ---

@@ -12,6 +12,7 @@ import StatusMessage from "@/components/UI/StatusMessage";
 import PokemonAutocomplete from "./SearchComponents/PokemonAutocomplete";
 import SetAutocomplete from "./SearchComponents/SetAutocomplete";
 import { mapCardToDetail } from "@/utils/mapData";
+import { formatVariation } from "@/utils/formatVariation";
 import CardSkeleton from "../UI/CardSkeleton";
 
 // Lazily load heavy panels so the search UI becomes interactive sooner
@@ -65,7 +66,7 @@ const CARDSEARCH_V2_QUERY = gql`
         number
         name
         rarity
-        images { small large }
+        images { large }
         set { code name }
         variants { variant }
         latestPrices {
@@ -89,43 +90,48 @@ const FALLBACK_SYMBOL_IMAGE = "https://placehold.co/50x50/webp?text=Icon";
 const FIRST_PAGE = 16;
 const PAGE_SIZE  = 24;
 
+const GBP_SYMBOL = '\u00A3';
+
 /* ---------------- Helpers ---------------- */
+
+function canonicalVariantKey(raw) {
+  const value = String(raw ?? 'normal').trim().toLowerCase();
+  if (!value) return 'normal';
+  if (value === 'reverse' || value === 'reverse holo' || value === 'reverse-holo' || value === 'reverseholo' || value === 'reverseholofoil') return 'reverseHolofoil';
+  if (value === 'holo' || value === 'holofoil' || value === 'holo foil') return 'holofoil';
+  if (value === 'firstedition' || value === 'first edition' || value === '1stedition' || value === '1st edition') return 'firstEdition';
+  return value;
+}
 
 // Choose a useful price row for tiles
 function getBestPrice(prices) {
   if (!Array.isArray(prices) || prices.length === 0) return null;
-  const pref = ["normal", "holo", "reverse"];
+  const pref = ["normal", "holofoil", "holo", "reverseHolofoil", "reverse"];
   for (const key of pref) {
-    const hit = prices.find(
-      (p) =>
-        p.variation === key &&
-        (typeof p.tcgplayer === "number" ||
-          typeof p.cardmarket === "number" ||
-          typeof p.gbp === "number")
-    );
+    const hit = prices.find((p) => p?.variation === key && hasPrice(p));
     if (hit) return hit;
   }
-  return prices.find(
-    (p) =>
-      typeof p.tcgplayer === "number" ||
-      typeof p.cardmarket === "number" ||
-      typeof p.gbp === "number"
-  ) || null;
+  return prices.find((p) => hasPrice(p)) || null;
 }
 
 function variationsToArray(v) {
-  if (!v || typeof v !== "object") return [];
+  if (!v || typeof v !== 'object') return [];
   return Object.entries(v)
     .filter(([, on]) => !!on)
-    .map(([k]) => k);
+    .map(([k]) => canonicalVariantKey(k));
 }
 
 function normalizeNode(n) {
+  const prices = normalizePriceList(n?.prices ?? n?.latestPrices ?? []);
+  const variationList = variationsToArray(n.variations);
+  const uniqueVariations = Array.from(new Set(variationList.filter(Boolean)));
+  const allowed = new Set(uniqueVariations.length ? uniqueVariations : ['normal']);
+  const filteredPrices = prices.filter((price) => allowed.has(price.variation || 'normal'));
   return {
     ...n,
     tcgImageUrl: n.image,
-    prices: Array.isArray(n.prices) ? n.prices : [],
-    variations: variationsToArray(n.variations),
+    prices: filteredPrices,
+    variations: uniqueVariations.length ? uniqueVariations : ['normal'],
   };
 }
 
@@ -134,21 +140,175 @@ function edgesToCards(edges) {
   return edges.map((e) => normalizeNode(e.node));
 }
 
+function hasPrice(entry) {
+  if (!entry) return false;
+  return [entry.market, entry.tcgplayer, entry.cardmarket, entry.gbp, entry.mid, entry.low, entry.high]
+    .some((val) => typeof val === 'number' && Number.isFinite(val));
+}
+
+function computeAveragePrice(entry) {
+  if (!entry || !hasPrice(entry)) return null;
+  if (typeof entry.market === 'number' && Number.isFinite(entry.market)) return entry.market;
+
+  const primary = [];
+  if (typeof entry.tcgplayer === 'number' && Number.isFinite(entry.tcgplayer)) primary.push(entry.tcgplayer);
+  if (typeof entry.cardmarket === 'number' && Number.isFinite(entry.cardmarket)) primary.push(entry.cardmarket);
+
+  if (primary.length === 2) return (primary[0] + primary[1]) / 2;
+  if (primary.length === 1) return primary[0];
+
+  const fallback = firstNumber(entry.gbp, entry.mid, entry.low, entry.high);
+  if (fallback != null) return fallback;
+  return primary.length ? primary[0] : null;
+}
+
+function formatGBP(value) {
+  if (value == null || Number.isNaN(value)) return `${GBP_SYMBOL}--`;
+  return `${GBP_SYMBOL}${Number(value).toFixed(2)}`;
+}
+
+function firstNumber(...values) {
+  for (const value of values) {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
+function normalizePriceEntry(price) {
+  if (!price || typeof price !== 'object') return null;
+  const variation = canonicalVariantKey(price.variation ?? price.variant ?? 'normal');
+  const providerRaw = price.provider ?? price.source ?? null;
+  const providerKey = providerRaw ? String(providerRaw).toLowerCase() : '';
+  const currency = String(price.currency ?? price.curr ?? 'GBP').toUpperCase();
+
+  const market = firstNumber(price.market, price.mid, price.price, price.value);
+  const mid = firstNumber(price.mid);
+  const low = firstNumber(price.low);
+  const high = firstNumber(price.high);
+  const updatedAt = price.updatedAt || price.updated_at || null;
+
+  const entry = {
+    variation,
+    provider: providerRaw || null,
+    currency,
+    market,
+    mid,
+    low,
+    high,
+    updatedAt,
+  };
+
+  if (currency === 'GBP' && market != null) entry.gbp = market;
+  if (currency === 'USD' && market != null) entry.usd = market;
+  if (currency === 'EUR' && market != null) entry.eur = market;
+
+  if (typeof price.gbp === 'number') entry.gbp = price.gbp;
+  if (typeof price.usd === 'number') entry.usd = price.usd;
+  if (typeof price.eur === 'number') entry.eur = price.eur;
+
+  if (Array.isArray(price.sources)) {
+    entry.sources = price.sources;
+    for (const src of price.sources) {
+      if (!src) continue;
+      const srcProvider = typeof src.provider === 'string' ? src.provider.toLowerCase() : '';
+      const srcValue = firstNumber(src.market, src.mid, src.price, src.value);
+      if (srcProvider.includes('tcg') && srcValue != null && entry.tcgplayer == null) entry.tcgplayer = srcValue;
+      if (srcProvider.includes('cardmarket') && srcValue != null && entry.cardmarket == null) entry.cardmarket = srcValue;
+      if (entry.market == null && srcValue != null) entry.market = srcValue;
+    }
+  } else if (price.sources && typeof price.sources === 'object') {
+    const values = Object.values(price.sources).filter(Boolean);
+    if (values.length) entry.sources = values;
+    for (const src of values) {
+      const srcProvider = typeof src.provider === 'string' ? src.provider.toLowerCase() : '';
+      const srcValue = firstNumber(src.market, src.mid, src.price, src.value);
+      if (srcProvider.includes('tcg') && srcValue != null && entry.tcgplayer == null) entry.tcgplayer = srcValue;
+      if (srcProvider.includes('cardmarket') && srcValue != null && entry.cardmarket == null) entry.cardmarket = srcValue;
+      if (entry.market == null && srcValue != null) entry.market = srcValue;
+    }
+  }
+
+  const tcgValue = firstNumber(price.tcgplayer, providerKey.includes('tcg') ? market : null);
+  if (tcgValue != null) entry.tcgplayer = tcgValue;
+
+  const cmktValue = firstNumber(price.cardmarket, providerKey.includes('cardmarket') ? market : null);
+  if (cmktValue != null) entry.cardmarket = cmktValue;
+
+  if (entry.market == null) {
+    entry.market = firstNumber(entry.tcgplayer, entry.cardmarket, entry.mid, entry.low, entry.high);
+  }
+
+  if (price.sampleSize != null) entry.sampleSize = price.sampleSize;
+
+  return entry;
+}
+
+function normalizePriceList(list) {
+  if (!Array.isArray(list)) return [];
+  const byVariant = new Map();
+
+  for (const price of list) {
+    const entry = normalizePriceEntry(price);
+    if (!entry) continue;
+    const key = entry.variation || 'normal';
+    const existing = byVariant.get(key);
+
+    const sourceSnapshot = entry.provider && entry.market != null
+      ? { provider: entry.provider, currency: entry.currency, market: entry.market, updatedAt: entry.updatedAt }
+      : null;
+
+    if (!existing) {
+      const base = { ...entry };
+      if (entry.sources) {
+        base.sources = Array.isArray(entry.sources) ? [...entry.sources] : [entry.sources];
+      } else if (sourceSnapshot) {
+        base.sources = [sourceSnapshot];
+      }
+      byVariant.set(key, base);
+      continue;
+    }
+
+    if (entry.tcgplayer != null) existing.tcgplayer = entry.tcgplayer;
+    if (entry.cardmarket != null) existing.cardmarket = entry.cardmarket;
+    if (entry.market != null && existing.market == null) existing.market = entry.market;
+    if (entry.mid != null && existing.mid == null) existing.mid = entry.mid;
+    if (entry.low != null && existing.low == null) existing.low = entry.low;
+    if (entry.high != null && existing.high == null) existing.high = entry.high;
+    if (entry.gbp != null && existing.gbp == null) existing.gbp = entry.gbp;
+    if (entry.usd != null && existing.usd == null) existing.usd = entry.usd;
+    if (entry.eur != null && existing.eur == null) existing.eur = entry.eur;
+
+    const existingUpdated = existing.updatedAt ? Date.parse(existing.updatedAt) : null;
+    const entryUpdated = entry.updatedAt ? Date.parse(entry.updatedAt) : null;
+    if (entryUpdated != null && (existingUpdated == null || entryUpdated > existingUpdated)) {
+      existing.updatedAt = entry.updatedAt;
+    }
+
+    if (entry.sources) {
+      const merged = Array.isArray(existing.sources) ? existing.sources : [];
+      merged.push(...(Array.isArray(entry.sources) ? entry.sources : [entry.sources]));
+      existing.sources = merged;
+    } else if (sourceSnapshot) {
+      const merged = Array.isArray(existing.sources) ? existing.sources : [];
+      merged.push(sourceSnapshot);
+      existing.sources = merged;
+    }
+  }
+
+  return Array.from(byVariant.values());
+}
+
 function mapCardsearchVariantFlags(list) {
   const set = new Set(
     (Array.isArray(list) ? list : [])
-      .map((v) => {
-        if (!v) return '';
-        if (typeof v === 'string') return v.toLowerCase();
-        return String(v.variant || v.displayName || '').toLowerCase();
-      })
+      .map((v) => canonicalVariantKey(typeof v === 'string' ? v : v?.variant || v?.displayName))
       .filter(Boolean)
   );
   return {
     normal: set.size === 0 ? true : set.has('normal'),
-    reverse: set.has('reverse') || set.has('reverse holo') || set.has('reverse holofoil'),
-    holo: set.has('holo') || set.has('holofoil') || set.has('foil'),
-    firstEdition: set.has('firstedition') || set.has('1stedition') || set.has('first edition'),
+    reverseHolofoil: set.has('reverseHolofoil'),
+    holofoil: set.has('holofoil'),
+    firstEdition: set.has('firstEdition'),
   };
 }
 
@@ -160,21 +320,7 @@ function mapCardsearchV2Items(items) {
     const setName = setRecord.name || setCode || item?.setName || '';
     const image = item?.images?.large || item?.images?.small || null;
     const variantFlags = mapCardsearchVariantFlags(item?.variants);
-    const prices = Array.isArray(item?.latestPrices)
-      ? item.latestPrices.map((p) => ({
-          variation: (p?.variant || 'normal').toLowerCase(),
-          tcgplayer: null,
-          cardmarket: null,
-          gbp:
-            typeof p?.market === 'number'
-              ? p.market
-              : typeof p?.mid === 'number'
-              ? p.mid
-              : null,
-          currency: p?.currency || 'GBP',
-          updatedAt: p?.updatedAt || null,
-        }))
-      : [];
+    const prices = normalizePriceList(item?.latestPrices ?? item?.prices ?? []);
     return {
       id: item?.cardId || item?.id || `${setCode}-${item?.number || index}`,
       name: item?.name || '',
@@ -568,9 +714,9 @@ export default function CardSearch() {
       <div className="max-w-[1200px] mx-auto px-5 py-10">
         {/* Header */}
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-extrabold mb-2 tracking-tight">Pokémon Card Search</h1>
+          <h1 className="text-4xl font-extrabold mb-2 tracking-tight">Pokemon Card Search</h1>
           <p className="text-lg text-light-textMuted dark:text-dark-textMuted">
-            Search for any Pokémon card and add it to your collection
+            Search for any Pokemon card and add it to your collection
           </p>
         </div>
 
@@ -652,6 +798,7 @@ export default function CardSearch() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {results.map((card, idx) => {
                 const best = getBestPrice(card.prices);
+                const averagePrice = computeAveragePrice(best);
                 const setKey = card.set || card.setCode || '';
                 const numKey = card.number || '';
                 const fallbackKey = `${setKey}-${numKey}`.trim();
@@ -709,26 +856,14 @@ export default function CardSearch() {
 
                       <div className="flex gap-3 text-sm my-1">
                         <div>
-                          <span className="font-bold text-light-accent dark:text-dark-accent">TCGP</span>
+                          <span className="font-bold text-light-accent dark:text-dark-accent">Average</span>
                           <span className="font-semibold ml-1 text-light-text dark:text-dark-text">
-                            {typeof best?.tcgplayer === "number"
-                              ? `£${best.tcgplayer.toFixed(2)}`
-                              : typeof best?.gbp === "number"
-                              ? `£${best.gbp.toFixed(2)}`
-                              : "—"}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="font-bold text-light-accent dark:text-dark-accent">CMKT</span>
-                          <span className="font-semibold ml-1 text-light-text dark:text-dark-text">
-                            {typeof best?.cardmarket === "number"
-                              ? `£${best.cardmarket.toFixed(2)}`
-                              : "—"}
+                            {formatGBP(averagePrice)}
                           </span>
                         </div>
                         {best?.variation && best.variation !== "normal" ? (
                           <span className="ml-1 text-xs text-light-textMuted dark:text-dark-textMuted">
-                            ({best.variation})
+                            ({formatVariation(best.variation)})
                           </span>
                         ) : null}
                       </div>
@@ -776,9 +911,9 @@ export default function CardSearch() {
           </div>
         ) : (
           <div>
-            <div className="text-center text-light-textMuted dark:text-dark-textMuted text-lg py-8">
+            {/* <div className="text-center text-light-textMuted dark:text-dark-textMuted text-lg py-8">
               No results found. Try adjusting your search criteria.
-            </div>
+            </div> */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-2">
               {Array.from({ length: 4 }).map((_, idx) => (
                 <CardSkeleton key={idx} dark={dark} />

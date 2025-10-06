@@ -17,6 +17,8 @@ try {
 
 const FALLBACK_CARD_IMAGE = "/images/card-placeholder.svg";
 
+const GBP_SYMBOL = '\u00A3';
+
 /* ---------- helpers ---------- */
 const toNumber = (v) => {
   if (v === null || v === undefined) return null;
@@ -25,7 +27,7 @@ const toNumber = (v) => {
 };
 
 const gbp = (v) =>
-  v === null || v === undefined ? "N/A" : `£${Number(v).toFixed(2)}`;
+  v === null || v === undefined ? 'N/A' : `${GBP_SYMBOL}${Number(v).toFixed(2)}`;
 
 const hasValidDate = (d) => {
   if (!d) return false;
@@ -56,12 +58,36 @@ const pickImage = (card) => {
 };
 
 // Pick a price row for a given variation; else any row that has a price
-const findPriceRow = (rows, targetVar) =>
-  rows.find((p) => p?.variation === targetVar) ||
-  rows.find(
-    (p) => toNumber(p?.tcgplayer) != null || toNumber(p?.cardmarket) != null
-  ) ||
-  null;
+const hasPrice = (row) => {
+  if (!row) return false;
+  return [row.market, row.tcgplayer, row.cardmarket, row.gbp, row.mid, row.low, row.high]
+    .some((val) => toNumber(val) != null);
+};
+
+const computeAveragePrice = (row) => {
+  if (!hasPrice(row)) return null;
+  const market = toNumber(row?.market);
+  if (market != null) return market;
+
+  const primary = [];
+  const tp = toNumber(row?.tcgplayer);
+  const cm = toNumber(row?.cardmarket);
+  if (tp != null) primary.push(tp);
+  if (cm != null) primary.push(cm);
+  if (primary.length === 2) return (primary[0] + primary[1]) / 2;
+  if (primary.length === 1) return primary[0];
+
+  const fallback = toNumber(row?.gbp) ?? toNumber(row?.mid) ?? toNumber(row?.low) ?? toNumber(row?.high);
+  if (fallback != null) return fallback;
+  return primary.length ? primary[0] : null;
+};
+
+const findPriceRow = (rows, targetVar) => {
+  if (!Array.isArray(rows)) return null;
+  const exact = rows.find((p) => p?.variation === targetVar && hasPrice(p));
+  if (exact) return exact;
+  return rows.find((p) => hasPrice(p)) || null;
+};
 
 export default function CardDetailsModal({
   card,
@@ -93,7 +119,24 @@ export default function CardDetailsModal({
   const [imgLoading, setImgLoading] = React.useState(true);
 
   /* --------- Prices / variations ---------- */
-  const priceRows = Array.isArray(card.prices) ? card.prices.filter(Boolean) : [];
+  const priceRows = React.useMemo(() => {
+    const list = Array.isArray(card.prices) ? card.prices.filter(Boolean) : [];
+    if (list.length) return list;
+    const fallback = [];
+    const tcg = toNumber(card.pricing?.tcgplayer?.market);
+    const cm = toNumber(card.pricing?.cardmarket?.average_sell);
+    const avg = toNumber(card.pricing?.average);
+    if (tcg != null || cm != null || avg != null) {
+      fallback.push({
+        variation: 'normal',
+        tcgplayer: tcg,
+        cardmarket: cm,
+        market: avg,
+        updatedAt: card.pricing?.updated_at || card.pricing?.updatedAt || null,
+      });
+    }
+    return fallback;
+  }, [card.prices, card.pricing]);
 
   const variationSet = new Set(priceRows.map((p) => p?.variation).filter(Boolean));
   if (card.variation) variationSet.add(card.variation);
@@ -110,18 +153,9 @@ export default function CardDetailsModal({
   const [selectedVar, setSelectedVar] = React.useState(initialVar);
 
   const selectedRow = findPriceRow(priceRows, selectedVar);
-  const tcgplayer = toNumber(selectedRow?.tcgplayer);
-  const cardmarket = toNumber(selectedRow?.cardmarket);
-
+  const averagePrice = computeAveragePrice(selectedRow);
   const quantity = Number(card.quantity || 1);
-  const singleAvg =
-    tcgplayer == null && cardmarket == null
-      ? null
-      : tcgplayer != null && cardmarket != null
-      ? (tcgplayer + cardmarket) / 2
-      : tcgplayer ?? cardmarket;
-
-  const totalValue = singleAvg == null ? null : singleAvg * quantity;
+  const totalValue = averagePrice == null ? null : averagePrice * quantity;
   const priceUpdated = selectedRow?.updatedAt;
 
   /* ---------- token classes ---------- */
@@ -316,42 +350,32 @@ export default function CardDetailsModal({
             )}
 
             {/* Price summary cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className={`p-4 rounded-xl border ${cardBg} ${border}`}>
                 <div className={`text-2xs uppercase tracking-wide mb-1 ${textMuted}`}>
-                  TCGplayer Market <span className="opacity-70">({formatVariation(selectedVar)})</span>
+                  Average Price <span className="opacity-70">({formatVariation(selectedVar)})</span>
                 </div>
-                <div className="text-lg font-extrabold text-emerald-500">{gbp(tcgplayer)}</div>
+                <div className="text-lg font-extrabold text-emerald-500">{gbp(averagePrice)}</div>
+                {hasValidDate(priceUpdated) && (
+                  <div className={`text-2xs mt-1 ${textMuted}`} title={priceUpdated}>
+                    Updated {formatRelativeTime(priceUpdated)}
+                  </div>
+                )}
               </div>
 
               <div className={`p-4 rounded-xl border ${cardBg} ${border}`}>
-                <div className={`text-2xs uppercase tracking-wide mb-1 ${textMuted}`}>
-                  Cardmarket Avg <span className="opacity-70">({formatVariation(selectedVar)})</span>
-                </div>
-                <div className="text-lg font-extrabold text-emerald-500">{gbp(cardmarket)}</div>
-              </div>
-
-              <div className={`p-4 rounded-xl border ${cardBg} ${border}`}>
-                <div className={`text-2xs uppercase tracking-wide mb-1 ${textMuted}`}>Avg Value × Qty</div>
-                <div className={`text-lg font-extrabold ${textMain}`}>
-                  {totalValue == null ? "N/A" : gbp(totalValue)}
-                </div>
-                <div className={`text-2xs mt-1 ${textMuted}`}>
-                  {(tcgplayer != null || cardmarket != null) && <>((TCG + CM) / 2) × {quantity}</>}
-                </div>
+                <div className={`text-2xs uppercase tracking-wide mb-1 ${textMuted}`}>Portfolio Value</div>
+                <div className={`text-lg font-extrabold ${textMain}`}>{totalValue == null ? 'N/A' : gbp(totalValue)}</div>
+                <div className={`text-2xs mt-1 ${textMuted}`}>Quantity {quantity}</div>
               </div>
             </div>
 
             {/* All variation prices */}
-            {variations.length > 1 && (
+
+            {variations.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className={`text-sm font-bold ${textMain}`}>All Market Prices</h3>
-                  {hasValidDate(priceUpdated) && (
-                    <div className={`text-2xs ${textMuted}`} title={priceUpdated}>
-                      Updated {formatRelativeTime(priceUpdated)}
-                    </div>
-                  )}
+                  <h3 className={`text-sm font-bold ${textMain}`}>All Variation Prices</h3>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -359,15 +383,14 @@ export default function CardDetailsModal({
                     <thead>
                       <tr className={textMuted}>
                         <th className="px-3 py-2 text-left font-semibold">Variation</th>
-                        <th className="px-3 py-2 text-left font-semibold">TCGplayer</th>
-                        <th className="px-3 py-2 text-left font-semibold">Cardmarket</th>
+                        <th className="px-3 py-2 text-left font-semibold">Average Price</th>
+                        <th className="px-3 py-2 text-left font-semibold">Last Updated</th>
                       </tr>
-                    </thead>
-                    <tbody>
+                    </thead>                    <tbody>
                       {variations.map((v) => {
                         const row = findPriceRow(priceRows, v);
-                        const tp = toNumber(row?.tcgplayer);
-                        const cm = toNumber(row?.cardmarket);
+                        const avg = computeAveragePrice(row);
+                        const updated = row?.updatedAt;
                         const active = v === selectedVar;
                         return (
                           <tr
@@ -375,8 +398,8 @@ export default function CardDetailsModal({
                             className={active ? (isDark ? "bg-dark-background" : "bg-light-background") : ""}
                           >
                             <td className="px-3 py-2 font-semibold">{formatVariation(v)}</td>
-                            <td className="px-3 py-2">{gbp(tp)}</td>
-                            <td className="px-3 py-2">{gbp(cm)}</td>
+                            <td className="px-3 py-2">{gbp(avg)}</td>
+                            <td className="px-3 py-2">{hasValidDate(updated) ? formatRelativeTime(updated) : "--"}</td>
                           </tr>
                         );
                       })}

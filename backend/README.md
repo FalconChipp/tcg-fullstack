@@ -46,20 +46,20 @@ ode-cron, custom scheduler service        |
 ## Getting Started
 
 1. Install dependencies:
-   `ash
+   `bash
    npm install
    `
 2. Copy an environment template:
-   `ash
+   `bash
    cp .env.development .env
    # Update secrets, DB credentials, provider keys
    `
 3. Create local directories:
-   `ash
+   `bash
    mkdir -p uploads/avatars data/marketdata2/{cards,sets,index,fx}
    `
 4. Start the server with auto-reload:
-   `ash
+   `bash
    npm run dev
    `
 5. Access GraphQL at http://localhost:4000/graphql and the admin UI at http://localhost:4000/admin (requires ADMIN_API_TOKEN).
@@ -106,7 +106,7 @@ pm run monitor | Start Express status monitor (at /status).
 - Root schema defined in src/schema.js, merging per-module 	ypeDefs and 
 esolvers.
 - Feature modules live under src/modules/<name>/.
-  - Examples: uth, users, collection, marketplace, 	rading, wishlist, 
+  - Examples: auth, users, collection, marketplace, 	rading, wishlist, 
 otifications, subscriptions, marketdata2, etc.
 - marketdata2 injects new queries/mutations such as marketdataFx, marketdataSets, searchCards, and tick mutations for scheduler control.
 - Legacy search module remains for compatibility but is marked deprecated; prefer marketdata2 search services.
@@ -129,7 +129,7 @@ esolvers from a module and registering them in src/schema.js (imports and merge 
 - setIndex.service.js � Builds and maintains sets.index.json, manages cadence computation, and repairs caches.
 - ingest.service.js � Normalizes set data (cards, variants, metadata) from TCGdex.
 - priceAdapter.*.service.js � Provider adapters (TCGdex, PokemonTCG.io, PokemonPriceTracker) returning price observations.
-- x.service.js � Fetches GBP-centric FX data (USD/EUR) with caching.
+- fx.service.js � Fetches GBP-centric FX data (USD/EUR) with caching.
 - 
 ollup.service.js � Computes rolling averages and stats from observations for dashboard/analytics.
 - searchCards.service.js � Reads cached card data with DB fallback for GraphQL search queries.

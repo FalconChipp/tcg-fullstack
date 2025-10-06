@@ -40,9 +40,9 @@ import {
   m_CardVariant,
   m_PriceLatest,
   m_PriceObservation,
-  m_PriceRollup,
 } from "../../../models/index.js";
 import { getLogger } from "../services/logging.service.js";
+import { computeRollupsSnapshot, rebuildRollupsForVariant } from "../services/rollup.service.js";
 
 /**
  * @typedef {Object} VerifyOpts
@@ -185,20 +185,16 @@ export async function verifyDataHealth(opts = {}) {
       : [];
     const obsKey = new Set(obsRows.map((r) => `${r.get("card_id")}::${r.get("variant")}`));
 
-    // Rollups windows
-    const rollRows = vSlice.length
-      ? await m_PriceRollup.findAll({
-          where: { [Op.or]: vSlice },
-          attributes: ["card_id", "variant", "window"],
-        })
-      : [];
-    const rollMap = new Map(); // key -> Set(windows)
-    for (const r of rollRows) {
-      const k = `${r.get("card_id")}::${r.get("variant")}`;
-      const s = rollMap.get(k) || new Set();
-      s.add(String(r.get("window")));
-      rollMap.set(k, s);
-    }
+    // Rollups windows (computed on demand)
+    const rollResults = await Promise.all(
+      vSlice.map(({ card_id, variant }) =>
+        computeRollupsSnapshot(card_id, variant, {})
+      )
+    );
+    const rollMap = new Map(); // key -> rows
+    vSlice.forEach(({ card_id, variant }, idx) => {
+      rollMap.set(`${card_id}::${variant}`, rollResults[idx] || []);
+    });
 
     // Evaluate
     for (const { card_id, variant } of vSlice) {
@@ -219,9 +215,13 @@ export async function verifyDataHealth(opts = {}) {
         observationsMissing.push({ cardId: card_id, variant });
       }
       // rollups coverage
-      const windows = rollMap.get(k) || new Set();
+      const rows = rollMap.get(k) || [];
+      const windowsSet = new Set(
+        rows.filter((r) => r && r.count > 0).map((r) => String(r.window))
+      );
+      rollupsWindowTotal += windowsSet.size;
       const need = ["1", "7", "30", "90"];
-      const missing = need.filter((w) => !windows.has(w));
+      const missing = need.filter((w) => !windowsSet.has(w));
       if (missing.length) {
         rollupsMissing.push({ cardId: card_id, variant, missing });
       }
@@ -235,7 +235,7 @@ export async function verifyDataHealth(opts = {}) {
     variants: variants.length,
     latestRows: await m_PriceLatest.count({ where: cardIds.length ? { card_id: { [Op.in]: cardIds } } : {} }),
     observations: await m_PriceObservation.count({ where: cardIds.length ? { card_id: { [Op.in]: cardIds } } : {} }),
-    rollups: await m_PriceRollup.count({ where: cardIds.length ? { card_id: { [Op.in]: cardIds } } : {} }),
+    rollups: rollupsWindowTotal,
   };
 
   // Optional fixes (guarded by dryRun)
@@ -255,8 +255,7 @@ export async function verifyDataHealth(opts = {}) {
   }
 
   if (!dryRun && rebuildRollups) {
-    // Rebuild rollups only for combos that report missing windows (dedup first)
-    const missingTargets = new Map(); // cardId::variant -> true
+    const missingTargets = new Map();
     for (const r of rollupsMissing) missingTargets.set(`${r.cardId}::${r.variant}`, true);
 
     if (missingTargets.size) {
@@ -266,18 +265,15 @@ export async function verifyDataHealth(opts = {}) {
       });
 
       const { rebuildPriceRollups } = await import("./priceRollup.job.js");
-      // Process in small groups to avoid long transactions
       const CHUNK = 250;
       for (let i = 0; i < list.length; i += CHUNK) {
         const chunk = list.slice(i, i + CHUNK);
-        // `rebuildPriceRollups` supports per-card targeting via options
-        // We pass in an array of { cardId, variant } under 'targets'
-        // and skip global scans.
         const out = await rebuildPriceRollups({
           scope: "targets",
           targets: chunk,
         });
-        rebuiltRollups += out?.counts?.rowsWritten ?? 0;
+        const processed = Array.isArray(out?.results) ? out.results.length : 0;
+        rebuiltRollups += processed;
       }
     }
   }

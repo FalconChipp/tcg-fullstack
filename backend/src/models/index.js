@@ -1,3 +1,4 @@
+import 'dotenv/config';
 // models/index.js
 // CHANGES:
 // - ADDED: init_m_PriceRollup import + initialization + export
@@ -264,8 +265,8 @@ ShippingLabel.belongsTo(User, { foreignKey: 'userId' });
 
 /* ---------------- NEW marketdata2 associations ---------------- */
 // m_Set 1:M m_Card
-m_Set.hasMany(m_Card, { foreignKey: 'set_code', sourceKey: 'code' });
-m_Card.belongsTo(m_Set, { foreignKey: 'set_code', targetKey: 'code' });
+m_Set.hasMany(m_Card, { as:'cards', foreignKey: 'set_code', sourceKey: 'code' });
+m_Card.belongsTo(m_Set, { as: 'set', foreignKey: 'set_code', targetKey: 'code' });
 
 // m_Card 1:M m_CardVariant
 m_Card.hasMany(m_CardVariant, { foreignKey: 'card_id', sourceKey: 'id' });
@@ -311,3 +312,4 @@ export {
   m_PriceObservation, m_PriceDaily, m_PriceLatest,
   m_PriceRollup, // ADDED
 };
+

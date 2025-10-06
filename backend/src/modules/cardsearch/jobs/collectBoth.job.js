@@ -17,6 +17,9 @@ import { fxDaily } from "./fxDaily.job.js";
  * @property {number}  [backfillFxDays]
  * @property {boolean} [dryRun=false]
  * @property {number}  [pauseMs=400]
+ * @property {number}  [alertPctUp]
+ * @property {number}  [alertPctDown]
+ * @property {boolean} [triggerAlerts=true]
  * @property {{log:Function,warn:Function,error:Function}} [logger=console]
  */
 export async function collectBoth(opts) {
@@ -25,6 +28,9 @@ export async function collectBoth(opts) {
   const dryRun = !!opts?.dryRun;
   const refreshSet = !!opts?.refreshSet;
   const pauseMs = Number.isFinite(opts?.pauseMs) ? Math.max(0, Number(opts.pauseMs)) : 400;
+  const triggerAlerts = opts?.triggerAlerts !== false;
+  const alertPctUp = opts?.alertPctUp;
+  const alertPctDown = opts?.alertPctDown;
 
   const inputSets = Array.isArray(opts?.sets) ? opts.sets : [String(opts?.sets ?? "").trim()];
   const cleanSets = inputSets.map((s) => String(s || "").trim()).filter(Boolean);
@@ -49,6 +55,7 @@ export async function collectBoth(opts) {
   let totalObsCollected = 0;
   let totalObsWritten = 0;
   let totalLatestUpserts = 0;
+  let totalAlertsTriggered = 0;
 
   for (const raw of cleanSets) {
     const mapping = resolveSet(raw);
@@ -69,6 +76,9 @@ export async function collectBoth(opts) {
       set: tcgdexCode,
       since: opts?.since,
       dryRun,
+      alertPctUp,
+      alertPctDown,
+      triggerAlerts,
       logger,
     });
 
@@ -77,11 +87,13 @@ export async function collectBoth(opts) {
     totalObsCollected += pricesRes.counts.obs?.collected || 0;
     totalObsWritten += pricesRes.counts.obs?.written || 0;
     totalLatestUpserts += pricesRes.counts.latest?.upserted || 0;
+    totalAlertsTriggered += pricesRes.alerts?.triggered || 0;
 
     perSet.push({
       set: tcgdexCode,
       ingest: ingestRes,
       prices: pricesRes,
+      alerts: pricesRes.alerts || null,
       ms: Date.now() - setStart,
     });
 
@@ -98,6 +110,7 @@ export async function collectBoth(opts) {
       obsCollected: totalObsCollected,
       obsWritten: totalObsWritten,
       latestUpserts: totalLatestUpserts,
+      alertsTriggered: totalAlertsTriggered,
     },
     fx: fxInfo
       ? {
@@ -129,6 +142,9 @@ if (isDirect) {
   (async () => {
     const args = process.argv.slice(2).filter((a) => !a.startsWith("--"));
     const sinceArg = process.argv.find((a) => a.startsWith("--since="));
+    const alertUpArg = process.argv.find((a) => a.startsWith("--alert-pct-up="));
+    const alertDownArg = process.argv.find((a) => a.startsWith("--alert-pct-down="));
+    const noAlerts = process.argv.includes("--no-alerts");
     const since = sinceArg ? sinceArg.split("=")[1] : undefined;
     const refresh = process.argv.includes("--refresh");
     const noPrewarm = process.argv.includes("--no-prewarm");
@@ -136,7 +152,7 @@ if (isDirect) {
     const backfillFxDays = backfillArg ? Number(backfillArg.split("=")[1]) : undefined;
 
     if (args.length === 0) {
-      console.error("Usage: node collectBoth.job.js <set...> [--refresh] [--since=YYYY-MM-DD] [--no-prewarm] [--backfillFx=N]");
+      console.error("Usage: node collectBoth.job.js <set...> [--refresh] [--since=YYYY-MM-DD] [--no-prewarm] [--backfillFx=N] [--alert-pct-up=N] [--alert-pct-down=N] [--no-alerts]");
       process.exit(1);
     }
 
@@ -147,6 +163,9 @@ if (isDirect) {
         since,
         prewarmFx: !noPrewarm,
         backfillFxDays,
+        alertPctUp: alertUpArg ? Number(alertUpArg.split("=")[1]) : undefined,
+        alertPctDown: alertDownArg ? Number(alertDownArg.split("=")[1]) : undefined,
+        triggerAlerts: !noAlerts,
         logger: console,
       });
       console.log(JSON.stringify(res, null, 2));

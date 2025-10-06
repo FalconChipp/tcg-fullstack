@@ -1,5 +1,4 @@
-// src/modules/cardsearch/jobs/priceRollup.job.js
-// Rebuilds precomputed price rollups by delegating to rollup.service helpers.
+// Rebuilds price rollups by delegating to rollup.service helpers (computed on demand).
 
 import {
   rebuildRollupsAll,
@@ -18,12 +17,20 @@ function normalizeVariant(value) {
   return value ? String(value).trim().toLowerCase() : null;
 }
 
+function mergeWindowCounts(target, source) {
+  if (!source) return;
+  for (const [key, value] of Object.entries(source)) {
+    target[key] = (target[key] || 0) + (value || 0);
+  }
+}
+
 /**
  * Rebuild rollups.
  * @param {Object} opts
- * @param {'all'|'set'|'card'} [opts.scope='all']
+ * @param {'all'|'set'|'card'|'targets'} [opts.scope='all']
  * @param {string} [opts.set]
  * @param {string} [opts.cardId]
+ * @param {Array<{cardId:string,variant?:string}>} [opts.targets]
  * @param {string} [opts.variant]
  * @param {string} [opts.asOf]
  * @param {number} [opts.batchSize]
@@ -52,21 +59,36 @@ export async function rebuildPriceRollups(opts = {}) {
     const callOpts = { asOf: effectiveAsOf };
     if (batchSize) callOpts.batchSize = batchSize;
     result = await rebuildRollupsForSet(opts.set, callOpts);
+  } else if (scope === "targets") {
+    const targets = Array.isArray(opts.targets) ? opts.targets : [];
+    const aggregated = { ok: true, results: [], byWindow: {} };
+    for (const target of targets) {
+      const cardId = target.cardId || target.card_id;
+      const targetVariant = normalizeVariant(target.variant || target.variant_id) || "normal";
+      if (!cardId) continue;
+      const res = await rebuildRollupsForVariant(cardId, targetVariant, { asOf: effectiveAsOf });
+      aggregated.results.push(res);
+      mergeWindowCounts(aggregated.byWindow, res.byWindow);
+    }
+    result = aggregated;
   } else {
     const callOpts = { asOf: effectiveAsOf };
     if (batchSize) callOpts.batchSize = batchSize;
     result = await rebuildRollupsAll(callOpts);
   }
 
-  const summary = { scope, asOf: effectiveAsOf, variant: variant ?? null, ...result };
+  const totalWindows = result?.byWindow
+    ? Object.values(result.byWindow).reduce((acc, n) => acc + (n || 0), 0)
+    : 0;
 
   logger?.log?.(
-    `[rollups] scope=${scope} asOf=${summary.asOf} upserted=${summary.upserted ?? 0}` +
+    `[rollups] scope=${scope} asOf=${effectiveAsOf} windows=${totalWindows}` +
       (scope === "set" ? ` set=${opts.set}` : "") +
-      (scope === "card" ? ` cardId=${opts.cardId}${variant ? ` variant=${variant}` : ""}` : "")
+      (scope === "card" ? ` cardId=${opts.cardId}${variant ? ` variant=${variant}` : ""}` : "") +
+      (scope === "targets" ? ` targets=${Array.isArray(opts.targets) ? opts.targets.length : 0}` : "")
   );
 
-  return summary;
+  return { scope, asOf: effectiveAsOf, variant: variant ?? null, ...result };
 }
 
 export default { rebuildPriceRollups };

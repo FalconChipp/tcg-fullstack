@@ -1,14 +1,10 @@
 // src/modules/cardsearch/services/setMapping.service.js
 // Maps: ABBREV => { tcgdex: '', ptcg: '' }
-// CHANGED/ADDED:
-// - Case-insensitive lookups
-// - Output normalization ('' -> null)
-// - Reverse maps (tcgdex -> abbr, ptcg -> abbr)
-// - Helpers: resolveSet, resolveToTcgdex, resolveToPTCG, getAbbrForTcgdex, getAbbrForPTCG, listKnownAbbrs
 
 export const ALIASES = Object.freeze({
   // Mega Evolution sets:
-  'MEG':   { tcgdex: 'me01',     ptcg: null },            // Mega Evolutions Base Set (not sure in APIs)
+  'MEG':   { tcgdex: 'me01',     ptcg: 'me1' },           // Mega Evolutions Base Set
+  'PFL':   { tcgdex: null,       ptcg: null },            // Phantasmal Flames 
 
   // Scarlet & Violet sets:
   'SVP':   { tcgdex: 'svp',      ptcg: 'svp' },           // Scarlet & Violet Promos

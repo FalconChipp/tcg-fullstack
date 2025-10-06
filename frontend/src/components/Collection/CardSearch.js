@@ -50,6 +50,38 @@ const SEARCH_CARDS_CONNECTION = gql`
   }
 `;
 
+// Feature flag: opt-in to the new cardsearch module via NEXT_PUBLIC_CARDSEARCH_V2='1'
+const USE_CARDSEARCH_V2 = process.env.NEXT_PUBLIC_CARDSEARCH_V2 === '1';
+
+const CARDSEARCH_V2_QUERY = gql`
+  query CardSearchV2($input: CardSearchInput!) {
+    searchCards(input: $input) {
+      total
+      limit
+      offset
+      items {
+        cardId
+        setCode
+        number
+        name
+        rarity
+        images { small large }
+        set { code name }
+        variants { variant }
+        latestPrices {
+          variant
+          market
+          mid
+          currency
+          updatedAt
+        }
+      }
+    }
+  }
+`;
+
+const CARDSEARCH_V2_LIMIT = 48;
+
 // Fallback set icon
 const FALLBACK_SYMBOL_IMAGE = "https://placehold.co/50x50/webp?text=Icon";
 
@@ -102,6 +134,62 @@ function edgesToCards(edges) {
   return edges.map((e) => normalizeNode(e.node));
 }
 
+function mapCardsearchVariantFlags(list) {
+  const set = new Set(
+    (Array.isArray(list) ? list : [])
+      .map((v) => {
+        if (!v) return '';
+        if (typeof v === 'string') return v.toLowerCase();
+        return String(v.variant || v.displayName || '').toLowerCase();
+      })
+      .filter(Boolean)
+  );
+  return {
+    normal: set.size === 0 ? true : set.has('normal'),
+    reverse: set.has('reverse') || set.has('reverse holo') || set.has('reverse holofoil'),
+    holo: set.has('holo') || set.has('holofoil') || set.has('foil'),
+    firstEdition: set.has('firstedition') || set.has('1stedition') || set.has('first edition'),
+  };
+}
+
+function mapCardsearchV2Items(items) {
+  if (!Array.isArray(items) || !items.length) return [];
+  return items.map((item, index) => {
+    const setRecord = item?.set || {};
+    const setCode = item?.setCode || setRecord.code || '';
+    const setName = setRecord.name || setCode || item?.setName || '';
+    const image = item?.images?.large || item?.images?.small || null;
+    const variantFlags = mapCardsearchVariantFlags(item?.variants);
+    const prices = Array.isArray(item?.latestPrices)
+      ? item.latestPrices.map((p) => ({
+          variation: (p?.variant || 'normal').toLowerCase(),
+          tcgplayer: null,
+          cardmarket: null,
+          gbp:
+            typeof p?.market === 'number'
+              ? p.market
+              : typeof p?.mid === 'number'
+              ? p.mid
+              : null,
+          currency: p?.currency || 'GBP',
+          updatedAt: p?.updatedAt || null,
+        }))
+      : [];
+    return {
+      id: item?.cardId || item?.id || `${setCode}-${item?.number || index}`,
+      name: item?.name || '',
+      set: setCode || '',
+      setName: setName || '',
+      number: item?.number || '',
+      image,
+      rarity: item?.rarity || null,
+      variations: variantFlags,
+      prices,
+    };
+  });
+}
+
+
 // A stable key for the current search params to keep separate result buckets
 function makeQueryKey({ name, setCode, number }) {
   return JSON.stringify({
@@ -127,20 +215,25 @@ export default function CardSearch() {
   const [results, setResults] = useState([]);
   const [hasMore, setHasMore] = useState(false);
   const [endCursor, setEndCursor] = useState(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [statusMessage, setStatusMessage] = useState(null);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectedCardDetail, setSelectedCardDetail] = useState(null);
   const [showCardDetail, setShowCardDetail] = useState(false);
   const [cardDetailData, setCardDetailData] = useState(null);
+  const [imageLoadedMap, setImageLoadedMap] = useState({});
 
   const isExactCardSearch = Boolean(setCode && number);
 
   // throttle loadMore so we never queue two at once
   const loadingMoreRef = useRef(false);
+  const loadMoreTriggerRef = useRef(null);
+
+  const activeQuery = USE_CARDSEARCH_V2 ? CARDSEARCH_V2_QUERY : SEARCH_CARDS_CONNECTION;
 
   const [runSearch, { data, loading, error, fetchMore }] = useLazyQuery(
-    SEARCH_CARDS_CONNECTION,
+    activeQuery,
     {
       fetchPolicy: "cache-first",
       nextFetchPolicy: "cache-first",
@@ -151,10 +244,19 @@ export default function CardSearch() {
 
   const currentKey = useMemo(() => makeQueryKey({ name, setCode, number }), [name, setCode, number]);
 
+  useEffect(() => {
+    setImageLoadedMap({});
+  }, [currentKey]);
+
   const showStatusMessage = (type, message) => {
     setStatusMessage({ type, message });
     setTimeout(() => setStatusMessage(null), 5000);
   };
+
+  const markImageLoaded = useCallback((id) => {
+    if (!id) return;
+    setImageLoadedMap((prev) => (prev[id] ? prev : { ...prev, [id]: true }));
+  }, []);
 
   // Kick off a small first page so something renders quickly
   const handleSearch = useCallback(async (e) => {
@@ -170,38 +272,71 @@ export default function CardSearch() {
         setResults(bucket.items);
         setHasMore(bucket.hasNextPage);
         setEndCursor(bucket.endCursor || null);
+        setIsLoadingMore(false);
       });
     } else {
       startTransition(() => {
         setResults([]); // clean slate
         setHasMore(false);
         setEndCursor(null);
+        setIsLoadingMore(false);
       });
     }
 
-    const vars = {
-      input: {
-        name,
-        set: setCode,
-        number,
-        first: isExactCardSearch ? Math.min(FIRST_PAGE, 8) : FIRST_PAGE,
-        after: null,
-        budget: 8,
-      },
-    };
+    const variables = USE_CARDSEARCH_V2
+      ? {
+          input: {
+            name: name || undefined,
+            set: setCode || undefined,
+            number: number || undefined,
+            limit: isExactCardSearch ? Math.min(CARDSEARCH_V2_LIMIT, 12) : CARDSEARCH_V2_LIMIT,
+            offset: 0,
+          },
+        }
+      : {
+          input: {
+            name,
+            set: setCode,
+            number,
+            first: isExactCardSearch ? Math.min(FIRST_PAGE, 8) : FIRST_PAGE,
+            after: null,
+            budget: 8,
+          },
+        };
 
-    const res = await runSearch({ variables: vars });
-    const payload = res?.data?.searchCardsConnection;
+    const res = await runSearch({ variables });
+    const payload = USE_CARDSEARCH_V2 ? res?.data?.searchCards : res?.data?.searchCardsConnection;
 
     if (!payload) return;
 
-    const items = edgesToCards(payload.edges);
-    const bucketNext = {
-      items,
-      endCursor: payload.pageInfo?.endCursor || null,
-      hasNextPage: !!payload.pageInfo?.hasNextPage,
-      totalCount: payload.totalCount || items.length,
-    };
+    let items = [];
+    let bucketNext = null;
+
+    if (USE_CARDSEARCH_V2) {
+      items = mapCardsearchV2Items(payload.items).map((node) => normalizeNode(node));
+      const totalCount = Number(payload.total ?? payload.totalCount ?? items.length);
+      const initialOffset = Number(payload.offset ?? 0);
+      const pageSize = Number(payload.limit ?? CARDSEARCH_V2_LIMIT);
+      const nextOffset = Math.min(initialOffset + items.length, totalCount);
+      const hasNextPage = nextOffset < totalCount;
+      bucketNext = {
+        items,
+        endCursor: null,
+        hasNextPage,
+        totalCount,
+        nextOffset,
+        pageSize,
+      };
+    } else {
+      items = edgesToCards(payload.edges);
+      bucketNext = {
+        items,
+        endCursor: payload.pageInfo?.endCursor || null,
+        hasNextPage: !!payload.pageInfo?.hasNextPage,
+        totalCount: payload.totalCount || items.length,
+      };
+    }
+
     // Cache this bucket
     bucketsRef.current.set(key, bucketNext);
 
@@ -211,17 +346,102 @@ export default function CardSearch() {
         setResults(items);
         setHasMore(bucketNext.hasNextPage);
         setEndCursor(bucketNext.endCursor);
+        setIsLoadingMore(false);
       });
     }
-  }, [name, setCode, number, runSearch, isExactCardSearch]);
+  }, [name, setCode, number, runSearch, isExactCardSearch, USE_CARDSEARCH_V2]);
 
   // Load more with cursor (manual merge, no double fetch)
   const loadMoreResults = useCallback(async () => {
-    if (loadingMoreRef.current || !hasMore || !endCursor) return;
+    if (loadingMoreRef.current || !hasMore) return;
     loadingMoreRef.current = true;
+    setIsLoadingMore(true);
 
     try {
       const key = lastKeyRef.current || currentKey;
+
+      if (USE_CARDSEARCH_V2) {
+        const prev = bucketsRef.current.get(key);
+        const totalCount = Number(prev?.totalCount ?? 0);
+        const pageSize = Number(prev?.pageSize ?? CARDSEARCH_V2_LIMIT);
+        const currentCount = Array.isArray(prev?.items) ? prev.items.length : 0;
+        const nextOffset = Number(prev?.nextOffset ?? currentCount);
+
+        if (!prev || nextOffset >= totalCount) {
+          if (prev) {
+            const merged = { ...prev, hasNextPage: false, nextOffset };
+            bucketsRef.current.set(key, merged);
+          }
+          if (lastKeyRef.current === key) {
+            startTransition(() => {
+              setHasMore(false);
+            });
+          }
+          return;
+        }
+
+        const vars = {
+          input: {
+            name: name || undefined,
+            set: setCode || undefined,
+            number: number || undefined,
+            limit: pageSize,
+            offset: nextOffset,
+          },
+        };
+
+        const res = await fetchMore({ variables: vars });
+        const payload = res?.data?.searchCards;
+        if (!payload) {
+          if (lastKeyRef.current === key) {
+            startTransition(() => setHasMore(false));
+          }
+          return;
+        }
+
+        const newItems = mapCardsearchV2Items(payload.items).map((node) => normalizeNode(node));
+        const priorItems = Array.isArray(prev.items) ? prev.items : [];
+        const combined = [...priorItems, ...newItems];
+        const unique = [];
+        const seen = new Set();
+        combined.forEach((card, idx) => {
+          let identifier = card?.id || card?.cardId;
+          if (!identifier) {
+            const setKey = card?.set || card?.setCode || '';
+            const numKey = card?.number || '';
+            const combinedKey = `${setKey}-${numKey}`.trim();
+            identifier = combinedKey && combinedKey !== '-' ? combinedKey : `card-${idx}`;
+          }
+          if (seen.has(identifier)) return;
+          seen.add(identifier);
+          unique.push(card);
+        });
+
+        const mergedTotal = Number(payload.total ?? prev.totalCount ?? unique.length);
+        const mergedOffset = Math.min(unique.length, mergedTotal);
+        const mergedHasNext = mergedOffset < mergedTotal;
+        const merged = {
+          ...prev,
+          items: unique,
+          totalCount: mergedTotal,
+          nextOffset: mergedOffset,
+          pageSize: Number(payload.limit ?? prev.pageSize ?? CARDSEARCH_V2_LIMIT),
+          hasNextPage: mergedHasNext,
+        };
+        bucketsRef.current.set(key, merged);
+
+        if (lastKeyRef.current === key) {
+          startTransition(() => {
+            setResults(merged.items);
+            setHasMore(merged.hasNextPage);
+            setEndCursor(null);
+          });
+        }
+        return;
+      }
+
+      if (!endCursor) return;
+
       const vars = {
         input: {
           name,
@@ -239,7 +459,6 @@ export default function CardSearch() {
 
       const newItems = edgesToCards(payload.edges);
 
-      // Merge into bucket
       const prev = bucketsRef.current.get(key) || {
         items: [],
         endCursor: null,
@@ -254,7 +473,6 @@ export default function CardSearch() {
       };
       bucketsRef.current.set(key, merged);
 
-      // Reflect in UI if still same query
       if (lastKeyRef.current === key) {
         startTransition(() => {
           setResults(merged.items);
@@ -264,21 +482,27 @@ export default function CardSearch() {
       }
     } finally {
       loadingMoreRef.current = false;
+      setIsLoadingMore(false);
     }
-  }, [fetchMore, hasMore, endCursor, name, setCode, number, currentKey]);
+  }, [fetchMore, hasMore, endCursor, name, setCode, number, currentKey, USE_CARDSEARCH_V2]);
 
   // Infinite scroll (simple & cheap)
   useEffect(() => {
     if (!hasMore) return;
-    const onScroll = () => {
-      if (loadingMoreRef.current) return;
-      const nearBottom =
-        window.innerHeight + window.scrollY >= document.body.offsetHeight - 600;
-      if (nearBottom) loadMoreResults();
-    };
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [hasMore, loadMoreResults]);
+    const node = loadMoreTriggerRef.current;
+    if (!node) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          loadMoreResults();
+        }
+      });
+    }, { root: null, rootMargin: '400px', threshold: 0 });
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasMore, loadMoreResults, results.length]);
 
   // Wishlist (unchanged)
   const handleAddToWishlist = async (card) => {
@@ -426,12 +650,18 @@ export default function CardSearch() {
           <div>
             <h2 className="text-xl font-bold mb-6 ml-1">Search Results</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {results.map((card) => {
+              {results.map((card, idx) => {
                 const best = getBestPrice(card.prices);
+                const setKey = card.set || card.setCode || '';
+                const numKey = card.number || '';
+                const fallbackKey = `${setKey}-${numKey}`.trim();
+                const imageKey = card.id || card.cardId || (fallbackKey && fallbackKey !== '-' ? fallbackKey : `card-${idx}`);
+                const isLoaded = !!imageLoadedMap[imageKey];
+                const isPriority = idx < 8;
                 return (
                   <div
                     className="bg-light-surface dark:bg-dark-surface rounded-2xl shadow hover:shadow-2xl flex flex-col p-3 min-h-[320px] transition border border-light-border dark:border-dark-border"
-                    key={card.id}
+                    key={imageKey}
                     onClick={() => handleCardDetail(card)}
                     tabIndex={0}
                     onKeyDown={(e) => {
@@ -441,6 +671,9 @@ export default function CardSearch() {
                     aria-label={`View details for ${card.name}`}
                   >
                     <div className="relative w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-xl mb-3 overflow-hidden">
+                      <div
+                        className={`absolute inset-0 rounded-xl transition-opacity duration-300 ${isLoaded ? 'opacity-0' : 'opacity-100 animate-pulse bg-gradient-to-br from-light-alt/70 via-light-surface to-light-surface dark:from-dark-alt/70 dark:via-dark-surface dark:to-dark-surface'}`}
+                      />
                       <Image
                         src={card.tcgImageUrl || card.image}
                         alt={card.name}
@@ -449,9 +682,9 @@ export default function CardSearch() {
                                (max-width: 1024px) 50vw,
                                (max-width: 1280px) 33vw,
                                25vw"
-                        className="object-contain object-center rounded-xl"
-                        // priority first few rows for snappier perceived speed
-                        priority={false}
+                        className={`object-contain object-center rounded-xl transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+                        onLoadingComplete={() => markImageLoaded(imageKey)}
+                        {...(isPriority ? { priority: true } : { loading: 'lazy' })}
                       />
                     </div>
                     <div className="flex flex-col gap-1">
@@ -527,10 +760,17 @@ export default function CardSearch() {
               })}
             </div>
 
-            {hasMore && (
+            <div ref={loadMoreTriggerRef} aria-hidden="true" />
+            {(hasMore || isLoadingMore) && (
               <div className="flex items-center justify-center gap-4 mt-12 mb-4 text-lg text-light-textMuted dark:text-dark-textMuted">
-                <span className="inline-block w-[22px] h-[22px] border-4 border-light-accent dark:border-dark-accent border-r-transparent rounded-full animate-spin"></span>
-                Loading more cards...
+                {isLoadingMore ? (
+                  <>
+                    <span className="inline-block w-[22px] h-[22px] border-4 border-light-accent dark:border-dark-accent border-r-transparent rounded-full animate-spin"></span>
+                    Loading more cards...
+                  </>
+                ) : (
+                  <span>Scroll to load more cards</span>
+                )}
               </div>
             )}
           </div>
@@ -571,3 +811,4 @@ export default function CardSearch() {
     </div>
   );
 }
+

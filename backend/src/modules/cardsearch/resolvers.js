@@ -10,10 +10,40 @@ import {
   m_PriceLatest,
   m_PriceObservation,
   m_PriceRollup,
+  m_CardVariant,
 } from "../../models/index.js"; // <- ensure this path matches your project
 
 import qb from "./services/queryBuilder.service.js";
+import { computeRollupsSnapshot } from "./services/rollup.service.js";
 
+function buildHighResImageUrl(raw) {
+  if (!raw) return null;
+  let url = String(raw).trim();
+  if (!url) return null;
+  url = url.replace(/\\/g, '/').replace(/\/+$/, '');
+  if (url.toLowerCase().endsWith('/high.webp')) return url;
+  url = url.replace(/\.(png|jpe?g|webp)$/i, '');
+  return url + '/high.webp';
+}
+
+function buildCardImages(row) {
+  let source = row?.images?.large
+    ?? row?.images?.small
+    ?? row?.image_large
+    ?? row?.image_small;
+  if (!source) {
+    const setCode = row?.setCode ?? row?.set_code ?? null;
+    const number = row?.number ?? row?.cardNumber ?? null;
+    if (setCode && number) {
+      const family = setCode.replace(/[^a-z]/gi, '').toLowerCase() || setCode.toLowerCase();
+      const normalizedSet = setCode.toLowerCase();
+      source = `https://assets.tcgdex.net/en/${family}/${normalizedSet}/${number}`;
+    }
+  }
+  const highRes = buildHighResImageUrl(source);
+  if (!highRes) return { small: null, large: null };
+  return { small: null, large: highRes };
+}
 const resolvers = {
   Query: {
     async searchCards(_, { input }) {
@@ -35,10 +65,7 @@ const resolvers = {
           subtype: row.subtype ?? null,
           regulationMark: row.regulation_mark ?? null,
           illustrator: row.illustrator ?? null,
-          images: (row.images ?? null) || {
-            small: row.image_small ?? null,
-            large: row.image_large ?? null,
-          },
+          images: buildCardImages(row),
         };
       });
 
@@ -63,10 +90,7 @@ const resolvers = {
         subtype: r.subtype ?? null,
         regulationMark: r.regulation_mark ?? null,
         illustrator: r.illustrator ?? null,
-        images: (r.images ?? null) || {
-          small: r.image_small ?? null,
-          large: r.image_large ?? null,
-        },
+        images: buildCardImages(r),
       };
     },
 
@@ -80,7 +104,7 @@ const resolvers = {
         return {
           cardId: x.card_id,
           variant: x.variant,
-          currency: x.currency,
+          currency: x.currency ?? "GBP",
           low: x.low ?? null,
           mid: x.mid ?? null,
           high: x.high ?? null,
@@ -91,58 +115,53 @@ const resolvers = {
       });
     },
 
-    async priceRollups(_, { cardId, variant }) {
-      const where = { card_id: cardId };
-      if (variant) where.variant = String(variant).toLowerCase();
+    async priceRollups(_, { cardId, variant, windows }) {
+      if (!cardId) return null;
+      return loadPriceRollups(cardId, variant, { windows });
+    },
 
-      const rows = await m_PriceRollup.findAll({
-        where,
-        order: [["window", "ASC"], ["end_date", "DESC"]],
-      }).then((a) => a.map((r) => r.get()));
+    async priceRollupsAll(_, { cardId, variants, windows }) {
+      if (!cardId) return [];
 
-      if (!rows || rows.length === 0) return null;
+      let variantList = Array.isArray(variants) && variants.length
+        ? variants.map((v) => String(v).trim().toLowerCase()).filter(Boolean)
+        : [];
 
-      const out = {
-        cardId,
-        variant: rows[0].variant,
-        currency: "GBP",
-        latest: null,
-        d1: null,
-        d7: null,
-        d30: null,
-        d90: null,
-      };
-
-      for (const r of rows) {
-        const windowObj = {
-          startDate: r.start_date,
-          endDate: r.end_date,
-          count: r.count ?? 0,
-          min: r.min ?? null,
-          max: r.max ?? null,
-          avg: r.avg ?? null,
-          change: r.change ?? null,
-          changePct: r.change_pct ?? null,
-        };
-        if (!out.latest && (r.latest_date || r.latest_mid || r.latest_market || r.latest_low || r.latest_high)) {
-          out.latest = {
-            date: r.latest_date ?? r.end_date ?? r.start_date,
-            low: r.latest_low ?? null,
-            mid: r.latest_mid ?? null,
-            high: r.latest_high ?? null,
-            market: r.latest_market ?? null,
-          };
+      if (!variantList.length) {
+        try {
+          const rows = await m_CardVariant.findAll({
+            where: { card_id: cardId },
+            attributes: ["variant"],
+            raw: true,
+          });
+          variantList = rows.length
+            ? rows.map((row) => String(row.variant || 'normal').toLowerCase())
+            : ['normal'];
+        } catch {
+          variantList = ['normal'];
         }
+      }
 
-        if (String(r.window) === "1") out.d1 = windowObj;
-        else if (String(r.window) === "7") out.d7 = windowObj;
-        else if (String(r.window) === "30") out.d30 = windowObj;
-        else if (String(r.window) === "90") out.d90 = windowObj;
+      const seen = new Set();
+      const unique = [];
+      for (const key of variantList) {
+        if (!key) continue;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        unique.push(key);
+      }
+
+      if (!unique.length) unique.push('normal');
+
+      const opts = { windows };
+      const out = [];
+      for (const variantKey of unique) {
+        const rollup = await loadPriceRollups(cardId, variantKey, opts);
+        if (rollup) out.push(rollup);
       }
 
       return out;
     },
-
     async priceObservations(_, { cardId, variant, startDate, endDate, limit = 365, offset = 0 }) {
       const where = { card_id: cardId };
       if (variant) where.variant = String(variant).toLowerCase();
@@ -162,7 +181,7 @@ const resolvers = {
           cardId: x.card_id,
           variant: x.variant,
           date: x.date,
-          currency: x.currency,
+          currency: x.currency ?? "GBP",
           low: x.low ?? null,
           mid: x.mid ?? null,
           high: x.high ?? null,
@@ -293,6 +312,59 @@ const resolvers = {
       });
     },
 
+    async priceRollups(parent, { variant, windows }) {
+      const cardId = parent.cardId || parent.id || null;
+      if (!cardId) return null;
+      const requestedVariant = variant ?? parent.variant ?? null;
+      return loadPriceRollups(cardId, requestedVariant, { windows });
+    },
+
+    async priceRollupsAll(parent, { variants, windows }) {
+      const cardId = parent.cardId || parent.id || null;
+      if (!cardId) return [];
+
+      let variantList = Array.isArray(variants) && variants.length
+        ? variants.map((v) => String(v).trim().toLowerCase()).filter(Boolean)
+        : [];
+
+      if (!variantList.length && Array.isArray(parent.variants) && parent.variants.length) {
+        variantList = parent.variants
+          .map((v) => (typeof v === 'string' ? v : v.variant))
+          .filter(Boolean)
+          .map((v) => String(v).toLowerCase());
+      }
+
+      if (!variantList.length) {
+        try {
+          const resolved = await resolvers.Card.variants(parent);
+          variantList = resolved.map((v) => String(v.variant || 'normal').toLowerCase());
+        } catch {
+          variantList = [];
+        }
+      }
+
+      if (!variantList.length) variantList = ['normal'];
+
+      const seen = new Set();
+      const unique = [];
+      for (const key of variantList) {
+        if (!key) continue;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        unique.push(key);
+      }
+
+      if (!unique.length) unique.push('normal');
+
+      const opts = { windows };
+      const out = [];
+      for (const variantKey of unique) {
+        const rollup = await loadPriceRollups(cardId, variantKey, opts);
+        if (rollup) out.push(rollup);
+      }
+
+      return out;
+    },
     async latestPrices(parent) {
       const rows = await m_PriceLatest.findAll({
         where: { card_id: parent.cardId },
@@ -303,7 +375,7 @@ const resolvers = {
         return {
           cardId: x.card_id,
           variant: x.variant,
-          currency: x.currency,
+          currency: x.currency ?? "GBP",
           low: x.low ?? null,
           mid: x.mid ?? null,
           high: x.high ?? null,
@@ -316,4 +388,205 @@ const resolvers = {
   },
 };
 
+
+
+function normalizeWindowList(value) {
+  if (value == null) return null;
+  const arr = Array.isArray(value) ? value : [value];
+  const parsed = arr
+    .map((n) => Number(n))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  if (!parsed.length) return null;
+  return Array.from(new Set(parsed)).sort((a, b) => a - b);
+}
+
+async function loadRollupsFromTable(cardId, variant, requestedWindows) {
+  try {
+    const rows = await m_PriceRollup.findAll({
+      where: { card_id: cardId, variant },
+      order: [["days", "ASC"], ["computed_at", "DESC"]],
+      raw: true,
+    });
+    if (!rows || !rows.length) return null;
+
+    const seen = new Set();
+    const out = [];
+    for (const row of rows) {
+      const windowDays = Number(row.days ?? row.window ?? 0);
+      if (!Number.isFinite(windowDays) || windowDays <= 0) continue;
+      if (requestedWindows && requestedWindows.length && !requestedWindows.includes(windowDays)) continue;
+      if (seen.has(windowDays)) continue;
+      seen.add(windowDays);
+      out.push({
+        window: windowDays,
+        days: windowDays,
+        startDate: null,
+        endDate: null,
+        count: Number(row.count ?? 0),
+        min: toNumber(row.min_gbp),
+        max: toNumber(row.max_gbp),
+        avg: toNumber(row.avg_gbp),
+        change: toNumber(row.change_gbp ?? null),
+        changePct: toNumber(row.change_pct ?? null),
+        latest: toNumber(row.last_gbp ?? row.latest_gbp ?? null),
+        latestDate: row.computed_at ? new Date(row.computed_at).toISOString().slice(0, 10) : null,
+        computedAt: row.computed_at ?? null,
+      });
+    }
+    return out;
+  } catch (err) {
+    console.warn?.(`priceRollups: table fallback failed for ${cardId}/${variant}: ${err?.message || err}`);
+    return null;
+  }
+}
+
+function mapComputedRollupRow(row) {
+  const windowDays = Number(row.window ?? row.days ?? 0);
+  if (!Number.isFinite(windowDays) || windowDays <= 0) return null;
+  return {
+    window: windowDays,
+    days: windowDays,
+    startDate: row.startDate ?? null,
+    endDate: row.endDate ?? null,
+    count: row.count ?? 0,
+    min: toNumber(row.min),
+    max: toNumber(row.max),
+    avg: toNumber(row.avg),
+    change: toNumber(row.change),
+    changePct: toNumber(row.changePct),
+    latest: toNumber(row.latest),
+    latestDate: row.latestDate ?? null,
+    computedAt: row.computedAt ?? null,
+  };
+}
+
+async function loadPriceRollups(cardId, variant, { windows } = {}) {
+  if (!cardId) return null;
+  const requestedWindows = normalizeWindowList(windows);
+
+  let resolvedVariant = variant ? String(variant).trim().toLowerCase() : null;
+  if (!resolvedVariant) {
+    try {
+      const row = await m_CardVariant.findOne({
+        where: { card_id: cardId },
+        attributes: ["variant"],
+        raw: true,
+      });
+      resolvedVariant = row ? String(row.variant || 'normal').toLowerCase() : 'normal';
+    } catch {
+      resolvedVariant = 'normal';
+    }
+  }
+
+  let rows = null;
+  try {
+    const computed = await computeRollupsSnapshot(cardId, resolvedVariant, requestedWindows ? { windows: requestedWindows } : {});
+    if (Array.isArray(computed) && computed.length) {
+      const mapped = computed.map(mapComputedRollupRow).filter(Boolean);
+      const hasMeaningfulHistory = mapped.some((r) => (r.count ?? 0) > 1 || (r.avg != null && (r.count ?? 0) > 0));
+      const hasLatest = mapped.some((r) => r.latest != null);
+      if (mapped.length && (hasMeaningfulHistory || hasLatest)) {
+        rows = mapped;
+      }
+    }
+  } catch (err) {
+    console.warn?.(`priceRollups: compute failed for ${cardId}/${resolvedVariant}: ${err?.message || err}`);
+  }
+
+  if (!rows || !rows.length) {
+    rows = await loadRollupsFromTable(cardId, resolvedVariant, requestedWindows) ?? [];
+  }
+
+  if (!rows.length) return null;
+
+  if (requestedWindows && requestedWindows.length) {
+    rows = rows.filter((r) => requestedWindows.includes(Number(r.window ?? r.days ?? 0)));
+    if (!rows.length) return null;
+  }
+
+  return assembleRollup(cardId, resolvedVariant, rows);
+}
+
+function toNumber(value) {
+  const n = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function assembleRollup(cardId, variant, rows) {
+  if (!rows || !rows.length) return null;
+  const normalizedVariant = String(variant || rows[0]?.variant || 'normal').toLowerCase();
+  const out = {
+    cardId,
+    variant: normalizedVariant,
+    currency: 'GBP',
+    latest: null,
+    d1: null,
+    d7: null,
+    d30: null,
+    d90: null,
+  };
+
+  let latestCandidate = null;
+  let latestDate = null;
+
+  for (const r of rows) {
+    const windowDays = Number(r.window ?? r.days ?? 0);
+    const min = toNumber(r.min ?? r.min_gbp);
+    const max = toNumber(r.max ?? r.max_gbp);
+    const avg = toNumber(r.avg ?? r.avg_gbp);
+    const change = toNumber(r.change ?? r.change_gbp);
+    const changePct = toNumber(r.changePct ?? r.change_pct);
+    const startDate = r.startDate ?? r.start_date ?? null;
+    const endDate = r.endDate ?? r.end_date ?? null;
+    const count = r.count ?? 0;
+
+    const windowObj = {
+      startDate,
+      endDate,
+      count,
+      min,
+      max,
+      avg,
+      change,
+      changePct,
+    };
+
+    const rLatest = toNumber(r.latest ?? r.last_gbp ?? r.latest_market ?? r.latest_mid ?? avg);
+    const rLatestDate = r.latestDate ?? r.latest_date ?? endDate ?? startDate ?? (r.computed_at ? new Date(r.computed_at).toISOString().slice(0, 10) : null);
+
+    if (latestCandidate == null && rLatest != null) {
+      latestCandidate = rLatest;
+      latestDate = rLatestDate;
+    }
+
+    const key = String(windowDays);
+    if (key === '1' && !out.d1) out.d1 = windowObj;
+    else if (key === '7' && !out.d7) out.d7 = windowObj;
+    else if (key === '30' && !out.d30) out.d30 = windowObj;
+    else if (key === '90' && !out.d90) out.d90 = windowObj;
+  }
+
+  if (!out.latest && latestCandidate != null) {
+    out.latest = {
+      date: latestDate ?? null,
+      low: null,
+      mid: latestCandidate,
+      high: null,
+      market: latestCandidate,
+    };
+  }
+
+  return out;
+}
+
 export default resolvers;
+
+
+
+
+
+
+
+
+
+

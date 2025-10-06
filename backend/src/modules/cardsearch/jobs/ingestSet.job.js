@@ -53,7 +53,7 @@ export async function ingestSet(opts) {
     setCode: normSet.code,
     abbr,
     counts: {
-      cards: { scanned: normCards.length, inserted: 0, updated: 0, totalAfter: 0 },
+      cards: { scanned: normCards.length, inserted: 0, updated: 0, deleted: 0, totalAfter: 0 },
       variants: { upserted: 0, deletedStale: 0, totalAfter: 0 },
     },
     cache: fetched.cachePaths,
@@ -68,6 +68,7 @@ export async function ingestSet(opts) {
     );
     result.counts.cards.inserted = cardDiff.toInsert.length;
     result.counts.cards.updated = cardDiff.toUpdate.length;
+    result.counts.cards.deleted = cardDiff.toDelete.length;
     result.counts.cards.totalAfter = cardDiff.afterCount;
     result.counts.variants.upserted = variantPlan.toUpsert.length;
     result.counts.variants.deletedStale = variantPlan.toDelete.length;
@@ -83,6 +84,18 @@ export async function ingestSet(opts) {
     await upsertSet(normSet, t);
 
     const cardDiff = await computeCardDiff(normSet.code, normCards, t);
+    if (cardDiff.toDelete.length) {
+      const deleteIds = cardDiff.toDelete;
+      await m_CardVariant.destroy({
+        where: { card_id: { [Op.in]: deleteIds } },
+        transaction: t,
+      });
+      await m_Card.destroy({
+        where: { id: { [Op.in]: deleteIds } },
+        transaction: t,
+      });
+    }
+
     if (cardDiff.toInsert.length) {
       await m_Card.bulkCreate(cardDiff.toInsert, {
         transaction: t,
@@ -146,6 +159,7 @@ export async function ingestSet(opts) {
 
     result.counts.cards.inserted = cardDiff.toInsert.length;
     result.counts.cards.updated = cardDiff.toUpdate.length;
+    result.counts.cards.deleted = cardDiff.toDelete.length;
     result.counts.cards.totalAfter = cardDiff.afterCount;
 
     result.counts.variants.upserted = variantPlan.toUpsert.length;
@@ -231,18 +245,28 @@ async function computeCardDiff(setCode, desiredCards, t) {
   const existingById = new Map(existingRows.map((r) => [r.get("id"), r.get()]));
   const toInsert = [];
   const toUpdate = [];
+  const desiredIds = new Set();
 
   for (const c of desiredCards) {
+    if (!c?.id) continue;
+    desiredIds.add(c.id);
     const isExisting = existingById.get(c.id);
     if (!isExisting) {
       toInsert.push(c);
-    } else {
-      if (!sameCard(isExisting, c)) toUpdate.push(c);
+    } else if (!sameCard(isExisting, c)) {
+      toUpdate.push(c);
     }
   }
 
-  const afterCount = existingRows.length + toInsert.length;
-  return { toInsert, toUpdate, afterCount };
+  const toDelete = [];
+  for (const id of existingById.keys()) {
+    if (!desiredIds.has(id)) toDelete.push(id);
+  }
+
+  const allowDeletes = desiredIds.size > 0 || !existingRows.length;
+  const effectiveDeletes = allowDeletes ? toDelete : [];
+  const afterCount = existingRows.length - effectiveDeletes.length + toInsert.length;
+  return { toInsert, toUpdate, toDelete: effectiveDeletes, afterCount };
 }
 
 async function computeVariantPlan(setCode, variantsByCardId, t) {

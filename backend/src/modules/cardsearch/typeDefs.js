@@ -50,6 +50,8 @@ const typeDefs = /* GraphQL */ `
 
     "Convenience: latest GBP price per variant (if requested); loaded lazily"
     latestPrices: [PriceLatest!]
+    priceRollups(variant: String, windows: [Int!]): PriceRollups
+    priceRollupsAll(variants: [String!], windows: [Int!]): [PriceRollups!]!
   }
 
   type CardImages {
@@ -177,7 +179,8 @@ const typeDefs = /* GraphQL */ `
     priceLatest(cardId: ID!, variant: String): [PriceLatest!]!
 
     "Precomputed rollups for 1/7/30/90 windows"
-    priceRollups(cardId: ID!, variant: String): PriceRollups
+    priceRollups(cardId: ID!, variant: String, windows: [Int!]): PriceRollups
+    priceRollupsAll(cardId: ID!, variants: [String!], windows: [Int!]): [PriceRollups!]!
 
     "Optional: raw timeseries (paged) for charts or debugging"
     priceObservations(

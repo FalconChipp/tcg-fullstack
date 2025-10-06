@@ -11,8 +11,6 @@
 //   const { where, order, limit, offset, include } = await qb.buildCardQuery(input);
 //   const total = await m_Card.count({ where });
 //   const rows  = await m_Card.findAll({ where, order, limit, offset, include });
-//
-// No TODOs, no temp code.
 
 import { Op, fn, col, where as sqlWhere, literal } from "sequelize";
 import { sequelize, m_Set } from "../../../models/index.js";
@@ -25,8 +23,6 @@ import { norm, tokenizeName } from "./normalizers.service.js";
 
 /**
  * Normalize & clamp pagination.
- * @param {any} input
- * @param {{ maxLimit?: number, defaultLimit?: number }} [opts]
  */
 export function normalizePagination(input, opts = {}) {
   const maxLimit = Number.isFinite(opts.maxLimit) ? opts.maxLimit : 200;
@@ -44,49 +40,49 @@ export function normalizePagination(input, opts = {}) {
 
 /**
  * Build ORDER BY for cards.
- * @param {"RELEVANCE"|"NAME_ASC"|"NAME_DESC"|"NUMBER_ASC"|"NUMBER_DESC"|"SET_ASC"|"SET_DESC"} orderBy
+ * NOTE: use literals with fully-qualified names to avoid driver quoting issues.
  */
 export function buildOrder(orderBy) {
-  switch (String(orderBy || "RELEVANCE").toUpperCase()) {
-    case "NAME_ASC":
-      return [["name", "ASC"]];
-    case "NAME_DESC":
-      return [["name", "DESC"]];
-    case "NUMBER_ASC":
-      return [["number", "ASC"]];
-    case "NUMBER_DESC":
-      return [["number", "DESC"]];
-    case "SET_ASC":
-      return [[col("set.code"), "ASC"], ["number", "ASC"]];
-    case "SET_DESC":
-      return [[col("set.code"), "DESC"], ["number", "DESC"]];
+  const by = String(orderBy || "RELEVANCE").toUpperCase();
+
+  // CHANGED: fully-qualified order columns via literal()
+  const CARD_NAME_ASC   = [literal("`m_Card`.`name`"),   "ASC"];
+  const CARD_NAME_DESC  = [literal("`m_Card`.`name`"),   "DESC"];
+  const CARD_NUM_ASC    = [literal("`m_Card`.`number`"), "ASC"];
+  const CARD_NUM_DESC   = [literal("`m_Card`.`number`"), "DESC"];
+  const SET_CODE_ASC    = [literal("`set`.`code`"),      "ASC"];
+  const SET_CODE_DESC   = [literal("`set`.`code`"),      "DESC"];
+
+  switch (by) {
+    case "NAME_ASC":   return [CARD_NAME_ASC];
+    case "NAME_DESC":  return [CARD_NAME_DESC];
+    case "NUMBER_ASC": return [CARD_NUM_ASC];
+    case "NUMBER_DESC":return [CARD_NUM_DESC];
+    case "SET_ASC":    return [SET_CODE_ASC, CARD_NUM_ASC];
+    case "SET_DESC":   return [SET_CODE_DESC, CARD_NUM_DESC];
     case "RELEVANCE":
-    default:
-      // Deterministic fallback
-      return [["name", "ASC"], ["number", "ASC"]];
+    default:           return [CARD_NAME_ASC, CARD_NUM_ASC];
   }
 }
 
 /**
  * Build include for joining Set (used for SET_* ordering or resolving fields downstream).
+ * CHANGED: restrict attributes to only 'code' to avoid selecting columns that may not exist (e.g. enabled).
  */
 export function buildSetJoinInclude() {
   return [
     {
       model: m_Set,
-      as: "set",
+      as: "set",               // IMPORTANT: m_Card.belongsTo(m_Set, { as: "set", foreignKey: "set_code", targetKey: "code" })
       required: false,
-      attributes: ["code", "abbr", "name", "series", "released_at", "total", "lang"],
+      attributes: ["code"],    // CHANGED: minimal, portable; prevents 'set.enabled' errors
     },
   ];
 }
 
 /**
  * Build WHERE for m_Card given name/number/set inputs (fuzzy AND tokenized name).
- * - set: resolved to canonical tcgdex code (via setMapping + DB fallback)
- * - number: exact match (keep suffixes, leading zeros)
- * - name: if fuzzy=true, tokenized AND of LIKE/iLike; else exact match
- * @param {{ name?:string, number?:string, set?:string, fuzzy?:boolean }} input
+ * Qualify card columns to avoid ambiguity with the m_Set join.
  */
 export async function buildCardWhere(input) {
   const name = norm(input?.name, { collapse: true });
@@ -99,25 +95,24 @@ export async function buildCardWhere(input) {
   // SET filtering (resolve via mapping + DB)
   if (setInput) {
     const setCode = await resolveSetCode(setInput);
-    if (setCode) predicates.push({ set_code: setCode });
+    if (setCode) predicates.push({ set_code: setCode }); // on m_Card
   }
 
   // NUMBER filtering (exact)
   if (number) {
-    predicates.push({ number });
+    predicates.push(ciEqualPredicate("m_Card.number", number)); // CHANGED: qualified
   }
 
   // NAME filtering
   if (name) {
     if (fuzzy) {
-      // AND across tokens
       const toks = tokenizeName(name);
       for (const t of toks) {
         const like = `%${t}%`;
-        predicates.push(ciLikePredicate("name", like));
+        predicates.push(ciLikePredicate("m_Card.name", like));   // CHANGED: qualified
       }
     } else {
-      predicates.push(ciEqualPredicate("name", name));
+      predicates.push(ciEqualPredicate("m_Card.name", name));    // CHANGED: qualified
     }
   }
 
@@ -126,20 +121,27 @@ export async function buildCardWhere(input) {
 
 /**
  * Build the complete, ready-to-use query parts for card search.
- * @param {{ name?:string, number?:string, set?:string, fuzzy?:boolean, orderBy?:string, limit?:number, offset?:number }} input
- * @returns {Promise<{ where:any, order:any, limit:number, offset:number, include:any[] }>}
  */
 export async function buildCardQuery(input) {
   const where = await buildCardWhere(input);
-  const order = buildOrder(input?.orderBy);
+  let order = buildOrder(input?.orderBy);
   const { limit, offset } = normalizePagination(input);
   const include = buildSetJoinInclude();
+
+  const orderBy = String(input?.orderBy || '').toUpperCase();
+  const hasExplicitOrder = !!orderBy && orderBy !== 'RELEVANCE';
+  const hasName = !!norm(input?.name, { collapse: true });
+  const hasSet = !!norm(input?.set);
+  if (!hasExplicitOrder && hasSet && !hasName) {
+    order = [[literal('`m_Card`.`number`'), 'ASC']];
+  }
+
   return { where, order, limit, offset, include };
 }
 
 /**
- * WHERE builder for m_Set listing with simple name/abbr/code contains.
- * @param {{ query?: string }} input
+ * WHERE builder for m_Set listing with simple name/abbreviation/code contains.
+ * NOTE: used on m_Set lookups only, so no alias qualification needed here.
  */
 export function buildSetWhere(input) {
   const q = norm(input?.query, { collapse: true });
@@ -148,11 +150,10 @@ export function buildSetWhere(input) {
 
   const ors = [
     ciLikePredicate("name", like),
-    ciLikePredicate("abbr", like),
+    ciLikePredicate("abbreviation", like), // CHANGED: model uses 'abbreviation'
     ciLikePredicate("code", like),
   ];
 
-  // Compact ORs that may be sqlWhere objects or simple {field:{[Op.like]}} forms:
   return { [Op.or]: ors };
 }
 
@@ -165,7 +166,7 @@ export function buildSetWhere(input) {
  * Strategy:
  *   1) setMapping.resolveSet(input) → mapping.tcgdex (fast path)
  *   2) direct code match in DB (case-insensitive)
- *   3) name/abbr contains in DB (case-insensitive)
+ *   3) name/abbreviation contains in DB (case-insensitive)
  */
 async function resolveSetCode(input) {
   const mapping = resolveSet(input);
@@ -181,13 +182,13 @@ async function resolveSetCode(input) {
   }).catch(() => null);
   if (codeCi) return codeCi.get("code");
 
-  // 3) Fallback: name/abbr contains
+  // 3) Fallback: name/abbreviation contains
   const like = `%${raw}%`;
   const byMeta = await m_Set.findOne({
     where: {
       [Op.or]: [
         ciLikePredicate("name", like),
-        ciLikePredicate("abbr", like),
+        ciLikePredicate("abbreviation", like),
       ],
     },
     attributes: ["code"],
@@ -201,8 +202,7 @@ async function resolveSetCode(input) {
 
 /**
  * Case-insensitive "LIKE" predicate, dialect-aware.
- * - Postgres: { field: { [Op.iLike]: like } }
- * - Others  : where(LOWER(col(field)), LIKE, lower(like))
+ * Accepts a fully-qualified column path (e.g., "m_Card.name") when used with joins.
  */
 function ciLikePredicate(field, likePattern) {
   const dialect = tryGetDialect();
@@ -215,8 +215,7 @@ function ciLikePredicate(field, likePattern) {
 
 /**
  * Case-insensitive equality predicate (exact match).
- * - Postgres: LOWER(field) = LOWER(value)  (iLike doesn't support equality efficiently)
- * - Others  : LOWER(field) = LOWER(value)
+ * Accepts a fully-qualified column path (e.g., "m_Card.number").
  */
 function ciEqualPredicate(field, value) {
   const v = String(value).toLowerCase();

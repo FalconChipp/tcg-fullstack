@@ -3,6 +3,20 @@
 
 import { PriceAlert } from '../../models/index.js';
 import { requireAuth } from '../collection/helpers.js';
+import { resolvePercentThreshold } from './priceAlert.config.js';
+
+
+function resolveAlertValue(condition, incoming, fallback) {
+  if (condition === 'pct_up' || condition === 'pct_down') {
+    return resolvePercentThreshold(condition, incoming ?? fallback);
+  }
+  const source = incoming ?? fallback;
+  const numeric = Number(source);
+  if (!Number.isFinite(numeric)) {
+    throw new Error(`value is required for condition ${condition}`);
+  }
+  return numeric;
+}
 
 const resolvers = {
   Query: {
@@ -23,11 +37,18 @@ const resolvers = {
       if (input.id) {
         const row = await PriceAlert.findByPk(input.id);
         if (!row || row.userId !== me.id) throw new Error('Alert not found');
+
+        const nextCondition = input.condition ?? row.condition;
+        const nextValue = resolveAlertValue(nextCondition,
+          input.value !== undefined ? input.value : undefined,
+          row.value
+        );
+
         await row.update({
-          cardId: input.cardId,
+          cardId: input.cardId ?? row.cardId,
           variation: input.variation ?? row.variation,
-          condition: input.condition,
-          value: input.value,
+          condition: nextCondition,
+          value: nextValue,
           windowHours: input.windowHours ?? row.windowHours,
           isActive: input.isActive ?? row.isActive,
           cooldownHours: input.cooldownHours ?? row.cooldownHours,
@@ -36,12 +57,15 @@ const resolvers = {
         return row;
       }
 
+      const condition = input.condition;
+      const value = resolveAlertValue(condition, input.value, null);
+
       return await PriceAlert.create({
         userId: me.id,
         cardId: input.cardId,
         variation: input.variation ?? null,
-        condition: input.condition,
-        value: input.value,
+        condition,
+        value,
         windowHours: input.windowHours ?? 24,
         isActive: input.isActive ?? true,
         cooldownHours: input.cooldownHours ?? 12,

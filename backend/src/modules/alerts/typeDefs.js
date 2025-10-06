@@ -29,7 +29,7 @@ export default gql`
     cardId: ID!
     variation: String
     condition: PriceCondition!
-    value: Float!
+    value: Float
     windowHours: Int = 24
     isActive: Boolean = true
     cooldownHours: Int = 12

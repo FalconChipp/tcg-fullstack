@@ -17,13 +17,12 @@
 // In resolvers:
 //   const set = await ctx.loaders.setByCode.load(parent.setCode);
 
-import { Op } from "sequelize";
 import {
   m_Set,
   m_CardVariant,
   m_PriceLatest,
-  m_PriceRollup,
 } from "../models/index.js";
+import { computeRollupsSnapshot } from "../services/rollup.service.js";
 
 /* ============================================================================
  * Minimal DataLoader
@@ -202,35 +201,17 @@ export function createLoaders() {
     async (compositeKeys) => {
       const pairs = compositeKeys.map(splitCardVariantKey);
 
-      const byCard = new Map();
-      for (const p of pairs) {
-        (byCard.get(p.card_id) || byCard.set(p.card_id, new Set()).get(p.card_id)).add(p.variant);
-      }
+      const results = await Promise.all(
+        pairs.map(({ card_id, variant }) =>
+          computeRollupsSnapshot(card_id, variant, {})
+        )
+      );
 
-      // Flatten to a WHERE OR of (card_id, variant) pairs
-      const whereOr = [];
-      for (const [card_id, vset] of byCard.entries()) {
-        for (const variant of vset) {
-          whereOr.push({ card_id, variant });
-        }
-      }
-
-      const rows = whereOr.length
-        ? await m_PriceRollup.findAll({
-            where: { [Op.or]: whereOr },
-            order: [["window", "ASC"], ["end_date", "DESC"]],
-          })
-        : [];
-
-      // Map results by composite key; collect arrays
-      /** @type {Map<string, Array<any>>} */
       const map = new Map();
-      for (const r of rows) {
-        const obj = r.get();
-        const key = keyCardVariant(obj.card_id, obj.variant);
-        const list = map.get(key) || map.set(key, []).get(key);
-        list.push(obj);
-      }
+      pairs.forEach(({ card_id, variant }, idx) => {
+        const key = keyCardVariant(card_id, variant);
+        map.set(key, results[idx] || []);
+      });
 
       return compositeKeys.map((k) => map.get(String(k)) || []);
     },

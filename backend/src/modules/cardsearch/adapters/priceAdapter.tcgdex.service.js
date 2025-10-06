@@ -7,9 +7,6 @@
 //   TCGDEX_BASE (default 'https://api.tcgdex.net/v2')
 //   MD_LANG     (default 'en')
 
-import { fileURLToPath } from "node:url";
-import path from "node:path";
-
 let _fetch = globalThis.fetch;
 if (typeof _fetch !== "function") {
   const { fetch } = await import("undici");
@@ -25,14 +22,8 @@ const LANG = process.env.MD_LANG || "en";
  * Fetch latest price-ish data for a set from TCGdex.
  * Strategy:
  *  - For each `number`, GET /{lang}/cards/{setCode}-{number}
- *  - Look for a price object; prefer fields like { prices: { currency, market/mid/avg/low/high } }
- *  - If none, skip that card.
- *
- * @param {object} opts
- * @param {string} opts.set - abbr|tcgdex|ptcg (will resolve to tcgdex)
- * @param {string[]} opts.cardNumbers - list like ['001','123','123a']
- * @param {Record<string, string[]>} [opts.variantsByNumber] - e.g., { '123': ['normal','reverse'] }
- * @returns {Promise<Array<{card_id:string, variant:string, currency:string, amount:number|null, observed_at:string, source:string, meta?:any}>>}
+ *  - Gather any price payloads (legacy `prices` or new `pricing` vendor objects)
+ *  - Emit one observation per vendor/variant in provider currency.
  */
 export async function fetchPricesTCGdex({ set, cardNumbers, variantsByNumber = {} }) {
   const setCode = resolveToTcgdex(set);
@@ -49,46 +40,45 @@ export async function fetchPricesTCGdex({ set, cardNumbers, variantsByNumber = {
     const raw = await fetchJsonSafe(url);
     if (!raw) continue;
 
-    // Heuristic: TCGdex often returns { prices: { ... } } or vendor-split pricing.
-    // We'll try a few common shapes.
-    const p = raw?.prices || raw?.price || null;
+    const priceCandidates = gatherPriceCandidates(raw);
+    if (!priceCandidates.length) continue;
 
-    // Try simple unified price object
-    let currency = guessCurrency(p) || "USD";
-    let market = pickMarketPrice(p);
-
-    // If vendor-split (e.g., { tcgplayer: {...}, cardmarket: {...} }) — pick any best-effort
-    if (market == null && p && typeof p === "object") {
-      const vendorKeys = Object.keys(p);
-      for (const vk of vendorKeys) {
-        const pv = p[vk];
-        if (!pv || typeof pv !== "object") continue;
-        currency = guessCurrency(pv) || currency;
-        market = pickMarketPrice(pv);
-        if (market != null) break;
-      }
-    }
-
-    if (market == null) {
-      // No price we recognize — skip
-      continue;
-    }
-
-    // Variants: if caller provides hints, record for each. Otherwise default to 'normal'.
-    const variants = Array.isArray(variantsByNumber[number]) && variantsByNumber[number].length
+    const baseVariants = Array.isArray(variantsByNumber[number]) && variantsByNumber[number].length
       ? variantsByNumber[number]
       : ["normal"];
 
-    for (const variant of variants) {
-      out.push({
-        card_id: cardId,
-        variant: variant.toLowerCase(),
-        currency,
-        amount: Number(market),
-        observed_at: nowISO,
-        source: "tcgdex",
-        meta: p || null,
-      });
+    for (const candidate of priceCandidates) {
+      const baseCurrency = (candidate.currency || "USD").toUpperCase();
+      const observedAt = candidate.observedAt || raw?.updated || nowISO;
+      const variantSet = new Set();
+
+      for (const v of baseVariants) {
+        const canon = canonicalVariantKey(v) || v;
+        if (canon) variantSet.add(canon);
+      }
+
+      const candidateVariantKeys = candidate.variantAmounts ? Object.keys(candidate.variantAmounts) : [];
+      for (const v of candidateVariantKeys) {
+        const canon = canonicalVariantKey(v) || v;
+        if (canon) variantSet.add(canon);
+      }
+
+      if (variantSet.size === 0) variantSet.add('normal');
+
+      for (const variant of variantSet) {
+        const amount = pickVariantAmount(candidate, variant);
+        if (!Number.isFinite(amount)) continue;
+
+        out.push({
+          card_id: cardId,
+          variant,
+          currency: baseCurrency,
+          amount: Number(amount),
+          observed_at: observedAt,
+          source: candidate.source,
+          meta: candidate.meta,
+        });
+      }
     }
   }
 
@@ -116,11 +106,115 @@ async function fetchJsonSafe(url, { retries = 2 } = {}) {
   return null;
 }
 
+function gatherPriceCandidates(raw) {
+  const list = [];
+
+  const pushCandidate = (data, vendorLabel) => {
+    if (!data || typeof data !== "object") return;
+    const market = pickMarketPrice(data);
+    if (market == null) return;
+    const currency = guessCurrency(data);
+    const variantAmounts = extractVariantOverrides(data);
+    const observedAt = data?.updated || data?.lastUpdated || null;
+    list.push({
+      source: vendorLabel,
+      market: Number(market),
+      currency,
+      variantAmounts,
+      observedAt,
+      meta: data,
+    });
+  };
+
+  const direct = raw?.prices || raw?.price;
+  if (direct && typeof direct === "object") pushCandidate(direct, "tcgdex");
+
+  const pricing = raw?.pricing;
+  if (pricing && typeof pricing === "object") {
+    for (const [vendor, payload] of Object.entries(pricing)) {
+      if (!payload || typeof payload !== "object") continue;
+      pushCandidate(payload, `tcgdex:${vendor}`);
+    }
+  }
+
+  // Legacy fields (cardmarket/tcgplayer) appeared on some older responses.
+  if (raw?.cardmarket && typeof raw.cardmarket === "object") pushCandidate(raw.cardmarket, "tcgdex:cardmarket");
+  if (raw?.tcgplayer && typeof raw.tcgplayer === "object") pushCandidate(raw.tcgplayer, "tcgdex:tcgplayer");
+
+  return list;
+}
+
+const VARIANT_KEY_CANON = new Map([
+  ['normal', 'normal'],
+  ['standard', 'normal'],
+  ['default', 'normal'],
+  ['regular', 'normal'],
+  ['reverse', 'reverse'],
+  ['reverseholo', 'reverse'],
+  ['reverseholofoil', 'reverse'],
+  ['holoreverse', 'reverse'],
+  ['reversefoil', 'reverse'],
+  ['holo', 'holo'],
+  ['holfoil', 'holo'],
+  ['holofoil', 'holo'],
+  ['shiny', 'holo'],
+  ['foil', 'foil'],
+  ['firstedition', 'firstEdition'],
+  ['1stedition', 'firstEdition'],
+  ['firsteditionholo', 'firstEdition'],
+]);
+
+function canonicalVariantKey(raw) {
+  if (!raw) return null;
+  const key = String(raw).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  return VARIANT_KEY_CANON.get(key) || null;
+}
+
+function pickVariantAmount(candidate, variantKey) {
+  const canon = canonicalVariantKey(variantKey) || variantKey;
+  if (candidate?.variantAmounts && candidate.variantAmounts[canon] != null) {
+    return candidate.variantAmounts[canon];
+  }
+  return candidate?.market ?? null;
+}
+
+function extractVariantOverrides(obj) {
+  const out = Object.create(null);
+  for (const [key, value] of Object.entries(obj)) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) continue;
+    const lower = String(key).toLowerCase();
+    let canon = canonicalVariantKey(key);
+    if (!canon) {
+      if (lower.includes('reverse')) canon = 'reverse';
+      else if (lower.includes('holo')) canon = 'holo';
+      else if (lower.includes('foil')) canon = 'foil';
+      else if (lower.includes('first')) canon = 'firstEdition';
+      else if (lower.includes('normal')) canon = 'normal';
+    }
+    if (!canon) continue;
+    if (canon === 'reverse' && out.reverse == null) {
+      out.reverse = num;
+    } else if (canon === 'holo') {
+      out.holo = num;
+    } else if (canon === 'foil') {
+      out.foil = num;
+    } else if (canon === 'firstEdition') {
+      out.firstEdition = num;
+    } else if (canon === 'normal') {
+      out.normal = num;
+    }
+  }
+  if (out.reverse == null && out.holo != null) out.reverse = out.holo;
+  if (out.holo == null && out.reverse != null) out.holo = out.reverse;
+  return Object.keys(out).length ? out : null;
+}
+
 function guessCurrency(obj) {
   if (!obj || typeof obj !== "object") return null;
-  const cur = obj.currency || obj.curr || obj.ccy || null;
+  const cur = obj.currency || obj.curr || obj.ccy || obj.unit || null;
   if (typeof cur === "string" && cur.length <= 4) return cur.toUpperCase();
-  // heuristics: presence of 'eur'/'usd' keys
+  // heuristics: presence of 'eur'/'usd'/'gbp' keys
   const keys = Object.keys(obj).map((k) => k.toLowerCase());
   if (keys.includes("eur")) return "EUR";
   if (keys.includes("usd")) return "USD";
@@ -130,8 +224,20 @@ function guessCurrency(obj) {
 
 function pickMarketPrice(obj) {
   if (!obj || typeof obj !== "object") return null;
-  // Favor typical "market" or "mid" fields
-  const fields = ["market", "mid", "median", "avg", "average", "price", "value"];
+  const fields = [
+    "market",
+    "mid",
+    "median",
+    "avg",
+    "average",
+    "price",
+    "value",
+    "trend",
+    "avgSellPrice",
+    "averageSellPrice",
+    "lowPrice",
+    "highPrice",
+  ];
   for (const f of fields) {
     const v = obj[f];
     const n = typeof v === "number" ? v : Number(v);

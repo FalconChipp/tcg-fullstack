@@ -8,7 +8,6 @@ export default (sequelize, DataTypes) => {
     abbreviation: DataTypes.STRING(32),
     official_count: DataTypes.INTEGER,
     total_cards: DataTypes.INTEGER,
-    enabled: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     set_logo: DataTypes.TEXT,
     set_symbol: DataTypes.TEXT,
     source_at: DataTypes.DATE,
@@ -19,6 +18,7 @@ export default (sequelize, DataTypes) => {
     timestamps: false,
     underscored: true,
   });
+
   m_Set.associate = (models) => {
     m_Set.hasMany(models.m_Card, { foreignKey: "set_code", sourceKey: "code" });
   };

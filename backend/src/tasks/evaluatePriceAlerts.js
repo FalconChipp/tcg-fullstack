@@ -1,24 +1,16 @@
-// src/tasks/evaluatePriceAlerts.js — ESM
+// src/tasks/evaluatePriceAlerts.js
 // Evaluates active alerts against CardPriceHistory and posts notifications.
 
-/* ===========================
-   Imports (kept for defaults)
-   =========================== */
 import { Op } from 'sequelize';
-import { PriceAlert, CardPriceHistory } from '../models/index.js';
+import { PriceAlert, m_PriceObservation } from '../models/index.js';
 import { notifyUser } from '../utils/notifications.js';
+import { resolvePercentThreshold, normalizeAlertOptions } from '../modules/alerts/priceAlert.config.js';
 
-/* ===========================
-   Pure utilities (TESTABLE)
-   =========================== */
-
-// NEW: export to unit-test percent math directly
 export function pctChange(from, to) {
   if (from == null || from === 0) return null;
   return ((to - from) / from) * 100;
 }
 
-// NEW: produce a cooldown checker bound to an injected clock
 export function makeCooldownOk(nowFn = () => new Date()) {
   return function cooldownOk(row) {
     if (!row?.lastFiredAt) return true;
@@ -27,37 +19,31 @@ export function makeCooldownOk(nowFn = () => new Date()) {
   };
 }
 
-// NEW: produce a window loader bound to injected models + clock
 export function makeWindowEndpoints(models, nowFn = () => new Date()) {
-  if (!models?.CardPriceHistory?.findAll) throw new Error('models.CardPriceHistory.findAll missing');
+  if (!models?.m_PriceObservation?.findAll) throw new Error('models.m_PriceObservation.findAll missing');
 
   return async function windowEndpoints({ cardId, variation, hours }) {
     const to = nowFn();
     const from = new Date(to.getTime() - hours * 60 * 60 * 1000);
 
-    const rows = await models.CardPriceHistory.findAll({
+    const rows = await models.m_PriceObservation.findAll({
       where: {
-        cardId,
-        fetchedAt: { [Op.between]: [from, to] },
+        card_id: cardId,
+        observed_at: { [Op.between]: [from, to] },
         ...(variation ? { variation } : {}),
       },
-      attributes: ['gbp', 'fetchedAt'],
-      order: [['fetchedAt', 'ASC']],
+      attributes: ['amount_gbp', 'observed_at'],
+      order: [['observed_at', 'ASC']],
       raw: true,
     });
 
     if (!rows.length) return null;
-    const first = rows[0]?.gbp == null ? null : Number(rows[0].gbp);
-    const last = rows[rows.length - 1]?.gbp == null ? null : Number(rows[rows.length - 1].gbp);
+    const first = rows[0]?.amount_gbp == null ? null : Number(rows[0].amount_gbp);
+    const last = rows[rows.length - 1]?.amount_gbp == null ? null : Number(rows[rows.length - 1].amount_gbp);
     return { first, last };
   };
 }
 
-/* ==========================================
-   Main evaluator factory (SUPER TESTABLE)
-   ========================================== */
-
-// NEW: build an evaluator with injected deps for clean tests
 export function makeEvaluator({
   models,
   notify = notifyUser,
@@ -68,92 +54,108 @@ export function makeEvaluator({
   const cooldownOk = makeCooldownOk(now);
   const loadWindow = makeWindowEndpoints(models, now);
 
-  // Return the actual runner so tests can call it
-  return async function evaluatePriceAlerts() {
-    const alerts = await models.PriceAlert.findAll({ where: { isActive: true } });
+  return async function evaluatePriceAlerts(options = {}) {
+    const { cardIds, pctUp, pctDown } = options;
+    const thresholds = normalizeAlertOptions({ pctUp, pctDown });
 
-    for (const a of alerts) {
-      if (!cooldownOk(a)) continue;
+    const where = { isActive: true };
+    if (Array.isArray(cardIds) && cardIds.length) {
+      const unique = Array.from(new Set(cardIds.map((id) => String(id))));
+      where.cardId = { [Op.in]: unique };
+    }
+
+    const alerts = await models.PriceAlert.findAll({ where });
+    let triggered = 0;
+
+    for (const alert of alerts) {
+      if (!cooldownOk(alert)) continue;
 
       const window = await loadWindow({
-        cardId: a.cardId,
-        variation: a.variation || null,
-        hours: a.windowHours,
+        cardId: alert.cardId,
+        variation: alert.variation || null,
+        hours: alert.windowHours,
       });
       if (!window || window.last == null) continue;
 
+      const condition = alert.condition;
       let hit = false;
       let message = '';
+      let effectiveValue = alert.value;
 
-      if (a.condition === 'pct_up' || a.condition === 'pct_down') {
+      if (condition === 'pct_up' || condition === 'pct_down') {
         const pct = pctChange(window.first ?? window.last, window.last);
         if (pct == null) continue;
-        if (a.condition === 'pct_up' && pct >= a.value) {
-          hit = true; message = `↑ ${pct.toFixed(1)}% in last ${a.windowHours}h`;
+        effectiveValue = resolvePercentThreshold(
+          condition,
+          effectiveValue ?? (condition === 'pct_up' ? thresholds.pctUp : thresholds.pctDown)
+        );
+        if (!Number.isFinite(effectiveValue) || effectiveValue <= 0) continue;
+        if (condition === 'pct_up' && pct >= effectiveValue) {
+          hit = true;
+          message = 'UP ' + pct.toFixed(1) + '% in last ' + alert.windowHours + 'h';
         }
-        if (a.condition === 'pct_down' && pct <= -a.value) {
-          hit = true; message = `↓ ${Math.abs(pct).toFixed(1)}% in last ${a.windowHours}h`;
+        if (condition === 'pct_down' && pct <= -effectiveValue) {
+          hit = true;
+          message = 'DOWN ' + Math.abs(pct).toFixed(1) + '% in last ' + alert.windowHours + 'h';
         }
-      } else if (a.condition === 'above') {
-        if (window.last >= a.value) { hit = true; message = `≥ £${a.value.toFixed(2)} (now £${window.last.toFixed(2)})`; }
-      } else if (a.condition === 'below') {
-        if (window.last <= a.value) { hit = true; message = `≤ £${a.value.toFixed(2)} (now £${window.last.toFixed(2)})`; }
+      } else if (condition === 'above') {
+        if (Number.isFinite(effectiveValue) && window.last >= effectiveValue) {
+          hit = true;
+          message = '>= �' + effectiveValue.toFixed(2) + ' (now �' + window.last.toFixed(2) + ')';
+        }
+      } else if (condition === 'below') {
+        if (Number.isFinite(effectiveValue) && window.last <= effectiveValue) {
+          hit = true;
+          message = '<= �' + effectiveValue.toFixed(2) + ' (now �' + window.last.toFixed(2) + ')';
+        }
       }
 
       if (!hit) continue;
 
-      // Send notification (injected -> easy to spy in tests)
       await notify({
-        userId: a.userId,
+        userId: alert.userId,
         type: 'price_alert',
-        title: `Price alert: ${a.cardId}${a.variation ? ` · ${a.variation}` : ''}`,
+        title: 'Price alert: ' + alert.cardId + (alert.variation ? ' - ' + alert.variation : ''),
         body: message,
         meta: {
-          cardId: a.cardId,
-          variation: a.variation,
-          windowHours: a.windowHours,
-          condition: a.condition,
-          value: a.value,
+          cardId: alert.cardId,
+          variation: alert.variation,
+          windowHours: alert.windowHours,
+          condition: alert.condition,
+          value: effectiveValue,
           last: window.last,
           first: window.first,
         },
       });
 
-      // Update cooldown timestamp using injected clock
-      await a.update({ lastFiredAt: now() });
+      await alert.update({ lastFiredAt: now() });
+      triggered += 1;
     }
+
+    return { alertsEvaluated: alerts.length, triggered };
   };
 }
 
-/* ===================================================
-   Back-compat default runner using real app services
-   =================================================== */
-
-// CHANGED: default export still works with real models + notifier
-export async function evaluatePriceAlerts() {
+export async function evaluatePriceAlerts(options = {}) {
   const run = makeEvaluator({
-    models: { PriceAlert, CardPriceHistory },  // real models
-    notify: notifyUser,                        // real notifier
-    now: () => new Date(),                     // real clock
+    models: { PriceAlert, m_PriceObservation },
+    notify: notifyUser,
+    now: () => new Date(),
   });
-  return run();
+  return run(options);
 }
 
 export default evaluatePriceAlerts;
 
-/* ===========================
-   CLI entry (unchanged UX)
-   =========================== */
-
-// CHANGED: robust ESM CLI check while keeping your original guard
 const invokedDirectly =
-  (typeof import.meta !== 'undefined' && import.meta.url === `file://${process.argv[1]}`) ||
-  (process.argv[1] && process.argv[1].endsWith('evaluatePriceAlerts.js'));
+  (typeof import.meta !== 'undefined' && Array.isArray(process.argv) && process.argv[1] && import.meta.url === `file://${process.argv[1]}`) ||
+  (Array.isArray(process.argv) && process.argv[1] && process.argv[1].endsWith('evaluatePriceAlerts.js'));
 
 if (invokedDirectly) {
   evaluatePriceAlerts()
-    .then(() => {
-      console.log('[alerts] evaluation completed');
+    .then((summary) => {
+      const triggered = summary?.triggered ?? 0;
+      console.log(`[alerts] evaluation completed (triggered=${triggered})`);
       process.exit(0);
     })
     .catch((e) => {

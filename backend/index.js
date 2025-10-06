@@ -34,28 +34,14 @@ import {
   sequelize,
   User,
   Profile,
-  // marketdata2 models used by admin debug
-  m_PriceDaily,
-  m_PriceLatest,
-  m_PriceObservation,
-  m_PriceRollup,
 } from './src/models/index.js';
 import * as models from './src/models/index.js';
 
-// 🆕 MD2 admin page/js (rewired earlier)
+// Admin page assets
 import { adminPageHtml } from './src/admin/adminPage.js';
 import { adminScriptJs } from './src/admin/adminScript.js';
 
-// 🆕 MD2: ticks + jobs + fx
-import { metadataTick, pricingTick, patchTick } from './src/modules/marketdata2/services/scheduler.service.js';
-import ingestSetJob from './src/modules/marketdata2/jobs/ingestSet.job.js';
-import collectPricesJob from './src/modules/marketdata2/jobs/collectPrices.job.js';
-import { getFxRatesGBP } from './src/modules/marketdata2/services/fx.service.js';
-import priceRollupJob from './src/modules/marketdata2/jobs/priceRollup.job.js';
-
 // Admin data helpers
-import { getIndex } from './src/modules/marketdata2/services/setIndex.service.js';
-import Providers from './src/modules/marketdata2/services/providers.health.service.js';
 
 // [CARDSEARCH] — Module + scheduler registration
 import cardsearch from './src/modules/cardsearch/index.js';
@@ -70,19 +56,6 @@ const logger = winston.createLogger({
   ),
   transports: [new winston.transports.Console()],
 });
-
-let startMarketdata2Schedule = null;
-let getMarketdata2ScheduleSnapshot = () => ({ startedAt: null, stoppedAt: null, eras: {}, rollup: {} });
-let previewSetSchedule = async () => [];
-
-try {
-  const mod = await import('./src/tasks/marketdata2.schedule.js');
-  if (typeof mod.startMarketdata2Schedule === 'function') startMarketdata2Schedule = mod.startMarketdata2Schedule;
-  if (typeof mod.getMarketdata2ScheduleSnapshot === 'function') getMarketdata2ScheduleSnapshot = mod.getMarketdata2ScheduleSnapshot;
-  if (typeof mod.previewSetSchedule === 'function') previewSetSchedule = mod.previewSetSchedule;
-} catch {
-  logger.warn('[MD2] marketdata2.schedule.js not present or failed to load; using minimal admin schedule.');
-}
 
 // --- Express + HTTP Server ---
 const app = express();
@@ -99,11 +72,6 @@ const io = new SocketIOServer(httpServer, {
   cors: { origin: '*', methods: ['GET', 'POST'] },
 });
 app.set('io', io);
-
-// Small helper to broadcast admin activity
-function emitActivity(type, payload) {
-  try { io.emit('md2:activity', { type, at: new Date().toISOString(), ...payload }); } catch {}
-}
 
 /* ============================
    Admin auth helpers
@@ -213,7 +181,7 @@ app.use(limiter);
 
 // ---- Logging: hide noisy admin data GETs, log a concise "refreshed" instead ----
 // (extended to include /admin/cardsearch/*)
-const NOISY_RE = /^\/admin\/(md2\/(sets|schedule|fx|providers|rules)|cardsearch\/(sets|scheduler\/tasks|ui|adminScript\.js))\b/;
+const NOISY_RE = /^\/admin\/cardsearch\/(sets|scheduler\/tasks|ui|adminScript\.js)\b/;
 app.use(morgan('combined', {
   skip: (req) => req.method === 'GET' && NOISY_RE.test(req.path),
   stream: { write: (msg) => logger.info(msg.trim()) },
@@ -422,12 +390,6 @@ try {
     startNotificationCleanup(logger),
   ];
 
-  // 🟢 Start marketdata2 background schedule loop (if present)
-  // Set MARKETDATA_SCHED_DISABLE=1 to keep it off.
-  let stopMarketdata2 = null;
-  if (process.env.MARKETDATA_SCHED_DISABLE !== '1') {
-    stopMarketdata2 = await (startMarketdata2Schedule?.() || Promise.resolve(null));
-  }
 
   // [CARDSEARCH] Start Card Search recurring schedules (FX, collect, rollups, ingest, patch)
   if (process.env.CARDSEARCH_SCHED_DISABLE !== '1') {
@@ -442,8 +404,6 @@ try {
   // CRONs — example (disabled)
   const CRON_TZ = process.env.CRON_TZ || 'UTC';
   // cron.schedule('*/15 * * * *', async () => {
-  //   try { await metadataTick({ limit: Number(process.env.MD2_METADATA_PER_TICK || 2) }); } catch {}
-  //   try { await pricingTick({ limit: Number(process.env.MD2_PRICING_PER_TICK || 2) }); } catch {}
   // }, { timezone: CRON_TZ });
 
   // Boot diagnostics
@@ -455,7 +415,6 @@ try {
   // Graceful shutdown
   function shutdown() {
     logger.info('Shutdown requested, draining...');
-    stopMarketdata2?.();
     cleanupIntervals.forEach(clearInterval);
     httpServer.close(() => {
       sequelize.close().finally(() => {

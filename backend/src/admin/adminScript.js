@@ -564,18 +564,52 @@ async function loadFx() {
 }
 
 async function runJob(kind, payload = {}, label = kind) {
+  const started = Date.now();
   try {
     appendLog('info', \`Job \${label} requested\`);
     const body = { kind, ...payload };
-    await fetchJSON(\`\${BASE}/run-job\`, {
+    appendLog('info', \`Job \${label} running...\`);
+    const response = await fetchJSON(\`\${BASE}/run-job\`, {
       method: 'POST',
       body: JSON.stringify(body),
     }, \`job:\${kind}\`);
-    appendLog('ok', \`Job \${label} started\`);
-    setToast(\`Started \${label}\`, 'ok');
+    const elapsedMs = Date.now() - started;
+    const human = elapsedMs >= 1000 ? \`\${(elapsedMs / 1000).toFixed(1)}s\` : \`\${elapsedMs}ms\`;
+    appendLog('ok', \`Job \${label} completed in \${human}\`);
+    const summary = summarizeJobResult(response?.result);
+    if (summary) appendLog('info', summary);
+    setToast(\`Completed \${label}\`, 'ok');
+    return response;
   } catch (error) {
     setToast(\`Job \${label} failed\`, 'err');
     throw error;
+  }
+}
+
+function summarizeJobResult(result) {
+  if (!result || typeof result !== 'object') return '';
+  if (result.error) return \`Error: \${result.error}\`;
+  const counts = result.counts;
+  if (counts && typeof counts === 'object') {
+    const cards = counts.cards || {};
+    const variants = counts.variants || {};
+    const cardDeletes = cards.deleted || cards.removed || 0;
+    const cardSummary = cardDeletes
+      ? \`cards +\${cards.inserted || 0}/\${cards.updated || 0}/-\${cardDeletes}\`
+      : \`cards +\${cards.inserted || 0}/\${cards.updated || 0}\`;
+    const variantAdds = variants.upserted || 0;
+    const variantDeletes = variants.deletedStale || variants.removed || 0;
+    const variantSummary = variantDeletes
+      ? \`variants +\${variantAdds}/-\${variantDeletes}\`
+      : \`variants +\${variantAdds}\`;
+    return \`\${cardSummary}, \${variantSummary}\`;
+  }
+  try {
+    const json = JSON.stringify(result);
+    if (!json || json === '{}' || json === '[]') return '';
+    return json.length > 160 ? \`Result: \${json.slice(0, 160)}...\` : \`Result: \${json}\`;
+  } catch {
+    return '';
   }
 }
 

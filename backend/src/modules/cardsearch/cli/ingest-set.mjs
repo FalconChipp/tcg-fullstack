@@ -21,12 +21,14 @@ function parseArgs(argv) {
     if (a === "--refresh") { out.refresh = true; continue; }
     if (a === "--dry" || a === "--dry-run") { out.dry = true; continue; }
     if (a === "--help" || a === "-h") { out.help = true; break; }
+    if (!a.startsWith('-') && !out.set) { out.set = a; continue; }
   }
   return out;
 }
 
 function usage() {
   console.log(`Usage:
+  node ${path.basename(__filename)} <set> [--refresh] [--dry]
   node ${path.basename(__filename)} --set <abbr|tcgdex|ptcg|name> [--refresh] [--dry]
 `);
 }

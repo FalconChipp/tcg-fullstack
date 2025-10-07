@@ -1,4 +1,4 @@
-// src/modules/cardsearch/resolvers.js
+﻿// src/modules/cardsearch/resolvers.js
 // GraphQL resolvers for Card Search wired to shared services.
 // NOTE: Works with or without GraphQL context; when no ctx.loaders is present,
 // it falls back to direct DB reads.
@@ -46,7 +46,7 @@ function buildCardImages(row) {
 }
 const resolvers = {
   Query: {
-    async searchCards(_, { input }) {
+    async cardsearchSearchCards(_, { input }) {
       const { where, order, limit, offset, include } = await qb.buildCardQuery(input);
 
       const total = await m_Card.count({ where });
@@ -72,7 +72,7 @@ const resolvers = {
       return { total, limit, offset, items };
     },
 
-    async cardById(_, { cardId }) {
+    async cardsearchCardById(_, { cardId }) {
       if (!cardId || typeof cardId !== "string" || !cardId.includes("-")) return null;
       const [set_code, ...rest] = cardId.split("-");
       const number = rest.join("-");
@@ -94,7 +94,7 @@ const resolvers = {
       };
     },
 
-    async priceLatest(_, { cardId, variant }) {
+    async cardsearchPriceLatest(_, { cardId, variant }) {
       const where = { card_id: cardId };
       if (variant) where.variant = String(variant).toLowerCase();
 
@@ -115,12 +115,12 @@ const resolvers = {
       });
     },
 
-    async priceRollups(_, { cardId, variant, windows }) {
+    async cardsearchPriceRollups(_, { cardId, variant, windows }) {
       if (!cardId) return null;
       return loadPriceRollups(cardId, variant, { windows });
     },
 
-    async priceRollupsAll(_, { cardId, variants, windows }) {
+    async cardsearchPriceRollupsAll(_, { cardId, variants, windows }) {
       if (!cardId) return [];
 
       let variantList = Array.isArray(variants) && variants.length
@@ -162,7 +162,7 @@ const resolvers = {
 
       return out;
     },
-    async priceObservations(_, { cardId, variant, startDate, endDate, limit = 365, offset = 0 }) {
+    async cardsearchPriceObservations(_, { cardId, variant, startDate, endDate, limit = 365, offset = 0 }) {
       const where = { card_id: cardId };
       if (variant) where.variant = String(variant).toLowerCase();
       if (startDate) where.date = { ...(where.date || {}), [Op.gte]: startDate };
@@ -191,7 +191,7 @@ const resolvers = {
       });
     },
 
-    async setByCode(_, { code }) {
+    async cardsearchSetByCode(_, { code }) {
       const row = await m_Set.findOne({ where: { code } });
       if (!row) return null;
       const r = row.get();
@@ -206,7 +206,7 @@ const resolvers = {
       };
     },
 
-    async sets(_, { query, limit = 100, offset = 0 }) {
+    async cardsearchSets(_, { query, limit = 100, offset = 0 }) {
       const where = qb.buildSetWhere({ query });
       const rows = await m_Set.findAll({
         where,
@@ -230,7 +230,7 @@ const resolvers = {
   },
 
   Mutation: {
-    async adminRunJob(_, { input }) {
+    async cardsearchAdminRunJob(_, { input }) {
       return {
         ok: true,
         message: `Job '${input.kind}' accepted.`,
@@ -240,7 +240,7 @@ const resolvers = {
       };
     },
 
-    async adminToggleSet(_, { code, enabled }) {
+    async cardsearchAdminToggleSet(_, { code, enabled }) {
       const row = await m_Set.findOne({ where: { code } });
       if (!row) throw new Error(`Set not found: ${code}`);
       const r = row.get();
@@ -267,7 +267,7 @@ const resolvers = {
       };
     },
 
-    async adminRebuildRollups(_, { set }) {
+    async cardsearchAdminRebuildRollups(_, { set }) {
       return {
         ok: true,
         message: set ? `Rollups accepted for set ${set}` : "Global rollups accepted",
@@ -278,7 +278,7 @@ const resolvers = {
     },
   },
 
-  Card: {
+  CardsearchCard: {
     async set(parent) {
       const row = await m_Set.findOne({ where: { code: parent.setCode } });
       if (!row) return null;
@@ -336,7 +336,7 @@ const resolvers = {
 
       if (!variantList.length) {
         try {
-          const resolved = await resolvers.Card.variants(parent);
+          const resolved = await resolvers.CardsearchCard.variants(parent);
           variantList = resolved.map((v) => String(v.variant || 'normal').toLowerCase());
         } catch {
           variantList = [];
@@ -638,6 +638,8 @@ function assembleRollup(cardId, variant, rows) {
 }
 
 export default resolvers;
+
+
 
 
 

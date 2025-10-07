@@ -17,7 +17,7 @@ import { fetchTCGDexCards, fetchTCGDexCardById } from './api/tcgdex.js';
 import { fetchPTCGCardById, fetchPTCGCardPrices } from './api/pokemontcg.js';
 import { getExchangeRates } from './api/exchangeRates.js';
 import { saveOrUpdateCard } from './cardPersistence.js';
-import { SET_MAPPING } from '../marketdata/utils/SetMapping.js';
+import { SET_MAPPING } from './SetMapping.js';
 
 import { Card, Listing, Collection } from '../../models/index.js';
 import { Op } from 'sequelize';

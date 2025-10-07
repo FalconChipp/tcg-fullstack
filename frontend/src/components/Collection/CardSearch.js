@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef, startTransition } from "react";
 import dynamic from "next/dynamic";
@@ -56,7 +56,7 @@ const USE_CARDSEARCH_V2 = process.env.NEXT_PUBLIC_CARDSEARCH_V2 === '1';
 
 const CARDSEARCH_V2_QUERY = gql`
   query CardSearchV2($input: CardSearchInput!) {
-    searchCards(input: $input) {
+    searchCards: cardsearchSearchCards(input: $input) {
       total
       limit
       offset
@@ -926,7 +926,7 @@ export default function CardSearch() {
           <CardSkeleton
             key={idx}
             dark={dark}
-            message={!hasSearched ? "No cards yet\nTry searching for a Pokémon, set, or number" : undefined}
+            message={!hasSearched ? "No cards yet\nTry searching for a PokÃ©mon, set, or number" : undefined}
             actionLabel={!hasSearched ? "Search cards" : undefined}
           />
         ))}
@@ -958,4 +958,5 @@ export default function CardSearch() {
     </div>
   );
 }
+
 

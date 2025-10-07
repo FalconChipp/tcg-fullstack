@@ -1,7 +1,7 @@
 // helpers.js — OLD structure kept, NEW improvements merged (plain JS / ESM)
 
 // --- OLD IMPORTS (kept) ---
-import { SET_MAPPING, getSetCandidates } from '../marketdata/utils/SetMapping.js';
+import { SET_MAPPING, getSetCandidates } from './SetMapping.js';
 // import { CardPrice } from '../../models/index.js';
 import { fetchTCGDexCardById } from './api/tcgdex.js';
 import { fetchPTCGCardById } from './api/pokemontcg.js';

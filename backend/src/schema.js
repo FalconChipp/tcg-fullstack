@@ -1,4 +1,4 @@
-// src/schema.js
+﻿// src/schema.js
 
 import { mergeTypeDefs } from '@graphql-tools/merge';
 import { mergeResolvers } from '@graphql-tools/merge';
@@ -6,7 +6,7 @@ import { mergeResolvers } from '@graphql-tools/merge';
 // ---- Import typeDefs from all modules ----
 import authTypeDefs from './modules/auth/typeDefs.js';
 import usersTypeDefs from './modules/users/typeDefs.js';
-// import searchTypeDefs from './modules/search/typeDefs.js';                    // --- DEPRECATED ---
+import searchTypeDefs from './modules/search/typeDefs.js'; // legacy search kept
 import collectionsTypeDefs from './modules/collection/typeDefs.js';
 import wishlistTypeDefs from './modules/wishlist/typeDefs.js';
 import achievementsTypeDefs from './modules/achievements/typeDefs.js';
@@ -25,7 +25,7 @@ import cardsearchTypeDefs from './modules/cardsearch/typeDefs.js';
 // ---- Import resolvers from all modules ----
 import authResolvers from './modules/auth/resolvers.js';
 import usersResolvers from './modules/users/resolvers.js';
-// import searchResolvers from './modules/search/resolvers.js';                  // --- DEPRECATED ---
+import searchResolvers from './modules/search/resolvers.js'; // legacy search kept
 import collectionsResolvers from './modules/collection/resolvers.js';
 import wishlistResolvers from './modules/wishlist/resolvers.js';
 import achievementsResolvers from './modules/achievements/resolvers.js';
@@ -45,7 +45,7 @@ import cardsearchResolvers from './modules/cardsearch/resolvers.js';
 export const typeDefs = mergeTypeDefs([
   authTypeDefs,
   usersTypeDefs,
-  // searchTypeDefs,         // --- DEPRECATED ---
+  searchTypeDefs,
   collectionsTypeDefs,
   marketplaceTypeDefs,
   tradingTypeDefs,
@@ -66,7 +66,7 @@ export const typeDefs = mergeTypeDefs([
 export const resolvers = mergeResolvers([
   authResolvers,
   usersResolvers,
-  // searchResolvers,        // --- DEPRECATED ---
+  searchResolvers,
   collectionsResolvers,
   marketplaceResolvers,
   tradingResolvers,
@@ -82,3 +82,5 @@ export const resolvers = mergeResolvers([
   adminResolvers,
   cardsearchResolvers,
 ]);
+
+

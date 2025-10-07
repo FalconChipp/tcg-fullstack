@@ -1,17 +1,7 @@
-// src/modules/cardsearch/typeDefs.js
+﻿// src/modules/cardsearch/typeDefs.js
 // GraphQL schema (SDL) for the Card Search module.
-// - Supports six search modes: Name, Name+Set, Name+Number, Number+Set, Number, Set
-// - Returns latest pricing and 1/7/30/90-day rollups
-// - Pure DB reads at query time; ingestion/pricing/FX handled by jobs
-//
-// Export: a single string containing SDL. Your module loader should import this
-// and pass to ApolloServer (or equivalent) alongside resolvers.
-//
-// Implementation notes:
-// - "cardId" refers to your canonical ID format: `${set_code}-${number}` (e.g., "sv08-123").
-// - "variant" is optional and normalized in resolvers (e.g., "normal", "holo", "rev", "alt_art").
-// - Pricing values are expressed in GBP; vendor currency conversion happens at ingestion time.
-// - Admin mutations are minimal stubs here; we’ll wire their resolvers later.
+// Types are namespaced with the `Cardsearch` prefix so the legacy search schema can
+// coexist without conflicting type names or field signatures.
 
 const typeDefs = /* GraphQL */ `
   "Generic scalar placeholders if your server doesn't already provide them"
@@ -19,7 +9,7 @@ const typeDefs = /* GraphQL */ `
   scalar JSON
 
   "Represents a Pokémon TCG Set known to this backend"
-  type Set {
+  type CardsearchSet {
     code: String!                # canonical internal set code (e.g., 'sv08')
     abbr: String                 # marketing/display abbreviation (e.g., 'PA')
     name: String!
@@ -29,8 +19,14 @@ const typeDefs = /* GraphQL */ `
     lang: String                 # 'en', etc.
   }
 
+  "Container for card imagery"
+  type CardsearchCardImages {
+    small: String
+    large: String
+  }
+
   "A card as stored in your m_Card table (one per set_code/number)"
-  type Card {
+  type CardsearchCard {
     id: ID!                      # same as cardId (set_code-number)
     cardId: String!              # 'sv08-123'
     setCode: String!             # 'sv08'
@@ -42,32 +38,27 @@ const typeDefs = /* GraphQL */ `
     types: [String!]
     regulationMark: String
     illustrator: String
-    images: CardImages
-    set: Set!
+    images: CardsearchCardImages
+    set: CardsearchSet!
 
     "Available variants for this card (e.g., normal, holo, reverse, alt art, etc.)"
-    variants: [CardVariant!]!
+    variants: [CardsearchCardVariant!]!
 
     "Convenience: latest GBP price per variant (if requested); loaded lazily"
-    latestPrices: [PriceLatest!]
-    priceRollups(variant: String, windows: [Int!]): PriceRollups
-    priceRollupsAll(variants: [String!], windows: [Int!]): [PriceRollups!]!
-  }
-
-  type CardImages {
-    small: String
-    large: String
+    latestPrices: [CardsearchPriceLatest!]
+    priceRollups(variant: String, windows: [Int!]): CardsearchPriceRollups
+    priceRollupsAll(variants: [String!], windows: [Int!]): [CardsearchPriceRollups!]!
   }
 
   "Physical/market variant for a Card (e.g., 'normal', 'reverse', 'holo', 'alt_art')"
-  type CardVariant {
+  type CardsearchCardVariant {
     cardId: String!              # 'sv08-123'
     variant: String!             # normalized key
     displayName: String!         # 'Reverse Holo', 'Full Art', etc.
   }
 
   "Point-in-time latest price (denormalized for speed)"
-  type PriceLatest {
+  type CardsearchPriceLatest {
     cardId: String!
     variant: String!
     currency: String!            # 'GBP' (post-conversion)
@@ -80,7 +71,7 @@ const typeDefs = /* GraphQL */ `
   }
 
   "Daily price observation for charting; typically resolved via rollups or direct"
-  type PriceObservation {
+  type CardsearchPriceObservation {
     cardId: String!
     variant: String!
     date: String!                # YYYY-MM-DD
@@ -93,23 +84,23 @@ const typeDefs = /* GraphQL */ `
   }
 
   "Precomputed windows for fast UI spark-lines and summaries"
-  type PriceRollups {
+  type CardsearchPriceRollups {
     cardId: String!
     variant: String!
     currency: String!            # 'GBP'
 
     "Latest snapshot (today or most recent trading day)"
-    latest: PricePoint
+    latest: CardsearchPricePoint
 
     "Window aggregates over trailing N days; fields may be null if insufficient data"
-    d1: RollupWindow
-    d7: RollupWindow
-    d30: RollupWindow
-    d90: RollupWindow
+    d1: CardsearchRollupWindow
+    d7: CardsearchRollupWindow
+    d30: CardsearchRollupWindow
+    d90: CardsearchRollupWindow
   }
 
-  "A single timepoint; used inside PriceRollups.latest"
-  type PricePoint {
+  "A single timepoint; used inside CardsearchPriceRollups.latest"
+  type CardsearchPricePoint {
     date: String!                # YYYY-MM-DD
     low: Float
     mid: Float
@@ -118,7 +109,7 @@ const typeDefs = /* GraphQL */ `
   }
 
   "Aggregated stats for a window (min/max/avg and change vs start)"
-  type RollupWindow {
+  type CardsearchRollupWindow {
     startDate: String!           # inclusive
     endDate: String!             # inclusive
     count: Int!                  # number of observations in window
@@ -134,15 +125,12 @@ const typeDefs = /* GraphQL */ `
 
   "Search parameters covering Name/Set/Number combos"
   input CardSearchInput {
-    # Any combination of these enables the six search modes you listed:
     name: String
     set: String                  # accepts canonical ('sv08'), alias/abbr ('PA'), or human ('Paradox Rift')
     number: String               # string to keep suffixes like '123a'
 
-    # Optional variant filter—otherwise return all variants for each card
     variant: String
 
-    # Search behavior
     fuzzy: Boolean = true        # fuzzy name matching on tokenized fields
     limit: Int = 50
     offset: Int = 0
@@ -159,54 +147,54 @@ const typeDefs = /* GraphQL */ `
     SET_DESC
   }
 
-  type CardSearchResult {
+  type CardsearchCardSearchResult {
     total: Int!
     limit: Int!
     offset: Int!
-    items: [Card!]!
+    items: [CardsearchCard!]!
   }
 
   # -------- Queries -----------------------------------------------------------
 
   type Query {
     "Unified search for cards (supports Name, Name+Set, Name+Number, Number+Set, Number, Set)"
-    searchCards(input: CardSearchInput!): CardSearchResult!
+    cardsearchSearchCards(input: CardSearchInput!): CardsearchCardSearchResult!
 
     "Fetch a single card by its canonical ID (e.g., 'sv08-123')"
-    cardById(cardId: ID!, variant: String): Card
+    cardsearchCardById(cardId: ID!, variant: String): CardsearchCard
 
     "Latest prices for a card (optionally filtered by variant)"
-    priceLatest(cardId: ID!, variant: String): [PriceLatest!]!
+    cardsearchPriceLatest(cardId: ID!, variant: String): [CardsearchPriceLatest!]!
 
     "Precomputed rollups for 1/7/30/90 windows"
-    priceRollups(cardId: ID!, variant: String, windows: [Int!]): PriceRollups
-    priceRollupsAll(cardId: ID!, variants: [String!], windows: [Int!]): [PriceRollups!]!
+    cardsearchPriceRollups(cardId: ID!, variant: String, windows: [Int!]): CardsearchPriceRollups
+    cardsearchPriceRollupsAll(cardId: ID!, variants: [String!], windows: [Int!]): [CardsearchPriceRollups!]!
 
     "Optional: raw timeseries (paged) for charts or debugging"
-    priceObservations(
+    cardsearchPriceObservations(
       cardId: ID!
       variant: String
       startDate: String
       endDate: String
       limit: Int = 365
       offset: Int = 0
-    ): [PriceObservation!]!
+    ): [CardsearchPriceObservation!]!
 
     "Set lookup by code or human name"
-    setByCode(code: String!): Set
-    sets(query: String, limit: Int = 100, offset: Int = 0): [Set!]!
+    cardsearchSetByCode(code: String!): CardsearchSet
+    cardsearchSets(query: String, limit: Int = 100, offset: Int = 0): [CardsearchSet!]!
   }
 
-  # -------- Admin surface (minimal—wired later) ------------------------------
+  # -------- Admin surface (minimal — wired later) ------------------------------
 
-  input AdminJobRunInput {
+  input CardsearchAdminJobRunInput {
     kind: String!                 # 'ingestSet' | 'collectPrices' | 'patchGaps' | 'priceRollup' | 'fxDaily'
     set: String                   # for per-set jobs
     era: String                   # optional era filter
     budget: Int                   # optional ceiling for gap filler
   }
 
-  type AdminJobResult {
+  type CardsearchAdminJobResult {
     ok: Boolean!
     message: String
     stats: JSON
@@ -214,8 +202,8 @@ const typeDefs = /* GraphQL */ `
     finishedAt: DateTime
   }
 
-  type AdminSetStatus {
-    set: Set!
+  type CardsearchAdminSetStatus {
+    set: CardsearchSet!
     hasCache: Boolean!
     lastIngestAt: DateTime
     lastPriceCollectAt: DateTime
@@ -230,13 +218,13 @@ const typeDefs = /* GraphQL */ `
 
   type Mutation {
     "Run a specific maintenance job immediately"
-    adminRunJob(input: AdminJobRunInput!): AdminJobResult!
+    cardsearchAdminRunJob(input: CardsearchAdminJobRunInput!): CardsearchAdminJobResult!
 
     "Enable/disable a set for scheduled collection"
-    adminToggleSet(code: String!, enabled: Boolean!): AdminSetStatus!
+    cardsearchAdminToggleSet(code: String!, enabled: Boolean!): CardsearchAdminSetStatus!
 
     "Recompute rollups for a set or the entire catalog"
-    adminRebuildRollups(set: String): AdminJobResult!
+    cardsearchAdminRebuildRollups(set: String): CardsearchAdminJobResult!
   }
 `;
 

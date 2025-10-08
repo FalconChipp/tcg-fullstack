@@ -63,8 +63,7 @@ export const typeDefs = mergeTypeDefs([
 ]);
 
 // ---- Merge all resolvers ----
-export const resolvers = mergeResolvers([
-  authResolvers,
+let merged = mergeResolvers([
   usersResolvers,
   searchResolvers,
   collectionsResolvers,
@@ -81,6 +80,16 @@ export const resolvers = mergeResolvers([
   shippingResolvers,
   adminResolvers,
   cardsearchResolvers,
+  authResolvers, // put auth last so most fields win naturally
 ]);
 
+// Hard-override Query.me so it ALWAYS uses the auth module’s resolver
+merged = {
+  ...merged,
+  Query: {
+    ...(merged.Query || {}),
+    me: authResolvers?.Query?.me, // <-- enforce the correct one
+  },
+};
 
+export const resolvers = merged;

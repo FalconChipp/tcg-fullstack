@@ -193,7 +193,7 @@ export default function AccountPage() {
               </p>
               <Link
                 href="/"
-                className="inline-block mt-6 px-5 py-2 rounded-xl bg-light-accent hover:bg-light-accentLight text-white dark:bg-dark-accent dark:hover:bg-dark-accentLight"
+                className="inline-block mt-6 px-5 py-2 rounded-xl bg-light-accent hover:bg-light-accentLight !text-white dark:bg-dark-accent dark:hover:bg-dark-accentLight"
               >
                 Go to home
               </Link>

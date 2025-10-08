@@ -41,11 +41,11 @@ import * as models from './src/models/index.js';
 import { adminPageHtml } from './src/admin/adminPage.js';
 import { adminScriptJs } from './src/admin/adminScript.js';
 
-// Admin data helpers
-
-// [CARDSEARCH] — Module + scheduler registration
-import cardsearch from './src/modules/cardsearch/index.js';
+// [CARDSEARCH]
 import { registerCardsearchSchedules } from './src/tasks/cardsearch.schedule.js';
+import { withCookieParser, attachUser } from "./src/middleware/attachUser.js";
+import authSessionRouter from "./src/routes/authSession.js";
+import discordAuthRouter from './src/routes/discordAuth.js';
 
 // --- Logger Setup ---
 const logger = winston.createLogger({
@@ -164,7 +164,7 @@ app.use(compression());
 // Parsers AFTER Stripe raw route
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
-app.use(cookieParser());
+app.use(cookieParser()); // <-- ensures req.cookies is populated
 app.use(expressStatusMonitor({ path: '/status' }));
 
 // Rate limit (skip preflights)
@@ -179,8 +179,7 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// ---- Logging: hide noisy admin data GETs, log a concise "refreshed" instead ----
-// (extended to include /admin/cardsearch/*)
+// ---- Logging: hide noisy admin data GETs ----
 const NOISY_RE = /^\/admin\/cardsearch\/(sets|scheduler\/tasks|ui|adminScript\.js)\b/;
 app.use(morgan('combined', {
   skip: (req) => req.method === 'GET' && NOISY_RE.test(req.path),
@@ -285,7 +284,7 @@ app.use('/uploads/avatars', express.static(AVATAR_DIR));
 app.get('/health', (_req, res) => res.json({ status: 'ok', timestamp: Date.now() }));
 app.get('/graphql', (_req, res) => res.status(200).send('OK'));
 
-// Admin UI (static HTML/JS via functions you ship)
+// Admin UI
 app.get('/admin', (_req, res) => {
   res.set('Cache-Control', 'no-store');
   res.type('text/html; charset=utf-8').send(adminPageHtml());
@@ -295,9 +294,7 @@ app.get('/admin/admin.js', (_req, res) => {
   res.type('application/javascript; charset=utf-8').send(adminScriptJs());
 });
 
-// [CARDSEARCH] Mount admin routes with UI allowlist:
-// - UI endpoints (/ui, /adminScript.js, /partials/*) are public.
-// - All other /admin/cardsearch/* endpoints require x-admin-token.
+// [CARDSEARCH] routes
 try {
   const { publicRouter, apiRouter } = await import('./src/modules/cardsearch/admin/routes.js');
 
@@ -307,7 +304,7 @@ try {
   // Protected JSON API (requires x-admin-token)
   app.use('/admin/cardsearch', requireAdmin, apiRouter());
 
-  // Optional convenience redirects
+  // Optional convenience redirect
   app.get('/admin/cardsearch', (_req, res) => res.redirect(302, '/admin/cardsearch/ui'));
 
   logger.info('[Cardsearch] admin routes mounted at /admin/cardsearch (public UI + protected API)');
@@ -315,10 +312,40 @@ try {
   logger.warn(`[Cardsearch] admin routes not available: ${e?.message || e}`);
 }
 
+// NEW: cookies then attach req.user
+app.use(withCookieParser());
+app.use(attachUser());
+
+app.get("/debug/me", (req, res) => {
+  res.json({ user: req.user || null });
+});
+
+app.use(authSessionRouter);
+
+// Discord Auth Router 
+app.use(discordAuthRouter);
 
 /* ============================
    GraphQL (Apollo)
    ============================ */
+
+// ADDED: robust extractor for raw JWT for GraphQL context
+function extractToken(req) {
+  // 1) Authorization: Bearer <jwt>
+  const auth = req.headers.authorization || "";
+  if (auth.startsWith("Bearer ")) {
+    return auth.slice(7).trim();
+  }
+  // 2) Cookie fallbacks — align with frontend cookie names
+  if (req.cookies) {
+    // CHANGED: check 'authToken' first (what the FE writes)
+    if (req.cookies.authToken) return req.cookies.authToken;     // ADDED
+    if (req.cookies.sbf_token) return req.cookies.sbf_token;     // legacy
+    if (req.cookies.token) return req.cookies.token;             // legacy
+  }
+  return null;
+}
+
 const apolloServer = new ApolloServer({
   typeDefs,          // cardsearch SDL is merged inside src/schema.js
   resolvers,         // cardsearch resolvers too
@@ -334,11 +361,8 @@ app.use(
   '/graphql',
   expressMiddleware(apolloServer, {
     context: async ({ req, res }) => {
-      let token =
-        req.headers.authorization?.replace('Bearer ', '') ||
-        req.headers.Authorization?.replace('Bearer ', '') ||
-        req.cookies.token ||
-        null;
+      // CHANGED: use robust extractor
+      const token = extractToken(req);
 
       let user = null;
       if (token) {
@@ -356,8 +380,8 @@ app.use(
         res,
         io,
         logger,
-        user,
-        token,
+        user,      // may be null
+        token,     // RAW JWT (no "Bearer ")
         userAgent: req.headers['user-agent'],
         ip: req.ip,
         models,
@@ -390,8 +414,7 @@ try {
     startNotificationCleanup(logger),
   ];
 
-
-  // [CARDSEARCH] Start Card Search recurring schedules (FX, collect, rollups, ingest, patch)
+  // [CARDSEARCH] schedules
   if (process.env.CARDSEARCH_SCHED_DISABLE !== '1') {
     try {
       registerCardsearchSchedules();
@@ -401,10 +424,7 @@ try {
     }
   }
 
-  // CRONs — example (disabled)
   const CRON_TZ = process.env.CRON_TZ || 'UTC';
-  // cron.schedule('*/15 * * * *', async () => {
-  // }, { timezone: CRON_TZ });
 
   // Boot diagnostics
   const now = new Date();

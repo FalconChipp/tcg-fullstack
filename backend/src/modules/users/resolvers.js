@@ -24,55 +24,98 @@ const logger = winston.createLogger({
 // --- Resolvers ---
 const resolvers = {
   Query: {
-    me: async (_, __, { token }) => {
+    me: async (_parent, _args, { token }) => {
       if (!token) return null;
+
       try {
         const payload = verifyJwt(token);
-        const user = await User.findByPk(payload.id, { include: [{ model: Profile }] });
+
+        const user = await User.findByPk(payload.id, {
+          include: [
+            { model: Profile, required: false },
+            { model: UserDiscordLink, as: "DiscordLink", required: false },
+          ],
+        });
+
+        if (!user) return null;
+
         logger.info(`[USER] Fetched self ${payload.id}`);
-        return user;
+
+        const j = user.toJSON();
+
+        return {
+          id: j.id,
+          username: j.username,
+          email: j.email,
+          emailVerified: j.emailVerified,
+          lastLogin: j.lastLogin,
+          createdAt: j.createdAt,
+          updatedAt: j.updatedAt,
+
+          mfaEnabled: j.twoFactorEnabled ?? j.mfaEnabled ?? false,
+
+          oauthProvider: j.oauthProvider ?? null,
+          oauthId: j.oauthId ?? null,
+
+          discordId: j.DiscordLink?.discordUserId ?? null,
+          discordUsername: j.DiscordLink?.discordUsername ?? null,
+
+          Profile: j.Profile ?? null,
+        };
       } catch (err) {
         logger.warn(`[USER] JWT verification failed for me query`);
         return null;
       }
     },
 
-    userProfile: async (_, { username }) => {
+    userProfile: async (_parent, { username }) => {
       const user = await User.findOne({ where: { username } });
       if (!user) return null;
+
       let profile = await Profile.findOne({ where: { userId: user.id } });
-      // If no profile, create a blank one (optional—if this is your desired behavior)
+
+      // Keep your auto-create behavior (optional)
       if (!profile) {
         profile = await Profile.create({ userId: user.id });
         logger.info(`[PROFILE] Created blank profile for user ${username}`);
       }
-      profile.user = user; // Attach user to profile for your GraphQL resolvers
+
+      // Attach for downstream resolvers if you rely on it
+      profile.user = user;
       logger.info(`[PROFILE] Fetched profile for user ${username}`);
       return profile;
     },
 
-    userById: async (_, { id }) => {
-      const user = await User.findByPk(id);
+    userById: async (_parent, { id }) => {
+      const user = await User.findByPk(id, {
+        // OPTIONAL: include these if you want parity with `me`
+        include: [
+          { model: Profile, required: false },
+          { model: UserDiscordLink, as: "DiscordLink", required: false },
+        ],
+      });
       logger.info(`[USER] Fetched user by id ${id}`);
       return user;
     },
 
-    searchUsers: async (_, { query, limit = 10 }) => {
+    searchUsers: async (_parent, { query, limit = 10 }) => {
       const users = await User.findAll({
         where: sequelize.where(
-          sequelize.fn('LOWER', sequelize.col('username')),
+          sequelize.fn("LOWER", sequelize.col("username")),
           { [Op.like]: `%${query.toLowerCase()}%` }
         ),
         limit,
-        include: [{ model: Profile }],
+        // CHANGED: use object form for include (consistent with others)
+        include: [{ model: Profile, required: false }],
       });
       logger.info(`[PROFILE] Search users for "${query}" found ${users.length}`);
-      return users.map(u => u.Profile).filter(Boolean);
+      return users.map((u) => u.Profile).filter(Boolean);
     },
 
-    allUsers: async (_, { limit = 100 }, { token }) => {
+    allUsers: async (_parent, { limit = 100 }, { token }) => {
       requireAdmin(token);
-      const users = await User.findAll({ limit, include: Profile });
+      // CHANGED: consistent include form
+      const users = await User.findAll({ limit, include: [{ model: Profile, required: false }] });
       logger.info(`[ADMIN] allUsers queried`);
       return users;
     },

@@ -21,6 +21,8 @@ export default gql`
     googleId: String
     oauthProvider: String
     oauthId: String
+    discordId: String
+    discordUsername: String
   }
 
   type Profile {

@@ -1,7 +1,5 @@
-// src/modules/auth/resolvers.js
-
 import { Op } from 'sequelize';
-import { User } from '../../models/index.js';
+import { User, UserDiscordLink } from '../../models/index.js'; // <-- include link model
 import { OAuth2Client } from 'google-auth-library';
 import {
   generateJwt,
@@ -44,9 +42,21 @@ function resetAttempts(key, map) {
 }
 
 const resolvers = {
-  // --- Always expose this for the User type ---
+  // --- Per-field resolvers for User ---
   User: {
     twoFactorEnabled: (user) => !!user.twoFactorEnabled,
+
+    // NEW: resolve Discord fields from UserDiscordLink table
+    discordId: async (user) => {
+      if (!user?.id) return null;
+      const link = await UserDiscordLink.findOne({ where: { userId: String(user.id) } });
+      return link?.discordUserId || null;
+    },
+    discordUsername: async (user) => {
+      if (!user?.id) return null;
+      const link = await UserDiscordLink.findOne({ where: { userId: String(user.id) } });
+      return link?.discordUsername || null;
+    },
   },
 
   Query: {
@@ -56,7 +66,7 @@ const resolvers = {
         const payload = verifyJwt(token);
         const user = await User.findByPk(payload.id);
         logger.info(`User [${payload.id}] fetched self`);
-        return user;
+        return user; // discord* are resolved by field resolvers above
       } catch (err) {
         logger.warn('JWT verification failed for me query');
         return null;
@@ -94,7 +104,7 @@ const resolvers = {
 
       logger.info(`[REGISTER] Sent verification email to ${email}`);
 
-      // --- Send welcome email separately after verification, or here if you prefer ---
+      // --- Send welcome email ---
       const { subject: welcomeSubject, html: welcomeHtml } = buildWelcomeEmail({ username });
       await sendMail({ to: email, subject: welcomeSubject, html: welcomeHtml });
 
@@ -103,7 +113,7 @@ const resolvers = {
         await grantReward({ userId: referrerId, type: 'referral', data: { referredUserId: user.id } });
       }
 
-      // --- ADDED: Audit Log ---
+      // --- Audit Log ---
       if (recordAuditLog) await recordAuditLog({
         userId: user.id,
         action: 'register',

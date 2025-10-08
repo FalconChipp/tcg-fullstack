@@ -1,10 +1,15 @@
 // src/components/Account/SecurityTab.js
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import StatusMessage from "@/components/UI/StatusMessage";
-// ADDED: icons for provider rows
 import { FaDiscord, FaGoogle } from "react-icons/fa";
+import { AuthContext } from "../Auth/AuthProvider";
+
+// Backend REST base (for /auth/discord/* and unlink)
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
+// GraphQL API for account mutations
+const GRAPHQL_ENDPOINT = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
 
 // --- Password rule utils (unchanged) ---
 function getPasswordRules(pw) {
@@ -25,33 +30,34 @@ function checkPasswordStrength(pw) {
   return null;
 }
 
-const GRAPHQL_ENDPOINT = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+// --- Query param helpers ---
+function getQueryParam(param) {
+  if (typeof window === "undefined") return null;
+  const url = new URL(window.location.href);
+  return url.searchParams.get(param);
+}
+function removeQueryParam(param) {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  url.searchParams.delete(param);
+  window.history.replaceState({}, document.title, url.toString());
+}
 
-export default function SecurityTab({ user, token }) {
-  // --- State for each section (existing) ---
+export default function SecurityTab({ user: userProp, token: tokenProp }) {
+  // Prefer AuthContext, fall back to props if this component is used elsewhere
+  const auth = useContext(AuthContext);
+  const user = auth?.user ?? userProp ?? null;
+  const token = auth?.token ?? tokenProp ?? null;
+  const setAuthUser = auth?.setUser;
+
+  // =========================
+  // PASSWORD (existing)
+  // =========================
   const [pwFields, setPwFields] = useState({ current: "", new: "", confirm: "" });
   const [pwStatus, setPwStatus] = useState(null);
-
-  const [emailFields, setEmailFields] = useState({ email: user?.email || "", currentPassword: "" });
-  const [emailStatus, setEmailStatus] = useState(null);
-
-  const [twoFA, setTwoFA] = useState({
-    loading: false,
-    enabled: !!user?.twoFactorEnabled,
-    showSetup: false,
-    setupUrl: "",
-    qrCode: "",
-    verifyCode: "",
-    verifyStatus: null,
-    generalStatus: null,
-  });
-
   const isOAuth = user?.authProvider && user.authProvider !== "local";
   const pwRules = getPasswordRules(pwFields.new);
 
-  // =========================
-  // PASSWORD CHANGE (existing)
-  // =========================
   async function handlePasswordUpdate(e) {
     e.preventDefault();
     setPwStatus(null);
@@ -91,15 +97,18 @@ export default function SecurityTab({ user, token }) {
   }
 
   // =======================
-  // EMAIL CHANGE (existing)
+  // EMAIL (existing)
   // =======================
+  const [emailFields, setEmailFields] = useState({ email: user?.email || "", currentPassword: "" });
+  const [emailStatus, setEmailStatus] = useState(null);
+
   async function handleEmailUpdate(e) {
     e.preventDefault();
     setEmailStatus(null);
 
     if (!emailFields.email) return setEmailStatus({ type: "error", msg: "Please enter your new email." });
     if (!emailFields.currentPassword) return setEmailStatus({ type: "error", msg: "Enter your current password." });
-    if (emailFields.email === user.email)
+    if (emailFields.email === user?.email)
       return setEmailStatus({ type: "error", msg: "New email cannot be the same as your current email." });
 
     setEmailStatus({ type: "loading", msg: "Updating email..." });
@@ -125,7 +134,7 @@ export default function SecurityTab({ user, token }) {
           type: "success",
           msg: "Email changed! Please verify your new email address before using it for login.",
         });
-        setEmailFields({ ...emailFields, currentPassword: "" });
+        setEmailFields((f) => ({ ...f, currentPassword: "" }));
       } else {
         throw new Error(json.errors?.[0]?.message || "Unknown error");
       }
@@ -135,8 +144,19 @@ export default function SecurityTab({ user, token }) {
   }
 
   // ==============================
-  // 2FA ENABLE / VERIFY / DISABLE
+  // 2FA (existing)
   // ==============================
+  const [twoFA, setTwoFA] = useState({
+    loading: false,
+    enabled: !!user?.twoFactorEnabled,
+    showSetup: false,
+    setupUrl: "",
+    qrCode: "",
+    verifyCode: "",
+    verifyStatus: null,
+    generalStatus: null,
+  });
+
   async function handleStart2FA() {
     setTwoFA((s) => ({ ...s, loading: true, generalStatus: null }));
     try {
@@ -225,108 +245,209 @@ export default function SecurityTab({ user, token }) {
   }
 
   // ==========================================
-  // ADDED: CONNECTED ACCOUNTS (Discord/Google)
+  // CONNECTED ACCOUNTS — Discord
   // ==========================================
-  const [connLoading, setConnLoading] = useState(null); // 'discord' | 'google' | null
+  const [discordLinked, setDiscordLinked] = useState(!!user?.discordId);
+  const [discordUsername, setDiscordUsername] = useState(user?.discordUsername || null);
+  const [connLoading, setConnLoading] = useState(null); // 'discord' | null
   const [connStatus, setConnStatus] = useState(null);
 
-  // NOTE: Replace these with real OAuth/linking flows or GraphQL mutations.
-  async function handleLink(provider) {
-    setConnLoading(provider);
-    setConnStatus(null);
-    // TODO: Open your OAuth flow. When successful, refetch user.
-    setTimeout(() => {
+  // Keep local row in sync with global user
+  useEffect(() => {
+    setDiscordLinked(!!user?.discordId);
+    setDiscordUsername(user?.discordUsername || null);
+  }, [user?.discordId, user?.discordUsername]);
+
+  // Small helper to refetch me and optionally push it back into AuthContext
+  const refetchMe = useCallback(async () => {
+    if (!token) return null;
+    try {
+      const res = await fetch(GRAPHQL_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          query: `
+            query {
+              me {
+                id
+                username
+                email
+                emailVerified
+                discordId
+                discordUsername
+                twoFactorEnabled
+                lastLogin
+                createdAt
+                updatedAt
+              }
+            }
+          `,
+        }),
+      });
+      const json = await res.json();
+      const fresh = json?.data?.me ?? null;
+      if (fresh) {
+        setDiscordLinked(!!fresh.discordId);
+        setDiscordUsername(fresh.discordUsername || null);
+        // If we have AuthContext, update global user so the whole app is consistent
+        if (setAuthUser) setAuthUser(fresh);
+      }
+      return fresh;
+    } catch {
+      return null;
+    }
+  }, [token, setAuthUser]);
+
+  // After OAuth callback (?linked=discord), show success, clean URL, and refetch me
+  useEffect(() => {
+    const linked = getQueryParam("linked");
+    if (linked === "discord") {
+      setConnStatus({ type: "success", msg: "Discord account linked successfully." });
+      removeQueryParam("linked");
+      refetchMe(); // <- get fresh discordId/username for UI & context
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleLinkDiscord() {
+    try {
+      setConnLoading("discord");
+      setConnStatus({ type: "loading", msg: "Opening Discord…" });
+
+      const returnPath = encodeURIComponent("/account?tab=security");
+      const r = await fetch(`${API_BASE_URL}/auth/discord/start-url?return=${returnPath}`, {
+        method: "GET",
+        credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      if (r.ok) {
+        const { url } = await r.json();
+        if (url) {
+          window.location.href = url;
+          return;
+        }
+      }
+      window.location.href = `${API_BASE_URL}/auth/discord/start?return=${returnPath}`;
+    } catch (e) {
+      console.error(e);
+      setConnStatus({ type: "error", msg: "Failed to start Discord linking." });
+    } finally {
       setConnLoading(null);
-      setConnStatus({ type: "success", msg: `Linked with ${provider}.` });
-    }, 900);
-  }
-  async function handleUnlink(provider) {
-    setConnLoading(provider);
-    setConnStatus(null);
-    // TODO: Call your unlink mutation. Then refetch user.
-    setTimeout(() => {
-      setConnLoading(null);
-      setConnStatus({ type: "success", msg: `Unlinked from ${provider}.` });
-    }, 900);
+    }
   }
 
-  const providers = [
-    {
-      id: "discord",
-      name: "Discord",
-      connected: !!user?.discordId,
-      Icon: FaDiscord,
-      brand: "#5865F2",
-    },
-    {
-      id: "google",
-      name: "Google",
-      connected: !!user?.googleId,
-      Icon: FaGoogle,
-      brand: "#ea4335",
-    },
-  ];
+  async function handleUnlinkDiscord() {
+    try {
+      setConnLoading("discord");
+      setConnStatus({ type: "loading", msg: "Unlinking…" });
+      const r = await fetch(`${API_BASE_URL}/auth/discord/unlink`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      const body = r.ok ? await r.json() : null;
+      const ok = r.ok && body?.ok;
+      if (ok) {
+        setConnStatus({ type: "success", msg: "Discord unlinked." });
+        await refetchMe(); // <- refresh global user & row
+      } else {
+        setConnStatus({ type: "error", msg: "Unlink failed." });
+      }
+    } catch (e) {
+      setConnStatus({ type: "error", msg: "Unlink failed." });
+    } finally {
+      setConnLoading(null);
+    }
+  }
 
-  // --------- RENDER ----------
+  // =======================
+  // RENDER
+  // =======================
   return (
     <div className="space-y-10">
+      {/* CONNECTED ACCOUNTS */}
       <section className="bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border rounded-2xl px-6 py-8 shadow">
-        <h2 className="text-xl font-bold mb-6 text-light-primary dark:text-dark-primary">
-          Connected Accounts
-        </h2>
+        <h2 className="text-xl font-bold mb-6 text-light-primary dark:text-dark-primary">Connected Accounts</h2>
 
         <ul className="divide-y divide-light-border dark:divide-dark-border">
-          {providers.map(({ id, name, Icon, brand }) => (
-            <li key={id} className="flex items-center justify-between py-5">
-              {/* Provider identity */}
-              <div className="flex items-center gap-3">
-                <span
-                  className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-light-border dark:border-dark-border"
-                  style={{ color: brand }}
-                >
-                  <Icon className="text-current text-lg" />
-                </span>
-                <div>
-                  <div className="font-semibold">{name}</div>
-                  <div className="mt-0.5 flex items-center gap-2">
-                    <span className="text-sm text-light-textMuted dark:text-dark-textMuted">
-                      Account linking
-                    </span>
-                    <span
-                      className="
-                        text-[11px] uppercase tracking-wide
-                        px-2 py-0.5 rounded-full
-                        bg-light-alt dark:bg-dark-alt
-                        border border-light-border dark:border-dark-border
-                        text-light-textMuted dark:text-dark-textMuted
-                      "
-                    >
-                      Coming soon
+          {/* Discord row */}
+          <li className="flex items-center justify-between py-5">
+            <div className="flex items-center gap-3">
+              <span
+                className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-light-border dark:border-dark-border"
+                style={{ color: "#5865F2" }}
+              >
+                <FaDiscord className="text-current text-lg" />
+              </span>
+              <div>
+                <div className="font-semibold">Discord</div>
+                {discordLinked ? (
+                  <div className="mt-0.5 text-sm text-light-textMuted dark:text-dark-textMuted">
+                    Connected as{" "}
+                    <span className="font-semibold text-light-primary dark:text-dark-accent">
+                      {discordUsername || "your Discord account"}
                     </span>
                   </div>
-                </div>
+                ) : (
+                  <div className="mt-0.5 text-sm text-light-textMuted dark:text-dark-textMuted">
+                    Link your Discord account
+                  </div>
+                )}
               </div>
+            </div>
 
+            {discordLinked ? (
               <button
                 type="button"
-                aria-disabled="true"
-                disabled
-                title="Coming soon"
-                className="
-                  px-5 py-2 rounded-lg font-semibold
-                  border border-light-border dark:border-dark-border
-                  bg-light-alt dark:bg-dark-alt
-                  text-light-text dark:text-dark-text
-                  opacity-60 cursor-not-allowed
-                "
+                onClick={handleUnlinkDiscord}
+                disabled={connLoading === "discord"}
+                className="px-5 py-2 rounded-lg font-semibold border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text hover:bg-light-surface dark:hover:bg-dark-surface transition disabled:opacity-50"
               >
-                Link (Coming soon)
+                {connLoading === "discord" ? "Unlinking…" : "Unlink"}
               </button>
-            </li>
-          ))}
-        </ul>
-      </section>
+            ) : (
+              <button
+                type="button"
+                onClick={handleLinkDiscord}
+                disabled={connLoading === "discord"}
+                className="px-5 py-2 rounded-lg font-semibold bg-light-accent dark:bg-dark-accent text-white dark:text-black hover:bg-light-primary dark:hover:bg-dark-primary transition disabled:opacity-50"
+              >
+                {connLoading === "discord" ? "Opening…" : "Link Discord"}
+              </button>
+            )}
+          </li>
 
+          {/* Google placeholder (disabled) */}
+          <li className="flex items-center justify-between py-5 opacity-60 cursor-not-allowed">
+            <div className="flex items-center gap-3">
+              <span
+                className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-light-border dark:border-dark-border"
+                style={{ color: "#ea4335" }}
+              >
+                <FaGoogle className="text-current text-lg" />
+              </span>
+              <div>
+                <div className="font-semibold">Google</div>
+                <div className="text-sm text-light-textMuted dark:text-dark-textMuted">Coming soon</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled
+              className="px-5 py-2 rounded-lg font-semibold border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text cursor-not-allowed"
+            >
+              Link (Coming soon)
+            </button>
+          </li>
+        </ul>
+
+        {connStatus && (
+          <div className="mt-4">
+            <StatusMessage type={connStatus.type} message={connStatus.msg} onClose={() => setConnStatus(null)} />
+          </div>
+        )}
+      </section>
 
       {/* PASSWORD CHANGE */}
       <form
@@ -398,7 +519,7 @@ export default function SecurityTab({ user, token }) {
         )}
       </form>
 
-      {/* EMAIL CHANGE (existing UI) */}
+      {/* EMAIL CHANGE */}
       <form
         onSubmit={handleEmailUpdate}
         className="bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border rounded-2xl px-6 py-8 shadow"
@@ -440,12 +561,14 @@ export default function SecurityTab({ user, token }) {
         )}
       </form>
 
-      {/* 2FA (existing UI) */}
+      {/* TWO-FACTOR AUTH */}
       <div className="bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border rounded-2xl px-6 py-8 shadow">
         <h2 className="text-xl font-bold mb-6 text-light-primary dark:text-dark-primary">Two-Factor Authentication</h2>
         {twoFA.enabled ? (
           <div>
-            <p className="mb-2 text-green-600">2FA is currently <strong>ENABLED</strong> on your account.</p>
+            <p className="mb-2 text-green-600">
+              2FA is currently <strong>ENABLED</strong> on your account.
+            </p>
             <button
               type="button"
               disabled={twoFA.loading}
@@ -458,7 +581,9 @@ export default function SecurityTab({ user, token }) {
         ) : twoFA.showSetup ? (
           <form onSubmit={handleVerify2FA}>
             <p className="mb-2">
-              Scan this QR code with your authenticator app (Google Authenticator, Authy, etc), or enter this code manually:<br />
+              Scan this QR code with your authenticator app (Google Authenticator, Authy, etc), or enter this code
+              manually:
+              <br />
               <span className="break-all text-sm font-mono">{twoFA.setupUrl}</span>
             </p>
             <img src={twoFA.qrCode} alt="2FA QR Code" className="mb-4 w-40 h-40" />
@@ -469,7 +594,7 @@ export default function SecurityTab({ user, token }) {
               <input
                 type="text"
                 value={twoFA.verifyCode}
-                onChange={e => setTwoFA(s => ({ ...s, verifyCode: e.target.value }))}
+                onChange={(e) => setTwoFA((s) => ({ ...s, verifyCode: e.target.value }))}
                 className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text transition"
                 maxLength={6}
                 inputMode="numeric"
@@ -489,14 +614,16 @@ export default function SecurityTab({ user, token }) {
                 <StatusMessage
                   type={twoFA.verifyStatus.type}
                   message={twoFA.verifyStatus.msg}
-                  onClose={() => setTwoFA(s => ({ ...s, verifyStatus: null }))}
+                  onClose={() => setTwoFA((s) => ({ ...s, verifyStatus: null }))}
                 />
               </div>
             )}
           </form>
         ) : (
           <div>
-            <p className="mb-2 text-red-600">2FA is currently <strong>DISABLED</strong> on your account.</p>
+            <p className="mb-2 text-red-600">
+              2FA is currently <strong>DISABLED</strong> on your account.
+            </p>
             <button
               type="button"
               disabled={twoFA.loading}
@@ -512,7 +639,7 @@ export default function SecurityTab({ user, token }) {
             <StatusMessage
               type={twoFA.generalStatus.type}
               message={twoFA.generalStatus.msg}
-              onClose={() => setTwoFA(s => ({ ...s, generalStatus: null }))}
+              onClose={() => setTwoFA((s) => ({ ...s, generalStatus: null }))}
             />
           </div>
         )}

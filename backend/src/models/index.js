@@ -1,10 +1,5 @@
 import 'dotenv/config';
 // models/index.js
-// CHANGES:
-// - ADDED: init_m_PriceRollup import + initialization + export
-// - KEPT: legacy app models
-// - REMOVED: any old-marketdata model imports (CardPriceCache, CardPriceHistory, etc. remain commented out)
-// - ADDED: explicit association for m_Card <-> m_PriceLatest (as: 'price')
 
 import { Sequelize, DataTypes } from 'sequelize';
 import path from 'path';
@@ -79,6 +74,7 @@ import init_m_Set from './m_Set.js';
 import init_m_PriceObservation from './m_PriceObservation.js';
 // NEW: rollups table for fast 7/30/90 reads
 import init_m_PriceRollup from './m_PriceRollup.js';
+import initUserDiscordLink from './UserDiscordLink.js'; 
 
 /* ---------------- Initialize (legacy) ---------------- */
 const User = UserFactory(sequelize, DataTypes);
@@ -109,8 +105,9 @@ const BinderPage = BinderPageFactory(sequelize, DataTypes);
 const BinderSlot = BinderSlotFactory(sequelize, DataTypes);
 const PriceAlert = PriceAlertFactory(sequelize, DataTypes);
 const UserNotificationPref = UserNotificationPrefFactory(sequelize, DataTypes);
+const UserDiscordLink = initUserDiscordLink(sequelize, DataTypes);
 
-/* ---------------- Initialize (marketdata2) ---------------- */
+/* ---------------- Initialize (cardsearch) ---------------- */
 const m_Set = init_m_Set(sequelize, DataTypes);
 const m_Card = init_m_Card(sequelize, DataTypes);
 const m_CardVariant = init_m_CardVariant(sequelize, DataTypes);
@@ -292,6 +289,10 @@ m_PriceDaily.belongsTo(m_Card, { foreignKey: 'card_id', targetKey: 'id', as: 'ca
 m_Card.hasMany(m_PriceRollup, { foreignKey: 'card_id', sourceKey: 'id', as: 'rollups' });
 m_PriceRollup.belongsTo(m_Card, { foreignKey: 'card_id', targetKey: 'id', as: 'card' });
 
+// Intergrations 
+User.hasOne(UserDiscordLink, { as: "DiscordLink", foreignKey: "userId" }); 
+UserDiscordLink.belongsTo(User, { foreignKey: "userId" });
+
 /* ---------------- Exports ---------------- */
 export {
   sequelize,
@@ -305,7 +306,7 @@ export {
   PriceAlert, UserNotificationPref,
   AdminAction, UserAchievement, Offer, SubscriptionAddOn,
   Reward, ChatAgreement, ReportedUser,
-  Binder, BinderPage, BinderSlot,
+  Binder, BinderPage, BinderSlot, UserDiscordLink,
 
   // marketdata2 models
   m_Set, m_Card, m_CardVariant,

@@ -14,6 +14,9 @@ const typeDefs = gql`
 
   extend type User {
     twoFactorEnabled: Boolean!
+    # Discord link fields (nullable; resolved from UserDiscordLink)
+    discordId: String
+    discordUsername: String
   }
 
   type Mutation {

@@ -370,8 +370,7 @@ export default function CardSearch() {
   const [results, setResults] = useState([]);
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [searchError, setSearchError] = useState(null);
   const [statusMessage, setStatusMessage] = useState(null);
 
   const [panelOpen, setPanelOpen] = useState(false);
@@ -398,6 +397,7 @@ export default function CardSearch() {
   );
 
   const currentKey = useMemo(() => makeQueryKey({ name, setCode, number }), [name, setCode, number]);
+  const activeError = searchError || error || null;
 
   useEffect(() => {
     setImageLoadedMap({});
@@ -451,6 +451,8 @@ export default function CardSearch() {
         offset: 0,
       },
     };
+
+    setSearchError(null);
 
     const res = await runSearch({ variables });
     const payload = res?.data?.searchCards;
@@ -519,6 +521,8 @@ export default function CardSearch() {
         },
       };
 
+      setSearchError(null);
+
       const res = await fetchMore({ variables: vars });
       const payload = res?.data?.searchCards;
       if (!payload) {
@@ -552,7 +556,7 @@ export default function CardSearch() {
         });
       }
     } catch (err) {
-      setError(normalizeError(err));
+      setSearchError(normalizeError(err));
       const key = lastKeyRef.current || currentKey;
       if (key) {
         const prev = bucketsRef.current.get(key);
@@ -712,9 +716,9 @@ export default function CardSearch() {
             </div>
           </div>
 
-          {error && (
+          {activeError && (
             <div className="text-light-error dark:text-dark-error text-center mt-4 font-medium">
-              {error.message || "Search failed"}
+              {activeError.message || "Search failed"}
             </div>
           )}
         </form>

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, startTransition } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { gql, useLazyQuery } from "@apollo/client";
+import { gql, useApolloClient } from "@apollo/client";
 
 import { getCookie } from "@/utils/cookieUtils";
 import { useTheme } from "@/hooks/ThemeProvider";
@@ -19,76 +19,44 @@ import CardSkeleton from "../UI/CardSkeleton";
 const AddToCollectionPanel = dynamic(() => import("./AddToCollectionPanel"), { ssr: false });
 const CardDetailsModal   = dynamic(() => import("../UserProfile/CardDetailsModal"), { ssr: false });
 
-/* ---------------- GraphQL: connection (smaller first page) ---------------- */
+/* ---------------- GraphQL: cardsearch module ---------------- */
 
-const SEARCH_CARDS_CONNECTION = gql`
-  query SearchCardsConnection($input: SearchCardsInput!) {
-    searchCardsConnection(input: $input) {
-      totalCount
-      pageInfo { hasNextPage endCursor }
-      edges {
-        cursor
-        node {
-          id
-          name
-          set
-          setName
-          number
-          image
-          rarity
-          variations { normal reverse holo firstEdition }
-          prices {
-            variation
-            tcgplayer
-            cardmarket
-            gbp
-            currency
-            updatedAt
-          }
-        }
-      }
-    }
-  }
-`;
-
-// Feature flag: opt-in to the new cardsearch module via NEXT_PUBLIC_CARDSEARCH_V2='1'
-const USE_CARDSEARCH_V2 = process.env.NEXT_PUBLIC_CARDSEARCH_V2 === '1';
-
-const CARDSEARCH_V2_QUERY = gql`
-  query CardSearchV2($input: CardSearchInput!) {
+const CARDSEARCH_QUERY = gql`
+  query CardsearchCollectionSearch($input: CardSearchInput!) {
     searchCards: cardsearchSearchCards(input: $input) {
       total
       limit
       offset
       items {
         cardId
+        id
         setCode
         number
         name
         rarity
-        images { large }
+        images { small large }
         set { code name }
-        variants { variant }
+        variants { variant displayName }
         latestPrices {
           variant
           market
           mid
+          low
+          high
           currency
           updatedAt
+          provider
         }
       }
     }
   }
 `;
 
-const CARDSEARCH_V2_LIMIT = 48;
+const CARDSEARCH_PAGE_SIZE = 48;
+const CARDSEARCH_EXACT_LIMIT = 12;
 
 // Fallback set icon
 const FALLBACK_SYMBOL_IMAGE = "https://placehold.co/50x50/webp?text=Icon";
-
-// fetch less at first so results appear faster
-const FIRST_PAGE = 16;
-const PAGE_SIZE  = 24;
 
 const GBP_SYMBOL = '\u00A3';
 
@@ -112,32 +80,6 @@ function getBestPrice(prices) {
     if (hit) return hit;
   }
   return prices.find((p) => hasPrice(p)) || null;
-}
-
-function variationsToArray(v) {
-  if (!v || typeof v !== 'object') return [];
-  return Object.entries(v)
-    .filter(([, on]) => !!on)
-    .map(([k]) => canonicalVariantKey(k));
-}
-
-function normalizeNode(n) {
-  const prices = normalizePriceList(n?.prices ?? n?.latestPrices ?? []);
-  const variationList = variationsToArray(n.variations);
-  const uniqueVariations = Array.from(new Set(variationList.filter(Boolean)));
-  const allowed = new Set(uniqueVariations.length ? uniqueVariations : ['normal']);
-  const filteredPrices = prices.filter((price) => allowed.has(price.variation || 'normal'));
-  return {
-    ...n,
-    tcgImageUrl: n.image,
-    prices: filteredPrices,
-    variations: uniqueVariations.length ? uniqueVariations : ['normal'],
-  };
-}
-
-function edgesToCards(edges) {
-  if (!Array.isArray(edges)) return [];
-  return edges.map((e) => normalizeNode(e.node));
 }
 
 function hasPrice(entry) {
@@ -298,41 +240,117 @@ function normalizePriceList(list) {
   return Array.from(byVariant.values());
 }
 
-function mapCardsearchVariantFlags(list) {
-  const set = new Set(
-    (Array.isArray(list) ? list : [])
-      .map((v) => canonicalVariantKey(typeof v === 'string' ? v : v?.variant || v?.displayName))
-      .filter(Boolean)
-  );
+function normalizeError(err, fallback = "Search failed") {
+  if (err instanceof Error) return err;
+  if (typeof err === "string" && err.trim()) return new Error(err);
+  try {
+    return new Error(JSON.stringify(err));
+  } catch {
+    return new Error(fallback);
+  }
+}
+
+function collectVariantList(item) {
+  const variants = new Set();
+
+  const pushVariant = (value) => {
+    const key = canonicalVariantKey(value);
+    if (key) variants.add(key);
+  };
+
+  if (Array.isArray(item?.variants)) {
+    for (const variant of item.variants) {
+      if (typeof variant === 'string') pushVariant(variant);
+      else if (variant && typeof variant === 'object') pushVariant(variant.variant || variant.displayName);
+    }
+  }
+
+  const priceSources = Array.isArray(item?.latestPrices) ? item.latestPrices : Array.isArray(item?.prices) ? item.prices : [];
+  for (const price of priceSources) {
+    if (!price) continue;
+    pushVariant(price.variant || price.variation || price.displayName);
+  }
+
+  const result = Array.from(variants).filter(Boolean);
+  return result.length ? result : ['normal'];
+}
+
+function canonicalCardKey(card, fallbackIndex = 0) {
+  if (!card) return `card-${fallbackIndex}`;
+  const id = card.cardId || card.id;
+  if (id) return id;
+  const setCode = card.set || card.setCode;
+  const number = card.number;
+  if (setCode || number) {
+    const setPart = setCode ? String(setCode).toLowerCase() : 'set';
+    const numPart = number ? String(number).toLowerCase() : 'card';
+    return `${setPart}-${numPart}`;
+  }
+  if (card.name) {
+    return `${String(card.name).toLowerCase()}-${fallbackIndex}`;
+  }
+  return `card-${fallbackIndex}`;
+}
+
+function normalizeCardsearchItem(item, index = 0) {
+  if (!item) return null;
+
+  const setRecord = item.set || {};
+  const setCode = item.setCode || setRecord.code || '';
+  const number = item.number || '';
+  const setName = setRecord.name || item.setName || setCode || '';
+  const image = item.images?.large || item.images?.small || item.image || null;
+  const variations = collectVariantList(item);
+  const prices = normalizePriceList(item.latestPrices ?? item.prices ?? []);
+  const allowed = new Set(variations.length ? variations : ['normal']);
+  const filteredPrices = prices.filter((price) => allowed.has(price.variation || 'normal'));
+
+  const preferredId = item.cardId || item.id || (setCode && number ? `${setCode}-${number}` : null);
+  const id = preferredId || `card-${index}`;
+
   return {
-    normal: set.size === 0 ? true : set.has('normal'),
-    reverseHolofoil: set.has('reverseHolofoil'),
-    holofoil: set.has('holofoil'),
-    firstEdition: set.has('firstEdition'),
+    id,
+    cardId: preferredId || id,
+    name: item.name || '',
+    set: setCode || '',
+    setCode: setCode || '',
+    setName,
+    number: number || '',
+    image,
+    tcgImageUrl: image,
+    rarity: item.rarity || null,
+    variations,
+    prices: filteredPrices,
   };
 }
 
-function mapCardsearchV2Items(items) {
+function mapCardsearchItems(items) {
   if (!Array.isArray(items) || !items.length) return [];
-  return items.map((item, index) => {
-    const setRecord = item?.set || {};
-    const setCode = item?.setCode || setRecord.code || '';
-    const setName = setRecord.name || setCode || item?.setName || '';
-    const image = item?.images?.large || item?.images?.small || null;
-    const variantFlags = mapCardsearchVariantFlags(item?.variants);
-    const prices = normalizePriceList(item?.latestPrices ?? item?.prices ?? []);
-    return {
-      id: item?.cardId || item?.id || `${setCode}-${item?.number || index}`,
-      name: item?.name || '',
-      set: setCode || '',
-      setName: setName || '',
-      number: item?.number || '',
-      image,
-      rarity: item?.rarity || null,
-      variations: variantFlags,
-      prices,
-    };
+  return items
+    .map((item, index) => normalizeCardsearchItem(item, index))
+    .filter(Boolean);
+}
+
+function mergeCardLists(existing, incoming) {
+  const base = Array.isArray(existing) ? [...existing] : [];
+  if (!Array.isArray(incoming) || incoming.length === 0) return base;
+
+  const indexByKey = new Map();
+  base.forEach((card, idx) => {
+    indexByKey.set(canonicalCardKey(card, idx), idx);
   });
+
+  incoming.forEach((card, idx) => {
+    const key = canonicalCardKey(card, base.length + idx);
+    if (indexByKey.has(key)) {
+      base[indexByKey.get(key)] = card;
+    } else {
+      indexByKey.set(key, base.length);
+      base.push(card);
+    }
+  });
+
+  return base;
 }
 
 
@@ -349,19 +367,21 @@ function makeQueryKey({ name, setCode, number }) {
 
 export default function CardSearch() {
   const { dark } = useTheme();
+  const client = useApolloClient();
 
   const [name, setName] = useState("");
   const [setCode, setSetCode] = useState("");
   const [number, setNumber] = useState("");
 
   // local result buckets keyed by queryKey so switching filters feels instant
-  const bucketsRef = useRef(new Map()); // key -> { items, endCursor, hasNextPage, totalCount }
+  const bucketsRef = useRef(new Map()); // key -> { items, hasNextPage, totalCount, nextOffset, pageSize }
   const lastKeyRef = useRef(null);
 
   const [results, setResults] = useState([]);
   const [hasMore, setHasMore] = useState(false);
-  const [endCursor, setEndCursor] = useState(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [statusMessage, setStatusMessage] = useState(null);
 
   const [panelOpen, setPanelOpen] = useState(false);
@@ -369,25 +389,13 @@ export default function CardSearch() {
   const [showCardDetail, setShowCardDetail] = useState(false);
   const [cardDetailData, setCardDetailData] = useState(null);
   const [imageLoadedMap, setImageLoadedMap] = useState({});
-  const [hasSearched, setHasSearched] = useState(false)
+  const [hasSearched, setHasSearched] = useState(false);
 
   const isExactCardSearch = Boolean(setCode && number);
 
   // throttle loadMore so we never queue two at once
   const loadingMoreRef = useRef(false);
   const loadMoreTriggerRef = useRef(null);
-
-  const activeQuery = USE_CARDSEARCH_V2 ? CARDSEARCH_V2_QUERY : SEARCH_CARDS_CONNECTION;
-
-  const [runSearch, { data, loading, error, fetchMore }] = useLazyQuery(
-    activeQuery,
-    {
-      fetchPolicy: "cache-first",
-      nextFetchPolicy: "cache-first",
-      notifyOnNetworkStatusChange: true,
-      returnPartialData: true,
-    }
-  );
 
   const currentKey = useMemo(() => makeQueryKey({ name, setCode, number }), [name, setCode, number]);
 
@@ -408,10 +416,11 @@ export default function CardSearch() {
   // Kick off a small first page so something renders quickly
   const handleSearch = useCallback(async (e) => {
     if (e?.preventDefault) e.preventDefault(); 
-    setHasSearched(true)
+    setHasSearched(true);
 
     const key = makeQueryKey({ name, setCode, number });
     lastKeyRef.current = key;
+    loadingMoreRef.current = false;
 
     // If we already have a bucket for this query, show it immediately (stale-while-revalidate)
     const bucket = bucketsRef.current.get(key);
@@ -419,87 +428,98 @@ export default function CardSearch() {
       startTransition(() => {
         setResults(bucket.items);
         setHasMore(bucket.hasNextPage);
-        setEndCursor(bucket.endCursor || null);
         setIsLoadingMore(false);
       });
     } else {
       startTransition(() => {
         setResults([]); // clean slate
         setHasMore(false);
-        setEndCursor(null);
         setIsLoadingMore(false);
       });
     }
 
-    const variables = USE_CARDSEARCH_V2
-      ? {
-          input: {
-            name: name || undefined,
-            set: setCode || undefined,
-            number: number || undefined,
-            limit: isExactCardSearch ? Math.min(CARDSEARCH_V2_LIMIT, 12) : CARDSEARCH_V2_LIMIT,
-            offset: 0,
-          },
+    const limit = isExactCardSearch
+      ? Math.min(CARDSEARCH_PAGE_SIZE, CARDSEARCH_EXACT_LIMIT)
+      : CARDSEARCH_PAGE_SIZE;
+
+    const variables = {
+      input: {
+        name: name || undefined,
+        set: setCode || undefined,
+        number: number || undefined,
+        limit,
+        offset: 0,
+      },
+    };
+
+    setError(null);
+    setLoading(true);
+
+    try {
+      const res = await client.query({
+        query: CARDSEARCH_QUERY,
+        variables,
+        fetchPolicy: "network-only",
+      });
+
+      const payload = res?.data?.searchCards;
+
+      if (!payload) {
+        bucketsRef.current.set(key, {
+          items: [],
+          hasNextPage: false,
+          totalCount: 0,
+          nextOffset: 0,
+          pageSize: limit,
+        });
+
+        if (lastKeyRef.current === key) {
+          startTransition(() => {
+            setResults([]);
+            setHasMore(false);
+            setIsLoadingMore(false);
+          });
         }
-      : {
-          input: {
-            name,
-            set: setCode,
-            number,
-            first: isExactCardSearch ? Math.min(FIRST_PAGE, 8) : FIRST_PAGE,
-            after: null,
-            budget: 8,
-          },
-        };
+        return;
+      }
 
-    const res = await runSearch({ variables });
-    const payload = USE_CARDSEARCH_V2 ? res?.data?.searchCards : res?.data?.searchCardsConnection;
-
-    if (!payload) return;
-
-    let items = [];
-    let bucketNext = null;
-
-    if (USE_CARDSEARCH_V2) {
-      items = mapCardsearchV2Items(payload.items).map((node) => normalizeNode(node));
+      const items = mapCardsearchItems(payload.items);
       const totalCount = Number(payload.total ?? payload.totalCount ?? items.length);
       const initialOffset = Number(payload.offset ?? 0);
-      const pageSize = Number(payload.limit ?? CARDSEARCH_V2_LIMIT);
       const nextOffset = Math.min(initialOffset + items.length, totalCount);
-      const hasNextPage = nextOffset < totalCount;
-      bucketNext = {
+      const pageSize = Number(payload.limit ?? limit);
+      const bucketNext = {
         items,
-        endCursor: null,
-        hasNextPage,
+        hasNextPage: nextOffset < totalCount,
         totalCount,
         nextOffset,
         pageSize,
       };
-    } else {
-      items = edgesToCards(payload.edges);
-      bucketNext = {
-        items,
-        endCursor: payload.pageInfo?.endCursor || null,
-        hasNextPage: !!payload.pageInfo?.hasNextPage,
-        totalCount: payload.totalCount || items.length,
-      };
+
+      bucketsRef.current.set(key, bucketNext);
+
+      if (lastKeyRef.current === key) {
+        startTransition(() => {
+          setResults(items);
+          setHasMore(bucketNext.hasNextPage);
+          setIsLoadingMore(false);
+        });
+      }
+    } catch (err) {
+      setError(normalizeError(err));
+      if (!bucketsRef.current.get(key)) {
+        startTransition(() => {
+          setResults([]);
+          setHasMore(false);
+          setIsLoadingMore(false);
+        });
+      }
+    } finally {
+      setLoading(false);
     }
+  }, [client, name, setCode, number, isExactCardSearch]);
 
-    // Cache this bucket
-    bucketsRef.current.set(key, bucketNext);
-
-    // Only update visible list if the user is still on the same query
-    if (lastKeyRef.current === key) {
-      startTransition(() => {
-        setResults(items);
-        setHasMore(bucketNext.hasNextPage);
-        setEndCursor(bucketNext.endCursor);
-        setIsLoadingMore(false);
-      });
-    }
-  }, [name, setCode, number, runSearch, isExactCardSearch, USE_CARDSEARCH_V2]);
-
-  // Load more with cursor (manual merge, no double fetch)
+  // Load more results using cardsearch pagination
   const loadMoreResults = useCallback(async () => {
     if (loadingMoreRef.current || !hasMore) return;
     loadingMoreRef.current = true;
@@ -507,132 +527,92 @@ export default function CardSearch() {
 
     try {
       const key = lastKeyRef.current || currentKey;
+      const prev = bucketsRef.current.get(key);
+      const totalCount = Number(prev?.totalCount ?? 0);
+      const pageSize = Number(prev?.pageSize ?? CARDSEARCH_PAGE_SIZE);
+      const currentCount = Array.isArray(prev?.items) ? prev.items.length : 0;
+      const nextOffset = Number(prev?.nextOffset ?? currentCount);
 
-      if (USE_CARDSEARCH_V2) {
-        const prev = bucketsRef.current.get(key);
-        const totalCount = Number(prev?.totalCount ?? 0);
-        const pageSize = Number(prev?.pageSize ?? CARDSEARCH_V2_LIMIT);
-        const currentCount = Array.isArray(prev?.items) ? prev.items.length : 0;
-        const nextOffset = Number(prev?.nextOffset ?? currentCount);
-
-        if (!prev || nextOffset >= totalCount) {
-          if (prev) {
-            const merged = { ...prev, hasNextPage: false, nextOffset };
-            bucketsRef.current.set(key, merged);
-          }
-          if (lastKeyRef.current === key) {
-            startTransition(() => {
-              setHasMore(false);
-            });
-          }
-          return;
+      if (!prev || nextOffset >= totalCount) {
+        if (prev) {
+          const merged = { ...prev, hasNextPage: false, nextOffset };
+          bucketsRef.current.set(key, merged);
         }
-
-        const vars = {
-          input: {
-            name: name || undefined,
-            set: setCode || undefined,
-            number: number || undefined,
-            limit: pageSize,
-            offset: nextOffset,
-          },
-        };
-
-        const res = await fetchMore({ variables: vars });
-        const payload = res?.data?.searchCards;
-        if (!payload) {
-          if (lastKeyRef.current === key) {
-            startTransition(() => setHasMore(false));
-          }
-          return;
-        }
-
-        const newItems = mapCardsearchV2Items(payload.items).map((node) => normalizeNode(node));
-        const priorItems = Array.isArray(prev.items) ? prev.items : [];
-        const combined = [...priorItems, ...newItems];
-        const unique = [];
-        const seen = new Set();
-        combined.forEach((card, idx) => {
-          let identifier = card?.id || card?.cardId;
-          if (!identifier) {
-            const setKey = card?.set || card?.setCode || '';
-            const numKey = card?.number || '';
-            const combinedKey = `${setKey}-${numKey}`.trim();
-            identifier = combinedKey && combinedKey !== '-' ? combinedKey : `card-${idx}`;
-          }
-          if (seen.has(identifier)) return;
-          seen.add(identifier);
-          unique.push(card);
-        });
-
-        const mergedTotal = Number(payload.total ?? prev.totalCount ?? unique.length);
-        const mergedOffset = Math.min(unique.length, mergedTotal);
-        const mergedHasNext = mergedOffset < mergedTotal;
-        const merged = {
-          ...prev,
-          items: unique,
-          totalCount: mergedTotal,
-          nextOffset: mergedOffset,
-          pageSize: Number(payload.limit ?? prev.pageSize ?? CARDSEARCH_V2_LIMIT),
-          hasNextPage: mergedHasNext,
-        };
-        bucketsRef.current.set(key, merged);
-
         if (lastKeyRef.current === key) {
           startTransition(() => {
-            setResults(merged.items);
-            setHasMore(merged.hasNextPage);
-            setEndCursor(null);
+            setHasMore(false);
           });
         }
         return;
       }
 
-      if (!endCursor) return;
-
       const vars = {
         input: {
-          name,
-          set: setCode,
-          number,
-          first: PAGE_SIZE,
-          after: endCursor,
-          budget: 4, // tiny preview for next page
+          name: name || undefined,
+          set: setCode || undefined,
+          number: number || undefined,
+          limit: pageSize,
+          offset: nextOffset,
         },
       };
 
-      const res = await fetchMore({ variables: vars });
-      const payload = res?.data?.searchCardsConnection;
-      if (!payload) return;
+      const res = await client.query({
+        query: CARDSEARCH_QUERY,
+        variables: vars,
+        fetchPolicy: "network-only",
+      });
+      const payload = res?.data?.searchCards;
+      if (!payload) {
+        const merged = { ...prev, hasNextPage: false, nextOffset };
+        bucketsRef.current.set(key, merged);
+        if (lastKeyRef.current === key) {
+          startTransition(() => setHasMore(false));
+        }
+        return;
+      }
 
-      const newItems = edgesToCards(payload.edges);
-
-      const prev = bucketsRef.current.get(key) || {
-        items: [],
-        endCursor: null,
-        hasNextPage: false,
-        totalCount: 0,
-      };
+      const newItems = mapCardsearchItems(payload.items);
+      const combined = mergeCardLists(prev.items, newItems);
+      const mergedTotal = Number(payload.total ?? prev.totalCount ?? combined.length);
+      const mergedOffset = Math.min(nextOffset + newItems.length, mergedTotal);
       const merged = {
-        items: [...prev.items, ...newItems],
-        endCursor: payload.pageInfo?.endCursor || null,
-        hasNextPage: !!payload.pageInfo?.hasNextPage,
-        totalCount: payload.totalCount || prev.totalCount,
+        ...prev,
+        items: combined,
+        totalCount: mergedTotal,
+        nextOffset: mergedOffset,
+        pageSize: Number(payload.limit ?? pageSize),
+        hasNextPage: mergedOffset < mergedTotal,
       };
       bucketsRef.current.set(key, merged);
 
       if (lastKeyRef.current === key) {
         startTransition(() => {
-          setResults(merged.items);
+          setResults(combined);
           setHasMore(merged.hasNextPage);
-          setEndCursor(merged.endCursor);
+          setIsLoadingMore(false);
         });
+      }
+    } catch (err) {
+      setError(normalizeError(err));
+      const key = lastKeyRef.current || currentKey;
+      if (key) {
+        const prev = bucketsRef.current.get(key);
+        const merged = prev
+          ? { ...prev, hasNextPage: false }
+          : { items: [], hasNextPage: false, totalCount: 0, nextOffset: 0, pageSize: CARDSEARCH_PAGE_SIZE };
+        bucketsRef.current.set(key, merged);
+        if (lastKeyRef.current === key) {
+          startTransition(() => {
+            setHasMore(false);
+            setIsLoadingMore(false);
+          });
+        }
       }
     } finally {
       loadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
-  }, [fetchMore, hasMore, endCursor, name, setCode, number, currentKey, USE_CARDSEARCH_V2]);
+  }, [client, hasMore, currentKey, name, setCode, number]);
 
   // Infinite scroll (simple & cheap)
   useEffect(() => {

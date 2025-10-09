@@ -49,18 +49,55 @@ const errorLink = onError(({ graphQLErrors, networkError, operation }) => {
 });
 
 // ---- Cache with sane type policies ----
-// We keep merges manual in the component to avoid accidental double-appends.
+// Configure cardsearch pagination so offset-based fetchMore calls merge predictably.
 const cache = new InMemoryCache({
   typePolicies: {
     Query: {
       fields: {
-        searchCards: {
-          keyArgs: ["input"], // legacy paged query
-          // no merge -> component controls pagination
-        },
-        searchCardsConnection: {
-          keyArgs: ["input"], // cursor query
-          // no merge -> component controls pagination (edges appended manually)
+        cardsearchSearchCards: {
+          keyArgs: (args) => {
+            const input = args?.input || {};
+            return [
+              input.name ?? "",
+              input.set ?? "",
+              input.number ?? "",
+              input.variant ?? "",
+              input.orderBy ?? "RELEVANCE",
+            ];
+          },
+          merge(existing = { items: [] }, incoming, { args }) {
+            if (!incoming) return existing;
+            const offset = args?.input?.offset ?? 0;
+            const mergedItems = Array.isArray(existing?.items) ? [...existing.items] : [];
+            const incomingItems = Array.isArray(incoming.items) ? incoming.items : [];
+
+            for (let i = 0; i < incomingItems.length; i += 1) {
+              mergedItems[offset + i] = incomingItems[i];
+            }
+
+            const total =
+              typeof incoming.total === "number"
+                ? incoming.total
+                : typeof existing?.total === "number"
+                  ? existing.total
+                  : mergedItems.length;
+            const limit =
+              typeof incoming.limit === "number"
+                ? incoming.limit
+                : typeof args?.input?.limit === "number"
+                  ? args.input.limit
+                  : typeof existing?.limit === "number"
+                    ? existing.limit
+                    : incomingItems.length;
+
+            return {
+              ...incoming,
+              items: mergedItems,
+              total,
+              limit,
+              offset,
+            };
+          },
         },
       },
     },

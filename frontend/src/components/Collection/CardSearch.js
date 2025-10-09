@@ -240,16 +240,6 @@ function normalizePriceList(list) {
   return Array.from(byVariant.values());
 }
 
-function normalizeError(err, fallback = "Search failed") {
-  if (err instanceof Error) return err;
-  if (typeof err === "string" && err.trim()) return new Error(err);
-  try {
-    return new Error(JSON.stringify(err));
-  } catch {
-    return new Error(fallback);
-  }
-}
-
 function collectVariantList(item) {
   const variants = new Set();
 
@@ -397,6 +387,16 @@ export default function CardSearch() {
   const loadingMoreRef = useRef(false);
   const loadMoreTriggerRef = useRef(null);
 
+  const [runSearch, { data, loading, error, fetchMore }] = useLazyQuery(
+    CARDSEARCH_QUERY,
+    {
+      fetchPolicy: "cache-first",
+      nextFetchPolicy: "cache-first",
+      notifyOnNetworkStatusChange: true,
+      returnPartialData: true,
+    }
+  );
+
   const currentKey = useMemo(() => makeQueryKey({ name, setCode, number }), [name, setCode, number]);
 
   useEffect(() => {
@@ -452,72 +452,35 @@ export default function CardSearch() {
       },
     };
 
-    setError(null);
-    setLoading(true);
+    const res = await runSearch({ variables });
+    const payload = res?.data?.searchCards;
 
-    try {
-      const res = await client.query({
-        query: CARDSEARCH_QUERY,
-        variables,
-        fetchPolicy: "network-only",
-      });
+    if (!payload) return;
 
-      const payload = res?.data?.searchCards;
-
-      if (!payload) {
-        bucketsRef.current.set(key, {
-          items: [],
-          hasNextPage: false,
-          totalCount: 0,
-          nextOffset: 0,
-          pageSize: limit,
-        });
-
-        if (lastKeyRef.current === key) {
-          startTransition(() => {
-            setResults([]);
-            setHasMore(false);
-            setIsLoadingMore(false);
-          });
-        }
-        return;
-      }
-
-      const items = mapCardsearchItems(payload.items);
-      const totalCount = Number(payload.total ?? payload.totalCount ?? items.length);
-      const initialOffset = Number(payload.offset ?? 0);
-      const nextOffset = Math.min(initialOffset + items.length, totalCount);
-      const pageSize = Number(payload.limit ?? limit);
-      const bucketNext = {
-        items,
-        hasNextPage: nextOffset < totalCount,
-        totalCount,
-        nextOffset,
-        pageSize,
-      };
+    const items = mapCardsearchItems(payload.items);
+    const totalCount = Number(payload.total ?? payload.totalCount ?? items.length);
+    const initialOffset = Number(payload.offset ?? 0);
+    const nextOffset = Math.min(initialOffset + items.length, totalCount);
+    const pageSize = Number(payload.limit ?? limit);
+    const bucketNext = {
+      items,
+      hasNextPage: nextOffset < totalCount,
+      totalCount,
+      nextOffset,
+      pageSize,
+    };
 
       bucketsRef.current.set(key, bucketNext);
 
-      if (lastKeyRef.current === key) {
-        startTransition(() => {
-          setResults(items);
-          setHasMore(bucketNext.hasNextPage);
-          setIsLoadingMore(false);
-        });
-      }
-    } catch (err) {
-      setError(normalizeError(err));
-      if (!bucketsRef.current.get(key)) {
-        startTransition(() => {
-          setResults([]);
-          setHasMore(false);
-          setIsLoadingMore(false);
-        });
-      }
-    } finally {
-      setLoading(false);
+    // Only update visible list if the user is still on the same query
+    if (lastKeyRef.current === key) {
+      startTransition(() => {
+        setResults(items);
+        setHasMore(bucketNext.hasNextPage);
+        setIsLoadingMore(false);
+      });
     }
-  }, [client, name, setCode, number, isExactCardSearch]);
+  }, [name, setCode, number, runSearch, isExactCardSearch]);
 
   // Load more results using cardsearch pagination
   const loadMoreResults = useCallback(async () => {
@@ -556,11 +519,7 @@ export default function CardSearch() {
         },
       };
 
-      const res = await client.query({
-        query: CARDSEARCH_QUERY,
-        variables: vars,
-        fetchPolicy: "network-only",
-      });
+      const res = await fetchMore({ variables: vars });
       const payload = res?.data?.searchCards;
       if (!payload) {
         const merged = { ...prev, hasNextPage: false, nextOffset };
@@ -612,7 +571,7 @@ export default function CardSearch() {
       loadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
-  }, [client, hasMore, currentKey, name, setCode, number]);
+  }, [fetchMore, hasMore, currentKey, name, setCode, number]);
 
   // Infinite scroll (simple & cheap)
   useEffect(() => {

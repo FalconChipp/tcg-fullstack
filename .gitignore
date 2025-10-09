@@ -19,3 +19,4 @@ frontend/.env
 backend/logs/cardsearch-2025-10-03.00.log
 __tmp_card.json
 *.log
+frontend/.env

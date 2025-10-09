@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, startTransition } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { gql, useApolloClient } from "@apollo/client";
+import { gql, useApolloClient, useLazyQuery } from "@apollo/client";
 
 import { getCookie } from "@/utils/cookieUtils";
 import { useTheme } from "@/hooks/ThemeProvider";

@@ -84,25 +84,36 @@ export default function BinderCardSearch({
 
     try {
       const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+      const PAGE_SIZE = 28;
+      const offset = (currentPage - 1) * PAGE_SIZE;
+
       const res = await fetch(GRAPHQL_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query: `
-            query SearchCards($input: SearchInput!) {
-              searchCards(input: $input) {
-                cards {
-                  externalId: id
+            query BinderCardsearch($input: CardSearchInput!) {
+              cardsearchSearchCards(input: $input) {
+                total
+                offset
+                limit
+                items {
+                  cardId
                   name
-                  image
-                  setName
+                  number
                   rarity
+                  images { small large }
+                  set { code name }
                 }
               }
             }
           `,
           variables: {
-            input: { name: searchTerm, page: currentPage, pageSize: 28 }
+            input: {
+              name: searchTerm,
+              limit: PAGE_SIZE,
+              offset,
+            },
           },
         }),
       });
@@ -112,11 +123,33 @@ export default function BinderCardSearch({
       }
 
       const response = await res.json();
-      const serverCards = response.data?.searchCards?.cards || [];
-      const filteredCards = serverCards.filter(card => !isPocketCard(card));
+      const payload = response.data?.cardsearchSearchCards;
+      const serverCards = Array.isArray(payload?.items) ? payload.items : [];
 
-      // If API returned less than 28, this was the last page.
-      onHasMoreResultsChange(serverCards.length === 28);
+      const normalized = serverCards.map((item, index) => {
+        const setRecord = item?.set || {};
+        const setCode = item?.setCode || setRecord.code || '';
+        const number = item?.number || '';
+        const fallbackId = item?.cardId || (setCode && number ? `${setCode}-${number}` : `card-${offset + index}`);
+        const image = item?.images?.large || item?.images?.small || item?.image || null;
+        return {
+          externalId: fallbackId,
+          cardId: item?.cardId || fallbackId,
+          name: item?.name || '',
+          image,
+          tcgImageUrl: image,
+          setName: setRecord.name || item?.setName || setCode || '',
+          setCode,
+          rarity: item?.rarity || '',
+          number,
+        };
+      });
+
+      const filteredCards = normalized.filter(card => !isPocketCard(card));
+
+      const total = Number(payload?.total ?? 0);
+      const nextOffset = Math.min((Number(payload?.offset ?? offset)) + serverCards.length, total);
+      onHasMoreResultsChange(nextOffset < total);
 
       if (isNewSearch) {
         onSearchResultsChange(filteredCards);

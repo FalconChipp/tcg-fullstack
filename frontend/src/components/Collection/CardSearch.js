@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, startTransition } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { gql, useLazyQuery } from "@apollo/client";
+import { gql, useApolloClient } from "@apollo/client";
 
 import { getCookie } from "@/utils/cookieUtils";
 import { useTheme } from "@/hooks/ThemeProvider";
@@ -357,6 +357,7 @@ function makeQueryKey({ name, setCode, number }) {
 
 export default function CardSearch() {
   const { dark } = useTheme();
+  const client = useApolloClient();
 
   const [name, setName] = useState("");
   const [setCode, setSetCode] = useState("");
@@ -369,6 +370,8 @@ export default function CardSearch() {
   const [results, setResults] = useState([]);
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [statusMessage, setStatusMessage] = useState(null);
 
   const [panelOpen, setPanelOpen] = useState(false);
@@ -417,6 +420,7 @@ export default function CardSearch() {
 
     const key = makeQueryKey({ name, setCode, number });
     lastKeyRef.current = key;
+    loadingMoreRef.current = false;
 
     // If we already have a bucket for this query, show it immediately (stale-while-revalidate)
     const bucket = bucketsRef.current.get(key);
@@ -466,8 +470,7 @@ export default function CardSearch() {
       pageSize,
     };
 
-    // Cache this bucket
-    bucketsRef.current.set(key, bucketNext);
+      bucketsRef.current.set(key, bucketNext);
 
     // Only update visible list if the user is still on the same query
     if (lastKeyRef.current === key) {
@@ -547,6 +550,22 @@ export default function CardSearch() {
           setHasMore(merged.hasNextPage);
           setIsLoadingMore(false);
         });
+      }
+    } catch (err) {
+      setError(normalizeError(err));
+      const key = lastKeyRef.current || currentKey;
+      if (key) {
+        const prev = bucketsRef.current.get(key);
+        const merged = prev
+          ? { ...prev, hasNextPage: false }
+          : { items: [], hasNextPage: false, totalCount: 0, nextOffset: 0, pageSize: CARDSEARCH_PAGE_SIZE };
+        bucketsRef.current.set(key, merged);
+        if (lastKeyRef.current === key) {
+          startTransition(() => {
+            setHasMore(false);
+            setIsLoadingMore(false);
+          });
+        }
       }
     } finally {
       loadingMoreRef.current = false;

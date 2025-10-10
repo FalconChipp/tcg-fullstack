@@ -410,10 +410,12 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
               <button
                 type="button"
                 onClick={handleLinkDiscord}
-                disabled={connLoading === "discord"}
+                // disabled={connLoading === "discord"}
+                disabled
                 className="px-5 py-2 rounded-lg font-semibold bg-light-accent dark:bg-dark-accent text-white dark:text-black hover:bg-light-primary dark:hover:bg-dark-primary transition disabled:opacity-50"
               >
-                {connLoading === "discord" ? "Opening…" : "Link Discord"}
+                {/* {connLoading === "discord" ? "Opening…" : "Link Discord"} */}
+                Link (Coming soon)
               </button>
             )}
           </li>

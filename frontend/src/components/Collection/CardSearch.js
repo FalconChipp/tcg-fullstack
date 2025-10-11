@@ -869,7 +869,7 @@ export default function CardSearch() {
           <CardSkeleton
             key={idx}
             dark={dark}
-            message={!hasSearched ? "No cards yet\nTry searching for a PokÃ©mon, set, or number" : undefined}
+            message={!hasSearched ? "No cards yet\nTry searching for a Pokemon, set, or number" : undefined}
             actionLabel={!hasSearched ? "Search cards" : undefined}
           />
         ))}

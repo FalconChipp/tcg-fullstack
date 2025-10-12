@@ -16,6 +16,7 @@ import IntroFeatureCards from "@/components/Home/IntroFeatureCards";
 import SearchIntro from "@/components/Home/SearchIntro";
 import OnboardingQuickStart from "@/components/Home/OnboardingQuickStart";
 import Landing from "@/components/Layout/Landing";
+// import EvolvedProtectionSpotlight from "@/components/Partners/EvolvedSpotlight";
 
 export default function Home() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -51,8 +52,8 @@ export default function Home() {
           <SearchIntro />
           <CardSearch />
         </section>
-        {/* ===== /SEARCH ===== */}
 
+        {/* <EvolvedProtectionSpotlight /> */}
         {/* Intro features remain for scrollers */}
         <IntroFeatureCards />
 

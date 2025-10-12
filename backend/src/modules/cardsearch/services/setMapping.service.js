@@ -111,16 +111,16 @@ export const ALIASES = Object.freeze({
   'MD':    { tcgdex: 'dp5',      ptcg: 'dp5' },           // Majestic Dawn
   'LA':    { tcgdex: 'dp6',      ptcg: 'dp6' },           // Legends Awakened
   'SF':    { tcgdex: 'dp7',      ptcg: 'dp7' },           // Stormfront
-  'PL':    { tcgdex: 'pl',       ptcg: 'pl' },            // Platinum
+  'PL':    { tcgdex: 'pl1',       ptcg: 'pl1' },          // Platinum
   'RR':    { tcgdex: 'pl2',      ptcg: 'pl2' },           // Rising Rivals
   'SV':    { tcgdex: 'pl3',      ptcg: 'pl3' },           // Supreme Victors
   'AR':    { tcgdex: 'pl4',      ptcg: 'pl4' },           // Arceus
   'HSP':   { tcgdex: 'hgssp',    ptcg: 'hgssp' },         // HeartGold & Soul Silver Promos
-  'HS':    { tcgdex: 'hgss',     ptcg: 'hgss' },          // HeartGold & SoulSilver
+  'HS':    { tcgdex: 'hgss1',     ptcg: 'hgss1' },        // HeartGold & SoulSilver
   'UL':    { tcgdex: 'hgss2',    ptcg: 'hgss2' },         // Unleashed
   'UD':    { tcgdex: 'hgss3',    ptcg: 'hgss3' },         // Undaunted
   'TM':    { tcgdex: 'hgss4',    ptcg: 'hgss4' },         // Triumphant
-  'CL':    { tcgdex: 'col',      ptcg: 'col' },           // Call of Legends
+  'CL':    { tcgdex: 'col1',      ptcg: 'col1' },         // Call of Legends
 
   // Ex Series 
   'RS':    { tcgdex: 'ex1',      ptcg: 'ex1' },           // Ruby & Sapphire

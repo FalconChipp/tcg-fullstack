@@ -1,14 +1,14 @@
 // src/pages/sets/index.js
-// CHANGED: Era ordering now prioritizes newest first (SV → … → WotC → misc).
-// CHANGED: Within an era, sets are ordered by releaseDate ASC (oldest → newest).
-//          If no dates, falls back to name A–Z. Era is still read directly from JSON.
-//          Kept polished SetLogo, local search, and your Layout/SEO.
+// Era ordering, search, and set listing for the Sets index page.
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import Layout from "@/components/Layout/Layout";
 import { getSetLogo } from "@/utils/setLogos";
+import inferSetEra from "@/utils/setEra";
+import executeServerGraphql from "@/utils/serverGraphql";
+import { mapCacheSetSummary } from "@/utils/setDataTransforms";
 import path from "path";
 
 /* ---------------- Canonical era keys & labels (display only) ---------------- */
@@ -23,36 +23,86 @@ const ERA_LABELS = {
   sm: "Sun & Moon",
   swsh: "Sword & Shield",
   sv: "Scarlet & Violet",
+  me: "Mega Evolutions",
   misc: "Special / Misc",
 };
 
-/* ---------------- Era priority: newest → oldest (sv first), misc last ------- */
-/** CHANGED: explicit era ordering so "newest era first" is guaranteed. */
+/* ---------------- Era priority: newest → oldest (promos first) ------------- */
 const ERA_ORDER = [
-  "sv",     // Scarlet & Violet (newest)
-  "swsh",   // Sword & Shield
-  "sm",     // Sun & Moon
+  "me", // mega evolutions (newest era)
+  "sv",
+  "swsh",
+  "sm",
   "xy",
   "bw",
   "hgss",
   "dp",
   "ex",
   "ecard",
-  "wotc",   // oldest mainline era
-  "misc",   // always last
+  "wotc",
+  "misc",
 ];
 
-// Ranking function for eras (unknown keys get placed before 'misc', after known modern lines)
 function eraRank(key) {
   const k = (key || "misc").toLowerCase();
   const idx = ERA_ORDER.indexOf(k);
-  if (idx !== -1) return idx;
-  // Unknown eras: position just before 'misc' but after all known ones
-  return ERA_ORDER.length - 1; // effectively next to misc
+  return idx === -1 ? ERA_ORDER.length - 1 : idx;
+}
+
+/* ---------------- Helper: promo-first, numeric code ordering ---------------- */
+function isPromoCode(code) {
+  if (!code) return false;
+  const trimmed = String(code).trim().toLowerCase();
+  return trimmed.endsWith("p") || trimmed.includes("promo");
+}
+
+function extractCodeNumber(code) {
+  if (!code) return Number.POSITIVE_INFINITY;
+  const match = String(code).toLowerCase().match(/(\d+(?:\.\d+)?)/);
+  if (!match) return Number.POSITIVE_INFINITY;
+  const value = Number.parseFloat(match[1]);
+  return Number.isFinite(value) ? value : Number.POSITIVE_INFINITY;
+}
+
+function compareByCode(a, b) {
+  const codeA = String(a?.code || "").toLowerCase();
+  const codeB = String(b?.code || "").toLowerCase();
+
+  const promoA = isPromoCode(codeA) ? 0 : 1;
+  const promoB = isPromoCode(codeB) ? 0 : 1;
+  if (promoA !== promoB) return promoA - promoB;
+
+  const numA = extractCodeNumber(codeA);
+  const numB = extractCodeNumber(codeB);
+  if (numA !== numB) return numA - numB;
+
+  if (codeA && codeB) return codeA.localeCompare(codeB);
+  if (codeA || codeB) return codeB ? -1 : 1;
+  return 0;
+}
+
+function toFiniteOrNull(value) {
+  if (value == null) return null;
+  const num = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(num) && num > 0 ? num : null;
+}
+
+function resolveRepoPath(fs, ...segments) {
+  const roots = [
+    process.cwd(),
+    path.resolve(process.cwd(), ".."),
+    path.resolve(process.cwd(), "..", ".."),
+  ];
+
+  for (const root of roots) {
+    const candidate = path.join(root, ...segments);
+    if (fs.existsSync(candidate)) return candidate;
+  }
+
+  return null;
 }
 
 /* ----------------------- Polished Set Logo chip ---------------------- */
-
 function SetLogo({ name, code }) {
   const src = getSetLogo(name, code);
   return (
@@ -70,7 +120,7 @@ function SetLogo({ name, code }) {
     >
       <Image
         src={src}
-        alt={`${name || code?.toUpperCase()} logo`}
+        alt={`${name || code?.toUpperCase() || "Set"} logo`}
         fill
         sizes="(max-width: 640px) 112px, 128px"
         className="object-contain object-center drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)] p-3"
@@ -81,90 +131,56 @@ function SetLogo({ name, code }) {
 }
 
 /* --------------------------------- Page --------------------------------- */
-
 export default function SetsPage({ sets }) {
-  // Normalize era to a known key or "misc" (no guessing).
   const enhanced = useMemo(
     () =>
-      sets.map((s) => {
-        const raw = (s.era || "").trim().toLowerCase();
-        const era = ERA_LABELS[raw] ? raw : "misc";
-        return { ...s, era };
+      sets.map((set) => {
+        const rawEra = (set.era || "").trim().toLowerCase();
+        const era = ERA_LABELS[rawEra] ? rawEra : "misc";
+        return {
+          ...set,
+          era,
+        };
       }),
     [sets]
   );
 
-  // Local search + era filter
   const [query, setQuery] = useState("");
   const [eraFilter, setEraFilter] = useState("all");
 
-  // Which eras exist in the data (ordered by our eraRank; 'misc' last)
-  // CHANGED: was alphabetical; now uses eraRank so SV shows first.
   const erasInData = useMemo(() => {
     const present = Array.from(new Set(enhanced.map((s) => s.era || "misc")));
     return present.sort((a, b) => eraRank(a) - eraRank(b));
   }, [enhanced]);
 
-  // Filter + group strictly by JSON-provided era
   const grouped = useMemo(() => {
     const q = query.trim().toLowerCase();
     const byEra = new Map();
 
-    for (const s of enhanced) {
-      if (eraFilter !== "all" && s.era !== eraFilter) continue;
+    for (const set of enhanced) {
+      if (eraFilter !== "all" && set.era !== eraFilter) continue;
 
       if (q) {
-        const name = (s.name || "").toLowerCase();
-        const code = (s.code || "").toLowerCase();
+        const name = (set.name || "").toLowerCase();
+        const code = (set.code || "").toLowerCase();
         if (!name.includes(q) && !code.includes(q)) continue;
       }
 
-      const key = s.era || "misc";
+      const key = set.era || "misc";
       if (!byEra.has(key)) byEra.set(key, []);
-      byEra.get(key).push(s);
+      byEra.get(key).push(set);
     }
 
-    // Order within an era by release date ASC (oldest → newest).
-    // If both have dates, compare ascending; otherwise fall back to name A–Z.
     for (const arr of byEra.values()) {
-      arr.sort((a, b) => {
-        const da = a.releaseDate ? String(a.releaseDate) : "";
-        const db = b.releaseDate ? String(b.releaseDate) : "";
-        if (da && db) {
-          // ascending
-          return da.localeCompare(db);
-        }
-        if (da || db) {
-          // items with a date come first
-          return db ? 1 : -1;
-        }
-        return (a.name || "").localeCompare(b.name || "");
-      });
+      arr.sort(compareByCode);
     }
-    // Order within an era by release date DESC (newest → oldest).
-    // for (const arr of byEra.values()) {
-    // arr.sort((a, b) => {
-    //     const da = a.releaseDate ? String(a.releaseDate) : "";
-    //     const db = b.releaseDate ? String(b.releaseDate) : "";
 
-    //     if (da && db) {
-    //     // descending
-    //     return db.localeCompare(da);
-    //     }
-    //     if (da || db) {
-    //     // items with a date come first
-    //     return db ? -1 : 1;
-    //     }
-    //     return (a.name || "").localeCompare(b.name || "");
-    // });
-    // }
-
-    // Return sections ordered by eraRank so newest era section is first.
     const sections = Array.from(byEra.entries()).map(([key, items]) => ({
       eraKey: key,
       label: ERA_LABELS[key] || ERA_LABELS.misc,
       items,
     }));
+
     sections.sort((a, b) => eraRank(a.eraKey) - eraRank(b.eraKey));
     return sections;
   }, [enhanced, query, eraFilter]);
@@ -237,7 +253,7 @@ export default function SetsPage({ sets }) {
           </div>
         </div>
 
-        {/* Grouped sections (strictly by JSON-provided era) */}
+        {/* Grouped sections */}
         {grouped.length === 0 ? (
           <div className="text-center text-light-textMuted dark:text-dark-textMuted py-16">
             No sets match your filters.
@@ -260,15 +276,11 @@ export default function SetsPage({ sets }) {
                       <SetLogo name={set.name} code={set.code} />
                       <h3 className="mt-3 text-lg font-semibold">{set.name}</h3>
                       <p className="text-xs text-light-textMuted dark:text-dark-textMuted mt-1">
-                        {set.releaseDate
-                          ? new Date(set.releaseDate).toLocaleDateString()
-                          : "TBA"}
+                        Code: {set.code?.toUpperCase()}
                       </p>
-                      {set.totalCards ? (
-                        <p className="text-xs text-light-textMuted dark:text-dark-textMuted mt-1">
-                          {set.totalCards} cards
-                        </p>
-                      ) : null}
+                      <p className="text-xs text-light-textMuted dark:text-dark-textMuted">
+                        Cards: {set.totalCards != null ? set.totalCards : "TBA"}
+                      </p>
                     </div>
                   </Link>
                 ))}
@@ -282,31 +294,209 @@ export default function SetsPage({ sets }) {
 }
 
 /* --------------------------- Static props --------------------------- */
+const CARDSEARCH_SETS_QUERY = /* GraphQL */ `
+  query CardsearchSetsForIndex($limit: Int!, $offset: Int!) {
+    cardsearchSets(limit: $limit, offset: $offset) {
+      code
+      name
+      abbr
+      series
+      total
+    }
+  }
+`;
 
-export async function getStaticProps() {
+const CARDSEARCH_SETS_PAGE_SIZE = 250;
+const CARDSEARCH_SETS_MAX_PAGES = 12;
+
+async function loadSetsFromBackend() {
+  const collected = [];
+  let offset = 0;
+
+  for (let page = 0; page < CARDSEARCH_SETS_MAX_PAGES; page += 1) {
+    const data = await executeServerGraphql(CARDSEARCH_SETS_QUERY, {
+      limit: CARDSEARCH_SETS_PAGE_SIZE,
+      offset,
+    });
+
+    const chunk = Array.isArray(data?.cardsearchSets) ? data.cardsearchSets : [];
+    if (chunk.length === 0) break;
+
+    collected.push(...chunk);
+    if (chunk.length < CARDSEARCH_SETS_PAGE_SIZE) break;
+    offset += chunk.length;
+  }
+
+  if (!collected.length) return [];
+
+  let fallbackTotals = null;
+  try {
+    const [cacheTotals, legacyTotals] = await Promise.allSettled([
+      loadSetsFromCacheFiles(),
+      loadSetsFromLegacyFiles(),
+    ]);
+
+    fallbackTotals = new Map();
+
+    if (cacheTotals.status === "fulfilled") {
+      for (const set of cacheTotals.value || []) {
+        if (!set || !set.code) continue;
+        const key = String(set.code).toLowerCase();
+        if (!fallbackTotals.has(key)) {
+          const total = toFiniteOrNull(set.totalCards);
+          if (total != null) fallbackTotals.set(key, total);
+        }
+      }
+    }
+
+    if (legacyTotals.status === "fulfilled") {
+      for (const set of legacyTotals.value || []) {
+        if (!set || !set.code) continue;
+        const key = String(set.code).toLowerCase();
+        const total = toFiniteOrNull(set.totalCards);
+        if (total != null && (!fallbackTotals.has(key) || fallbackTotals.get(key) == null)) {
+          fallbackTotals.set(key, total);
+        }
+      }
+    }
+
+    if (!fallbackTotals.size) fallbackTotals = null;
+  } catch (err) {
+    console.warn("Unable to pre-load fallback totals:", err);
+    fallbackTotals = null;
+  }
+
+  const seenCodes = new Set();
+  const normalized = [];
+
+  for (const set of collected) {
+    if (!set || !set.code) continue;
+    const code = String(set.code).trim();
+    if (!code) continue;
+    const key = code.toLowerCase();
+    if (seenCodes.has(key)) continue;
+    seenCodes.add(key);
+
+    let totalCards = toFiniteOrNull(set.total);
+    if (totalCards == null && fallbackTotals && fallbackTotals.has(key)) {
+      const fallbackTotal = fallbackTotals.get(key);
+      if (fallbackTotal != null) totalCards = fallbackTotal;
+    }
+
+    normalized.push({
+      code,
+      name: set.name || code.toUpperCase(),
+      totalCards,
+      era: inferSetEra(set),
+      abbr: set.abbr ?? null,
+      series: set.series ?? null,
+    });
+  }
+
+  normalized.sort(compareByCode);
+  return normalized;
+}
+
+async function loadSetsFromCacheFiles() {
   const fs = (await import("fs")).default || (await import("fs"));
-  const DATA_DIR = path.join(process.cwd(), "public", "data");
-  let sets = [];
+  const CACHE_DIR = resolveRepoPath(fs, "backend", ".cache", "cardsearch", "sets");
+  const sets = [];
+
+  if (!CACHE_DIR || !fs.existsSync(CACHE_DIR)) return sets;
+
+  try {
+    const entries = fs.readdirSync(CACHE_DIR, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const code = entry.name;
+      const filePath = path.join(CACHE_DIR, code, `${code}.json`);
+      if (!fs.existsSync(filePath)) continue;
+      try {
+        const json = JSON.parse(fs.readFileSync(filePath, "utf8"));
+        const summary = mapCacheSetSummary(json);
+        if (summary) sets.push(summary);
+      } catch (err) {
+        console.warn(`Failed to parse cache set '${code}':`, err);
+      }
+    }
+  } catch (err) {
+    console.warn("Unable to read backend cache sets:", err);
+  }
+
+  return sets;
+}
+
+async function loadSetsFromLegacyFiles() {
+  const fs = (await import("fs")).default || (await import("fs"));
+  const DATA_DIR = resolveRepoPath(fs, "public", "data");
+  const sets = [];
+
+  if (!DATA_DIR || !fs.existsSync(DATA_DIR)) return sets;
 
   try {
     const files = fs.readdirSync(DATA_DIR).filter((f) => f.endsWith(".json"));
-    sets = files.map((file) => {
-      const raw = fs.readFileSync(path.join(DATA_DIR, file), "utf8");
-      const json = JSON.parse(raw);
-      return {
-        code: json.code || file.replace(/\.json$/i, ""),
-        name: json.name || json.code?.toUpperCase() || file,
-        releaseDate: json.releaseDate || null,
-        totalCards: json.totalCards || (Array.isArray(json.cards) ? json.cards.length : null),
-        era: json.era || null, // read directly; normalized above
-      };
-    });
+    for (const file of files) {
+      try {
+        const raw = fs.readFileSync(path.join(DATA_DIR, file), "utf8");
+        const json = JSON.parse(raw);
+        const code = String(json.code || file.replace(/\.json$/i, "")).toLowerCase();
+        sets.push({
+          code,
+          name: json.name || code.toUpperCase(),
+          totalCards: json.totalCards ?? (Array.isArray(json.cards) ? json.cards.length : null),
+          era: json.era || inferSetEra({ code, abbr: json.abbreviation }),
+          abbr: json.abbreviation || null,
+          series: json.series || null,
+        });
+      } catch (err) {
+        console.warn(`Failed to parse legacy set '${file}':`, err);
+      }
+    }
   } catch (err) {
-    console.error("Error reading sets from /public/data:", err);
+    console.warn("Unable to read legacy sets from /public/data:", err);
   }
 
-  // Build-time ordering is irrelevant to the final grouping order,
-  // but we keep a deterministic sort here anyway (by code).
-  sets.sort((a, b) => (a.code || "").localeCompare(b.code || ""));
-  return { props: { sets } };
+  return sets;
+}
+
+async function loadSetsFromFiles() {
+  const setsByCode = new Map();
+
+  const collect = (list) => {
+    for (const candidate of list) {
+      if (!candidate || !candidate.code) continue;
+      const key = String(candidate.code).toLowerCase();
+      const incoming = { ...candidate, code: key };
+      const incomingTotal = toFiniteOrNull(incoming.totalCards);
+      const existing = setsByCode.get(key);
+      if (!existing) {
+        setsByCode.set(key, incoming);
+        continue;
+      }
+      const existingTotal = toFiniteOrNull(existing.totalCards);
+      if (incomingTotal != null && (existingTotal == null || incomingTotal > existingTotal)) {
+        setsByCode.set(key, { ...existing, ...incoming, totalCards: incomingTotal });
+      }
+    }
+  };
+
+  collect(await loadSetsFromCacheFiles());
+  collect(await loadSetsFromLegacyFiles());
+
+  return Array.from(setsByCode.values()).sort(compareByCode);
+}
+
+export async function getStaticProps() {
+  try {
+    const sets = await loadSetsFromBackend();
+    if (sets.length) {
+      return { props: { sets } };
+    }
+    console.warn("GraphQL returned no sets; falling back to local data files.");
+  } catch (err) {
+    console.warn("Unable to load sets from GraphQL, falling back to local data files:", err);
+  }
+
+  const fallbackSets = await loadSetsFromFiles();
+  return { props: { sets: fallbackSets } };
 }

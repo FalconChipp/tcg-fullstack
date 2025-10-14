@@ -7,6 +7,9 @@ import { getSetLogo } from "@/utils/setLogos";
 import SetChecklistHeader from "@/components/Sets/SetChecklistHeader";
 import useSetPrices from "@/hooks/useSetPrices";
 import useSetOwned from "@/hooks/useSetOwned";
+import inferSetEra from "@/utils/setEra";
+import executeServerGraphql from "@/utils/serverGraphql";
+import { mapCacheSetDetail } from "@/utils/setDataTransforms";
 import path from "path";
 
 /* -------------------- UI: Card Tile -------------------- */
@@ -194,7 +197,6 @@ export default function SetPage({ set }) {
           name={set.name}
           code={set.code}
           logoUrl={getSetLogo(set.name, set.code)}
-          releaseDate={set.releaseDate}
           totalCards={set.totalCards}
           completedCount={completedCount}
           filter={filter}
@@ -238,27 +240,318 @@ export default function SetPage({ set }) {
 }
 
 /* -------------------- Data fetching (server) -------------------- */
-export async function getStaticPaths() {
-  const fs = (await import("fs")).default || (await import("fs"));
-  const DATA_DIR = path.join(process.cwd(), "public", "data");
-  let files = [];
-  try {
-    files = fs.readdirSync(DATA_DIR).filter((f) => f.endsWith(".json"));
-  } catch (err) {
-    console.error("Error reading /public/data:", err);
+const CARDSEARCH_SETS_QUERY = /* GraphQL */ `
+  query CardsearchSetPaths($limit: Int!, $offset: Int!) {
+    cardsearchSets(limit: $limit, offset: $offset) {
+      code
+      abbr
+      series
+    }
   }
-  const paths = files.map((file) => ({
-    params: { code: file.replace(/\.json$/i, "") },
-  }));
-  return { paths, fallback: false };
+`;
+
+const CARDSEARCH_SET_QUERY = /* GraphQL */ `
+  query CardsearchSetStatic($code: String!) {
+    cardsearchSetByCode(code: $code) {
+      code
+      name
+      abbr
+      series
+      total
+    }
+  }
+`;
+
+const CARDSEARCH_SET_CARDS_QUERY = /* GraphQL */ `
+  query CardsearchSetCards($input: CardSearchInput!) {
+    cardsearchSearchCards(input: $input) {
+      total
+      items {
+        cardId
+        number
+        name
+        rarity
+        images {
+          small
+          large
+        }
+        latestPrices {
+          variant
+          market
+          mid
+          low
+          high
+          currency
+        }
+      }
+    }
+  }
+`;
+
+const CARDSEARCH_SET_PAGE_SIZE = 250;
+const CARDSEARCH_SET_MAX_PAGES = 12;
+
+async function loadAllCodesFromBackend() {
+  const codes = [];
+  const seen = new Set();
+  let offset = 0;
+
+  for (let page = 0; page < CARDSEARCH_SET_MAX_PAGES; page += 1) {
+    const data = await executeServerGraphql(CARDSEARCH_SETS_QUERY, {
+      limit: CARDSEARCH_SET_PAGE_SIZE,
+      offset,
+    });
+
+    const chunk = Array.isArray(data?.cardsearchSets) ? data.cardsearchSets : [];
+    if (chunk.length === 0) break;
+
+    for (const set of chunk) {
+      if (!set?.code) continue;
+      const code = String(set.code).trim().toLowerCase();
+      if (!code || seen.has(code)) continue;
+      seen.add(code);
+      codes.push(code);
+    }
+
+    if (chunk.length < CARDSEARCH_SET_PAGE_SIZE) break;
+    offset += chunk.length;
+  }
+
+  return codes;
+}
+
+async function loadAllCodesFromFiles() {
+  const fs = (await import("fs")).default || (await import("fs"));
+  const codes = new Set();
+
+  const CACHE_DIR = path.join(process.cwd(), "backend", ".cache", "cardsearch", "sets");
+  try {
+    if (fs.existsSync(CACHE_DIR)) {
+      const entries = fs.readdirSync(CACHE_DIR, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          codes.add(entry.name.toLowerCase());
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Unable to read cache set codes:", err);
+  }
+
+  const DATA_DIR = path.join(process.cwd(), "public", "data");
+  try {
+    if (fs.existsSync(DATA_DIR)) {
+      const files = fs.readdirSync(DATA_DIR).filter((f) => f.endsWith(".json"));
+      for (const file of files) {
+        codes.add(file.replace(/\.json$/i, "").toLowerCase());
+      }
+    }
+  } catch (err) {
+    console.warn("Unable to read legacy set codes:", err);
+  }
+
+  return Array.from(codes);
+}
+
+function mapLatestPrices(prices) {
+  if (!Array.isArray(prices) || prices.length === 0) return null;
+  const normalized = prices
+    .map((price) => {
+      if (!price) return null;
+      return {
+        variation: price?.variant ?? null,
+        gbp: typeof price?.market === "number" ? price.market : null,
+        tcgplayer: typeof price?.mid === "number" ? price.mid : null,
+        cardmarket: typeof price?.low === "number" ? price.low : null,
+        currency: price?.currency ?? null,
+      };
+    })
+    .filter(Boolean);
+  return normalized.length ? normalized : null;
+}
+
+async function loadSetFromBackend(code) {
+  const codeParam = String(code || "").trim();
+  if (!codeParam) return null;
+
+  const data = await executeServerGraphql(CARDSEARCH_SET_QUERY, { code: codeParam });
+  const setData = data?.cardsearchSetByCode;
+  if (!setData) return null;
+
+  const cards = [];
+  const seenCards = new Set();
+  let offset = 0;
+  let reportedTotal = typeof setData.total === "number" ? setData.total : null;
+
+  for (let page = 0; page < CARDSEARCH_SET_MAX_PAGES; page += 1) {
+    const res = await executeServerGraphql(CARDSEARCH_SET_CARDS_QUERY, {
+      input: {
+        set: codeParam,
+        limit: CARDSEARCH_SET_PAGE_SIZE,
+        offset,
+      },
+    });
+
+    const payload = res?.cardsearchSearchCards;
+    const items = Array.isArray(payload?.items) ? payload.items : [];
+    if (typeof payload?.total === "number") {
+      reportedTotal = payload.total;
+    }
+
+    if (items.length === 0) break;
+
+    for (const item of items) {
+      if (!item) continue;
+      const cardId = item.cardId || (item.number && `${codeParam}-${item.number}`);
+      const mappedPrices = mapLatestPrices(item.latestPrices);
+      if (cardId && seenCards.has(cardId)) {
+        continue;
+      }
+      if (cardId) {
+        seenCards.add(cardId);
+      }
+      const entry = {
+        id: cardId,
+        number: item.number || "",
+        name: item.name || "",
+        rarity: item.rarity || null,
+        imageUrl: item.images?.large || item.images?.small || null,
+        prices: mappedPrices,
+      };
+      cards.push(entry);
+    }
+
+    offset += items.length;
+
+    if (typeof reportedTotal === "number" && cards.length >= reportedTotal) {
+      break;
+    }
+
+    if (items.length < CARDSEARCH_SET_PAGE_SIZE && reportedTotal == null) {
+      break;
+    }
+  }
+
+  const normalized = {
+    code: codeParam.toLowerCase(),
+    name: setData.name || codeParam.toUpperCase(),
+    abbr: setData.abbr ?? null,
+    series: setData.series ?? null,
+    era: inferSetEra(setData),
+    totalCards:
+      typeof setData.total === "number"
+        ? setData.total
+        : typeof reportedTotal === "number"
+          ? reportedTotal
+          : cards.length || null,
+    cards,
+  };
+
+  if (!normalized.totalCards && cards.length) {
+    normalized.totalCards = cards.length;
+  }
+
+  return normalized;
+}
+
+async function loadSetFromFiles(code) {
+  const fs = (await import("fs")).default || (await import("fs"));
+  const normalized = String(code || "").toLowerCase();
+  const CACHE_DIR = path.join(process.cwd(), "backend", ".cache", "cardsearch", "sets");
+  const cachePath = path.join(CACHE_DIR, normalized, `${normalized}.json`);
+
+  try {
+    if (fs.existsSync(cachePath)) {
+      const json = JSON.parse(fs.readFileSync(cachePath, "utf8"));
+      const mapped = mapCacheSetDetail(json);
+      if (mapped) return mapped;
+    }
+  } catch (err) {
+    console.warn(`Failed to parse cache set '${normalized}':`, err);
+  }
+
+  const DATA_DIR = path.join(process.cwd(), "public", "data");
+  const legacyPath = path.join(DATA_DIR, `${normalized}.json`);
+  if (!fs.existsSync(legacyPath)) return null;
+
+  try {
+    const json = JSON.parse(fs.readFileSync(legacyPath, "utf8"));
+    const seen = new Set();
+    const cards = Array.isArray(json.cards)
+      ? json.cards
+          .map((card) => {
+            if (!card) return null;
+            const number = card.number || card.localId || "";
+            const id = card.id || (number ? `${normalized}-${number}` : null);
+            if (id && seen.has(id)) return null;
+            if (id) seen.add(id);
+            const prices = Array.isArray(card.prices) ? card.prices : null;
+            return {
+              id,
+              number,
+              name: card.name || "",
+              rarity: card.rarity || null,
+              imageUrl: card.imageUrl || card.image || null,
+              prices,
+            };
+          })
+          .filter(Boolean)
+      : [];
+
+    return {
+      code: normalized,
+      name: json.name || normalized.toUpperCase(),
+      totalCards: json.totalCards ?? (Array.isArray(json.cards) ? json.cards.length : null),
+      era: json.era || inferSetEra({ code: normalized, abbr: json.abbreviation }),
+      abbr: json.abbreviation || null,
+      series: json.series || null,
+      cards,
+    };
+  } catch (err) {
+    console.error(`Failed to read legacy set file '${normalized}.json':`, err);
+    return null;
+  }
+}
+
+export async function getStaticPaths() {
+  try {
+    const codes = await loadAllCodesFromBackend();
+    if (codes.length) {
+      return {
+        paths: codes.map((code) => ({ params: { code } })),
+        fallback: false,
+      };
+    }
+    console.warn("GraphQL returned no set codes; falling back to local data files.");
+  } catch (err) {
+    console.warn("Unable to load set codes from GraphQL, falling back to local data files:", err);
+  }
+
+  const fallbackCodes = await loadAllCodesFromFiles();
+  return {
+    paths: fallbackCodes.map((code) => ({ params: { code } })),
+    fallback: false,
+  };
 }
 
 export async function getStaticProps({ params }) {
-  const fs = (await import("fs")).default || (await import("fs"));
-  const DATA_DIR = path.join(process.cwd(), "public", "data");
-  const file = path.join(DATA_DIR, `${params.code.toLowerCase()}.json`);
-  if (!fs.existsSync(file)) return { notFound: true };
-  const set = JSON.parse(fs.readFileSync(file, "utf8"));
-  if (!set.totalCards && Array.isArray(set.cards)) set.totalCards = set.cards.length;
-  return { props: { set } };
+  const code = String(params?.code || "").toLowerCase();
+  if (!code) return { notFound: true };
+
+  try {
+    const set = await loadSetFromBackend(code);
+    if (set) {
+      return { props: { set } };
+    }
+    console.warn(`Set '${code}' not found via GraphQL; attempting local fallback.`);
+  } catch (err) {
+    console.warn(`Unable to load set '${code}' from GraphQL, falling back to local data:`, err);
+  }
+
+  const fallbackSet = await loadSetFromFiles(code);
+  if (fallbackSet) {
+    return { props: { set: fallbackSet } };
+  }
+
+  return { notFound: true };
 }

@@ -37,7 +37,7 @@ export default gql`
   }
 
   extend type Query {
-    myPriceAlerts: [PriceAlert!]!
+    myPriceAlerts(cardId: ID, variation: String): [PriceAlert!]!
   }
 
   extend type Mutation {

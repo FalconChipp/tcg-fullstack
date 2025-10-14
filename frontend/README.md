@@ -23,6 +23,7 @@ The frontend is the customer-facing Next.js 14 application for the SixByFive TCG
 - **Authentication**: NextAuth.js with Google OAuth, session persistence, protected routes, and cookie consent flows.
 - **Collections & Binders**: Drag-and-drop binder editor (powered by DnD Kit), card search, detail modals, and statistics.
 - **Marketplace**: Browsing listings, filtering, cart interactions (where supported by backend).
+- **Price Tracking**: Per-card price history charts, rollup summaries, and user-configurable price alerts with in-app/email notifications.
 - **Notifications & Messaging**: Hooks prepared for real-time updates (Socket.IO integration toggled via providers).
 - **Subscriptions**: UI for viewing and purchasing subscription tiers backed by Stripe.
 - **SEO & Marketing**: Meta tags, sitemap generation, public marketing pages (About, Contact, Privacy, Terms, Roadmap).

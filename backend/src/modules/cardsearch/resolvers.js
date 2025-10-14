@@ -1,20 +1,19 @@
-﻿// src/modules/cardsearch/resolvers.js
+// src/modules/cardsearch/resolvers.js
 // GraphQL resolvers for Card Search wired to shared services.
 // NOTE: Works with or without GraphQL context; when no ctx.loaders is present,
 // it falls back to direct DB reads.
 
-import { Op } from "sequelize";
 import {
   m_Set,
   m_Card,
   m_PriceLatest,
-  m_PriceObservation,
   m_PriceRollup,
   m_CardVariant,
 } from "../../models/index.js"; // <- ensure this path matches your project
 
 import qb from "./services/queryBuilder.service.js";
 import { computeRollupsSnapshot } from "./services/rollup.service.js";
+import { fetchPriceHistory } from "./services/history.service.js";
 
 function buildHighResImageUrl(raw) {
   if (!raw) return null;
@@ -40,7 +39,8 @@ function buildCardImages(row) {
       source = `https://assets.tcgdex.net/en/${family}/${normalizedSet}/${number}`;
     }
   }
-  const highRes = buildHighResImageUrl(source);
+  const highRes = buildHighResImageUrl(source);
+
   if (!highRes) return { small: null, large: null };
   return { small: null, large: highRes };
 }
@@ -163,32 +163,27 @@ const resolvers = {
       return out;
     },
     async cardsearchPriceObservations(_, { cardId, variant, startDate, endDate, limit = 365, offset = 0 }) {
-      const where = { card_id: cardId };
-      if (variant) where.variant = String(variant).toLowerCase();
-      if (startDate) where.date = { ...(where.date || {}), [Op.gte]: startDate };
-      if (endDate) where.date = { ...(where.date || {}), [Op.lte]: endDate };
+      if (!cardId) return [];
 
-      const rows = await m_PriceObservation.findAll({
-        where,
-        order: [["date", "ASC"]],
+      const history = await fetchPriceHistory(cardId, {
+        variant,
+        startDate,
+        endDate,
         limit: Math.max(1, Math.min(1000, Number(limit))),
         offset: Math.max(0, Number(offset)),
       });
 
-      return rows.map((r) => {
-        const x = r.get();
-        return {
-          cardId: x.card_id,
-          variant: x.variant,
-          date: x.date,
-          currency: x.currency ?? "GBP",
-          low: x.low ?? null,
-          mid: x.mid ?? null,
-          high: x.high ?? null,
-          market: x.market ?? null,
-          provider: x.provider ?? null,
-        };
-      });
+      return history.map((row) => ({
+        cardId,
+        variant: row.variant ?? (variant ? String(variant).trim().toLowerCase() : null),
+        date: row.date ?? null,
+        currency: row.currency ?? "GBP",
+        low: row.low ?? null,
+        mid: row.mid ?? null,
+        high: row.high ?? null,
+        market: row.market ?? null,
+        provider: row.provider ?? null,
+      }));
     },
 
     async cardsearchSetByCode(_, { code }) {
@@ -210,7 +205,7 @@ const resolvers = {
       const where = qb.buildSetWhere({ query });
       const rows = await m_Set.findAll({
         where,
-        order: [["released_at", "DESC"]],
+        order: [["release_date", "DESC"]],
         limit: Math.max(1, Math.min(500, Number(limit))),
         offset: Math.max(0, Number(offset)),
       });

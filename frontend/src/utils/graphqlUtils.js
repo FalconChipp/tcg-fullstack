@@ -177,27 +177,37 @@ export async function executeMutation(mutation, variables, token) {
       })
     });
 
-    // Check if the response is JSON
+    let resultText = null;
+    let resultJson = null;
     const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      const text = await response.text();
-      console.error('Non-JSON response:', text.substring(0, 500)); // Log first 500 chars
-      throw new Error('Received invalid response from server');
+    if (contentType && contentType.includes('application/json')) {
+      resultJson = await response.json();
+    } else {
+      resultText = await response.text();
     }
 
-    const result = await response.json();
+    const extractErrorMessage = () => {
+      if (resultJson?.errors?.length) {
+        const first = resultJson.errors[0];
+        return first?.message || first?.extensions?.message;
+      }
+      if (resultJson?.message) return resultJson.message;
+      if (resultText) return resultText;
+      return null;
+    };
 
     if (!response.ok) {
-      console.error('GraphQL Error Response:', result);
-      throw new Error(result.message || `HTTP error! status: ${response.status}`);
+      const message = extractErrorMessage();
+      console.error('GraphQL Error Response:', resultJson ?? resultText);
+      throw new Error(message || `HTTP error! status: ${response.status}`);
     }
 
-    if (result.errors) {
-      console.error('GraphQL Errors:', result.errors);
-      throw new Error(result.errors[0]?.message || 'Failed to execute mutation');
+    if (resultJson?.errors) {
+      console.error('GraphQL Errors:', resultJson.errors);
+      throw new Error(extractErrorMessage() || 'Failed to execute mutation');
     }
 
-    return result.data || result; // Some GraphQL servers return data at the root
+    return resultJson?.data || resultJson;
   } catch (error) {
     console.error('Mutation error:', error);
     // Rethrow with more context if needed

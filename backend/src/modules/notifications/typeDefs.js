@@ -49,8 +49,14 @@ export default gql`
     isBroadcast: Boolean
   }
 
+  input NotificationFilterInput {
+    type: String
+    isRead: Boolean
+    isDismissed: Boolean
+  }
+
   extend type Query {
-    myNotifications(page: Int, pageSize: Int, filter: JSON): NotificationPage!
+    myNotifications(page: Int, pageSize: Int, filter: NotificationFilterInput): NotificationPage!
     notification(id: ID!): Notification
     unreadNotificationCount: Int!
     myNotificationPrefs: NotificationPref!

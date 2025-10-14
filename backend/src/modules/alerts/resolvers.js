@@ -18,12 +18,46 @@ function resolveAlertValue(condition, incoming, fallback) {
   return numeric;
 }
 
+const VARIANT_ALIASES = {
+  normal: "normal",
+  standard: "normal",
+  holo: "holo",
+  holofoil: "holo",
+  reverse: "reverse",
+  reverseholo: "reverse",
+  "reverse holo": "reverse",
+  reverse_holo: "reverse",
+  reverseholofoil: "reverse",
+  "reverse holofoil": "reverse",
+  firstedition: "firstEdition",
+  first_edition: "firstEdition",
+  "first edition": "firstEdition",
+  foil: "foil",
+};
+
+function normalizeVariation(value) {
+  if (value == null) return null;
+  const trimmed = String(value).trim();
+  if (!trimmed) return null;
+  const key = trimmed.replace(/[\s_-]+/g, "").toLowerCase();
+  return VARIANT_ALIASES[key] ?? trimmed;
+}
+
 const resolvers = {
   Query: {
-    myPriceAlerts: async (_, __, { token }) => {
+    myPriceAlerts: async (_, args, { token }) => {
       const me = requireAuth(token);
+      const where = { userId: me.id };
+      if (args?.cardId) {
+        where.cardId = String(args.cardId);
+      }
+      if (Object.prototype.hasOwnProperty.call(args ?? {}, "variation")) {
+        const raw = args.variation;
+        const normalized = raw == null || raw === "" ? null : String(raw).trim().toLowerCase();
+        where.variation = normalized;
+      }
       const rows = await PriceAlert.findAll({
-        where: { userId: me.id },
+        where,
         order: [['updatedAt', 'DESC']],
       });
       return rows;
@@ -46,7 +80,7 @@ const resolvers = {
 
         await row.update({
           cardId: input.cardId ?? row.cardId,
-          variation: input.variation ?? row.variation,
+          variation: normalizeVariation(input.variation ?? row.variation),
           condition: nextCondition,
           value: nextValue,
           windowHours: input.windowHours ?? row.windowHours,
@@ -63,7 +97,7 @@ const resolvers = {
       return await PriceAlert.create({
         userId: me.id,
         cardId: input.cardId,
-        variation: input.variation ?? null,
+        variation: normalizeVariation(input.variation ?? null),
         condition,
         value,
         windowHours: input.windowHours ?? 24,

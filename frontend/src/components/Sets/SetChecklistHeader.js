@@ -10,7 +10,6 @@ export default function SetChecklistHeader({
   name,
   code,
   logoUrl,
-  releaseDate,
   totalCards,
   completedCount = 0,
 
@@ -112,21 +111,19 @@ export default function SetChecklistHeader({
               <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
                 {name || code?.toUpperCase()}
               </h1>
-                <p className="text-sm text-light-textMuted dark:text-dark-textMuted mt-0.5">
-                  Code: <span className="font-semibold">{code?.toUpperCase()}</span>
-                  <span className="mx-1.5">•</span>
-                  Release: {releaseDate ? new Date(releaseDate).toLocaleDateString() : "TBA"}
-                  <span className="mx-1.5">•</span>
-                  Cards: {totalCards ?? "—"}
-                  {/* {totalGBPStr && (
-                    <>
-                      <span className="mx-1.5">•</span>
-                      <span className="font-semibold text-light-text dark:text-dark-text">
-                        Set total: {totalGBPStr}
-                      </span>
-                    </>
-                  )} */}
-                </p>
+              <p className="text-sm text-light-textMuted dark:text-dark-textMuted mt-0.5">
+                Code: <span className="font-semibold">{code?.toUpperCase()}</span>
+                <span className="mx-1.5">|</span>
+                Cards: {totalCards != null ? totalCards : "TBA"}
+                {/* {totalGBPStr && (
+                  <>
+                    <span className="mx-1.5">|</span>
+                    <span className="font-semibold text-light-text dark:text-dark-text">
+                      Set total: {totalGBPStr}
+                    </span>
+                  </>
+                )} */}
+              </p>
             </div>
           </div>
 
@@ -334,3 +331,4 @@ export default function SetChecklistHeader({
     </>
   );
 }
+

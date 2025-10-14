@@ -1,6 +1,24 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
+import { gql, useApolloClient } from "@apollo/client";
 import { useTheme } from "@/hooks/ThemeProvider";
-import setList from "@/utils/setList";
+import { getSetLogo } from "@/utils/setLogos";
+import fallbackSetList from "@/utils/setList";
+
+const CARDSEARCH_SETS_QUERY = gql`
+  query CardsearchSetAutocomplete($limit: Int!, $offset: Int!) {
+    cardsearchSets(limit: $limit, offset: $offset) {
+      code
+      abbr
+      name
+      series
+      releasedAt
+      lang
+    }
+  }
+`;
+
+const CARDSEARCH_SET_PAGE_SIZE = 500;
+const CARDSEARCH_SET_MAX_PAGES = 5;
 
 /**
  * SetAutocomplete
@@ -10,12 +28,92 @@ import setList from "@/utils/setList";
  *   onSelect: function(code)
  */
 export default function SetAutocomplete({ value, onChange, onSelect }) {
+  const client = useApolloClient();
   const [displayValue, setDisplayValue] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [highlight, setHighlight] = useState(-1);
+  const [sets, setSets] = useState([]);
+  const [isLoadingSets, setIsLoadingSets] = useState(false);
+  const [fetchError, setFetchError] = useState(null);
   const inputRef = useRef();
   const optionsRef = useRef();
   const { dark } = useTheme();
+
+  useEffect(() => {
+    let active = true;
+
+    const loadSets = async () => {
+      setIsLoadingSets(true);
+      setFetchError(null);
+      const aggregated = [];
+      let offset = 0;
+
+      try {
+        for (let page = 0; page < CARDSEARCH_SET_MAX_PAGES; page += 1) {
+          const { data } = await client.query({
+            query: CARDSEARCH_SETS_QUERY,
+            variables: { limit: CARDSEARCH_SET_PAGE_SIZE, offset },
+            fetchPolicy: "cache-first",
+          });
+
+          const chunk = Array.isArray(data?.cardsearchSets) ? data.cardsearchSets : [];
+          if (chunk.length === 0) break;
+
+          aggregated.push(...chunk);
+          if (chunk.length < CARDSEARCH_SET_PAGE_SIZE) break;
+          offset += chunk.length;
+        }
+
+        if (!active) return;
+
+        const normalized = [];
+        const seenCodes = new Set();
+
+        aggregated.forEach((set) => {
+          if (!set || !set.code) return;
+          const code = String(set.code).trim();
+          if (!code) return;
+          const key = code.toLowerCase();
+          const name = set.name || code.toUpperCase();
+          const lang = set.lang ? String(set.lang).trim().toLowerCase() : null;
+          if (lang && lang !== "en") return;
+
+          if (seenCodes.has(key)) return;
+          seenCodes.add(key);
+
+          normalized.push({
+            code,
+            abbr: set.abbr ?? null,
+            name,
+            logo: getSetLogo(name, code),
+            series: set.series ?? null,
+            releasedAt: set.releasedAt ?? null,
+            lang: set.lang ?? null,
+          });
+        });
+
+        if (normalized.length > 0) {
+          setSets(normalized);
+        } else if (fallbackSetList?.length) {
+          setSets(fallbackSetList.map((set) => ({ ...set })));
+        }
+      } catch (err) {
+        if (!active) return;
+        setFetchError(err);
+        if (fallbackSetList?.length) {
+          setSets(fallbackSetList.map((set) => ({ ...set })));
+        }
+      } finally {
+        if (active) setIsLoadingSets(false);
+      }
+    };
+
+    loadSets();
+
+    return () => {
+      active = false;
+    };
+  }, [client]);
 
   // Sync input when value prop changes
   useEffect(() => {
@@ -23,34 +121,40 @@ export default function SetAutocomplete({ value, onChange, onSelect }) {
       setDisplayValue("");
       return;
     }
-    const setObj = setList.find(
+    const setObj = sets.find(
       (set) =>
         set.code.toLowerCase() === value.toLowerCase() ||
         (set.abbr && set.abbr.toLowerCase() === value.toLowerCase())
     );
     setDisplayValue(setObj ? setObj.abbr || setObj.code : value);
-  }, [value]);
+  }, [value, sets]);
 
   // Filtered options by code, abbr, or name
-  const options = !displayValue
-    ? []
-    : setList
-        .filter(
-          (set) =>
-            (set.code && set.code.toLowerCase().includes(displayValue.toLowerCase())) ||
-            (set.abbr && set.abbr.toLowerCase().includes(displayValue.toLowerCase())) ||
-            (set.name && set.name.toLowerCase().includes(displayValue.toLowerCase()))
-        )
-        .slice(0, 10);
+  const options = useMemo(() => {
+    if (!displayValue) return [];
+    const query = displayValue.trim().toLowerCase();
+    if (!query) return [];
+
+    return sets
+      .filter(
+        (set) =>
+          (set.code && set.code.toLowerCase().includes(query)) ||
+          (set.abbr && set.abbr.toLowerCase().includes(query)) ||
+          (set.name && set.name.toLowerCase().includes(query))
+      )
+      .slice(0, 10);
+  }, [displayValue, sets]);
 
   // Handle keyboard navigation and selection
   const onKeyDown = (e) => {
     if (!showDropdown) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
+      if (!options.length) return;
       setHighlight((h) => (h + 1) % options.length);
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
+      if (!options.length) return;
       setHighlight((h) => (h - 1 + options.length) % options.length);
     } else if (e.key === "Enter") {
       if (highlight >= 0 && options[highlight]) selectOption(options[highlight]);
@@ -117,11 +221,35 @@ export default function SetAutocomplete({ value, onChange, onSelect }) {
           text-light-text dark:text-dark-text
           focus:border-light-accent dark:focus:border-dark-accent
           focus:outline-none transition
-        `}
+          `}
         onChange={handleInputChange}
         onFocus={() => setShowDropdown(true)}
         onKeyDown={onKeyDown}
       />
+      {showDropdown && isLoadingSets && options.length === 0 && (
+        <div
+          className={`
+            absolute left-0 top-full w-full mt-1 rounded-xl shadow-lg z-50
+            border border-light-border dark:border-dark-border
+            bg-light-surface dark:bg-dark-surface
+            px-4 py-3 text-sm text-light-textMuted dark:text-dark-textMuted
+          `}
+        >
+          Loading sets...
+        </div>
+      )}
+      {showDropdown && fetchError && !isLoadingSets && options.length === 0 && (
+        <div
+          className={`
+            absolute left-0 top-full w-full mt-1 rounded-xl shadow-lg z-50
+            border border-light-border dark:border-dark-border
+            bg-light-surface dark:bg-dark-surface
+            px-4 py-3 text-sm text-light-textMuted dark:text-dark-textMuted
+          `}
+        >
+          Unable to load sets. Showing fallback list.
+        </div>
+      )}
       {showDropdown && options.length > 0 && (
         <ul
           id="set-autocomplete-list"
@@ -155,7 +283,7 @@ export default function SetAutocomplete({ value, onChange, onSelect }) {
               onMouseEnter={() => setHighlight(idx)}
             >
               <img
-                src={opt.logo}
+                src={opt.logo || getSetLogo(opt.name, opt.code)}
                 alt={opt.name}
                 width={56}
                 height={56}

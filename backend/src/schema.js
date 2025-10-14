@@ -21,6 +21,7 @@ import subscriptionsTypeDefs from './modules/subscriptions/typeDefs.js';
 import shippingTypeDefs from './modules/shipping/typeDefs.js';
 import adminTypeDefs from './modules/admin/typeDefs.js';
 import cardsearchTypeDefs from './modules/cardsearch/typeDefs.js';
+import alertsTypeDefs from './modules/alerts/typeDefs.js';
 
 // ---- Import resolvers from all modules ----
 import authResolvers from './modules/auth/resolvers.js';
@@ -40,6 +41,7 @@ import subscriptionsResolvers from './modules/subscriptions/resolvers.js';
 import shippingResolvers from './modules/shipping/resolvers.js';
 import adminResolvers from './modules/admin/resolvers.js';
 import cardsearchResolvers from './modules/cardsearch/resolvers.js';
+import alertsResolvers from './modules/alerts/resolvers.js';
 
 // ---- Merge all typeDefs ----
 export const typeDefs = mergeTypeDefs([
@@ -60,6 +62,7 @@ export const typeDefs = mergeTypeDefs([
   shippingTypeDefs,
   adminTypeDefs,
   cardsearchTypeDefs,
+  alertsTypeDefs,
 ]);
 
 // ---- Merge all resolvers ----
@@ -80,6 +83,7 @@ let merged = mergeResolvers([
   shippingResolvers,
   adminResolvers,
   cardsearchResolvers,
+  alertsResolvers,
   authResolvers, // put auth last so most fields win naturally
 ]);
 

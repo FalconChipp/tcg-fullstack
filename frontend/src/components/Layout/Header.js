@@ -8,6 +8,7 @@ import { AuthContext } from "../Auth/AuthProvider";
 import UserSearchDropdown from "@/components/UserProfile/UserSearch";
 import { useRouter } from "next/router";
 import NotificationBell from "@/components/Notifications/NotificationBell";
+import { useNotifications } from "@/hooks/useNotifications";
 
 // Helper for header nav links (neutral text, accent only for active/hover)
 const HeaderNavLink = ({ href, children, isActive, id }) => (
@@ -32,19 +33,16 @@ const HeaderNavLink = ({ href, children, isActive, id }) => (
 
 export default function Header({ onStartTour }) {
   const { dark, toggleDark } = useTheme();
-  const { user, setUser, loading } = useContext(AuthContext);
+  const { user, setUser, loading, token } = useContext(AuthContext);
   const [menuOpen, setMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
-
-  // Temp notifications TODO: Replace with API when ready 
-  const [notifications, setNotifications] = useState([
-    // seed with empty array; sample structure for reference:
-    // { id: 1, type: "info",    title: "Card sold!",       body: "Your Pikachu VMAX has sold.", read: false, date: "2025-07-25T18:33:00Z" },
-    // { id: 2, type: "warning", title: "Action needed",    body: "Please verify your email.",   read: false, date: "2025-07-25T16:10:00Z" },
-  ]);
+  const { items: notifications, markAllRead: markAllNotificationsRead } = useNotifications({
+    token,
+    pollMs: 45000,
+  });
 
   const router = useRouter();
   const settingsTimeoutRef = useRef(null);
@@ -67,10 +65,6 @@ export default function Header({ onStartTour }) {
     setCookie("refreshToken", "", -1);
     setUserDropdownOpen(false);
     setMenuOpen(false);
-  };
-
-  const markAllNotificationsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
   // Overlay for mobile menu
@@ -135,12 +129,12 @@ export default function Header({ onStartTour }) {
 
             {/* Right: Notifications, Auth, Settings, Mobile */}
             <div className="flex items-center gap-2 md:gap-3">
-              {/* {user && (
+              {user && (
                 <NotificationBell
                   notifications={notifications}
-                  onMarkAllRead={markAllNotificationsRead} // safe if dropdown uses it
+                  onMarkAllRead={markAllNotificationsRead}
                 />
-              )} */}
+              )}
 
               {loading ? (
                 <div className="animate-pulse h-8 w-20 bg-light-border dark:bg-dark-border rounded" />

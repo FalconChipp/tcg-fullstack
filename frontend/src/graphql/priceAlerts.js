@@ -18,7 +18,9 @@ export const ALERT_QUERIES = {
         cooldownHours
         isActive
         lastFiredAt
+        currency
         createdAt
+        updatedAt
       }
     }
   `,
@@ -28,26 +30,10 @@ export const ALERT_QUERIES = {
 
 export const ALERT_MUTATIONS = {
   UPSERT: /* GraphQL */ `
-    mutation UpsertPriceAlert(
-      $id: ID
-      $cardId: ID!
-      $variation: String
-      $condition: String!
-      $value: Float!
-      $windowHours: Int!
-      $cooldownHours: Int
-      $isActive: Boolean
-    ) {
-      upsertPriceAlert(
-        id: $id
-        cardId: $cardId
-        variation: $variation
-        condition: $condition
-        value: $value
-        windowHours: $windowHours
-        cooldownHours: $cooldownHours
-        isActive: $isActive
-      ) { id }
+    mutation UpsertPriceAlert($input: UpsertPriceAlertInput!) {
+      upsertPriceAlert(input: $input) {
+        id
+      }
     }
   `,
   DELETE: /* GraphQL */ `
@@ -56,21 +42,32 @@ export const ALERT_MUTATIONS = {
     }
   `,
   TOGGLE: /* GraphQL */ `
-    mutation TogglePriceAlert($id: ID!, $isActive: Boolean!) {
-      togglePriceAlert(id: $id, isActive: $isActive)
+    mutation TogglePriceAlert($id: ID!, $active: Boolean!) {
+      togglePriceAlert(id: $id, active: $active)
     }
   `,
 };
 
 /* ============================= HELPERS ============================ */
 
-export async function fetchMyAlerts({ token }) {
+export async function fetchMyAlerts({ token, cardId, variation } = {}) {
   const data = await executeQuery(ALERT_QUERIES.LIST, {}, token);
-  return data?.myPriceAlerts || [];
+  let list = data?.myPriceAlerts || [];
+  if (cardId) {
+    list = list.filter((row) => row.cardId === cardId);
+  }
+  if (variation !== undefined) {
+    const target = variation == null ? null : String(variation).toLowerCase();
+    list = list.filter((row) => {
+      const current = row.variation == null ? null : String(row.variation).toLowerCase();
+      return current === target;
+    });
+  }
+  return list;
 }
 
 export async function upsertAlert({ token, input }) {
-  const data = await executeQuery(ALERT_MUTATIONS.UPSERT, input, token);
+  const data = await executeQuery(ALERT_MUTATIONS.UPSERT, { input }, token);
   return data?.upsertPriceAlert?.id || null;
 }
 
@@ -80,6 +77,6 @@ export async function deleteAlert({ token, id }) {
 }
 
 export async function toggleAlert({ token, id, isActive }) {
-  const data = await executeQuery(ALERT_MUTATIONS.TOGGLE, { id, isActive }, token);
+  const data = await executeQuery(ALERT_MUTATIONS.TOGGLE, { id, active: isActive }, token);
   return data?.togglePriceAlert === true;
 }

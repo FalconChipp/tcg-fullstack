@@ -137,7 +137,7 @@ export const SET_LOGOS = {
   'Hidden Fates Shiny Vault': 'hidden-fates-logo.png',
 
   // Promo, POP, McDonald's, Rumble, etc.
-  'Wizards Black Star Promos': 'wizards-black-star-promos-logo.png',
+  'Wizards Black Star Promos': 'wizard-black-star-promos.png',
   'Nintendo Black Star Promos': 'nintendo-black-star-promos-logo.png',
   'DP Black Star Promos': 'dp-black-star-promos-logo.png',
   'HGSS Black Star Promos': 'hgss-black-star-promos-logo.png',

@@ -81,9 +81,12 @@ export default function SetAutocomplete({ value, onChange, onSelect }) {
           if (seenCodes.has(key)) return;
           seenCodes.add(key);
 
+          const fallback = fallbackSetList.find((s) => String(s.code).toLocaleLowerCase() === key);
+          const abbr = set.abbr ?? (fallback ? fallback.abbr : null); 
+
           normalized.push({
             code,
-            abbr: set.abbr ?? null,
+            abbr,
             name,
             logo: getSetLogo(name, code),
             series: set.series ?? null,

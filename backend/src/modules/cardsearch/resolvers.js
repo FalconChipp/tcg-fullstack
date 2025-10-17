@@ -14,27 +14,32 @@ import {
 import qb from "./services/queryBuilder.service.js";
 import { computeRollupsSnapshot } from "./services/rollup.service.js";
 import { fetchPriceHistory } from "./services/history.service.js";
+import { getAbbrForTcgdex } from "./services/setMapping.service.js";
+
+/* ---------------- image helpers (unchanged) ---------------- */
 
 function buildHighResImageUrl(raw) {
   if (!raw) return null;
   let url = String(raw).trim();
   if (!url) return null;
-  url = url.replace(/\\/g, '/').replace(/\/+$/, '');
-  if (url.toLowerCase().endsWith('/high.webp')) return url;
-  url = url.replace(/\.(png|jpe?g|webp)$/i, '');
-  return url + '/high.webp';
+  url = url.replace(/\\/g, "/").replace(/\/+$/, "");
+  if (url.toLowerCase().endsWith("/high.webp")) return url;
+  url = url.replace(/\.(png|jpe?g|webp)$/i, "");
+  return url + "/high.webp";
 }
 
 function buildCardImages(row) {
-  let source = row?.images?.large
-    ?? row?.images?.small
-    ?? row?.image_large
-    ?? row?.image_small;
+  let source =
+    row?.images?.large ??
+    row?.images?.small ??
+    row?.image_large ??
+    row?.image_small;
+
   if (!source) {
     const setCode = row?.setCode ?? row?.set_code ?? null;
     const number = row?.number ?? row?.cardNumber ?? null;
     if (setCode && number) {
-      const family = setCode.replace(/[^a-z]/gi, '').toLowerCase() || setCode.toLowerCase();
+      const family = setCode.replace(/[^a-z]/gi, "").toLowerCase() || setCode.toLowerCase();
       const normalizedSet = setCode.toLowerCase();
       source = `https://assets.tcgdex.net/en/${family}/${normalizedSet}/${number}`;
     }
@@ -44,6 +49,9 @@ function buildCardImages(row) {
   if (!highRes) return { small: null, large: null };
   return { small: null, large: highRes };
 }
+
+/* ---------------- resolvers ---------------- */
+
 const resolvers = {
   Query: {
     async cardsearchSearchCards(_, { input }) {
@@ -123,9 +131,10 @@ const resolvers = {
     async cardsearchPriceRollupsAll(_, { cardId, variants, windows }) {
       if (!cardId) return [];
 
-      let variantList = Array.isArray(variants) && variants.length
-        ? variants.map((v) => String(v).trim().toLowerCase()).filter(Boolean)
-        : [];
+      let variantList =
+        Array.isArray(variants) && variants.length
+          ? variants.map((v) => String(v).trim().toLowerCase()).filter(Boolean)
+          : [];
 
       if (!variantList.length) {
         try {
@@ -135,10 +144,10 @@ const resolvers = {
             raw: true,
           });
           variantList = rows.length
-            ? rows.map((row) => String(row.variant || 'normal').toLowerCase())
-            : ['normal'];
+            ? rows.map((row) => String(row.variant || "normal").toLowerCase())
+            : ["normal"];
         } catch {
-          variantList = ['normal'];
+          variantList = ["normal"];
         }
       }
 
@@ -150,8 +159,7 @@ const resolvers = {
         seen.add(key);
         unique.push(key);
       }
-
-      if (!unique.length) unique.push('normal');
+      if (!unique.length) unique.push("normal");
 
       const opts = { windows };
       const out = [];
@@ -159,9 +167,9 @@ const resolvers = {
         const rollup = await loadPriceRollups(cardId, variantKey, opts);
         if (rollup) out.push(rollup);
       }
-
       return out;
     },
+
     async cardsearchPriceObservations(_, { cardId, variant, startDate, endDate, limit = 365, offset = 0 }) {
       if (!cardId) return [];
 
@@ -195,7 +203,8 @@ const resolvers = {
         abbr: r.abbr ?? null,
         name: r.name,
         series: r.series ?? null,
-        releasedAt: r.released_at ?? null,
+        // CHANGED: coalesce released_at / release_date so either schema works
+        releasedAt: r.released_at ?? r.release_date ?? null,
         total: r.total ?? null,
         lang: r.lang ?? null,
       };
@@ -203,20 +212,25 @@ const resolvers = {
 
     async cardsearchSets(_, { query, limit = 100, offset = 0 }) {
       const where = qb.buildSetWhere({ query });
+
+      // CHANGED: avoid ordering by a possibly-missing release column.
+      // We sort by code here and let the client do era/promo/numeric ordering.
       const rows = await m_Set.findAll({
         where,
-        order: [["release_date", "DESC"]],
+        order: [["code", "ASC"]], // was [["release_date","DESC"]] or released_at in some envs
         limit: Math.max(1, Math.min(500, Number(limit))),
         offset: Math.max(0, Number(offset)),
       });
+
       return rows.map((r) => {
         const x = r.get();
         return {
           code: x.code,
-          abbr: x.abbr ?? null,
+          abbr: x.abbr ?? x.abbreviation ?? getAbbrForTcgdex(x.code) ?? null,
           name: x.name,
           series: x.series ?? null,
-          releasedAt: x.released_at ?? null,
+          // CHANGED: coalesce
+          releasedAt: x.released_at ?? x.release_date ?? null,
           total: x.total ?? null,
           lang: x.lang ?? null,
         };
@@ -245,7 +259,8 @@ const resolvers = {
           abbr: r.abbr ?? null,
           name: r.name,
           series: r.series ?? null,
-          releasedAt: r.released_at ?? null,
+          // CHANGED: coalesce
+          releasedAt: r.released_at ?? r.release_date ?? null,
           total: r.total ?? null,
           lang: r.lang ?? null,
         },
@@ -283,15 +298,14 @@ const resolvers = {
         abbr: r.abbr ?? null,
         name: r.name,
         series: r.series ?? null,
-        releasedAt: r.released_at ?? null,
+        // CHANGED: coalesce
+        releasedAt: r.released_at ?? r.release_date ?? null,
         total: r.total ?? null,
         lang: r.lang ?? null,
       };
     },
 
     async variants(parent) {
-      // If you want this batched later, you can wire dataloaders back in;
-      // for now direct read keeps it self-contained.
       const { m_CardVariant } = await import("../../models/index.js");
       const rows = await m_CardVariant.findAll({
         where: { card_id: parent.cardId },
@@ -318,13 +332,14 @@ const resolvers = {
       const cardId = parent.cardId || parent.id || null;
       if (!cardId) return [];
 
-      let variantList = Array.isArray(variants) && variants.length
-        ? variants.map((v) => String(v).trim().toLowerCase()).filter(Boolean)
-        : [];
+      let variantList =
+        Array.isArray(variants) && variants.length
+          ? variants.map((v) => String(v).trim().toLowerCase()).filter(Boolean)
+          : [];
 
       if (!variantList.length && Array.isArray(parent.variants) && parent.variants.length) {
         variantList = parent.variants
-          .map((v) => (typeof v === 'string' ? v : v.variant))
+          .map((v) => (typeof v === "string" ? v : v.variant))
           .filter(Boolean)
           .map((v) => String(v).toLowerCase());
       }
@@ -332,13 +347,13 @@ const resolvers = {
       if (!variantList.length) {
         try {
           const resolved = await resolvers.CardsearchCard.variants(parent);
-          variantList = resolved.map((v) => String(v.variant || 'normal').toLowerCase());
+          variantList = resolved.map((v) => String(v.variant || "normal").toLowerCase());
         } catch {
           variantList = [];
         }
       }
 
-      if (!variantList.length) variantList = ['normal'];
+      if (!variantList.length) variantList = ["normal"];
 
       const seen = new Set();
       const unique = [];
@@ -348,8 +363,7 @@ const resolvers = {
         seen.add(key);
         unique.push(key);
       }
-
-      if (!unique.length) unique.push('normal');
+      if (!unique.length) unique.push("normal");
 
       const opts = { windows };
       const out = [];
@@ -357,9 +371,9 @@ const resolvers = {
         const rollup = await loadPriceRollups(cardId, variantKey, opts);
         if (rollup) out.push(rollup);
       }
-
       return out;
     },
+
     async latestPrices(parent) {
       const rows = await m_PriceLatest.findAll({
         where: { card_id: parent.cardId },
@@ -383,13 +397,13 @@ const resolvers = {
         };
       };
 
-      const normalize = (value) => String(value ?? '').trim().toLowerCase();
+      const normalize = (value) => String(value ?? "").trim().toLowerCase();
 
       let allowed = null;
       if (Array.isArray(parent.variants) && parent.variants.length) {
         allowed = new Set(
           parent.variants
-            .map((v) => (typeof v === 'string' ? v : v?.variant))
+            .map((v) => (typeof v === "string" ? v : v?.variant))
             .filter(Boolean)
             .map(normalize)
         );
@@ -403,9 +417,7 @@ const resolvers = {
         });
         if (variantRows.length) {
           allowed = new Set(
-            variantRows
-              .map((row) => normalize(row.variant))
-              .filter(Boolean)
+            variantRows.map((row) => normalize(row.variant)).filter(Boolean)
           );
         }
       }
@@ -441,14 +453,12 @@ const resolvers = {
   },
 };
 
-
+/* ---------------- shared helpers (unchanged logic) ---------------- */
 
 function normalizeWindowList(value) {
   if (value == null) return null;
   const arr = Array.isArray(value) ? value : [value];
-  const parsed = arr
-    .map((n) => Number(n))
-    .filter((n) => Number.isFinite(n) && n > 0);
+  const parsed = arr.map((n) => Number(n)).filter((n) => Number.isFinite(n) && n > 0);
   if (!parsed.length) return null;
   return Array.from(new Set(parsed)).sort((a, b) => a - b);
 }
@@ -525,18 +535,23 @@ async function loadPriceRollups(cardId, variant, { windows } = {}) {
         attributes: ["variant"],
         raw: true,
       });
-      resolvedVariant = row ? String(row.variant || 'normal').toLowerCase() : 'normal';
+      resolvedVariant = row ? String(row.variant || "normal").toLowerCase() : "normal";
     } catch {
-      resolvedVariant = 'normal';
+      resolvedVariant = "normal";
     }
   }
 
   let rows = null;
   try {
-    const computed = await computeRollupsSnapshot(cardId, resolvedVariant, requestedWindows ? { windows: requestedWindows } : {});
+    const computed = await computeRollupsSnapshot(
+      cardId,
+      resolvedVariant,
+      requestedWindows ? { windows: requestedWindows } : {}
+    );
     if (Array.isArray(computed) && computed.length) {
       const mapped = computed.map(mapComputedRollupRow).filter(Boolean);
-      const hasMeaningfulHistory = mapped.some((r) => (r.count ?? 0) > 1 || (r.avg != null && (r.count ?? 0) > 0));
+      const hasMeaningfulHistory =
+        mapped.some((r) => (r.count ?? 0) > 1 || (r.avg != null && (r.count ?? 0) > 0));
       const hasLatest = mapped.some((r) => r.latest != null);
       if (mapped.length && (hasMeaningfulHistory || hasLatest)) {
         rows = mapped;
@@ -547,7 +562,7 @@ async function loadPriceRollups(cardId, variant, { windows } = {}) {
   }
 
   if (!rows || !rows.length) {
-    rows = await loadRollupsFromTable(cardId, resolvedVariant, requestedWindows) ?? [];
+    rows = (await loadRollupsFromTable(cardId, resolvedVariant, requestedWindows)) ?? [];
   }
 
   if (!rows.length) return null;
@@ -561,17 +576,17 @@ async function loadPriceRollups(cardId, variant, { windows } = {}) {
 }
 
 function toNumber(value) {
-  const n = typeof value === 'number' ? value : Number(value);
+  const n = typeof value === "number" ? value : Number(value);
   return Number.isFinite(n) ? n : null;
 }
 
 function assembleRollup(cardId, variant, rows) {
   if (!rows || !rows.length) return null;
-  const normalizedVariant = String(variant || rows[0]?.variant || 'normal').toLowerCase();
+  const normalizedVariant = String(variant || rows[0]?.variant || "normal").toLowerCase();
   const out = {
     cardId,
     variant: normalizedVariant,
-    currency: 'GBP',
+    currency: "GBP",
     latest: null,
     d1: null,
     d7: null,
@@ -604,8 +619,15 @@ function assembleRollup(cardId, variant, rows) {
       changePct,
     };
 
-    const rLatest = toNumber(r.latest ?? r.last_gbp ?? r.latest_market ?? r.latest_mid ?? avg);
-    const rLatestDate = r.latestDate ?? r.latest_date ?? endDate ?? startDate ?? (r.computed_at ? new Date(r.computed_at).toISOString().slice(0, 10) : null);
+    const rLatest = toNumber(
+      r.latest ?? r.last_gbp ?? r.latest_market ?? r.latest_mid ?? avg
+    );
+    const rLatestDate =
+      r.latestDate ??
+      r.latest_date ??
+      endDate ??
+      startDate ??
+      (r.computed_at ? new Date(r.computed_at).toISOString().slice(0, 10) : null);
 
     if (latestCandidate == null && rLatest != null) {
       latestCandidate = rLatest;
@@ -613,10 +635,10 @@ function assembleRollup(cardId, variant, rows) {
     }
 
     const key = String(windowDays);
-    if (key === '1' && !out.d1) out.d1 = windowObj;
-    else if (key === '7' && !out.d7) out.d7 = windowObj;
-    else if (key === '30' && !out.d30) out.d30 = windowObj;
-    else if (key === '90' && !out.d90) out.d90 = windowObj;
+    if (key === "1" && !out.d1) out.d1 = windowObj;
+    else if (key === "7" && !out.d7) out.d7 = windowObj;
+    else if (key === "30" && !out.d30) out.d30 = windowObj;
+    else if (key === "90" && !out.d90) out.d90 = windowObj;
   }
 
   if (!out.latest && latestCandidate != null) {
@@ -633,15 +655,3 @@ function assembleRollup(cardId, variant, rows) {
 }
 
 export default resolvers;
-
-
-
-
-
-
-
-
-
-
-
-

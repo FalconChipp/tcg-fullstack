@@ -1,16 +1,15 @@
 // src/modules/cardsearch/services/queryBuilder.service.js
 // Query builder helpers for Card Search.
-// - Centralizes predicates for the six query modes: Name, Name+Set, Name+Number, Number+Set, Number, Set
-// - Handles pagination + ordering
-// - Resolves set inputs via setMapping + DB fallback
-// - Dialect-aware case-insensitive matching (Postgres uses iLike; others emulate via LOWER(...))
-// - Pure build functions returning { where, order, limit, offset, include } for Sequelize calls.
 //
-// Usage:
-//   import qb from "./queryBuilder.service.js";
-//   const { where, order, limit, offset, include } = await qb.buildCardQuery(input);
-//   const total = await m_Card.count({ where });
-//   const rows  = await m_Card.findAll({ where, order, limit, offset, include });
+// ✅ What’s in this version
+// - Keeps your public API the same
+// - Case-insensitive LIKE/equals helpers (dialect-aware)
+// - Robust set matching by name/code/**abbreviation or abbr** (works if either column exists)
+// - ❗ FIX: Abbreviation typed in the Name box now works by OR-ing the name-tokens group
+//          with an abbr-derived set_code IN (...) group (instead of AND-ing).
+// - Fully-qualified columns for joins to avoid ambiguity
+//
+// NOTE: Places marked with // CHANGED show exactly what I altered.
 
 import { Op, fn, col, where as sqlWhere, literal } from "sequelize";
 import { sequelize, m_Set } from "../../../models/index.js";
@@ -40,7 +39,7 @@ export function normalizePagination(input, opts = {}) {
 
 /**
  * Build ORDER BY for cards.
- * NOTE: use literals with fully-qualified names to avoid driver quoting issues.
+ * Use literals with fully-qualified names to avoid driver quoting issues.
  */
 export function buildOrder(orderBy) {
   const by = String(orderBy || "RELEVANCE").toUpperCase();
@@ -83,6 +82,11 @@ export function buildSetJoinInclude() {
 /**
  * Build WHERE for m_Card given name/number/set inputs (fuzzy AND tokenized name).
  * Qualify card columns to avoid ambiguity with the m_Set join.
+ *
+ * CHANGED (abbr-name OR fix):
+ * - We now create a nameGroup (AND of tokens or exact) and, if the input looks
+ *   like a short token, compute an abbrGroup (set_code IN ...). These are combined as
+ *   a single top-level OR sibling that is itself AND-ed with other predicates.
  */
 export async function buildCardWhere(input) {
   const name = norm(input?.name, { collapse: true });
@@ -90,40 +94,71 @@ export async function buildCardWhere(input) {
   const setInput = norm(input?.set);
   const fuzzy = input?.fuzzy !== false; // default true
 
-  const predicates = [];
+  // We'll collect "AND-level" predicates here (set/number filters, etc.)
+  const andPredicates = [];
 
   // SET filtering (resolve via mapping + DB)
   if (setInput) {
     const setCode = await resolveSetCode(setInput);
-    if (setCode) predicates.push({ set_code: setCode }); // on m_Card
+    if (setCode) andPredicates.push({ set_code: setCode }); // on m_Card
   }
 
-  // NUMBER filtering (exact)
+  // NUMBER filtering (exact) with tolerant padding
   if (number) {
-    // Accept numbers entered without leading zeros by matching padded variants.
     const variants = buildNumberQueryVariants(number);
-    const variantPredicates = variants.map((value) => ciEqualPredicate("m_Card.number", value));
+    const variantPredicates = variants.map((value) =>
+      ciEqualPredicate("m_Card.number", value) // qualified
+    );
     if (variantPredicates.length === 1) {
-      predicates.push(variantPredicates[0]);
+      andPredicates.push(variantPredicates[0]);
     } else if (variantPredicates.length > 1) {
-      predicates.push({ [Op.or]: variantPredicates });
+      andPredicates.push({ [Op.or]: variantPredicates });
     }
   }
 
-  // NAME filtering
+  // NAME filtering + OR with possible abbreviation-derived set filter
   if (name) {
+    // Build the name AND-group first (existing behavior)
+    let nameGroup = null;
     if (fuzzy) {
       const toks = tokenizeName(name);
+      const andTok = [];
       for (const t of toks) {
         const like = `%${t}%`;
-        predicates.push(ciLikePredicate("m_Card.name", like));   // CHANGED: qualified
+        andTok.push(ciLikePredicate("m_Card.name", like)); // qualified
       }
+      if (andTok.length) nameGroup = { [Op.and]: andTok };
     } else {
-      predicates.push(ciEqualPredicate("m_Card.name", name));    // CHANGED: qualified
+      nameGroup = ciEqualPredicate("m_Card.name", name);   // qualified
+    }
+
+    // CHANGED: treat the free-text name as potential set abbreviation (EVS, SIT, etc.)
+    // Only attempt for reasonably short tokens to avoid wide scans.
+    let orGroup = null;
+    const token = String(name).trim();
+    if (token && token.length <= 6) {
+      const abbrCodes = await findSetCodesByAbbreviationLike(token);
+      if (abbrCodes.length) {
+        const abbrGroup = { set_code: { [Op.in]: abbrCodes } };
+        // CHANGED: put nameGroup and abbrGroup together under a single OR
+        if (nameGroup) {
+          orGroup = { [Op.or]: [nameGroup, abbrGroup] };
+        } else {
+          orGroup = abbrGroup;
+        }
+      }
+    }
+
+    // If we built an OR group, AND it at the top-level.
+    // Otherwise, just AND the nameGroup like before.
+    if (orGroup) {
+      andPredicates.push(orGroup); // CHANGED
+    } else if (nameGroup) {
+      andPredicates.push(nameGroup);
     }
   }
 
-  return predicates.length ? { [Op.and]: predicates } : {};
+  return andPredicates.length ? { [Op.and]: andPredicates } : {};
 }
 
 /**
@@ -135,12 +170,13 @@ export async function buildCardQuery(input) {
   const { limit, offset } = normalizePagination(input);
   const include = buildSetJoinInclude();
 
-  const orderBy = String(input?.orderBy || '').toUpperCase();
-  const hasExplicitOrder = !!orderBy && orderBy !== 'RELEVANCE';
+  // Preserve your helpful default: when we search only by set, order by number asc
+  const orderBy = String(input?.orderBy || "").toUpperCase();
+  const hasExplicitOrder = !!orderBy && orderBy !== "RELEVANCE";
   const hasName = !!norm(input?.name, { collapse: true });
   const hasSet = !!norm(input?.set);
   if (!hasExplicitOrder && hasSet && !hasName) {
-    order = [[literal('`m_Card`.`number`'), 'ASC']];
+    order = [[literal("`m_Card`.`number`"), "ASC"]];
   }
 
   return { where, order, limit, offset, include };
@@ -149,6 +185,9 @@ export async function buildCardQuery(input) {
 /**
  * WHERE builder for m_Set listing with simple name/abbreviation/code contains.
  * NOTE: used on m_Set lookups only, so no alias qualification needed here.
+ *
+ * CHANGED:
+ * - Support BOTH 'abbreviation' and 'abbr' (whichever exists in the schema).
  */
 export function buildSetWhere(input) {
   const q = norm(input?.query, { collapse: true });
@@ -157,8 +196,10 @@ export function buildSetWhere(input) {
 
   const ors = [
     ciLikePredicate("name", like),
-    ciLikePredicate("abbreviation", like), // CHANGED: model uses 'abbreviation'
     ciLikePredicate("code", like),
+    // CHANGED: support either column name transparently
+    ciLikePredicate("abbreviation", like),
+    ciLikePredicate("abbr", like),
   ];
 
   return { [Op.or]: ors };
@@ -201,10 +242,14 @@ function buildNumberQueryVariants(value) {
 
 /**
  * Resolve a user-provided set input (abbr | tcgdex | ptcg | name fragment) to canonical tcgdex code.
+ *
  * Strategy:
  *   1) setMapping.resolveSet(input) → mapping.tcgdex (fast path)
  *   2) direct code match in DB (case-insensitive)
- *   3) name/abbreviation contains in DB (case-insensitive)
+ *   3) name/**abbreviation or abbr** contains in DB (case-insensitive)
+ *   4) fallback: resolveToTcgdex(input) or raw
+ *
+ * CHANGED: step 3 now checks BOTH 'abbreviation' and 'abbr'.
  */
 async function resolveSetCode(input) {
   const mapping = resolveSet(input);
@@ -214,28 +259,52 @@ async function resolveSetCode(input) {
   if (!raw) return null;
 
   // 2) Try exact code match in DB (case-insensitive)
-  const codeCi = await m_Set.findOne({
-    where: ciEqualPredicate("code", raw),
-    attributes: ["code"],
-  }).catch(() => null);
+  const codeCi = await m_Set
+    .findOne({
+      where: ciEqualPredicate("code", raw),
+      attributes: ["code"],
+    })
+    .catch(() => null);
   if (codeCi) return codeCi.get("code");
 
-  // 3) Fallback: name/abbreviation contains
+  // 3) Fallback: name/abbreviation(or abbr) contains
   const like = `%${raw}%`;
-  const byMeta = await m_Set.findOne({
+  const byMeta = await m_Set
+    .findOne({
+      where: {
+        [Op.or]: [
+          ciLikePredicate("name", like),
+          ciLikePredicate("abbreviation", like), // CHANGED
+          ciLikePredicate("abbr", like),         // CHANGED
+        ],
+      },
+      attributes: ["code"],
+    })
+    .catch(() => null);
+  if (byMeta) return byMeta.get("code");
+
+  // 4) As-is (user already supplied a tcgdex code or alias)
+  const tcgdex = resolveToTcgdex(input) || raw;
+  return tcgdex;
+}
+
+/**
+ * Helper: return set codes whose abbreviation/abbr LIKE token (case-insensitive).
+ * Used to make card queries discoverable by typing set abbreviations.
+ */
+async function findSetCodesByAbbreviationLike(token) {
+  const like = `%${norm(token)}%`;
+  const rows = await m_Set.findAll({
     where: {
       [Op.or]: [
-        ciLikePredicate("name", like),
         ciLikePredicate("abbreviation", like),
+        ciLikePredicate("abbr", like),
       ],
     },
     attributes: ["code"],
-  }).catch(() => null);
-  if (byMeta) return byMeta.get("code");
-
-  // As-is (user already supplied a tcgdex code)
-  const tcgdex = resolveToTcgdex(input) || raw;
-  return tcgdex;
+    raw: true,
+  }).catch(() => []);
+  return rows.map((r) => String(r.code).toLowerCase());
 }
 
 /**
@@ -248,7 +317,9 @@ function ciLikePredicate(field, likePattern) {
     return { [field]: { [Op.iLike]: likePattern } };
   }
   // Emulate case-insensitive LIKE: LOWER(field) LIKE LOWER(pattern)
-  return sqlWhere(fn("LOWER", col(field)), { [Op.like]: String(likePattern).toLowerCase() });
+  return sqlWhere(fn("LOWER", col(field)), {
+    [Op.like]: String(likePattern).toLowerCase(),
+  });
 }
 
 /**

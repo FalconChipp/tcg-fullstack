@@ -343,7 +343,6 @@ function mergeCardLists(existing, incoming) {
   return base;
 }
 
-
 // A stable key for the current search params to keep separate result buckets
 function makeQueryKey({ name, setCode, number }) {
   return JSON.stringify({
@@ -377,7 +376,10 @@ export default function CardSearch() {
   const [selectedCardDetail, setSelectedCardDetail] = useState(null);
   const [showCardDetail, setShowCardDetail] = useState(false);
   const [cardDetailData, setCardDetailData] = useState(null);
+
+  // Track which images finished loading at least once
   const [imageLoadedMap, setImageLoadedMap] = useState({});
+
   const [hasSearched, setHasSearched] = useState(false);
 
   const isExactCardSearch = Boolean(setCode && number);
@@ -399,15 +401,21 @@ export default function CardSearch() {
   const currentKey = useMemo(() => makeQueryKey({ name, setCode, number }), [name, setCode, number]);
   const activeError = searchError || error || null;
 
-  useEffect(() => {
-    setImageLoadedMap({});
-  }, [currentKey]);
+  // FIX: Remove the effect that cleared imageLoadedMap on every param change.
+  // That was causing all images to flip back to "unloaded" while old results were still visible,
+  // and because cached images may not fire onLoadingComplete again, they stayed hidden under the overlay.
+  //
+  // ❌ BAD (removed):
+  // useEffect(() => {
+  //   setImageLoadedMap({});
+  // }, [currentKey]);
 
   const showStatusMessage = (type, message) => {
     setStatusMessage({ type, message });
     setTimeout(() => setStatusMessage(null), 5000);
   };
 
+  // FIX: keep idempotent marking; no change here
   const markImageLoaded = useCallback((id) => {
     if (!id) return;
     setImageLoadedMap((prev) => (prev[id] ? prev : { ...prev, [id]: true }));
@@ -431,11 +439,16 @@ export default function CardSearch() {
         setIsLoadingMore(false);
       });
     } else {
+      // NOTE: If you prefer zero flicker while searching new params,
+      // comment out this block to keep old results visible until new data arrives.
       startTransition(() => {
-        setResults([]); // clean slate
+        setResults([]); // clean slate (current behavior)
         setHasMore(false);
         setIsLoadingMore(false);
       });
+
+      // FIX (optional): If you DO want to clear the grid here, DO NOT clear imageLoadedMap.
+      // We intentionally keep previously "loaded" flags so cached images stay visible when re-used.
     }
 
     const limit = isExactCardSearch
@@ -472,7 +485,7 @@ export default function CardSearch() {
       pageSize,
     };
 
-      bucketsRef.current.set(key, bucketNext);
+    bucketsRef.current.set(key, bucketNext);
 
     // Only update visible list if the user is still on the same query
     if (lastKeyRef.current === key) {
@@ -725,157 +738,165 @@ export default function CardSearch() {
 
         {/* Results */}
         {loading && results.length === 0 ? (
-  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-    {Array.from({ length: 4 }).map((_, idx) => (
-      <div className="bg-light-surface dark:bg-dark-surface rounded-2xl shadow flex flex-col p-3 min-h-[300px]" key={idx}>
-        <div className="w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-xl mb-3 relative shimmer"></div>
-        <div className="mt-2 flex flex-col gap-2">
-          <div className="h-3.5 bg-light-alt dark:bg-dark-alt rounded w-full shimmer"></div>
-          <div className="h-3.5 bg-light-alt dark:bg-dark-alt rounded w-3/4 shimmer"></div>
-          <div className="h-3.5 bg-light-alt dark:bg-dark-alt rounded w-1/2 shimmer"></div>
-        </div>
-      </div>
-    ))}
-  </div>
-  ) : results.length > 0 ? (
-    <div>
-      <h2 className="text-xl font-bold mb-6 ml-1">Search Results</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {results.map((card, idx) => {
-          const best = getBestPrice(card.prices);
-          const averagePrice = computeAveragePrice(best);
-          const setKey = card.set || card.setCode || '';
-          const numKey = card.number || '';
-          const fallbackKey = `${setKey}-${numKey}`.trim();
-          const imageKey = card.id || card.cardId || (fallbackKey && fallbackKey !== '-' ? fallbackKey : `card-${idx}`);
-          const isLoaded = !!imageLoadedMap[imageKey];
-          const isPriority = idx < 8;
-          return (
-            <div
-              className="bg-light-surface dark:bg-dark-surface rounded-2xl shadow hover:shadow-2xl flex flex-col p-3 min-h-[320px] transition border border-light-border dark:border-dark-border"
-              key={imageKey}
-              onClick={() => handleCardDetail(card)}
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") handleCardDetail(card);
-              }}
-              role="button"
-              aria-label={`View details for ${card.name}`}
-            >
-              <div className="relative w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-xl mb-3 overflow-hidden">
-                <div
-                  className={`absolute inset-0 rounded-xl transition-opacity duration-300 ${isLoaded ? 'opacity-0' : 'opacity-100 animate-pulse bg-gradient-to-br from-light-alt/70 via-light-surface to-light-surface dark:from-dark-alt/70 dark:via-dark-surface dark:to-dark-surface'}`}
-                />
-                <Image
-                  src={card.tcgImageUrl || card.image}
-                  alt={card.name}
-                  fill
-                  sizes="(max-width: 640px) 100vw,
-                        (max-width: 1024px) 50vw,
-                        (max-width: 1280px) 33vw,
-                        25vw"
-                  className={`object-contain object-center rounded-xl transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
-                  onLoadingComplete={() => markImageLoaded(imageKey)}
-                  {...(isPriority ? { priority: true } : { loading: 'lazy' })}
-                />
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {Array.from({ length: 4 }).map((_, idx) => (
+              <div className="bg-light-surface dark:bg-dark-surface rounded-2xl shadow flex flex-col p-3 min-h-[300px]" key={idx}>
+                <div className="w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-xl mb-3 relative shimmer"></div>
+                <div className="mt-2 flex flex-col gap-2">
+                  <div className="h-3.5 bg-light-alt dark:bg-dark-alt rounded w-full shimmer"></div>
+                  <div className="h-3.5 bg-light-alt dark:bg-dark-alt rounded w-3/4 shimmer"></div>
+                  <div className="h-3.5 bg-light-alt dark:bg-dark-alt rounded w-1/2 shimmer"></div>
+                </div>
               </div>
-              <div className="flex flex-col gap-1">
-                <div className="flex justify-between items-start gap-2">
-                  <span className="text-base font-bold flex-1 truncate">{card.name}</span>
-                  <img
-                    src={getSetLogo(card.setName, card.set)}
-                    alt={card.setName || "Set logo"}
-                    className="w-8 h-5 rounded bg-light-alt dark:bg-dark-alt"
-                    onError={(e) => {
-                      e.currentTarget.onerror = null;
-                      e.currentTarget.src = FALLBACK_SYMBOL_IMAGE;
-                    }}
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </div>
-                <div className="flex justify-between text-sm text-light-textMuted dark:text-dark-textMuted">
-                  <span className="whitespace-nowrap">{card.setName}</span>
-                  <span className="font-semibold">#{card.number}</span>
-                </div>
+            ))}
+          </div>
+        ) : results.length > 0 ? (
+          <div>
+            <h2 className="text-xl font-bold mb-6 ml-1">Search Results</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {results.map((card, idx) => {
+                const best = getBestPrice(card.prices);
+                const averagePrice = computeAveragePrice(best);
+                const setKey = card.set || card.setCode || '';
+                const numKey = card.number || '';
+                const fallbackKey = `${setKey}-${numKey}`.trim();
+                const imageKey = card.id || card.cardId || (fallbackKey && fallbackKey !== '-' ? fallbackKey : `card-${idx}`);
 
-                <div className="flex gap-3 text-sm my-1">
-                  <div>
-                    <span className="font-bold text-light-accent dark:text-dark-accent">Average</span>
-                    <span className="font-semibold ml-1 text-light-text dark:text-dark-text">
-                      {formatGBP(averagePrice)}
-                    </span>
+                // FIX: Do NOT force images to "not loaded" just because params changed.
+                // We no longer reset imageLoadedMap, so preserve whatever we've learned.
+                // To be extra robust against cached images not firing onLoadingComplete,
+                // we treat unknown keys as "not yet known" (false) but also wire both onLoad and onLoadingComplete below.
+                const isLoaded = !!imageLoadedMap[imageKey];
+                const isPriority = idx < 8;
+
+                return (
+                  <div
+                    className="bg-light-surface dark:bg-dark-surface rounded-2xl shadow hover:shadow-2xl flex flex-col p-3 min-h-[320px] transition border border-light-border dark:border-dark-border"
+                    key={imageKey}
+                    onClick={() => handleCardDetail(card)}
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") handleCardDetail(card);
+                    }}
+                    role="button"
+                    aria-label={`View details for ${card.name}`}
+                  >
+                    <div className="relative w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-xl mb-3 overflow-hidden">
+                      <div
+                        className={`absolute inset-0 rounded-xl transition-opacity duration-300 ${isLoaded ? 'opacity-0' : 'opacity-100 animate-pulse bg-gradient-to-br from-light-alt/70 via-light-surface to-light-surface dark:from-dark-alt/70 dark:via-dark-surface dark:to-dark-surface'}`}
+                      />
+                      <Image
+                        src={card.tcgImageUrl || card.image}
+                        alt={card.name}
+                        fill
+                        sizes="(max-width: 640px) 100vw,
+                              (max-width: 1024px) 50vw,
+                              (max-width: 1280px) 33vw,
+                              25vw"
+                        className={`object-contain object-center rounded-xl transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+                        // FIX: mark loaded on both events to cover cached images reliably
+                        onLoadingComplete={() => markImageLoaded(imageKey)}
+                        onLoad={() => markImageLoaded(imageKey)}
+                        {...(isPriority ? { priority: true } : { loading: 'lazy' })}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex justify-between items-start gap-2">
+                        <span className="text-base font-bold flex-1 truncate">{card.name}</span>
+                        <img
+                          src={getSetLogo(card.setName, card.set)}
+                          alt={card.setName || "Set logo"}
+                          className="w-8 h-5 rounded bg-light-alt dark:bg-dark-alt"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = FALLBACK_SYMBOL_IMAGE;
+                          }}
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      </div>
+                      <div className="flex justify-between text-sm text-light-textMuted dark:text-dark-textMuted">
+                        <span className="whitespace-nowrap">{card.setName}</span>
+                        <span className="font-semibold">#{card.number}</span>
+                      </div>
+
+                      <div className="flex gap-3 text-sm my-1">
+                        <div>
+                          <span className="font-bold text-light-accent dark:text-dark-accent">Average</span>
+                          <span className="font-semibold ml-1 text-light-text dark:text-dark-text">
+                            {formatGBP(averagePrice)}
+                          </span>
+                        </div>
+                        {best?.variation && best.variation !== "normal" ? (
+                          <span className="ml-1 text-xs text-light-textMuted dark:text-dark-textMuted">
+                            ({formatVariation(best.variation)})
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedCardDetail(card);
+                            setPanelOpen(true);
+                          }}
+                          className="rounded-lg px-4 py-2 bg-light-accent dark:bg-dark-accent text-light-surface dark:text-dark-surface font-semibold hover:bg-light-accentLight dark:hover:bg-dark-accentLight hover:text-light-surface dark:hover:text-dark-surface transition"
+                        >
+                          Add
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddToWishlist(card);
+                          }}
+                          className="rounded-lg px-4 py-2 border-2 border-light-accent dark:border-dark-accent text-light-accent dark:text-dark-accent font-semibold hover:bg-light-accent dark:hover:bg-dark-accent hover:text-light-surface dark:hover:text-dark-surface transition"
+                        >
+                          Wishlist
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  {best?.variation && best.variation !== "normal" ? (
-                    <span className="ml-1 text-xs text-light-textMuted dark:text-dark-textMuted">
-                      ({formatVariation(best.variation)})
-                    </span>
-                  ) : null}
-                </div>
-
-                <div className="flex gap-2 mt-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedCardDetail(card);
-                      setPanelOpen(true);
-                    }}
-                    className="rounded-lg px-4 py-2 bg-light-accent dark:bg-dark-accent text-light-surface dark:text-dark-surface font-semibold hover:bg-light-accentLight dark:hover:bg-dark-accentLight hover:text-light-surface dark:hover:text-dark-surface transition"
-                  >
-                    Add
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAddToWishlist(card);
-                    }}
-                    className="rounded-lg px-4 py-2 border-2 border-light-accent dark:border-dark-accent text-light-accent dark:text-dark-accent font-semibold hover:bg-light-accent dark:hover:bg-dark-accent hover:text-light-surface dark:hover:text-dark-surface transition"
-                  >
-                    Wishlist
-                  </button>
-                </div>
-              </div>
+                );
+              })}
             </div>
-          );
-        })}
-      </div>
 
-      <div ref={loadMoreTriggerRef} aria-hidden="true" />
-      {(hasMore || isLoadingMore) && (
-        <div className="flex items-center justify-center gap-4 mt-12 mb-4 text-lg text-light-textMuted dark:text-dark-textMuted">
-          {isLoadingMore ? (
-            <>
-              <span className="inline-block w-[22px] h-[22px] border-4 border-light-accent dark:border-dark-accent border-r-transparent rounded-full animate-spin"></span>
-              Loading more cards...
-            </>
-          ) : (
-            <span>Scroll to load more cards</span>
-          )}
-        </div>
-      )}
-    </div>
-  ) : (
-    <div>
-      {/* Show "No results" ONLY after a search has been attempted */}
-      {hasSearched && (
-        <div className="text-center text-light-textMuted dark:text-dark-textMuted text-lg py-8">
-          No results found. Try adjusting your search criteria.
-        </div>
-      )}
+            <div ref={loadMoreTriggerRef} aria-hidden="true" />
+            {(hasMore || isLoadingMore) && (
+              <div className="flex items-center justify-center gap-4 mt-12 mb-4 text-lg text-light-textMuted dark:text-dark-textMuted">
+                {isLoadingMore ? (
+                  <>
+                    <span className="inline-block w-[22px] h-[22px] border-4 border-light-accent dark:border-dark-accent border-r-transparent rounded-full animate-spin"></span>
+                    Loading more cards...
+                  </>
+                ) : (
+                  <span>Scroll to load more cards</span>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div>
+            {/* Show "No results" ONLY after a search has been attempted */}
+            {hasSearched && (
+              <div className="text-center text-light-textMuted dark:text-dark-textMuted text-lg py-8">
+                No results found. Try adjusting your search criteria.
+              </div>
+            )}
 
-      {/* Skeletons are intentionally always shown in this branch */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-2">
-        {Array.from({ length: 4 }).map((_, idx) => (
-          <CardSkeleton
-            key={idx}
-            dark={dark}
-            message={!hasSearched ? "No cards yet\nTry searching for a Pokemon, set, or number" : undefined}
-            actionLabel={!hasSearched ? "Search cards" : undefined}
-          />
-        ))}
-      </div>
-    </div>
-  )}
+            {/* Skeletons are intentionally always shown in this branch */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-2">
+              {Array.from({ length: 4 }).map((_, idx) => (
+                <CardSkeleton
+                  key={idx}
+                  dark={dark}
+                  message={!hasSearched ? "No cards yet\nTry searching for a Pokemon, set, or number" : undefined}
+                  actionLabel={!hasSearched ? "Search cards" : undefined}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Add & Status Panels */}
         {panelOpen && selectedCardDetail && (
@@ -902,4 +923,16 @@ export default function CardSearch() {
   );
 }
 
+/* ---------------- Utilities ---------------- */
 
+function normalizeError(err) {
+  if (!err) return null;
+  if (typeof err === "string") return new Error(err);
+  if (err?.networkError?.result?.errors?.[0]?.message) return new Error(err.networkError.result.errors[0].message);
+  if (err?.message) return new Error(err.message);
+  try {
+    return new Error(JSON.stringify(err));
+  } catch {
+    return new Error("Unknown error");
+  }
+}

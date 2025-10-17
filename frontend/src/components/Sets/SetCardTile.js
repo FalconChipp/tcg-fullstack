@@ -75,12 +75,12 @@ export default function SetCardTile({ card, owned = false, price }) {
           {card.rarity || "—"}
         </p>
 
-        {priceStr && (
+        {/* {priceStr && (
           <div className="mt-1.5 text-sm">
             <span className="font-bold text-light-accent dark:text-dark-accent">Market</span>
             <span className="font-semibold ml-1 text-light-text dark:text-dark-text">{priceStr}</span>
           </div>
-        )}
+        )} */}
       </div>
     </div>
   );

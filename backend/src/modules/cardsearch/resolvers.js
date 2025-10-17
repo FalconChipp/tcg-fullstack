@@ -195,7 +195,8 @@ const resolvers = {
     },
 
     async cardsearchSetByCode(_, { code }) {
-      const row = await m_Set.findOne({ where: { code } });
+      // CHANGED: unscoped() to drop model defaultScope (which likely orders by released_at)
+      const row = await m_Set.unscoped().findOne({ where: { code } });
       if (!row) return null;
       const r = row.get();
       return {
@@ -213,14 +214,16 @@ const resolvers = {
     async cardsearchSets(_, { query, limit = 100, offset = 0 }) {
       const where = qb.buildSetWhere({ query });
 
-      // CHANGED: avoid ordering by a possibly-missing release column.
-      // We sort by code here and let the client do era/promo/numeric ordering.
-      const rows = await m_Set.findAll({
-        where,
-        order: [["code", "ASC"]], // was [["release_date","DESC"]] or released_at in some envs
-        limit: Math.max(1, Math.min(500, Number(limit))),
-        offset: Math.max(0, Number(offset)),
-      });
+      // CHANGED: unscoped() to avoid defaultScope adding released_at order.
+      // Keep simple code-order; client handles promo/numeric/era ordering.
+      const rows = await m_Set
+        .unscoped() // <-- added
+        .findAll({
+          where,
+          order: [["code", "ASC"]],
+          limit: Math.max(1, Math.min(500, Number(limit))),
+          offset: Math.max(0, Number(offset)),
+        });
 
       return rows.map((r) => {
         const x = r.get();
@@ -250,6 +253,7 @@ const resolvers = {
     },
 
     async cardsearchAdminToggleSet(_, { code, enabled }) {
+      // (Optional) could also unscoped() here if you’ve seen issues elsewhere
       const row = await m_Set.findOne({ where: { code } });
       if (!row) throw new Error(`Set not found: ${code}`);
       const r = row.get();
@@ -290,7 +294,8 @@ const resolvers = {
 
   CardsearchCard: {
     async set(parent) {
-      const row = await m_Set.findOne({ where: { code: parent.setCode } });
+      // CHANGED: unscoped() to avoid defaultScope order leakage
+      const row = await m_Set.unscoped().findOne({ where: { code: parent.setCode } });
       if (!row) return null;
       const r = row.get();
       return {

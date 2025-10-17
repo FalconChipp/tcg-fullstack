@@ -379,7 +379,6 @@ export default function CardSearch() {
 
   // Track which images finished loading at least once
   const [imageLoadedMap, setImageLoadedMap] = useState({});
-
   const [hasSearched, setHasSearched] = useState(false);
 
   const isExactCardSearch = Boolean(setCode && number);
@@ -388,7 +387,8 @@ export default function CardSearch() {
   const loadingMoreRef = useRef(false);
   const loadMoreTriggerRef = useRef(null);
 
-  const [runSearch, { data, loading, error, fetchMore }] = useLazyQuery(
+  // FIX: also capture networkStatus to distinguish initial search vs fetchMore
+  const [runSearch, { data, loading, error, fetchMore, networkStatus }] = useLazyQuery(
     CARDSEARCH_QUERY,
     {
       fetchPolicy: "cache-first",
@@ -401,21 +401,22 @@ export default function CardSearch() {
   const currentKey = useMemo(() => makeQueryKey({ name, setCode, number }), [name, setCode, number]);
   const activeError = searchError || error || null;
 
-  // FIX: Remove the effect that cleared imageLoadedMap on every param change.
-  // That was causing all images to flip back to "unloaded" while old results were still visible,
-  // and because cached images may not fire onLoadingComplete again, they stayed hidden under the overlay.
-  //
-  // ❌ BAD (removed):
-  // useEffect(() => {
-  //   setImageLoadedMap({});
-  // }, [currentKey]);
+  // FIX: compute a precise "isSearching" (not counting fetchMore)
+  // Apollo NetworkStatus: 1=loading, 2=setVariables, 3=fetchMore, 4=refetch, 6=poll
+  const isFetchingMore = networkStatus === 3;
+  const isSearching = loading && !isFetchingMore;
+
+  // FIX: share isSearching to loadMore guard via a ref
+  const isSearchingRef = useRef(false);
+  useEffect(() => {
+    isSearchingRef.current = isSearching;
+  }, [isSearching]);
 
   const showStatusMessage = (type, message) => {
     setStatusMessage({ type, message });
     setTimeout(() => setStatusMessage(null), 5000);
   };
 
-  // FIX: keep idempotent marking; no change here
   const markImageLoaded = useCallback((id) => {
     if (!id) return;
     setImageLoadedMap((prev) => (prev[id] ? prev : { ...prev, [id]: true }));
@@ -428,7 +429,7 @@ export default function CardSearch() {
 
     const key = makeQueryKey({ name, setCode, number });
     lastKeyRef.current = key;
-    loadingMoreRef.current = false;
+    loadingMoreRef.current = false; // ensure loadMore doesn't consider itself active
 
     // If we already have a bucket for this query, show it immediately (stale-while-revalidate)
     const bucket = bucketsRef.current.get(key);
@@ -439,16 +440,11 @@ export default function CardSearch() {
         setIsLoadingMore(false);
       });
     } else {
-      // NOTE: If you prefer zero flicker while searching new params,
-      // comment out this block to keep old results visible until new data arrives.
       startTransition(() => {
-        setResults([]); // clean slate (current behavior)
+        setResults([]); // clear grid while fetching new params
         setHasMore(false);
         setIsLoadingMore(false);
       });
-
-      // FIX (optional): If you DO want to clear the grid here, DO NOT clear imageLoadedMap.
-      // We intentionally keep previously "loaded" flags so cached images stay visible when re-used.
     }
 
     const limit = isExactCardSearch
@@ -499,6 +495,9 @@ export default function CardSearch() {
 
   // Load more results using cardsearch pagination
   const loadMoreResults = useCallback(async () => {
+    // FIX: do not fetchMore while a fresh search is in-flight
+    if (isSearchingRef.current) return;
+
     if (loadingMoreRef.current || !hasMore) return;
     loadingMoreRef.current = true;
     setIsLoadingMore(true);
@@ -721,10 +720,11 @@ export default function CardSearch() {
             <div className="flex items-end">
               <button
                 type="submit"
-                disabled={loading}
+                // FIX: disable ONLY for a true search (not during fetchMore)
+                disabled={isSearching}
                 className="bg-light-accent dark:bg-dark-accent text-light-surface dark:text-white font-bold text-lg border-none rounded-xl px-8 py-3 shadow-md transition hover:bg-light-accentLight dark:hover:bg-dark-accentLight hover:text-light-surface dark:hover:text-white disabled:opacity-60 disabled:cursor-not-allowed w-full"
               >
-                {loading ? "Searching..." : "Search"}
+                {isSearching ? "Searching..." : "Search"}
               </button>
             </div>
           </div>
@@ -737,7 +737,7 @@ export default function CardSearch() {
         </form>
 
         {/* Results */}
-        {loading && results.length === 0 ? (
+        {isSearching && results.length === 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {Array.from({ length: 4 }).map((_, idx) => (
               <div className="bg-light-surface dark:bg-dark-surface rounded-2xl shadow flex flex-col p-3 min-h-[300px]" key={idx}>
@@ -761,11 +761,6 @@ export default function CardSearch() {
                 const numKey = card.number || '';
                 const fallbackKey = `${setKey}-${numKey}`.trim();
                 const imageKey = card.id || card.cardId || (fallbackKey && fallbackKey !== '-' ? fallbackKey : `card-${idx}`);
-
-                // FIX: Do NOT force images to "not loaded" just because params changed.
-                // We no longer reset imageLoadedMap, so preserve whatever we've learned.
-                // To be extra robust against cached images not firing onLoadingComplete,
-                // we treat unknown keys as "not yet known" (false) but also wire both onLoad and onLoadingComplete below.
                 const isLoaded = !!imageLoadedMap[imageKey];
                 const isPriority = idx < 8;
 
@@ -794,7 +789,6 @@ export default function CardSearch() {
                               (max-width: 1280px) 33vw,
                               25vw"
                         className={`object-contain object-center rounded-xl transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
-                        // FIX: mark loaded on both events to cover cached images reliably
                         onLoadingComplete={() => markImageLoaded(imageKey)}
                         onLoad={() => markImageLoaded(imageKey)}
                         {...(isPriority ? { priority: true } : { loading: 'lazy' })}

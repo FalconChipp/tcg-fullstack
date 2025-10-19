@@ -66,6 +66,7 @@ export default function Landing() {
   const components = [
     { name: "API", status: "maintenance" },
     { name: "Website", status: "maintenance" },
+    { name: "App", status: "maintenance" },
     { name: "Database", status: "operational" },
   ];
 

@@ -413,11 +413,15 @@ function dailyCoveragePct(cardIds, dailyAgg) {
   return Math.round((covered / cardIds.length) * 1000) / 10; // one decimal place
 }
 
-function groupVariantsByNumber(varRows) {
+export function groupVariantsByNumber(varRows) {
   // Input rows: { card_id, variant }, where card_id is like 'sv08-123'
   const byNum = new Map();
   for (const r of varRows) {
-    const [set, num] = String(r.card_id).split("-");
+    if (!r || !r.card_id) continue;
+    const parts = String(r.card_id).split("-");
+    if (parts.length < 2) continue;
+    const num = parts.slice(1).join("-");
+    if (!num) continue;
     const list = byNum.get(num) || [];
     list.push(r.variant);
     byNum.set(num, list);

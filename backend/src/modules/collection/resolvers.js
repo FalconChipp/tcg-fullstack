@@ -1,6 +1,6 @@
 // src/modules/collections/resolvers.js
 
-import { Collection, Wishlist, Card, sequelize } from '../../models/index.js';
+import { Collection, Wishlist, m_Card, sequelize } from '../../models/index.js';
 import { requireAuth } from './helpers.js';
 import { maybeGrantAchievement } from '../achievements/helpers.js';
 
@@ -16,14 +16,14 @@ const resolvers = {
       const payload = requireAuth(token);
       return Collection.findAll({
         where: { userId: payload.id, wishlist: false },
-        include: [{ model: Card, as: 'card' }]
+        include: [{ model: m_Card, as: 'card' }]
       });
     },
     // Fetch any user's collection (not wishlist items)
     collection: async (_, { userId }) => {
       return Collection.findAll({
         where: { userId, wishlist: false },
-        include: [{ model: Card, as: 'card' }]
+        include: [{ model: m_Card, as: 'card' }]
       });
     },
     // Fetch a single collection entry (not wishlist)
@@ -36,7 +36,7 @@ const resolvers = {
           variation: normalizeVariation(variation),
           wishlist: false,
         },
-        include: [{ model: Card, as: 'card' }]
+        include: [{ model: m_Card, as: 'card' }]
       });
     },
   },

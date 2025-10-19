@@ -1,6 +1,6 @@
 // src/modules/wishlist/resolvers.js
 
-import { Wishlist, Card, Listing, Collection, User, Profile, sequelize } from '../../models/index.js';
+import { Wishlist, m_Card, Listing, Collection, User, Profile, sequelize } from '../../models/index.js';
 import { requireAuth, requireAdmin } from './helpers.js';
 import { maybeGrantAchievement } from '../achievements/helpers.js';
 
@@ -12,7 +12,7 @@ const resolvers = {
       const payload = requireAuth(token);
       const { count, rows } = await Wishlist.findAndCountAll({
         where: { userId: payload.id },
-        include: [{ model: Card, as: 'card' }],
+        include: [{ model: m_Card, as: 'card' }],
         limit: pageSize,
         offset: (page - 1) * pageSize,
         order: [['addedAt', 'DESC']]
@@ -27,7 +27,7 @@ const resolvers = {
     wishlist: async (_, { userId, page = 1, pageSize = DEFAULT_PAGE_SIZE }) => {
       const { count, rows } = await Wishlist.findAndCountAll({
         where: { userId },
-        include: [{ model: Card, as: 'card' }],
+        include: [{ model: m_Card, as: 'card' }],
         limit: pageSize,
         offset: (page - 1) * pageSize,
         order: [['addedAt', 'DESC']]
@@ -44,7 +44,7 @@ const resolvers = {
       // Variation is used as provided (no null fallback)
       const r = await Wishlist.findOne({
         where: { userId: payload.id, cardId, variation },
-        include: [{ model: Card, as: 'card' }]
+        include: [{ model: m_Card, as: 'card' }]
       });
       if (!r) return null;
       const { condition, ...entry } = r.get ? r.get() : r;

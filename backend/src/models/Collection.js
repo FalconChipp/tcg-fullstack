@@ -1,14 +1,11 @@
 // src/models/Collection.js
-
-import { DataTypes, Model } from 'sequelize';
+import { DataTypes, Model } from "sequelize";
 
 /**
- * Collection model factory.
- * @param {Sequelize} sequelize
- * @param {Object} models - { User, Card }
- * @returns {Model}
+ * Collection model factory (no associations here).
+ * Associations are defined centrally in models/index.js.
  */
-export default (sequelize, models) => {
+export default (sequelize) => {
   class Collection extends Model {}
 
   Collection.init(
@@ -21,49 +18,37 @@ export default (sequelize, models) => {
       userId: {
         type: DataTypes.UUID,
         allowNull: false,
+        // If your DB column is snake_case, uncomment the next line:
+        // field: "user_id",
       },
       cardId: {
         type: DataTypes.STRING,
         allowNull: false,
+        // If your DB column is snake_case, uncomment:
+        // field: "card_id",
       },
       quantity: { type: DataTypes.INTEGER, defaultValue: 1, allowNull: false },
       condition: { type: DataTypes.STRING, allowNull: true }, // e.g. mint, played
-      variation: { type: DataTypes.STRING, allowNull: true }, // e.g. holofoil
-      wishlist: { type: DataTypes.BOOLEAN, defaultValue: false }, // True if in wishlist, false if in collection
+      variation: { type: DataTypes.STRING, allowNull: true }, // e.g. 'normal' | 'reverse' | ...
+      wishlist: { type: DataTypes.BOOLEAN, defaultValue: false },
       createdAt: DataTypes.DATE,
       updatedAt: DataTypes.DATE,
     },
     {
       sequelize,
-      modelName: 'Collection',
-      tableName: 'collections',
+      modelName: "Collection",
+      tableName: "collections",
       timestamps: true,
       indexes: [
         {
-          fields: ['userId', 'cardId', 'variation'],
+          fields: ["userId", "cardId", "variation"],
           unique: true,
-          name: 'unique_user_card_variation'
-        }
-      ]
+          name: "unique_user_card_variation",
+        },
+      ],
     }
   );
 
-  // Associations (should be set up in your loader, but you can export as a function)
-  Collection.associate = (models) => {
-    Collection.belongsTo(models.User, { foreignKey: 'userId', onDelete: 'CASCADE' });
-    // Alias as 'card' so eager loaded data is available under collection.card
-    Collection.belongsTo(models.Card, {
-      foreignKey: 'cardId',
-      as: 'card',
-      onDelete: 'CASCADE'
-    });
-    models.User.hasMany(Collection, { foreignKey: 'userId', onDelete: 'CASCADE' });
-    models.Card.hasMany(Collection, {
-      foreignKey: 'cardId',
-      as: 'collections',
-      onDelete: 'CASCADE'
-    });
-  };
-
+  // No Collection.associate here — keep it in models/index.js
   return Collection;
 };

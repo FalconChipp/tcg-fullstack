@@ -41,7 +41,7 @@ export default gql`
     offeredOrWanted: String!
     createdAt: String
     updatedAt: String
-    card: Card
+    card: CardsearchCard
     user: User
   }
 

@@ -6,7 +6,7 @@ import { mergeResolvers } from '@graphql-tools/merge';
 // ---- Import typeDefs from all modules ----
 import authTypeDefs from './modules/auth/typeDefs.js';
 import usersTypeDefs from './modules/users/typeDefs.js';
-import searchTypeDefs from './modules/search/typeDefs.js'; // legacy search kept
+// import searchTypeDefs from './modules/search/typeDefs.js'; // legacy search kept
 import collectionsTypeDefs from './modules/collection/typeDefs.js';
 import wishlistTypeDefs from './modules/wishlist/typeDefs.js';
 import achievementsTypeDefs from './modules/achievements/typeDefs.js';
@@ -26,7 +26,7 @@ import alertsTypeDefs from './modules/alerts/typeDefs.js';
 // ---- Import resolvers from all modules ----
 import authResolvers from './modules/auth/resolvers.js';
 import usersResolvers from './modules/users/resolvers.js';
-import searchResolvers from './modules/search/resolvers.js'; // legacy search kept
+// import searchResolvers from './modules/search/resolvers.js'; // legacy search kept
 import collectionsResolvers from './modules/collection/resolvers.js';
 import wishlistResolvers from './modules/wishlist/resolvers.js';
 import achievementsResolvers from './modules/achievements/resolvers.js';
@@ -47,7 +47,7 @@ import alertsResolvers from './modules/alerts/resolvers.js';
 export const typeDefs = mergeTypeDefs([
   authTypeDefs,
   usersTypeDefs,
-  searchTypeDefs,
+  // searchTypeDefs,
   collectionsTypeDefs,
   marketplaceTypeDefs,
   tradingTypeDefs,
@@ -68,7 +68,7 @@ export const typeDefs = mergeTypeDefs([
 // ---- Merge all resolvers ----
 let merged = mergeResolvers([
   usersResolvers,
-  searchResolvers,
+  // searchResolvers,
   collectionsResolvers,
   marketplaceResolvers,
   tradingResolvers,

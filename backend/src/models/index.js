@@ -79,7 +79,7 @@ import initUserDiscordLink from './UserDiscordLink.js';
 /* ---------------- Initialize (legacy) ---------------- */
 const User = UserFactory(sequelize, DataTypes);
 const Profile = ProfileFactory(sequelize, DataTypes);
-const Card = CardFactory(sequelize, DataTypes);
+
 const Collection = CollectionFactory(sequelize, DataTypes);
 const Wishlist = WishlistFactory(sequelize, DataTypes);
 const Listing = ListingFactory(sequelize, DataTypes);
@@ -129,16 +129,16 @@ User.hasMany(User, { as: 'referrals', foreignKey: 'referrerId' });
 User.hasMany(Collection, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Collection.belongsTo(User, { foreignKey: 'userId' });
 
-Card.hasMany(Collection, { foreignKey: 'cardId', as: 'collections', onDelete: 'CASCADE' });
-Collection.belongsTo(Card, { foreignKey: 'cardId', as: 'card' });
+m_Card.hasMany(Collection, { foreignKey: 'cardId', as: 'collections', onDelete: 'CASCADE' });
+Collection.belongsTo(m_Card, { foreignKey: 'cardId', as: 'card' });
 
 User.hasMany(Listing, { foreignKey: 'userId', as: 'listings', onDelete: 'CASCADE' });
 Listing.belongsTo(User, { foreignKey: 'userId', as: 'seller' });
 User.hasMany(Listing, { foreignKey: 'buyerId', as: 'purchases' });
 Listing.belongsTo(User, { foreignKey: 'buyerId', as: 'buyer' });
 
-Card.hasMany(Listing, { foreignKey: 'cardId', onDelete: 'CASCADE' });
-Listing.belongsTo(Card, { foreignKey: 'cardId' });
+m_Card.hasMany(Listing, { foreignKey: 'cardId', onDelete: 'CASCADE' });
+Listing.belongsTo(m_Card, { foreignKey: 'cardId' });
 
 Listing.hasMany(Offer, { foreignKey: 'listingId', as: 'offers', onDelete: 'CASCADE' });
 Offer.belongsTo(Listing, { foreignKey: 'listingId' });
@@ -148,8 +148,8 @@ User.hasMany(Offer, { foreignKey: 'buyerId', as: 'offers' });
 User.hasMany(Wishlist, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Wishlist.belongsTo(User, { foreignKey: 'userId' });
 
-Card.hasMany(Wishlist, { foreignKey: 'cardId', as: 'wishlists', onDelete: 'CASCADE' });
-Wishlist.belongsTo(Card, { foreignKey: 'cardId', as: 'card' });
+m_Card.hasMany(Wishlist, { foreignKey: 'cardId', as: 'wishlists', onDelete: 'CASCADE' });
+Wishlist.belongsTo(m_Card, { foreignKey: 'cardId', as: 'card' });
 
 // Binders
 User.hasMany(Binder, { foreignKey: 'userId', onDelete: 'CASCADE' });
@@ -158,8 +158,8 @@ Binder.hasMany(BinderPage, { foreignKey: 'binderId', as: 'pages', onDelete: 'CAS
 BinderPage.belongsTo(Binder, { foreignKey: 'binderId' });
 BinderPage.hasMany(BinderSlot, { foreignKey: 'pageId', as: 'slots', onDelete: 'CASCADE' });
 BinderSlot.belongsTo(BinderPage, { foreignKey: 'pageId' });
-Card.hasMany(BinderSlot, { foreignKey: 'cardId' });
-BinderSlot.belongsTo(Card, { foreignKey: 'cardId', as: 'card' });
+m_Card.hasMany(BinderSlot, { foreignKey: 'cardId' });
+BinderSlot.belongsTo(m_Card, { foreignKey: 'cardId', as: 'card' });
 
 // Trades
 User.hasMany(Trade, { as: 'partyATrades', foreignKey: 'partyAId' });
@@ -172,9 +172,9 @@ Trade.belongsTo(User, { as: 'initiator', foreignKey: 'initiatorId' });
 Trade.hasMany(TradeCard, { foreignKey: 'tradeId', as: 'cards' });
 TradeCard.belongsTo(Trade, { foreignKey: 'tradeId' });
 TradeCard.belongsTo(User, { foreignKey: 'userId' });
-TradeCard.belongsTo(Card, { foreignKey: 'cardId' });
+TradeCard.belongsTo(m_Card, { foreignKey: 'cardId' });
 User.hasMany(TradeCard, { foreignKey: 'userId' });
-Card.hasMany(TradeCard, { foreignKey: 'cardId' });
+m_Card.hasMany(TradeCard, { foreignKey: 'cardId' });
 
 Trade.hasMany(TradeProof, { foreignKey: 'tradeId', as: 'proofs' });
 TradeProof.belongsTo(Trade, { foreignKey: 'tradeId' });
@@ -297,7 +297,7 @@ UserDiscordLink.belongsTo(User, { foreignKey: "userId" });
 export {
   sequelize,
   // legacy app models
-  User, Profile, Card,
+  User, Profile,
   Collection, Wishlist, Listing,
   Trade, TradeCard, TradeProof, TradeDispute,
   UserReputation, Message,

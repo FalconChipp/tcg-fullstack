@@ -6,7 +6,7 @@ import {
   Binder,
   BinderPage,
   BinderSlot,
-  Card,
+  m_Card,
   Collection,
   User,
 } from '../../models/index.js';
@@ -40,7 +40,7 @@ const resolvers = {
           include: [{
             model: BinderSlot,
             as: 'slots',
-            include: [{ model: Card, as: 'card' }]
+            include: [{ model: m_Card, as: 'card' }]
           }]
         }]
       });
@@ -70,7 +70,7 @@ const resolvers = {
           include: [{
             model: BinderSlot,
             as: 'slots',
-            include: [{ model: Card, as: 'card' }]
+            include: [{ model: m_Card, as: 'card' }]
           }]
         }]
       });
@@ -309,7 +309,7 @@ const resolvers = {
         include: [{
           model: BinderPage,
           as: 'pages',
-          include: [{ model: BinderSlot, as: 'slots', include: [{ model: Card, as: 'card' }] }],
+          include: [{ model: BinderSlot, as: 'slots', include: [{ model: m_Card, as: 'card' }] }],
           order: [['pageOrder', 'ASC']]
         }]
       });

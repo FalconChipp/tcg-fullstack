@@ -13,7 +13,7 @@ const typeDefs = gql`
     wishlist: Boolean!
     createdAt: String
     updatedAt: String
-    card: Card
+    card: CardsearchCard
   }
 
   extend type Query {

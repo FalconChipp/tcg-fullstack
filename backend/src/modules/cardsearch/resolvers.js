@@ -50,6 +50,21 @@ function buildCardImages(row) {
   return { small: null, large: highRes };
 }
 
+/* ---------------- helpers (NEW) ---------------- */
+
+// CHANGED: normalize variant inputs so lookups match storage shape.
+// Examples: "Reverse Holo" / "reverse_holo" -> "reverse", "Holofoil" -> "holo"
+function normalizeVariant(value) {
+  if (value == null) return null;
+  const trimmed = String(value).trim();
+  if (!trimmed) return null;
+  const c = trimmed.toLowerCase().replace(/[\s_-]+/g, "");
+  if (c === "holofoil" || c === "holo_foil") return "holo";
+  if (c === "reverseholo" || c === "reverseholofoil") return "reverse";
+  if (c === "firstedition") return "firstEdition";
+  return c; // assume already one of: normal | reverse | holo | firstEdition | foil | ...
+}
+
 /* ---------------- resolvers ---------------- */
 
 const resolvers = {
@@ -104,7 +119,8 @@ const resolvers = {
 
     async cardsearchPriceLatest(_, { cardId, variant }) {
       const where = { card_id: cardId };
-      if (variant) where.variant = String(variant).toLowerCase();
+      // CHANGED: normalize variant so it matches DB keys reliably
+      if (variant) where.variant = normalizeVariant(variant);
 
       const rows = await m_PriceLatest.findAll({ where, order: [["updated_at", "DESC"]] });
       return rows.map((r) => {
@@ -379,15 +395,50 @@ const resolvers = {
       return out;
     },
 
+    // CHANGED: Return ONE latest price per variant for this card (prevents variant collapse)
     async latestPrices(parent) {
-      const rows = await m_PriceLatest.findAll({
-        where: { card_id: parent.cardId },
-        order: [["updated_at", "DESC"]],
-      });
+      const cardId = parent.cardId;
 
-      if (!rows.length) return [];
+      // 1) Try to read declared variants for the card
+      let variants = [];
+      try {
+        const vrows = await m_CardVariant.findAll({
+          where: { card_id: cardId },
+          attributes: ["variant"],
+          raw: true,
+        });
+        variants = vrows.map((r) => r.variant).filter(Boolean);
+      } catch {
+        variants = [];
+      }
 
-      const mapRow = (r) => {
+      // 2) Fallback: derive distinct variants from price table
+      if (!variants.length) {
+        const prow = await m_PriceLatest.findAll({
+          where: { card_id: cardId },
+          attributes: ["variant"],
+          group: ["variant"],
+          raw: true,
+        });
+        variants = prow.map((r) => r.variant).filter(Boolean);
+      }
+
+      if (!variants.length) return [];
+
+      // 3) Fetch the most recent price row per variant
+      const latestRows = (
+        await Promise.all(
+          variants.map((v) =>
+            m_PriceLatest.findOne({
+              where: { card_id: cardId, variant: v },
+              order: [["updated_at", "DESC"]],
+            })
+          )
+        )
+      ).filter(Boolean);
+
+      // 4) Map to schema
+      return latestRows.map((r) => {
         const x = r.get();
         return {
           cardId: x.card_id,
@@ -400,60 +451,7 @@ const resolvers = {
           updatedAt: x.updated_at,
           provider: x.provider ?? null,
         };
-      };
-
-      const normalize = (value) => String(value ?? "").trim().toLowerCase();
-
-      let allowed = null;
-      if (Array.isArray(parent.variants) && parent.variants.length) {
-        allowed = new Set(
-          parent.variants
-            .map((v) => (typeof v === "string" ? v : v?.variant))
-            .filter(Boolean)
-            .map(normalize)
-        );
-      }
-
-      if (!allowed || !allowed.size) {
-        const variantRows = await m_CardVariant.findAll({
-          where: { card_id: parent.cardId },
-          attributes: ["variant"],
-          raw: true,
-        });
-        if (variantRows.length) {
-          allowed = new Set(
-            variantRows.map((row) => normalize(row.variant)).filter(Boolean)
-          );
-        }
-      }
-
-      const prices = rows.map(mapRow);
-
-      const dedupe = (list) => {
-        const out = [];
-        const seen = new Set();
-        for (const item of list) {
-          const key = normalize(item.variant);
-          if (seen.has(key)) continue;
-          seen.add(key);
-          out.push(item);
-        }
-        return out;
-      };
-
-      if (allowed && allowed.size) {
-        const filtered = [];
-        const seen = new Set();
-        for (const price of prices) {
-          const key = normalize(price.variant);
-          if (!allowed.has(key) || seen.has(key)) continue;
-          seen.add(key);
-          filtered.push(price);
-        }
-        if (filtered.length) return filtered;
-      }
-
-      return dedupe(prices);
+      });
     },
   },
 };

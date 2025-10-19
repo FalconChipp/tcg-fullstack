@@ -23,7 +23,7 @@ export default gql`
     movedToCollectionAt: String
     createdAt: String
     updatedAt: String
-    card: Card
+    card: CardsearchCard
     marketplaceListings: [Listing!]!
     forTradeUsers: [User!]!
   }

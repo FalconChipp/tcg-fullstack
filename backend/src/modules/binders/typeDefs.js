@@ -33,7 +33,7 @@ export default gql`
     quantity: Int!
     position: Int!
     notes: String
-    card: Card
+    card: CardsearchCard
   }
 
   input BinderInput {

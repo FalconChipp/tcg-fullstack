@@ -42,6 +42,13 @@ const resolvers = {
     },
   },
 
+  Collection: {
+    card: async (entry) => { // CHANGED
+      const card = entry.card || await m_Card.findByPk(entry.cardId);
+      return mapModelCardToCardsearchCard(card, { fallbackCardId: entry.cardId });
+    },
+  },
+
   Mutation: {
     // Add a card to collection (not wishlist)
     addToCollection: async (_, { cardId, quantity = 1, condition, variation }, { token }) => {

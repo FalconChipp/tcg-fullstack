@@ -1,5 +1,5 @@
 /**
- * Collection-related GraphQL mutations 
+ * Collection-related GraphQL mutations
  * utils/graphqlUtils.js
  */
 export const COLLECTION_MUTATIONS = {
@@ -8,17 +8,13 @@ export const COLLECTION_MUTATIONS = {
       $cardId: String!,
       $quantity: Int,
       $condition: String,
-      $variation: String,
-      $wishlist: Boolean,
-      $isPublic: Boolean
+      $variation: String
     ) {
       addToCollection(
         cardId: $cardId,
         quantity: $quantity,
         condition: $condition,
-        variation: $variation,
-        wishlist: $wishlist,
-        isPublic: $isPublic
+        variation: $variation
       ) {
         id
         cardId
@@ -26,29 +22,36 @@ export const COLLECTION_MUTATIONS = {
         condition
         variation
         wishlist
-        isPublic
         createdAt
         updatedAt
       }
     }
   `,
   UPDATE_CARD: `
-    mutation UpdateCollectionCard($input: UpdateCollectionCardInput!) {
-      updateCollectionCard(input: $input) {
-        collectionCard {
-          id
-          cardId
-          quantity
-          condition
-          variation
-          isPublic
-          wishlist
-        }
+    mutation UpdateCollectionEntry(
+      $cardId: String!,
+      $quantity: Int,
+      $condition: String,
+      $variation: String
+    ) {
+      updateCollectionEntry(
+        cardId: $cardId,
+        quantity: $quantity,
+        condition: $condition,
+        variation: $variation
+      ) {
+        id
+        cardId
+        quantity
+        condition
+        variation
+        wishlist
+        createdAt
+        updatedAt
       }
     }
   `,
 
-  // ----- BINDER MUTATIONS -----
   CREATE_BINDER: `
     mutation CreateBinder($input: BinderInput!) {
       createBinder(input: $input) {
@@ -56,7 +59,7 @@ export const COLLECTION_MUTATIONS = {
         name
         description
         accentColor
-        coverColor     # <-- changed from coverImage to coverColor
+        coverColor   
         visibility
         slug
         createdAt
@@ -66,7 +69,7 @@ export const COLLECTION_MUTATIONS = {
           title
           layout
           pageOrder
-          slots {         # <-- include slots for proper hydration
+          slots {
             id
             cardId
             position
@@ -107,7 +110,6 @@ export const COLLECTION_MUTATIONS = {
     }
   `,
 
-  // --- NEW: Add card to binder slot (for saving slots) ---
   ADD_CARD_TO_BINDER: `
     mutation AddCardToBinder($pageId: ID!, $input: BinderSlotInput!) {
       addCardToBinder(pageId: $pageId, input: $input) {
@@ -121,7 +123,6 @@ export const COLLECTION_MUTATIONS = {
     }
   `,
 
-  // --- NEW: Batch Save All Binder Pages & Slots ---
   SAVE_BINDER_PAGES_AND_SLOTS: `
     mutation SaveBinderPagesAndSlots($binderId: ID!, $pages: [BinderPageInput!]!) {
       saveBinderPagesAndSlots(binderId: $binderId, pages: $pages) {
@@ -150,8 +151,6 @@ export const COLLECTION_MUTATIONS = {
       }
     }
   `,
-
-  // (If you have update/delete slot mutations, add here as needed)
 };
 
 /**
@@ -173,7 +172,7 @@ export async function executeMutation(mutation, variables, token) {
       },
       body: JSON.stringify({
         query: mutation,
-        variables: variables
+        variables
       })
     });
 
@@ -210,7 +209,6 @@ export async function executeMutation(mutation, variables, token) {
     return resultJson?.data || resultJson;
   } catch (error) {
     console.error('Mutation error:', error);
-    // Rethrow with more context if needed
     if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
       throw new Error('Unable to connect to the server. Please check your internet connection.');
     }
@@ -218,26 +216,23 @@ export async function executeMutation(mutation, variables, token) {
   }
 }
 
-/**
- * Format card data for collection
- * @param {Object} card - The card data from the API
- * @returns {Object} Formatted card data for the collection
- */
 export function formatCardForCollection(card) {
   return {
     cardId: card.cardId || card.externalId || card.id || '',
     name: card.name || card.tcgName || '',
     setName: card.setName || card.tcgSetName || '',
-    image: card.image || card.tcgImageUrl || '',
+    image:
+      card.image ||
+      (card.images && (card.images.large || card.images.small)) || 
+      card.tcgImageUrl ||
+      '',
     setSymbol: card.setSymbol || card.tcgSetSymbolUrl || '',
     rarity: card.rarity || card.tcgRarity || '',
-    number: card.number || card.number || '',
+    number: card.number || '',
     pricing: card.pricing || {},
     variations: card.variations || {}
   };
 }
-
-// utils/graphqlUtils.js
 
 export const WISHLIST_QUERIES = {
   MY_WISHLIST: `
@@ -292,7 +287,7 @@ export const WISHLIST_QUERIES = {
   `,
 };
 
-// Reuse your POST runner for queries too
+/* Reuse POST runner for queries too */
 export async function executeQuery(query, variables, token) {
   return executeMutation(query, variables, token);
 }

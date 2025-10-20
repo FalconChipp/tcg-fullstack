@@ -72,11 +72,13 @@ export default (sequelize, models) => {
   // Associations
   Listing.associate = (models) => {
     Listing.belongsTo(models.User, { foreignKey: 'userId', as: 'seller', onDelete: 'CASCADE' });
-    Listing.belongsTo(models.Card, { foreignKey: 'cardId', onDelete: 'CASCADE' });
+    // CHANGED: ensure listing links to modern m_Card model
+    Listing.belongsTo(models.m_Card, { foreignKey: 'cardId', as: 'card', onDelete: 'CASCADE' });
     Listing.belongsTo(models.User, { foreignKey: 'buyerId', as: 'buyer' });
 
     models.User.hasMany(Listing, { foreignKey: 'userId', as: 'listings', onDelete: 'CASCADE' });
-    models.Card.hasMany(Listing, { foreignKey: 'cardId', onDelete: 'CASCADE' });
+    // CHANGED: wire reverse association on m_Card
+    models.m_Card.hasMany(Listing, { foreignKey: 'cardId', as: 'listings', onDelete: 'CASCADE' });
     models.User.hasMany(Listing, { foreignKey: 'buyerId', as: 'purchases' });
   };
 

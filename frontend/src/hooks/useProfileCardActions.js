@@ -83,7 +83,16 @@ export default function useProfileCardActions({
             condition
             variation
             wishlist
-            card { id name image setName }
+            card {
+              id
+              name
+              number
+              setCode
+              set { name }
+              images { small large }
+              variants { key label default }
+              latestPrices { provider currency market mid low high gbp updatedAt }
+            }
           }
         }
       `;
@@ -278,7 +287,16 @@ export default function useProfileCardActions({
             wishlist
             cardId
             variation
-            card { id name image setName }
+            card {
+              id
+              name
+              number
+              setCode
+              set { name }
+              images { small large }
+              variants { key label default }
+              latestPrices { provider currency market mid low high gbp updatedAt }
+            }
             quantity
             condition
           }

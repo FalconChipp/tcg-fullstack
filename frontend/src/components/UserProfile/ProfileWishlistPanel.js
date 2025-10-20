@@ -83,6 +83,16 @@ export default function ProfileWishlistPanel({
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
         {wishlist.map((entry) => {
           const card = entry.card || {};
+          const img =
+            card?.images?.large ??
+            card?.images?.small ??
+            card?.image ??
+            card?.tcgImageUrl ??
+            ""; // CHANGED
+          const setLabel =
+            card?.set?.name ??
+            card?.setName ??
+            (card?.setCode ? String(card.setCode).toUpperCase() : ""); // CHANGED
           return (
             <div
               key={entry.id}
@@ -101,7 +111,7 @@ export default function ProfileWishlistPanel({
                 onClick={() => onViewCardDetail && onViewCardDetail(entry)}
               >
                 <Image
-                  src={getCardImageUrl(card.image)}
+                  src={getCardImageUrl(img)}
                   alt={card.name || "Pokémon Card"}
                   fill
                   className="object-contain rounded-lg group-hover:scale-105 transition-transform duration-300"
@@ -118,7 +128,7 @@ export default function ProfileWishlistPanel({
                   {card.name || "(Unknown)"}
                 </h3>
                 <div className={`text-sm truncate ${dark ? 'text-dark-textSecondary' : 'text-light-textSecondary'}`}>
-                  {card.setName || "(No set)"}
+                  {setLabel || "(No set)"}
                 </div>
                 <div className="flex items-center gap-2 text-xs">
                   <span className={`${dark ? 'text-dark-textMuted' : 'text-light-textMuted'}`}>#{card.number}</span>

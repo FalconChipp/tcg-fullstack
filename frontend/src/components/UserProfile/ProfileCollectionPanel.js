@@ -45,6 +45,7 @@ function normalizePricesList(cardLike) {
   if (!cardLike) return [];
 
   // Prefer already-flattened list
+  if (Array.isArray(cardLike.latestPrices)) return cardLike.latestPrices; // CHANGED
   if (Array.isArray(cardLike.prices)) return cardLike.prices;
 
   // PokémonTCG-normalized shape stored by backend: { latest: [...] }
@@ -436,6 +437,16 @@ export default function ProfileCollectionPanel({
       {/* Card Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
         {sortedCards.map((card) => {
+          const img =
+            card?.images?.large ??
+            card?.images?.small ??
+            card?.image ??
+            card?.tcgImageUrl ??
+            ""; // CHANGED
+          const setLabel =
+            card?.setName ||
+            card?.set?.name ||
+            (card?.setCode ? String(card.setCode).toUpperCase() : ""); // CHANGED
           const priceGBP = getCardGBP(card);
           return (
             <div
@@ -447,7 +458,7 @@ export default function ProfileCollectionPanel({
                 onClick={() => setSelectedCard(card)}
               >
                 <Image
-                  src={getCardImageUrl(card.image)}
+                  src={getCardImageUrl(img)}
                   alt={card.name}
                   fill
                   unoptimized
@@ -476,10 +487,10 @@ export default function ProfileCollectionPanel({
                   >
                     {card.name}
                   </span>
-                  {card.setName && (
+                  {setLabel && (
                     <img
-                      src={getSetLogo(card.setName)}
-                      alt={card.setName}
+                      src={getSetLogo(setLabel)}
+                      alt={setLabel}
                       className="w-6 h-4 rounded ml-2"
                     />
                   )}

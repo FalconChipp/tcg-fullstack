@@ -10,6 +10,11 @@ export function getVariationOptionsFromCard(cardDetail) {
       .filter((k) => k && k !== "__typename" && cardDetail.tcgplayerVariations[k] != null);
   }
   // 2) Variants object: { normal, reverse, holo, firstEdition, ... }
+  else if (Array.isArray(cardDetail?.variants)) {
+    arr = cardDetail.variants
+      .map((v) => (typeof v === "string" ? v : v?.key || v?.variant))
+      .filter(Boolean);
+  }
   else if (
     cardDetail?.variations &&
     !Array.isArray(cardDetail.variations) &&
@@ -25,7 +30,9 @@ export function getVariationOptionsFromCard(cardDetail) {
   }
   // 4) Array<string>
   else if (Array.isArray(cardDetail?.variations)) {
-    arr = cardDetail.variations.slice();
+    arr = cardDetail.variations
+      .map((v) => (typeof v === "string" ? v : v?.key || v?.variant))
+      .filter(Boolean);
   }
 
   // normalize: slug -> lower_snake, drop meta keys

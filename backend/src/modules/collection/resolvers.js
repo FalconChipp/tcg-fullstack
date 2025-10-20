@@ -1,6 +1,7 @@
 // src/modules/collections/resolvers.js
 
 import { Collection, Wishlist, m_Card, sequelize } from '../../models/index.js';
+import { ensureCardExists } from '../cards/ensureCardExists.service.js'; // CHANGED
 import { requireAuth } from './helpers.js';
 import { maybeGrantAchievement } from '../achievements/helpers.js';
 
@@ -47,6 +48,7 @@ const resolvers = {
       const payload = requireAuth(token);
       const t = await sequelize.transaction();
       try {
+        await ensureCardExists(cardId, { transaction: t }); // CHANGED
         let entry = await Collection.findOne({
           where: {
             userId: payload.id,
@@ -157,6 +159,8 @@ const resolvers = {
       const payload = requireAuth(token);
       const t = await sequelize.transaction();
       try {
+        await ensureCardExists(cardId, { transaction: t }); // CHANGED
+
         // 1. Find the wishlist entry to move
         const wishlistEntry = await Wishlist.findOne({
           where: {

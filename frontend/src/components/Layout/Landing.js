@@ -64,10 +64,10 @@ export default function Landing() {
   // Replace with live data if you have a status endpoint.
   // =============================
   const components = [
-    { name: "API", status: "maintenance" },
-    { name: "Website", status: "maintenance" },
-    { name: "App", status: "maintenance" },
-    { name: "Database", status: "operational" },
+    { name: "API", status: "operational" },
+    { name: "Website", status: "operational" },
+    { name: "App", status: "operational" },
+    { name: "Database", status: "maintenance" },
   ];
 
   // --- Format countdown text (repurposed) ---

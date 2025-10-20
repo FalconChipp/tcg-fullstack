@@ -9,6 +9,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Image from "next/image";
+import { getCardImageUrl } from "@/utils/imageUtils"; // CHANGED
 
 // Statuses with palette classes (adjust if you add more palette entries)
 const TRADE_STATUS = {
@@ -111,16 +112,24 @@ export default function ProfileTradesPanel({ trades = [], onAction, dark }) {
             <div className="flex-1 flex flex-wrap gap-2">
               {/* You give */}
               <div className="flex items-center gap-1">
-                {trade.cardsSent.slice(0, 2).map((card) => (
-                  <Image
-                    key={card.name}
-                    src={card.image}
-                    alt={card.name}
-                    width={28}
-                    height={38}
-                    className="rounded shadow"
-                  />
-                ))}
+                {trade.cardsSent.slice(0, 2).map((card) => {
+                  const img =
+                    card?.images?.large ??
+                    card?.images?.small ??
+                    card?.image ??
+                    card?.tcgImageUrl ??
+                    ""; // CHANGED
+                  return (
+                    <Image
+                      key={card.name}
+                      src={getCardImageUrl(img, { cardName: card.name })}
+                      alt={card.name}
+                      width={28}
+                      height={38}
+                      className="rounded shadow"
+                    />
+                  );
+                })}
                 {trade.cardsSent.length > 2 && (
                   <span className="text-xs text-light-textSecondary dark:text-dark-textSecondary ml-2">
                     +{trade.cardsSent.length - 2} more
@@ -133,16 +142,24 @@ export default function ProfileTradesPanel({ trades = [], onAction, dark }) {
               <ArrowRight className="w-4 h-4 text-purple-400 mx-2 sm:hidden" />
               {/* You receive */}
               <div className="flex items-center gap-1">
-                {trade.cardsReceived.slice(0, 2).map((card) => (
-                  <Image
-                    key={card.name}
-                    src={card.image}
-                    alt={card.name}
-                    width={28}
-                    height={38}
-                    className="rounded shadow"
-                  />
-                ))}
+                {trade.cardsReceived.slice(0, 2).map((card) => {
+                  const img =
+                    card?.images?.large ??
+                    card?.images?.small ??
+                    card?.image ??
+                    card?.tcgImageUrl ??
+                    ""; // CHANGED
+                  return (
+                    <Image
+                      key={card.name}
+                      src={getCardImageUrl(img, { cardName: card.name })}
+                      alt={card.name}
+                      width={28}
+                      height={38}
+                      className="rounded shadow"
+                    />
+                  );
+                })}
                 {trade.cardsReceived.length > 2 && (
                   <span className="text-xs text-light-textSecondary dark:text-dark-textSecondary ml-2">
                     +{trade.cardsReceived.length - 2} more

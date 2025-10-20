@@ -3,12 +3,17 @@
 // NOTE: Works with or without GraphQL context; when no ctx.loaders is present,
 // it falls back to direct DB reads.
 
+// CHANGED: include normalized cache/history models for pricing
+import { Op, fn, col } from 'sequelize';
+
 import {
   m_Set,
   m_Card,
   m_PriceLatest,
   m_PriceRollup,
   m_CardVariant,
+  CardPriceCache, // CHANGED
+  CardPriceHistory, // CHANGED
 } from "../../models/index.js"; // <- ensure this path matches your project
 
 import qb from "./services/queryBuilder.service.js";
@@ -327,26 +332,118 @@ const resolvers = {
     },
 
     async variants(parent) {
-      const { m_CardVariant } = await import("../../models/index.js");
       const rows = await m_CardVariant.findAll({
-        where: { card_id: parent.cardId },
+        where: { card_id: parent.cardId || parent.id },
         order: [["variant", "ASC"]],
       });
+
+      if (!rows.length) {
+        return [
+          { key: "normal", label: "Normal", default: true },
+        ];
+      }
+
       return rows.map((r) => {
         const row = r.get();
+        const key = row.variant ?? "normal";
+        const label = row.display_name ?? row.variant ?? key;
         return {
-          cardId: row.card_id,
-          variant: row.variant,
-          displayName: row.display_name ?? row.variant,
+          key,
+          label: label ? label.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : key,
+          default: key === "normal",
         };
       });
     },
 
-    async priceRollups(parent, { variant, windows }) {
+    async latestPrices(parent, { variant } = {}) {
       const cardId = parent.cardId || parent.id || null;
-      if (!cardId) return null;
-      const requestedVariant = variant ?? parent.variant ?? null;
-      return loadPriceRollups(cardId, requestedVariant, { windows });
+      if (!cardId) return [];
+
+      const normalizedVariant = normalizeVariant(variant);
+      const where = { cardId };
+      if (normalizedVariant) {
+        where.variation = normalizedVariant;
+      }
+
+      const rows = await CardPriceCache.findAll({
+        where,
+        order: [["updatedAt", "DESC"]],
+        limit: normalizedVariant ? 5 : 25,
+      });
+
+      if (!rows.length) return [];
+
+      return rows.map((row) => {
+        const r = row.get ? row.get({ plain: true }) : row;
+        return {
+          provider: r.provider ?? null,
+          currency: r.currency ?? "GBP",
+          gbp: r.gbp ?? r.market ?? r.mid ?? null,
+          market: r.market ?? null,
+          mid: r.mid ?? null,
+          low: r.low ?? null,
+          high: r.high ?? null,
+          variation: r.variation ?? normalizedVariant ?? null,
+          updatedAt: r.updatedAt ? new Date(r.updatedAt).toISOString() : null,
+        };
+      });
+    },
+
+    async priceRollups(parent, { window } = {}) {
+      const cardId = parent.cardId || parent.id || null;
+      if (!cardId) return [];
+
+      const normalizedWindow = typeof window === "string" && window.trim()
+        ? window.trim().toLowerCase()
+        : "30d";
+
+      const match = normalizedWindow.match(/^(\d+)d$/);
+      const windowDays = match ? parseInt(match[1], 10) : ({
+        "7d": 7,
+        "30d": 30,
+        "90d": 90,
+      }[normalizedWindow] || 30);
+
+      const since = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
+
+      const where = {
+        cardId,
+        updatedAt: { [Op.gte]: since },
+      };
+
+      const [agg] = await CardPriceHistory.findAll({
+        where,
+        attributes: [
+          [fn("MIN", col("gbp")), "min"],
+          [fn("MAX", col("gbp")), "max"],
+          [fn("AVG", col("gbp")), "avg"],
+        ],
+        raw: true,
+      });
+
+      const latestRow = await CardPriceHistory.findOne({
+        where: { cardId },
+        order: [["updatedAt", "DESC"]],
+      });
+
+      const lastValue = latestRow
+        ? latestRow.gbp ?? latestRow.market ?? latestRow.mid ?? null
+        : null;
+
+      const updatedAt = latestRow?.updatedAt
+        ? new Date(latestRow.updatedAt).toISOString()
+        : null;
+
+      return [
+        {
+          window: normalizedWindow,
+          min: agg?.min != null ? Number(agg.min) : null,
+          max: agg?.max != null ? Number(agg.max) : null,
+          avg: agg?.avg != null ? Number(agg.avg) : null,
+          last: lastValue != null ? Number(lastValue) : null,
+          updatedAt,
+        },
+      ];
     },
 
     async priceRollupsAll(parent, { variants, windows }) {
@@ -360,7 +457,7 @@ const resolvers = {
 
       if (!variantList.length && Array.isArray(parent.variants) && parent.variants.length) {
         variantList = parent.variants
-          .map((v) => (typeof v === "string" ? v : v.variant))
+          .map((v) => (typeof v === "string" ? v : v.key || v.variant))
           .filter(Boolean)
           .map((v) => String(v).toLowerCase());
       }
@@ -368,7 +465,7 @@ const resolvers = {
       if (!variantList.length) {
         try {
           const resolved = await resolvers.CardsearchCard.variants(parent);
-          variantList = resolved.map((v) => String(v.variant || "normal").toLowerCase());
+          variantList = resolved.map((v) => String(v.key || v.variant || "normal").toLowerCase());
         } catch {
           variantList = [];
         }
@@ -395,63 +492,29 @@ const resolvers = {
       return out;
     },
 
-    // CHANGED: Return ONE latest price per variant for this card (prevents variant collapse)
-    async latestPrices(parent) {
-      const cardId = parent.cardId;
-
-      // 1) Try to read declared variants for the card
-      let variants = [];
+    setName: async (parent) => {
+      if (parent?.set?.name) return parent.set.name;
+      if (typeof parent.setName === "string") return parent.setName;
       try {
-        const vrows = await m_CardVariant.findAll({
-          where: { card_id: cardId },
-          attributes: ["variant"],
-          raw: true,
-        });
-        variants = vrows.map((r) => r.variant).filter(Boolean);
+        const resolved = await resolvers.CardsearchCard.set(parent);
+        return resolved?.name ?? null;
       } catch {
-        variants = [];
+        return null;
       }
+    },
 
-      // 2) Fallback: derive distinct variants from price table
-      if (!variants.length) {
-        const prow = await m_PriceLatest.findAll({
-          where: { card_id: cardId },
-          attributes: ["variant"],
-          group: ["variant"],
-          raw: true,
-        });
-        variants = prow.map((r) => r.variant).filter(Boolean);
-      }
+    image: (parent) => {
+      const images = parent.images || {};
+      return images.large || images.small || parent.image || null;
+    },
 
-      if (!variants.length) return [];
+    variations: async (parent, args, ctx, info) => {
+      if (Array.isArray(parent.variants) && parent.variants.length) return parent.variants;
+      return resolvers.CardsearchCard.variants(parent, args, ctx, info);
+    },
 
-      // 3) Fetch the most recent price row per variant
-      const latestRows = (
-        await Promise.all(
-          variants.map((v) =>
-            m_PriceLatest.findOne({
-              where: { card_id: cardId, variant: v },
-              order: [["updated_at", "DESC"]],
-            })
-          )
-        )
-      ).filter(Boolean);
-
-      // 4) Map to schema
-      return latestRows.map((r) => {
-        const x = r.get();
-        return {
-          cardId: x.card_id,
-          variant: x.variant,
-          currency: x.currency ?? "GBP",
-          low: x.low ?? null,
-          mid: x.mid ?? null,
-          high: x.high ?? null,
-          market: x.market ?? null,
-          updatedAt: x.updated_at,
-          provider: x.provider ?? null,
-        };
-      });
+    async prices(parent, args, ctx, info) {
+      return resolvers.CardsearchCard.latestPrices(parent, args, ctx, info);
     },
   },
 };

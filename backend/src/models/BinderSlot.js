@@ -4,7 +4,8 @@ export default (sequelize) => {
   class BinderSlot extends Model {
     static associate(models) {
       // Set up correct alias so eager loading 'card' works
-      BinderSlot.belongsTo(models.Card, { foreignKey: 'cardId', as: 'card' });
+      // CHANGED: bind to modern m_Card association
+      BinderSlot.belongsTo(models.m_Card, { foreignKey: 'cardId', as: 'card' });
     }
   }
 

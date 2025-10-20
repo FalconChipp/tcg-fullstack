@@ -33,7 +33,7 @@ if (process.env.DB_HOST && process.env.DB_USER && process.env.DB_PASS && process
 /* ---------------- Legacy models (kept) ---------------- */
 import UserFactory from './User.js';
 import ProfileFactory from './Profile.js';
-import CardFactory from './Card.js';
+// import CardFactory from './Card.js';
 import CollectionFactory from './Collection.js';
 import WishlistFactory from './Wishlist.js';
 import ListingFactory from './Listing.js';

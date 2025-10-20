@@ -19,20 +19,17 @@ const typeDefs = /* GraphQL */ `
     lang: String                 # 'en', etc.
   }
 
-  // CHANGED: canonical imagery type shared with new UI
   type CardImages {
     small: String
     large: String
   }
 
-  // CHANGED: canonical variant representation (legacy alias retained below)
   type CardVariant {
     key: String!
     label: String
     default: Boolean
   }
 
-  // CHANGED: canonical pricing snapshot returned from cache table
   type CardPrice {
     provider: String
     currency: String
@@ -45,7 +42,6 @@ const typeDefs = /* GraphQL */ `
     updatedAt: String
   }
 
-  // CHANGED: canonical pricing rollup aggregated from history table
   type CardPriceRollup {
     window: String!
     min: Float
@@ -71,29 +67,24 @@ const typeDefs = /* GraphQL */ `
     images: CardImages
     set: CardsearchSet!
 
-    // CHANGED: canonical variant + pricing fields
     variants: [CardVariant!]!
     latestPrices(variant: String): [CardPrice!]!
     priceRollups(window: String!): [CardPriceRollup!]!
 
-    // CHANGED: retain extended pricing for admin tooling
     priceRollupsAll(variants: [String!], windows: [Int!]): [CardsearchPriceRollups!]!
 
-    // CHANGED: COMPAT shims for legacy UI (deprecated)
     setName: String @deprecated(reason: "Use set { name } or map setCode → name")
     image: String @deprecated(reason: "Use images { large | small }")
     variations: [CardVariant!] @deprecated(reason: "Use variants")
     prices: [CardPrice!] @deprecated(reason: "Use latestPrices")
   }
 
-  // CHANGED: maintain legacy alias type for existing rollup/query resolvers
   type CardsearchCardVariant {
     cardId: String!
     variant: String!
     displayName: String!
   }
 
-  // CHANGED: legacy latest price type retained for dedicated query resolvers
   type CardsearchPriceLatest {
     cardId: String!
     variant: String!

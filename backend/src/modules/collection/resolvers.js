@@ -2,7 +2,6 @@
 
 import { Collection, Wishlist, m_Card, sequelize } from '../../models/index.js';
 import { ensureCardExists } from '../cards/ensureCardExists.service.js'; // CHANGED
-import { mapModelCardToCardsearchCard } from '../cardsearch/services/cardMapping.service.js'; // CHANGED
 import { requireAuth } from './helpers.js';
 import { maybeGrantAchievement } from '../achievements/helpers.js';
 

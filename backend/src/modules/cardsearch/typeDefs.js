@@ -19,10 +19,40 @@ const typeDefs = /* GraphQL */ `
     lang: String                 # 'en', etc.
   }
 
-  "Container for card imagery"
-  type CardsearchCardImages {
+  // CHANGED: canonical imagery type shared with new UI
+  type CardImages {
     small: String
     large: String
+  }
+
+  // CHANGED: canonical variant representation (legacy alias retained below)
+  type CardVariant {
+    key: String!
+    label: String
+    default: Boolean
+  }
+
+  // CHANGED: canonical pricing snapshot returned from cache table
+  type CardPrice {
+    provider: String
+    currency: String
+    gbp: Float
+    market: Float
+    mid: Float
+    low: Float
+    high: Float
+    variation: String
+    updatedAt: String
+  }
+
+  // CHANGED: canonical pricing rollup aggregated from history table
+  type CardPriceRollup {
+    window: String!
+    min: Float
+    max: Float
+    avg: Float
+    last: Float
+    updatedAt: String
   }
 
   "A card as stored in your m_Card table (one per set_code/number)"
@@ -38,36 +68,42 @@ const typeDefs = /* GraphQL */ `
     types: [String!]
     regulationMark: String
     illustrator: String
-    images: CardsearchCardImages
+    images: CardImages
     set: CardsearchSet!
 
-    "Available variants for this card (e.g., normal, holo, reverse, alt art, etc.)"
-    variants: [CardsearchCardVariant!]!
+    // CHANGED: canonical variant + pricing fields
+    variants: [CardVariant!]!
+    latestPrices(variant: String): [CardPrice!]!
+    priceRollups(window: String!): [CardPriceRollup!]!
 
-    "Convenience: latest GBP price per variant (if requested); loaded lazily"
-    latestPrices: [CardsearchPriceLatest!]
-    priceRollups(variant: String, windows: [Int!]): CardsearchPriceRollups
+    // CHANGED: retain extended pricing for admin tooling
     priceRollupsAll(variants: [String!], windows: [Int!]): [CardsearchPriceRollups!]!
+
+    // CHANGED: COMPAT shims for legacy UI (deprecated)
+    setName: String @deprecated(reason: "Use set { name } or map setCode → name")
+    image: String @deprecated(reason: "Use images { large | small }")
+    variations: [CardVariant!] @deprecated(reason: "Use variants")
+    prices: [CardPrice!] @deprecated(reason: "Use latestPrices")
   }
 
-  "Physical/market variant for a Card (e.g., 'normal', 'reverse', 'holo', 'alt_art')"
+  // CHANGED: maintain legacy alias type for existing rollup/query resolvers
   type CardsearchCardVariant {
-    cardId: String!              # 'sv08-123'
-    variant: String!             # normalized key
-    displayName: String!         # 'Reverse Holo', 'Full Art', etc.
+    cardId: String!
+    variant: String!
+    displayName: String!
   }
 
-  "Point-in-time latest price (denormalized for speed)"
+  // CHANGED: legacy latest price type retained for dedicated query resolvers
   type CardsearchPriceLatest {
     cardId: String!
     variant: String!
-    currency: String!            # 'GBP' (post-conversion)
+    currency: String!
     low: Float
     mid: Float
     high: Float
     market: Float
     updatedAt: DateTime!
-    provider: String             # 'tcgdex' | 'ptcgio' | 'ppt' | 'composite'
+    provider: String
   }
 
   "Daily price observation for charting; typically resolved via rollups or direct"

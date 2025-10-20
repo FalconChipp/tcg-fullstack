@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { Edit2, Trash2, CheckCircle, XCircle, Coins, Plus, BarChart, HelpCircle } from "lucide-react";
+import { getCardImageUrl } from "@/utils/imageUtils"; // CHANGED
 
 // ---- DUMMY DATA ----
 const mockSellerListings = [
@@ -287,71 +288,84 @@ export default function SellerDashboard() {
               No {tab} listings found.
             </div>
           )}
-          {paged.map(listing => (
-            <div
-              key={listing.id}
-              className={`
-                rounded-2xl shadow p-5 flex flex-col bg-light-surface dark:bg-dark-surface border
-                border-light-border dark:border-dark-border hover:border-light-accent dark:hover:border-dark-accent
-                transition relative
-              `}
-            >
-              {/* Bulk actions checkbox */}
-              {tab === "active" && (
-                <input type="checkbox" className="absolute top-4 left-4 w-5 h-5 rounded border-light-border dark:border-dark-border" />
-              )}
-              {/* Card Image */}
-              <div className="flex justify-center mb-3">
-                <Image
-                  src={listing.card.image}
-                  alt={listing.card.name}
-                  width={80}
-                  height={110}
-                  className="rounded-xl shadow border border-light-border dark:border-dark-border"
-                />
-              </div>
-              {/* Card Info */}
-              <div className="font-bold text-lg text-light-primary dark:text-dark-primary truncate text-center">
-                {listing.card.name}
-              </div>
-              <div className="text-xs text-center text-light-textMuted dark:text-dark-textMuted mb-1">
-                {listing.card.setName} &nbsp;|&nbsp; #{listing.card.number}
-              </div>
-              <div className="flex justify-center items-center gap-2 mb-2">
-                <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-semibold ${STATUS[listing.status]?.color}`}>
-                  {STATUS[listing.status]?.icon} {STATUS[listing.status]?.label}
-                </span>
-                <span className="inline-flex items-center px-2 py-1 rounded-lg bg-light-alt dark:bg-dark-alt text-xs font-semibold ml-1">
-                  {listing.type === "sale" ? "For Sale" : "For Trade"}
-                </span>
-              </div>
-              {listing.type === "sale" ? (
-                <div className="mt-1 mb-2 text-lg font-bold text-light-success dark:text-dark-success text-center">
-                  £{Number(listing.price).toFixed(2)}
+          {paged.map((listing) => {
+            const card = listing.card || {};
+            const img =
+              card?.images?.large ??
+              card?.images?.small ??
+              card?.image ??
+              card?.tcgImageUrl ??
+              ""; // CHANGED
+            const setLabel =
+              card?.set?.name ??
+              card?.setName ??
+              (card?.setCode ? String(card.setCode).toUpperCase() : ""); // CHANGED
+            return (
+              <div
+                key={listing.id}
+                className={`
+                  rounded-2xl shadow p-5 flex flex-col bg-light-surface dark:bg-dark-surface border
+                  border-light-border dark:border-dark-border hover:border-light-accent dark:hover:border-dark-accent
+                  transition relative
+                `}
+              >
+                {/* Bulk actions checkbox */}
+                {tab === "active" && (
+                  <input type="checkbox" className="absolute top-4 left-4 w-5 h-5 rounded border-light-border dark:border-dark-border" />
+                )}
+                {/* Card Image */}
+                <div className="flex justify-center mb-3">
+                  <Image
+                    src={getCardImageUrl(img, { cardName: card.name, cardId: card.id })}
+                    alt={card.name}
+                    width={80}
+                    height={110}
+                    className="rounded-xl shadow border border-light-border dark:border-dark-border"
+                  />
                 </div>
-              ) : (
-                <div className="mt-1 mb-2 text-xs text-light-primary dark:text-dark-primary text-center">
-                  Trade for: {listing.tradeTerms}
+                {/* Card Info */}
+                <div className="font-bold text-lg text-light-primary dark:text-dark-primary truncate text-center">
+                  {card.name}
                 </div>
-              )}
+                <div className="text-xs text-center text-light-textMuted dark:text-dark-textMuted mb-1">
+                  {setLabel} &nbsp;|&nbsp; #{card.number}
+                </div>
+                <div className="flex justify-center items-center gap-2 mb-2">
+                  <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-semibold ${STATUS[listing.status]?.color}`}>
+                    {STATUS[listing.status]?.icon} {STATUS[listing.status]?.label}
+                  </span>
+                  <span className="inline-flex items-center px-2 py-1 rounded-lg bg-light-alt dark:bg-dark-alt text-xs font-semibold ml-1">
+                    {listing.type === "sale" ? "For Sale" : "For Trade"}
+                  </span>
+                </div>
+                {listing.type === "sale" ? (
+                  <div className="mt-1 mb-2 text-lg font-bold text-light-success dark:text-dark-success text-center">
+                    £{Number(listing.price).toFixed(2)}
+                  </div>
+                ) : (
+                  <div className="mt-1 mb-2 text-xs text-light-primary dark:text-dark-primary text-center">
+                    Trade for: {listing.tradeTerms}
+                  </div>
+                )}
 
-              {/* Actions */}
-              <div className="flex gap-2 mt-auto pt-4">
-                <button
-                  className="flex-1 py-2 rounded-xl font-bold bg-light-accent dark:bg-dark-accent text-white dark:text-dark-surface hover:bg-light-accentLight dark:hover:bg-dark-accentLight shadow flex items-center gap-2 justify-center"
-                  onClick={() => handleEdit(listing)}
-                >
-                  <Edit2 className="w-4 h-4" /> Edit
-                </button>
-                <button
-                  className="flex-1 py-2 rounded-xl font-bold border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text hover:bg-light-error/10 dark:hover:bg-dark-error/20 shadow flex items-center gap-2 justify-center"
-                  onClick={() => handleRemove(listing.id)}
-                >
-                  <Trash2 className="w-4 h-4" /> Remove
-                </button>
+                {/* Actions */}
+                <div className="flex gap-2 mt-auto pt-4">
+                  <button
+                    className="flex-1 py-2 rounded-xl font-bold bg-light-accent dark:bg-dark-accent text-white dark:text-dark-surface hover:bg-light-accentLight dark:hover:bg-dark-accentLight shadow flex items-center gap-2 justify-center"
+                    onClick={() => handleEdit(listing)}
+                  >
+                    <Edit2 className="w-4 h-4" /> Edit
+                  </button>
+                  <button
+                    className="flex-1 py-2 rounded-xl font-bold border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text hover:bg-light-error/10 dark:hover:bg-dark-error/20 shadow flex items-center gap-2 justify-center"
+                    onClick={() => handleRemove(listing.id)}
+                  >
+                    <Trash2 className="w-4 h-4" /> Remove
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

@@ -1,6 +1,6 @@
 // src/models/CardPriceHistory.js — ESM factory (default export)
 
-// --- DEPRECATED --- 
+// CHANGED: structured history rows for rollup aggregation
 import { DataTypes } from 'sequelize';
 
 const CardPriceHistoryFactory = (sequelize) => {
@@ -13,26 +13,29 @@ const CardPriceHistoryFactory = (sequelize) => {
         primaryKey: true,
       },
       cardId: {
-        type: DataTypes.STRING,
+        type: DataTypes.STRING(64),
         allowNull: false,
       },
       variation: {
-        type: DataTypes.STRING,
-        allowNull: false,
+        type: DataTypes.STRING(64),
+        allowNull: true,
       },
-      tcgplayer: { type: DataTypes.JSON, allowNull: true },
-      cardmarket: { type: DataTypes.JSON, allowNull: true },
+      provider: { type: DataTypes.STRING(32), allowNull: true },
+      currency: { type: DataTypes.STRING(8), allowNull: true, defaultValue: 'GBP' },
       gbp: { type: DataTypes.FLOAT, allowNull: true },
-      currency: { type: DataTypes.STRING, allowNull: true, defaultValue: 'GBP' },
-      fetchedAt: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+      market: { type: DataTypes.FLOAT, allowNull: true },
+      mid: { type: DataTypes.FLOAT, allowNull: true },
+      low: { type: DataTypes.FLOAT, allowNull: true },
+      high: { type: DataTypes.FLOAT, allowNull: true },
     },
     {
       tableName: 'card_price_history',
       underscored: false,
-      timestamps: true, // keeps createdAt/updatedAt alongside fetchedAt
+      timestamps: true,
       indexes: [
         { fields: ['cardId'] },
-        { fields: ['cardId', 'variation', 'fetchedAt'] },
+        { fields: ['cardId', 'variation'] },
+        { fields: ['cardId', 'updatedAt'] },
       ],
     }
   );

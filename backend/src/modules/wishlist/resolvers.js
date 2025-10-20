@@ -1,6 +1,8 @@
 // src/modules/wishlist/resolvers.js
 
 import { Wishlist, m_Card, Listing, Collection, User, Profile, sequelize } from '../../models/index.js';
+import { ensureCardExists } from '../cards/ensureCardExists.service.js'; // CHANGED
+import { mapModelCardToCardsearchCard } from '../cardsearch/services/cardMapping.service.js'; // CHANGED
 import { requireAuth, requireAdmin } from './helpers.js';
 import { maybeGrantAchievement } from '../achievements/helpers.js';
 
@@ -56,6 +58,8 @@ const resolvers = {
       const payload = requireAuth(token);
       const t = await sequelize.transaction();
       try {
+        await ensureCardExists(cardId, { transaction: t }); // CHANGED
+
         let entry = await Wishlist.findOne({
           where: { userId: payload.id, cardId, variation },
           lock: t.LOCK.UPDATE,
@@ -120,7 +124,10 @@ const resolvers = {
     // Admin mutations unchanged
   },
   WishlistEntry: {
-    card: async (entry) => entry.card || Card.findByPk(entry.cardId),
+    card: async (entry) => { // CHANGED
+      const card = entry.card || await m_Card.findByPk(entry.cardId);
+      return mapModelCardToCardsearchCard(card, { fallbackCardId: entry.cardId });
+    },
     marketplaceListings: async (entry) => Listing.findAll({ where: { cardId: entry.cardId, status: 'active' } }),
     forTradeUsers: async (entry) => {
       const entries = await Collection.findAll({ where: { cardId: entry.cardId, wishlist: false } });

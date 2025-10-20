@@ -51,9 +51,9 @@ import SubscriptionFactory from './Subscription.js';
 import SubscriptionTierFactory from './SubscriptionTier.js';
 import TransactionFactory from './Transaction.js';
 import ShippingLabelFactory from './ShippingLabel.js';
-// Legacy cache/history (INTENTIONALLY not imported)
-// import CardPriceCacheFactory from './CardPriceCache.js';
-// import CardPriceHistoryFactory from './CardPriceHistory.js';
+// CHANGED: legacy cache/history reintroduced for compat pricing
+import CardPriceCacheFactory from './_CardPriceCache.js';
+import CardPriceHistoryFactory from './_CardPriceHistory.js';
 import SubscriptionAddOnFactory from './SubscriptionAddOn.js';
 import AdminActionFactory from './AdminAction.js';
 import RewardFactory from './Reward.js';
@@ -115,6 +115,8 @@ const m_PriceObservation = init_m_PriceObservation(sequelize, DataTypes);
 const m_PriceDaily = init_m_PriceDaily(sequelize, DataTypes);
 const m_PriceLatest = init_m_PriceLatest(sequelize, DataTypes);
 const m_PriceRollup = init_m_PriceRollup(sequelize, DataTypes); // ADDED
+const CardPriceCache = CardPriceCacheFactory(sequelize); // CHANGED
+const CardPriceHistory = CardPriceHistoryFactory(sequelize); // CHANGED
 
 /* ---------------- Associations (legacy) ---------------- */
 // User/Profile: 1:1
@@ -258,7 +260,7 @@ User.hasMany(ShippingLabel, { foreignKey: 'userId', onDelete: 'CASCADE' });
 ShippingLabel.belongsTo(User, { foreignKey: 'userId' });
 
 /* ---------------- Legacy price/search cleanup ---------------- */
-// All CardPrice*, CardPriceCache, CardPriceHistory, and any old search models are removed.
+// CHANGED: CardPriceCache & CardPriceHistory kept for compat & deterministic pricing.
 
 /* ---------------- NEW marketdata2 associations ---------------- */
 // m_Set 1:M m_Card
@@ -312,5 +314,7 @@ export {
   m_Set, m_Card, m_CardVariant,
   m_PriceObservation, m_PriceDaily, m_PriceLatest,
   m_PriceRollup, // ADDED
+  CardPriceCache, // CHANGED
+  CardPriceHistory, // CHANGED
 };
 

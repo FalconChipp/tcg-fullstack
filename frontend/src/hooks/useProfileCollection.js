@@ -101,23 +101,11 @@ export default function useProfileCollection({ userId, token }) {
               id
               name
               number
-              setName
-              image
-              rarity
-              variations {
-                normal
-                holo
-                reverse
-                firstEdition
-                wPromo
-              }
-              prices {
-                variation
-                tcgplayer
-                cardmarket
-                gbp
-                updatedAt
-              }
+              setCode
+              set { name }
+              images { small large }
+              variants { key label default }
+              latestPrices { provider currency market mid low high gbp variation updatedAt }
             }
           }
         }
@@ -135,9 +123,12 @@ export default function useProfileCollection({ userId, token }) {
               card {
                 id
                 name
-                setName
-                image
                 number
+                setCode
+                set { name }
+                images { small large }
+                variants { key label default }
+                latestPrices { provider currency market mid low high gbp variation updatedAt }
               }
             }
             total
@@ -193,11 +184,15 @@ export default function useProfileCollection({ userId, token }) {
           flat.push({
             ...entry,
             ...card,
-            prices: Array.isArray(card.prices) ? card.prices.filter(Boolean) : [],
-            variations:
-              card.variations && typeof card.variations === "object"
-                ? card.variations
-                : null,
+            setName: card.set?.name || card.setName || null, // CHANGED
+            prices: Array.isArray(card.latestPrices)
+              ? card.latestPrices.filter(Boolean)
+              : [], // CHANGED
+            variations: Array.isArray(card.variants)
+              ? card.variants.map((v) => v?.key || v?.variant).filter(Boolean)
+              : Array.isArray(card.variations)
+                ? card.variations.map((v) => (typeof v === "string" ? v : v?.key || v?.variant)).filter(Boolean)
+                : null, // CHANGED
             cardId: entry.cardId,
             quantity: entry.quantity,
             condition: entry.condition,

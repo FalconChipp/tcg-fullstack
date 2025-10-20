@@ -1,6 +1,8 @@
 // src/modules/collections/resolvers.js
 
 import { Collection, Wishlist, m_Card, sequelize } from '../../models/index.js';
+import { ensureCardExists } from '../cards/ensureCardExists.service.js'; // CHANGED
+import { mapModelCardToCardsearchCard } from '../cardsearch/services/cardMapping.service.js'; // CHANGED
 import { requireAuth } from './helpers.js';
 import { maybeGrantAchievement } from '../achievements/helpers.js';
 
@@ -41,12 +43,20 @@ const resolvers = {
     },
   },
 
+  Collection: {
+    card: async (entry) => { // CHANGED
+      const card = entry.card || await m_Card.findByPk(entry.cardId);
+      return mapModelCardToCardsearchCard(card, { fallbackCardId: entry.cardId });
+    },
+  },
+
   Mutation: {
     // Add a card to collection (not wishlist)
     addToCollection: async (_, { cardId, quantity = 1, condition, variation }, { token }) => {
       const payload = requireAuth(token);
       const t = await sequelize.transaction();
       try {
+        await ensureCardExists(cardId, { transaction: t }); // CHANGED
         let entry = await Collection.findOne({
           where: {
             userId: payload.id,
@@ -157,6 +167,8 @@ const resolvers = {
       const payload = requireAuth(token);
       const t = await sequelize.transaction();
       try {
+        await ensureCardExists(cardId, { transaction: t }); // CHANGED
+
         // 1. Find the wishlist entry to move
         const wishlistEntry = await Wishlist.findOne({
           where: {

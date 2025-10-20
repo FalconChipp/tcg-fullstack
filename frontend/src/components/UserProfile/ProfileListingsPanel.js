@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Tag, Edit, Trash2, CheckCircle, XCircle, Coins } from "lucide-react";
 import Image from "next/image";
+import { getCardImageUrl } from "@/utils/imageUtils"; // CHANGED
 
 // PALETTE-AWARE STATUS COLORS
 const STATUS = {
@@ -78,29 +79,41 @@ export default function ProfileListingsPanel({ listings = [], onAction, dark }) 
             No {activeTab} listings found.
           </div>
         )}
-        {filteredListings.map((listing) => (
-          <div
-            key={listing.id}
-            className={`
-              rounded-xl shadow px-4 py-5 flex flex-col
-              bg-light-surface dark:bg-dark-surface
-              border border-transparent hover:border-purple-400 transition
-              relative
-            `}
-          >
+        {filteredListings.map((listing) => {
+          const card = listing.card || {};
+          const img = // CHANGED
+            card?.images?.large ??
+            card?.images?.small ??
+            card?.image ??
+            card?.tcgImageUrl ??
+            "";
+          const setLabel = // CHANGED
+            card?.set?.name ??
+            card?.setName ??
+            (card?.setCode ? String(card.setCode).toUpperCase() : "");
+          return (
+            <div
+              key={listing.id}
+              className={`
+                rounded-xl shadow px-4 py-5 flex flex-col
+                bg-light-surface dark:bg-dark-surface
+                border border-transparent hover:border-purple-400 transition
+                relative
+              `}
+            >
             {/* Card info */}
             <div className="flex items-center gap-4 mb-2">
-              <Image
-                src={listing.card.image}
-                alt={listing.card.name}
-                width={60}
-                height={84}
-                className="rounded-lg shadow"
-              />
+                <Image
+                  src={getCardImageUrl(img, { cardName: card.name })} // CHANGED
+                  alt={card.name}
+                  width={60}
+                  height={84}
+                  className="rounded-lg shadow"
+                />
               <div>
-                <div className="font-bold text-lg">{listing.card.name}</div>
+                <div className="font-bold text-lg">{card.name}</div>
                 <div className="text-sm text-light-textSecondary dark:text-dark-textSecondary">
-                  {listing.card.setName} &nbsp;|&nbsp; #{listing.card.number}
+                  {setLabel} &nbsp;|&nbsp; #{card.number}
                 </div>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="inline-block bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-200 px-2 py-0.5 rounded-full text-xs font-semibold">
@@ -160,7 +173,8 @@ export default function ProfileListingsPanel({ listings = [], onAction, dark }) 
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Edit Modal */}

@@ -10,6 +10,7 @@
     "migrate": "sequelize db:migrate",
     "seed": "sequelize db:seed:all",
     "lint": "eslint .",
+    "check:sdl": "node scripts/find-bad-sdl.cjs",
 "test": "vitest --ui --open --coverage --reporter=default --reporter=html --reporter=json --reporter=junit --outputFile.html=./reports/vitest-report.html --outputFile.json=./reports/vitest-results.json --outputFile.junit=./reports/junit.xml",    "monitor": "node monitor.js"
   },
   "dependencies": {

@@ -36,9 +36,9 @@ const CARDSEARCH_QUERY = gql`
         rarity
         images { small large }
         set { code name }
-        variants { variant displayName }
+        variants { key default label }
         latestPrices {
-          variant
+          variation
           market
           mid
           low

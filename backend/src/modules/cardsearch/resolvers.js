@@ -355,38 +355,111 @@ const resolvers = {
       });
     },
 
-    async latestPrices(parent, { variant } = {}) {
+        async latestPrices(parent, { variant } = {}) {
       const cardId = parent.cardId || parent.id || null;
       if (!cardId) return [];
 
+      // Normalize requested variant key
       const normalizedVariant = normalizeVariant(variant);
-      const where = { cardId };
-      if (normalizedVariant) {
-        where.variation = normalizedVariant;
+
+      // Helper: discover attribute names for CardPriceCache
+      const cacheAttrs = CardPriceCache?.rawAttributes || {};
+      const nameFor = (candidates) => {
+        for (const c of candidates) {
+          if (cacheAttrs[c]) return c; // model attribute name
+        }
+        return null;
+      };
+
+      // Prefer model attribute names; fall back to common guesses
+      const colCardId   = nameFor(['cardId','card_id'])       || 'cardId';
+      const colVar      = nameFor(['variation','variant'])     || 'variation';
+      const colUpdated  = nameFor(['updatedAt','updated_at'])  || 'updatedAt';
+      const colCurrency = nameFor(['currency'])                || 'currency';
+      const colProvider = nameFor(['provider'])                || 'provider';
+      const colMarket   = nameFor(['market'])                  || 'market';
+      const colMid      = nameFor(['mid'])                     || 'mid';
+      const colLow      = nameFor(['low'])                     || 'low';
+      const colHigh     = nameFor(['high'])                    || 'high';
+      const colGbp      = nameFor(['gbp'])                     || 'gbp';
+
+      // First attempt: query CardPriceCache
+      const whereCache = { [colCardId]: cardId };
+      if (normalizedVariant) whereCache[colVar] = normalizedVariant;
+
+      let rows = await CardPriceCache.findAll({
+        where: whereCache,
+        order: [[colUpdated, 'DESC']],
+        limit: normalizedVariant ? 20 : 50,
+        raw: true,
+      });
+
+      // If no variant specified and nothing came back, retry WITHOUT variant filter (maybe DB stores only 'normal'/'holo' etc.)
+      if (!rows.length && !normalizedVariant) {
+        rows = await CardPriceCache.findAll({
+          where: { [colCardId]: cardId },
+          order: [[colUpdated, 'DESC']],
+          limit: 100,
+          raw: true,
+        });
       }
 
-      const rows = await CardPriceCache.findAll({
-        where,
-        order: [["updatedAt", "DESC"]],
-        limit: normalizedVariant ? 5 : 25,
-      });
+      // Fallback #2: try m_PriceLatest (snake_case)
+      if (!rows.length) {
+        const whereLatest = { card_id: cardId };
+        if (normalizedVariant) whereLatest.variant = normalizedVariant;
+        rows = await m_PriceLatest.findAll({
+          where: whereLatest,
+          order: [['updated_at', 'DESC']],
+          limit: normalizedVariant ? 20 : 50,
+          raw: true,
+        });
+
+        // Map snake_case rows to camel-ish shape so the rest of the logic is shared
+        rows = rows.map(r => ({
+          [colCardId]: r.card_id,
+          [colVar]: r.variant,
+          [colCurrency]: r.currency ?? 'GBP',
+          [colMarket]: r.market,
+          [colMid]: r.mid,
+          [colLow]: r.low,
+          [colHigh]: r.high,
+          [colProvider]: r.provider,
+          [colUpdated]: r.updated_at,
+          [colGbp]: r.gbp,
+        }));
+      }
 
       if (!rows.length) return [];
 
-      return rows.map((row) => {
-        const r = row.get ? row.get({ plain: true }) : row;
-        return {
-          provider: r.provider ?? null,
-          currency: r.currency ?? "GBP",
-          gbp: r.gbp ?? r.market ?? r.mid ?? null,
-          market: r.market ?? null,
-          mid: r.mid ?? null,
-          low: r.low ?? null,
-          high: r.high ?? null,
-          variation: r.variation ?? normalizedVariant ?? null,
-          updatedAt: r.updatedAt ? new Date(r.updatedAt).toISOString() : null,
-        };
-      });
+      // De-dupe to the latest per (provider, variation)
+      const pick = new Map();
+      for (const r of rows) {
+        const v = (r[colVar] || 'normal').toString().toLowerCase();
+        const p = r[colProvider] || 'unknown';
+        const key = `${p}|${v}`;
+        const cur = pick.get(key);
+        if (!cur) {
+          pick.set(key, r);
+          continue;
+        }
+        const tNew = new Date(r[colUpdated] || 0).getTime();
+        const tCur = new Date(cur[colUpdated] || 0).getTime();
+        if (tNew > tCur) pick.set(key, r);
+      }
+
+      // Shape to GraphQL type
+      return Array.from(pick.values()).map(r => ({
+        provider: r[colProvider] ?? null,
+        currency: r[colCurrency] ?? 'GBP',
+        gbp: r[colGbp] ?? r[colMarket] ?? r[colMid] ?? null,
+        market: r[colMarket] ?? null,
+        mid: r[colMid] ?? null,
+        low: r[colLow] ?? null,
+        high: r[colHigh] ?? null,
+        variation: (r[colVar] || normalizedVariant || 'normal')?.toString().toLowerCase(),
+        updatedAt: r[colUpdated] ? new Date(r[colUpdated]).toISOString() : null,
+      }));
     },
 
     async priceRollups(parent, { window } = {}) {

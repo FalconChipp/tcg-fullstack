@@ -34,16 +34,17 @@ const CARDSEARCH_QUERY = gql`
         number
         name
         rarity
-        images { small large }
+        images { large }
         set { code name }
         variants { key default label }
         latestPrices {
           variation
+          currency
+          gbp
           market
           mid
           low
           high
-          currency
           updatedAt
           provider
         }
@@ -57,7 +58,6 @@ const CARDSEARCH_EXACT_LIMIT = 12;
 
 // Fallback set icon
 const FALLBACK_SYMBOL_IMAGE = "https://placehold.co/50x50/webp?text=Icon";
-
 const GBP_SYMBOL = '\u00A3';
 
 /* ---------------- Helpers ---------------- */
@@ -71,7 +71,6 @@ function canonicalVariantKey(raw) {
   return value;
 }
 
-// Choose a useful price row for tiles
 function getBestPrice(prices) {
   if (!Array.isArray(prices) || prices.length === 0) return null;
   const pref = ["normal", "holofoil", "holo", "reverseHolofoil", "reverse"];
@@ -84,24 +83,28 @@ function getBestPrice(prices) {
 
 function hasPrice(entry) {
   if (!entry) return false;
-  return [entry.market, entry.tcgplayer, entry.cardmarket, entry.gbp, entry.mid, entry.low, entry.high]
-    .some((val) => typeof val === 'number' && Number.isFinite(val));
+  // treat zero/negative as "no price"
+  const isGood = (v) => typeof v === 'number' && Number.isFinite(v) && v > 0;
+  return [entry.market, entry.tcgplayer, entry.cardmarket, entry.gbp, entry.mid, entry.low, entry.high].some(isGood);
 }
 
 function computeAveragePrice(entry) {
   if (!entry || !hasPrice(entry)) return null;
-  if (typeof entry.market === 'number' && Number.isFinite(entry.market)) return entry.market;
+  const pick = (v) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null);
+
+  if (pick(entry.gbp) != null) return entry.gbp;
+  if (pick(entry.market) != null) return entry.market;
 
   const primary = [];
-  if (typeof entry.tcgplayer === 'number' && Number.isFinite(entry.tcgplayer)) primary.push(entry.tcgplayer);
-  if (typeof entry.cardmarket === 'number' && Number.isFinite(entry.cardmarket)) primary.push(entry.cardmarket);
+  const t = pick(entry.tcgplayer); if (t != null) primary.push(t);
+  const c = pick(entry.cardmarket); if (c != null) primary.push(c);
 
   if (primary.length === 2) return (primary[0] + primary[1]) / 2;
   if (primary.length === 1) return primary[0];
 
   const fallback = firstNumber(entry.gbp, entry.mid, entry.low, entry.high);
   if (fallback != null) return fallback;
-  return primary.length ? primary[0] : null;
+  return null;
 }
 
 function formatGBP(value) {
@@ -111,7 +114,7 @@ function formatGBP(value) {
 
 function firstNumber(...values) {
   for (const value of values) {
-    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
   }
   return null;
 }
@@ -123,7 +126,7 @@ function normalizePriceEntry(price) {
   const providerKey = providerRaw ? String(providerRaw).toLowerCase() : '';
   const currency = String(price.currency ?? price.curr ?? 'GBP').toUpperCase();
 
-  const market = firstNumber(price.market, price.mid, price.price, price.value);
+  const market = firstNumber(price.gbp, price.market, price.mid, price.price, price.value);
   const mid = firstNumber(price.mid);
   const low = firstNumber(price.low);
   const high = firstNumber(price.high);
@@ -144,9 +147,9 @@ function normalizePriceEntry(price) {
   if (currency === 'USD' && market != null) entry.usd = market;
   if (currency === 'EUR' && market != null) entry.eur = market;
 
-  if (typeof price.gbp === 'number') entry.gbp = price.gbp;
-  if (typeof price.usd === 'number') entry.usd = price.usd;
-  if (typeof price.eur === 'number') entry.eur = price.eur;
+  if (typeof price.gbp === 'number' && price.gbp > 0) entry.gbp = price.gbp;
+  if (typeof price.usd === 'number' && price.usd > 0) entry.usd = price.usd;
+  if (typeof price.eur === 'number' && price.eur > 0) entry.eur = price.eur;
 
   if (Array.isArray(price.sources)) {
     entry.sources = price.sources;
@@ -237,7 +240,7 @@ function normalizePriceList(list) {
     }
   }
 
-  return Array.from(byVariant.values());
+  return Array.from(byVariant.values()).filter(hasPrice);
 }
 
 function collectVariantList(item) {
@@ -250,15 +253,18 @@ function collectVariantList(item) {
 
   if (Array.isArray(item?.variants)) {
     for (const variant of item.variants) {
-      if (typeof variant === 'string') pushVariant(variant);
-      else if (variant && typeof variant === 'object') pushVariant(variant.variant || variant.displayName);
+      if (typeof variant === 'string') {
+        pushVariant(variant);
+      } else if (variant && typeof variant === 'object') {
+        pushVariant(variant.key || variant.variant || variant.displayName || variant.label);
+      }
     }
   }
 
   const priceSources = Array.isArray(item?.latestPrices) ? item.latestPrices : Array.isArray(item?.prices) ? item.prices : [];
   for (const price of priceSources) {
     if (!price) continue;
-    pushVariant(price.variant || price.variation || price.displayName);
+    pushVariant(price.variation || price.variant || price.displayName || price.label);
   }
 
   const result = Array.from(variants).filter(Boolean);
@@ -343,7 +349,6 @@ function mergeCardLists(existing, incoming) {
   return base;
 }
 
-// A stable key for the current search params to keep separate result buckets
 function makeQueryKey({ name, setCode, number }) {
   return JSON.stringify({
     name: (name || "").trim().toLowerCase(),
@@ -386,31 +391,20 @@ export default function CardSearch() {
   // throttle loadMore so we never queue two at once
   const loadingMoreRef = useRef(false);
   const loadMoreTriggerRef = useRef(null);
+  const observerRef = useRef(null);
 
-  // FIX: also capture networkStatus to distinguish initial search vs fetchMore
-  const [runSearch, { data, loading, error, fetchMore, networkStatus }] = useLazyQuery(
-    CARDSEARCH_QUERY,
-    {
-      fetchPolicy: "cache-first",
-      nextFetchPolicy: "cache-first",
-      notifyOnNetworkStatusChange: true,
-      returnPartialData: true,
-    }
-  );
+  // Apollo query
+  const [runSearch, { fetchMore }] = useLazyQuery(CARDSEARCH_QUERY, {
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
+    notifyOnNetworkStatusChange: true,
+    returnPartialData: true,
+  });
+
+  // Explicit submit state (prevents "second search disabled" edge cases)
+  const [submitting, setSubmitting] = useState(false);
 
   const currentKey = useMemo(() => makeQueryKey({ name, setCode, number }), [name, setCode, number]);
-  const activeError = searchError || error || null;
-
-  // FIX: compute a precise "isSearching" (not counting fetchMore)
-  // Apollo NetworkStatus: 1=loading, 2=setVariables, 3=fetchMore, 4=refetch, 6=poll
-  const isFetchingMore = networkStatus === 3;
-  const isSearching = loading && !isFetchingMore;
-
-  // FIX: share isSearching to loadMore guard via a ref
-  const isSearchingRef = useRef(false);
-  useEffect(() => {
-    isSearchingRef.current = isSearching;
-  }, [isSearching]);
 
   const showStatusMessage = (type, message) => {
     setStatusMessage({ type, message });
@@ -422,16 +416,26 @@ export default function CardSearch() {
     setImageLoadedMap((prev) => (prev[id] ? prev : { ...prev, [id]: true }));
   }, []);
 
-  // Kick off a small first page so something renders quickly
+  const disconnectObserver = useCallback(() => {
+    if (observerRef.current) {
+      try { observerRef.current.disconnect(); } catch {}
+      observerRef.current = null;
+    }
+  }, []);
+
+  // Kick off a search
   const handleSearch = useCallback(async (e) => {
-    if (e?.preventDefault) e.preventDefault(); 
+    if (e?.preventDefault) e.preventDefault();
     setHasSearched(true);
 
     const key = makeQueryKey({ name, setCode, number });
     lastKeyRef.current = key;
-    loadingMoreRef.current = false; // ensure loadMore doesn't consider itself active
+    loadingMoreRef.current = false;
 
-    // If we already have a bucket for this query, show it immediately (stale-while-revalidate)
+    // kill any previous infinite-scroll observer so it won't fire mid-search
+    disconnectObserver();
+
+    // if we already have cached results for these params, show immediately
     const bucket = bucketsRef.current.get(key);
     if (bucket) {
       startTransition(() => {
@@ -441,7 +445,7 @@ export default function CardSearch() {
       });
     } else {
       startTransition(() => {
-        setResults([]); // clear grid while fetching new params
+        setResults([]);
         setHasMore(false);
         setIsLoadingMore(false);
       });
@@ -462,42 +466,50 @@ export default function CardSearch() {
     };
 
     setSearchError(null);
+    setSubmitting(true);
+    try {
+      const res = await runSearch({ variables });
+      const payload = res?.data?.searchCards;
 
-    const res = await runSearch({ variables });
-    const payload = res?.data?.searchCards;
+      if (!payload) {
+        // restore cached hasMore if any, but don't lock the UI
+        if (bucket) setHasMore(bucket.hasNextPage);
+        return;
+      }
 
-    if (!payload) return;
+      const items = mapCardsearchItems(payload.items);
+      const totalCount = Number(payload.total ?? payload.totalCount ?? items.length);
+      const initialOffset = Number(payload.offset ?? 0);
+      const nextOffset = Math.min(initialOffset + items.length, totalCount);
+      const pageSize = Number(payload.limit ?? limit);
+      const bucketNext = {
+        items,
+        hasNextPage: nextOffset < totalCount,
+        totalCount,
+        nextOffset,
+        pageSize,
+      };
 
-    const items = mapCardsearchItems(payload.items);
-    const totalCount = Number(payload.total ?? payload.totalCount ?? items.length);
-    const initialOffset = Number(payload.offset ?? 0);
-    const nextOffset = Math.min(initialOffset + items.length, totalCount);
-    const pageSize = Number(payload.limit ?? limit);
-    const bucketNext = {
-      items,
-      hasNextPage: nextOffset < totalCount,
-      totalCount,
-      nextOffset,
-      pageSize,
-    };
+      bucketsRef.current.set(key, bucketNext);
 
-    bucketsRef.current.set(key, bucketNext);
-
-    // Only update visible list if the user is still on the same query
-    if (lastKeyRef.current === key) {
-      startTransition(() => {
-        setResults(items);
-        setHasMore(bucketNext.hasNextPage);
-        setIsLoadingMore(false);
-      });
+      if (lastKeyRef.current === key) {
+        startTransition(() => {
+          setResults(items);
+          setHasMore(bucketNext.hasNextPage);
+          setIsLoadingMore(false);
+        });
+      }
+    } catch (err) {
+      setSearchError(err instanceof Error ? err : new Error(String(err)));
+      // keep UI interactive
+      setHasMore(bucket ? bucket.hasNextPage : false);
+    } finally {
+      setSubmitting(false);
     }
-  }, [name, setCode, number, runSearch, isExactCardSearch]);
+  }, [name, setCode, number, runSearch, isExactCardSearch, disconnectObserver]);
 
   // Load more results using cardsearch pagination
   const loadMoreResults = useCallback(async () => {
-    // FIX: do not fetchMore while a fresh search is in-flight
-    if (isSearchingRef.current) return;
-
     if (loadingMoreRef.current || !hasMore) return;
     loadingMoreRef.current = true;
     setIsLoadingMore(true);
@@ -516,9 +528,7 @@ export default function CardSearch() {
           bucketsRef.current.set(key, merged);
         }
         if (lastKeyRef.current === key) {
-          startTransition(() => {
-            setHasMore(false);
-          });
+          startTransition(() => setHasMore(false));
         }
         return;
       }
@@ -533,16 +543,12 @@ export default function CardSearch() {
         },
       };
 
-      setSearchError(null);
-
       const res = await fetchMore({ variables: vars });
       const payload = res?.data?.searchCards;
       if (!payload) {
         const merged = { ...prev, hasNextPage: false, nextOffset };
         bucketsRef.current.set(key, merged);
-        if (lastKeyRef.current === key) {
-          startTransition(() => setHasMore(false));
-        }
+        if (lastKeyRef.current === key) startTransition(() => setHasMore(false));
         return;
       }
 
@@ -568,7 +574,7 @@ export default function CardSearch() {
         });
       }
     } catch (err) {
-      setSearchError(normalizeError(err));
+      setSearchError(err instanceof Error ? err : new Error(String(err)));
       const key = lastKeyRef.current || currentKey;
       if (key) {
         const prev = bucketsRef.current.get(key);
@@ -591,10 +597,14 @@ export default function CardSearch() {
 
   // Infinite scroll (simple & cheap)
   useEffect(() => {
-    if (!hasMore) return;
+    if (!hasMore) {
+      disconnectObserver();
+      return;
+    }
     const node = loadMoreTriggerRef.current;
     if (!node) return;
 
+    disconnectObserver();
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
@@ -603,11 +613,12 @@ export default function CardSearch() {
       });
     }, { root: null, rootMargin: '400px', threshold: 0 });
 
+    observerRef.current = observer;
     observer.observe(node);
-    return () => observer.disconnect();
-  }, [hasMore, loadMoreResults, results.length]);
+    return () => disconnectObserver();
+  }, [hasMore, loadMoreResults, results.length, currentKey, disconnectObserver]);
 
-  // Wishlist (unchanged)
+  // Wishlist
   const handleAddToWishlist = async (card) => {
     const token = getCookie("authToken");
     if (!token) {
@@ -720,24 +731,23 @@ export default function CardSearch() {
             <div className="flex items-end">
               <button
                 type="submit"
-                // FIX: disable ONLY for a true search (not during fetchMore)
-                disabled={isSearching}
+                disabled={submitting}
                 className="bg-light-accent dark:bg-dark-accent text-light-surface dark:text-white font-bold text-lg border-none rounded-xl px-8 py-3 shadow-md transition hover:bg-light-accentLight dark:hover:bg-dark-accentLight hover:text-light-surface dark:hover:text-white disabled:opacity-60 disabled:cursor-not-allowed w-full"
               >
-                {isSearching ? "Searching..." : "Search"}
+                {submitting ? "Searching..." : "Search"}
               </button>
             </div>
           </div>
 
-          {activeError && (
+          {searchError && (
             <div className="text-light-error dark:text-dark-error text-center mt-4 font-medium">
-              {activeError.message || "Search failed"}
+              {searchError.message || "Search failed"}
             </div>
           )}
         </form>
 
         {/* Results */}
-        {isSearching && results.length === 0 ? (
+        {submitting && results.length === 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {Array.from({ length: 4 }).map((_, idx) => (
               <div className="bg-light-surface dark:bg-dark-surface rounded-2xl shadow flex flex-col p-3 min-h-[300px]" key={idx}>
@@ -871,14 +881,12 @@ export default function CardSearch() {
           </div>
         ) : (
           <div>
-            {/* Show "No results" ONLY after a search has been attempted */}
             {hasSearched && (
               <div className="text-center text-light-textMuted dark:text-dark-textMuted text-lg py-8">
                 No results found. Try adjusting your search criteria.
               </div>
             )}
 
-            {/* Skeletons are intentionally always shown in this branch */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-2">
               {Array.from({ length: 4 }).map((_, idx) => (
                 <CardSkeleton

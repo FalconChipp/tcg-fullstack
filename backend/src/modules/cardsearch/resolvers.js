@@ -1,27 +1,35 @@
 // src/modules/cardsearch/resolvers.js
 // GraphQL resolvers for Card Search wired to shared services.
-// NOTE: Works with or without GraphQL context; when no ctx.loaders is present,
-// it falls back to direct DB reads.
+// - Pulls cards/sets/variants from m_* tables
+// - Uses CardPriceCache -> m_PriceLatest as fallback for latest prices
+// - Uses computeRollupsSnapshot -> m_PriceRollup fallback for rollups
+// - Exposes admin job runners that call the actual jobs
 
-// CHANGED: include normalized cache/history models for pricing
-import { Op, fn, col } from 'sequelize';
+import { Op, fn, col } from "sequelize";
 
 import {
   m_Set,
   m_Card,
   m_PriceLatest,
-  m_PriceRollup,
+  m_PriceRollup,   // note: rename here if your model is plural
   m_CardVariant,
-  CardPriceCache, // CHANGED
-  CardPriceHistory, // CHANGED
-} from "../../models/index.js"; // <- ensure this path matches your project
+  CardPriceCache,
+  CardPriceHistory,
+} from "../../models/index.js";
 
 import qb from "./services/queryBuilder.service.js";
 import { computeRollupsSnapshot } from "./services/rollup.service.js";
 import { fetchPriceHistory } from "./services/history.service.js";
 import { getAbbrForTcgdex } from "./services/setMapping.service.js";
 
-/* ---------------- image helpers (unchanged) ---------------- */
+// --- Admin jobs (used in mutations) ---
+import { ingestSet } from "./jobs/ingestSet.job.js";
+import { collectPrices } from "./jobs/collectPrices.job.js";
+import { collectBoth } from "./jobs/collectBoth.job.js";
+import { rebuildPriceRollups as jobPriceRollup } from "./jobs/priceRollup.job.js";
+import { fxDaily } from "./jobs/fxDaily.job.js";
+
+/* ---------------- image helpers ---------------- */
 
 function buildHighResImageUrl(raw) {
   if (!raw) return null;
@@ -55,10 +63,9 @@ function buildCardImages(row) {
   return { small: null, large: highRes };
 }
 
-/* ---------------- helpers (NEW) ---------------- */
+/* ---------------- helpers ---------------- */
 
-// CHANGED: normalize variant inputs so lookups match storage shape.
-// Examples: "Reverse Holo" / "reverse_holo" -> "reverse", "Holofoil" -> "holo"
+// Normalize variant inputs so lookups match storage shape
 function normalizeVariant(value) {
   if (value == null) return null;
   const trimmed = String(value).trim();
@@ -67,10 +74,56 @@ function normalizeVariant(value) {
   if (c === "holofoil" || c === "holo_foil") return "holo";
   if (c === "reverseholo" || c === "reverseholofoil") return "reverse";
   if (c === "firstedition") return "firstEdition";
-  return c; // assume already one of: normal | reverse | holo | firstEdition | foil | ...
+  return c;
 }
 
-/* ---------------- resolvers ---------------- */
+// -------- price extraction helpers (tolerant to schema differences) --------
+function num(x) {
+  if (x === null || x === undefined) return null;
+  const n = typeof x === "number" ? x : Number(String(x).replace(/[, ]+/g, ""));
+  return Number.isFinite(n) ? n : null;
+}
+function gt0(x) {
+  const n = num(x);
+  return n != null && n > 0 ? n : null;
+}
+function firstDefined(obj, fields) {
+  for (const f of fields) {
+    if (!f) continue;
+    if (Object.prototype.hasOwnProperty.call(obj, f) && obj[f] != null) return obj[f];
+  }
+  return null;
+}
+function hasMeaningfulPrice(row) {
+  return gt0(row.gbp) != null || gt0(row.market) != null || gt0(row.mid) != null || gt0(row.low) != null || gt0(row.high) != null;
+}
+
+// Primary/alt candidates for common provider schemas
+const PRICE_FIELDS_PRIMARY = ["gbp", "market", "mid"];
+const PRICE_FIELDS_ALTS = [
+  "price_gbp", "price", "value",
+  "last_gbp", "last",
+  "avg_gbp", "average_gbp", "avg", "mean", "median",
+  "latest_gbp", "latest_market", "latest_mid"
+];
+const LOW_FIELDS = ["low", "floor", "min", "min_gbp", "low_gbp"];
+const HIGH_FIELDS = ["high", "ceiling", "max", "max_gbp", "high_gbp"];
+const UPDATED_AT_FIELDS = ["updatedAt", "updated_at", "timestamp", "observed_at", "computed_at", "date"];
+
+// Derive values safely from a Card-like object
+function deriveSetCode(parent) {
+  if (parent?.setCode) return String(parent.setCode);
+  if (parent?.set_code) return String(parent.set_code);
+  const id = parent?.cardId || parent?.id;
+  if (typeof id === "string" && id.includes("-")) return id.split("-")[0];
+  return null;
+}
+function deriveNumber(parent) {
+  if (parent?.number) return String(parent.number);
+  const id = parent?.cardId || parent?.id;
+  if (typeof id === "string" && id.includes("-")) return id.split("-").slice(1).join("-");
+  return null;
+}
 
 const resolvers = {
   Query: {
@@ -122,26 +175,59 @@ const resolvers = {
       };
     },
 
+    // NOTE: kept as an internal query for admin/tools; schema exposes CardsearchCard.latestPrices instead.
     async cardsearchPriceLatest(_, { cardId, variant }) {
       const where = { card_id: cardId };
-      // CHANGED: normalize variant so it matches DB keys reliably
       if (variant) where.variant = normalizeVariant(variant);
 
-      const rows = await m_PriceLatest.findAll({ where, order: [["updated_at", "DESC"]] });
-      return rows.map((r) => {
-        const x = r.get();
-        return {
-          cardId: x.card_id,
-          variant: x.variant,
+      // Prefer cache if present
+      if (CardPriceCache) {
+        const cacheAttrs = CardPriceCache.rawAttributes || {};
+        const has = (k) => !!cacheAttrs[k];
+        const rows = await CardPriceCache.findAll({
+          where: {
+            [has("cardId") ? "cardId" : "card_id"]: cardId,
+            ...(variant
+              ? { [has("variation") ? "variation" : has("variant") ? "variant" : "variation"]: normalizeVariant(variant) }
+              : {}),
+          },
+          order: [[has("updatedAt") ? "updatedAt" : "updated_at", "DESC"]],
+          raw: true,
+        });
+
+        const vCol = has("variation") ? "variation" : has("variant") ? "variant" : "variation";
+        const uCol = has("updatedAt") ? "updatedAt" : "updated_at";
+
+        const shaped = rows.map((x) => ({
+          cardId,
+          variant: x[vCol] ?? null,
           currency: x.currency ?? "GBP",
-          low: x.low ?? null,
-          mid: x.mid ?? null,
-          high: x.high ?? null,
-          market: x.market ?? null,
-          updatedAt: x.updated_at,
+          low: gt0(x.low),
+          mid: gt0(x.mid),
+          high: gt0(x.high),
+          market: gt0(x.market ?? x.gbp ?? x.mid),
+          updatedAt: x[uCol] ? new Date(x[uCol]).toISOString() : null,
           provider: x.provider ?? null,
-        };
-      });
+          gbp: gt0(x.gbp ?? x.price_gbp),
+        })).filter(hasMeaningfulPrice);
+
+        if (shaped.length) return shaped;
+      }
+
+      // Fallback: m_PriceLatest
+      const rows = await m_PriceLatest.findAll({ where, order: [["updated_at", "DESC"]], raw: true });
+      return rows.map((x) => ({
+        cardId: x.card_id,
+        variant: x.variant,
+        currency: x.currency ?? "GBP",
+        low: gt0(x.low ?? x.low_gbp),
+        mid: gt0(x.mid),
+        high: gt0(x.high ?? x.high_gbp),
+        market: gt0(x.market ?? x.gbp ?? x.mid),
+        updatedAt: x.updated_at,
+        provider: x.provider ?? null,
+        gbp: gt0(x.gbp ?? x.price_gbp),
+      })).filter(hasMeaningfulPrice);
     },
 
     async cardsearchPriceRollups(_, { cardId, variant, windows }) {
@@ -193,7 +279,6 @@ const resolvers = {
 
     async cardsearchPriceObservations(_, { cardId, variant, startDate, endDate, limit = 365, offset = 0 }) {
       if (!cardId) return [];
-
       const history = await fetchPriceHistory(cardId, {
         variant,
         startDate,
@@ -207,16 +292,15 @@ const resolvers = {
         variant: row.variant ?? (variant ? String(variant).trim().toLowerCase() : null),
         date: row.date ?? null,
         currency: row.currency ?? "GBP",
-        low: row.low ?? null,
-        mid: row.mid ?? null,
-        high: row.high ?? null,
-        market: row.market ?? null,
+        low: gt0(row.low ?? row.low_gbp),
+        mid: gt0(row.mid),
+        high: gt0(row.high ?? row.high_gbp),
+        market: gt0(row.market ?? row.gbp ?? row.mid),
         provider: row.provider ?? null,
-      }));
+      })).filter(hasMeaningfulPrice);
     },
 
     async cardsearchSetByCode(_, { code }) {
-      // CHANGED: unscoped() to drop model defaultScope (which likely orders by released_at)
       const row = await m_Set.unscoped().findOne({ where: { code } });
       if (!row) return null;
       const r = row.get();
@@ -225,7 +309,6 @@ const resolvers = {
         abbr: r.abbr ?? null,
         name: r.name,
         series: r.series ?? null,
-        // CHANGED: coalesce released_at / release_date so either schema works
         releasedAt: r.released_at ?? r.release_date ?? null,
         total: r.total ?? null,
         lang: r.lang ?? null,
@@ -235,10 +318,8 @@ const resolvers = {
     async cardsearchSets(_, { query, limit = 100, offset = 0 }) {
       const where = qb.buildSetWhere({ query });
 
-      // CHANGED: unscoped() to avoid defaultScope adding released_at order.
-      // Keep simple code-order; client handles promo/numeric/era ordering.
       const rows = await m_Set
-        .unscoped() // <-- added
+        .unscoped()
         .findAll({
           where,
           order: [["code", "ASC"]],
@@ -253,7 +334,6 @@ const resolvers = {
           abbr: x.abbr ?? x.abbreviation ?? getAbbrForTcgdex(x.code) ?? null,
           name: x.name,
           series: x.series ?? null,
-          // CHANGED: coalesce
           releasedAt: x.released_at ?? x.release_date ?? null,
           total: x.total ?? null,
           lang: x.lang ?? null,
@@ -264,17 +344,53 @@ const resolvers = {
 
   Mutation: {
     async cardsearchAdminRunJob(_, { input }) {
-      return {
-        ok: true,
-        message: `Job '${input.kind}' accepted.`,
-        stats: null,
-        startedAt: new Date().toISOString(),
-        finishedAt: null,
-      };
+      const startedAt = new Date().toISOString();
+      try {
+        const { kind, set, era, budget } = input || {};
+        let stats = null;
+
+        switch (kind) {
+          case "ingestSet":
+            stats = await ingestSet({ input: set, refresh: true, logger: console });
+            break;
+          case "collectPrices":
+            stats = await collectPrices({ set, logger: console });
+            break;
+          case "collectBoth":
+            stats = await collectBoth({ sets: set ? [set] : [], refreshSet: true, logger: console });
+            break;
+          case "priceRollup":
+            stats = await jobPriceRollup({ set, logger: console });
+            break;
+          case "fxDaily":
+            stats = await fxDaily({ logger: console });
+            break;
+          case "patchGaps":
+            stats = { ok: false, message: "patchGaps not implemented", era, budget };
+            break;
+          default:
+            throw new Error(`Unknown job kind: ${kind}`);
+        }
+
+        return {
+          ok: true,
+          message: "Job completed",
+          stats,
+          startedAt,
+          finishedAt: new Date().toISOString(),
+        };
+      } catch (err) {
+        return {
+          ok: false,
+          message: err?.message || String(err),
+          stats: null,
+          startedAt,
+          finishedAt: new Date().toISOString(),
+        };
+      }
     },
 
     async cardsearchAdminToggleSet(_, { code, enabled }) {
-      // (Optional) could also unscoped() here if you’ve seen issues elsewhere
       const row = await m_Set.findOne({ where: { code } });
       if (!row) throw new Error(`Set not found: ${code}`);
       const r = row.get();
@@ -284,7 +400,6 @@ const resolvers = {
           abbr: r.abbr ?? null,
           name: r.name,
           series: r.series ?? null,
-          // CHANGED: coalesce
           releasedAt: r.released_at ?? r.release_date ?? null,
           total: r.total ?? null,
           lang: r.lang ?? null,
@@ -303,20 +418,36 @@ const resolvers = {
     },
 
     async cardsearchAdminRebuildRollups(_, { set }) {
-      return {
-        ok: true,
-        message: set ? `Rollups accepted for set ${set}` : "Global rollups accepted",
-        stats: null,
-        startedAt: new Date().toISOString(),
-        finishedAt: null,
-      };
+      const startedAt = new Date().toISOString();
+      try {
+        const stats = await jobPriceRollup({ set, logger: console });
+        return { ok: true, message: "Rollups rebuilt", stats, startedAt, finishedAt: new Date().toISOString() };
+      } catch (err) {
+        return { ok: false, message: err?.message || String(err), stats: null, startedAt, finishedAt: new Date().toISOString() };
+      }
     },
   },
 
   CardsearchCard: {
+    setCode(parent) {
+      return deriveSetCode(parent);
+    },
+    number(parent) {
+      return deriveNumber(parent);
+    },
+
+    images(parent) {
+      if (parent?.images && (parent.images.large || parent.images.small)) return parent.images;
+      const setCode = deriveSetCode(parent);
+      const number = deriveNumber(parent);
+      if (!setCode || !number) return { small: null, large: null };
+      return buildCardImages({ setCode, number });
+    },
+
     async set(parent) {
-      // CHANGED: unscoped() to avoid defaultScope order leakage
-      const row = await m_Set.unscoped().findOne({ where: { code: parent.setCode } });
+      const code = deriveSetCode(parent);
+      if (!code) return null;
+      const row = await m_Set.unscoped().findOne({ where: { code } });
       if (!row) return null;
       const r = row.get();
       return {
@@ -324,7 +455,6 @@ const resolvers = {
         abbr: r.abbr ?? null,
         name: r.name,
         series: r.series ?? null,
-        // CHANGED: coalesce
         releasedAt: r.released_at ?? r.release_date ?? null,
         total: r.total ?? null,
         lang: r.lang ?? null,
@@ -338,9 +468,7 @@ const resolvers = {
       });
 
       if (!rows.length) {
-        return [
-          { key: "normal", label: "Normal", default: true },
-        ];
+        return [{ key: "normal", label: "Normal", default: true }];
       }
 
       return rows.map((r) => {
@@ -355,127 +483,180 @@ const resolvers = {
       });
     },
 
-        async latestPrices(parent, { variant } = {}) {
+    async latestPrices(parent, { variant } = {}) {
       const cardId = parent.cardId || parent.id || null;
       if (!cardId) return [];
 
-      // Normalize requested variant key
       const normalizedVariant = normalizeVariant(variant);
 
-      // Helper: discover attribute names for CardPriceCache
       const cacheAttrs = CardPriceCache?.rawAttributes || {};
-      const nameFor = (candidates) => {
-        for (const c of candidates) {
-          if (cacheAttrs[c]) return c; // model attribute name
-        }
-        return null;
+      const nameFor = (candidates) => candidates.find((c) => cacheAttrs[c]) || null;
+
+      const colCardId   = nameFor(["cardId", "card_id"])       || "cardId";
+      const colVar      = nameFor(["variation", "variant"])    || "variation";
+      const colUpdated  = nameFor(["updatedAt", "updated_at"]) || "updatedAt";
+      const colCurrency = nameFor(["currency"])                || "currency";
+      const colProvider = nameFor(["provider"])                || "provider";
+      const colMarket   = nameFor(["market"])                  || "market";
+      const colMid      = nameFor(["mid"])                     || "mid";
+      const colLow      = nameFor(["low"])                     || "low";
+      const colHigh     = nameFor(["high"])                    || "high";
+      const colGbp      = nameFor(["gbp"])                     || "gbp";
+
+      // helper to shape a row, tolerant to schema differences
+      const shape = (r) => {
+        const variation = (r[colVar] || normalizedVariant || "normal").toString().toLowerCase();
+        const primary = firstDefined(r, [colGbp, colMarket, colMid, ...PRICE_FIELDS_PRIMARY]);
+        const alt     = firstDefined(r, PRICE_FIELDS_ALTS);
+        const best    = gt0(primary != null ? primary : alt);
+        const low  = gt0(firstDefined(r, [colLow,  ...LOW_FIELDS]));
+        const high = gt0(firstDefined(r, [colHigh, ...HIGH_FIELDS]));
+        const updatedRaw = firstDefined(r, [colUpdated, ...UPDATED_AT_FIELDS]);
+        const updatedAt  = updatedRaw ? new Date(updatedRaw).toISOString() : null;
+        return {
+          provider: r[colProvider] ?? null,
+          currency: r[colCurrency] ?? "GBP",
+          gbp: best,
+          market: gt0(r[colMarket]) ?? best,
+          mid:    gt0(r[colMid])    ?? best,
+          low,
+          high,
+          variation,
+          updatedAt,
+        };
       };
 
-      // Prefer model attribute names; fall back to common guesses
-      const colCardId   = nameFor(['cardId','card_id'])       || 'cardId';
-      const colVar      = nameFor(['variation','variant'])     || 'variation';
-      const colUpdated  = nameFor(['updatedAt','updated_at'])  || 'updatedAt';
-      const colCurrency = nameFor(['currency'])                || 'currency';
-      const colProvider = nameFor(['provider'])                || 'provider';
-      const colMarket   = nameFor(['market'])                  || 'market';
-      const colMid      = nameFor(['mid'])                     || 'mid';
-      const colLow      = nameFor(['low'])                     || 'low';
-      const colHigh     = nameFor(['high'])                    || 'high';
-      const colGbp      = nameFor(['gbp'])                     || 'gbp';
-
-      // First attempt: query CardPriceCache
-      const whereCache = { [colCardId]: cardId };
-      if (normalizedVariant) whereCache[colVar] = normalizedVariant;
-
-      let rows = await CardPriceCache.findAll({
-        where: whereCache,
-        order: [[colUpdated, 'DESC']],
-        limit: normalizedVariant ? 20 : 50,
-        raw: true,
-      });
-
-      // If no variant specified and nothing came back, retry WITHOUT variant filter (maybe DB stores only 'normal'/'holo' etc.)
-      if (!rows.length && !normalizedVariant) {
-        rows = await CardPriceCache.findAll({
-          where: { [colCardId]: cardId },
-          order: [[colUpdated, 'DESC']],
-          limit: 100,
+      // 1) Try cache (with and without variant)
+      let cacheRows = [];
+      if (CardPriceCache) {
+        const whereWithVar = { [colCardId]: cardId, ...(normalizedVariant ? { [colVar]: normalizedVariant } : {}) };
+        cacheRows = await CardPriceCache.findAll({
+          where: whereWithVar,
+          order: [[colUpdated, "DESC"]],
+          limit: normalizedVariant ? 50 : 100,
           raw: true,
         });
+        if (normalizedVariant && !cacheRows.length) {
+          cacheRows = await CardPriceCache.findAll({
+            where: { [colCardId]: cardId },
+            order: [[colUpdated, "DESC"]],
+            limit: 100,
+            raw: true,
+          });
+        }
       }
 
-      // Fallback #2: try m_PriceLatest (snake_case)
-      if (!rows.length) {
-        const whereLatest = { card_id: cardId };
-        if (normalizedVariant) whereLatest.variant = normalizedVariant;
-        rows = await m_PriceLatest.findAll({
+      // 2) Fallback to m_PriceLatest (with and without variant)
+      let latestRows = [];
+      if (!cacheRows.length) {
+        const whereLatest = { card_id: cardId, ...(normalizedVariant ? { variant: normalizedVariant } : {}) };
+        const mRows = await m_PriceLatest.findAll({
           where: whereLatest,
-          order: [['updated_at', 'DESC']],
-          limit: normalizedVariant ? 20 : 50,
+          order: [["updated_at", "DESC"]],
+          limit: normalizedVariant ? 50 : 100,
           raw: true,
         });
-
-        // Map snake_case rows to camel-ish shape so the rest of the logic is shared
-        rows = rows.map(r => ({
+        latestRows = mRows.map((r) => ({
           [colCardId]: r.card_id,
           [colVar]: r.variant,
-          [colCurrency]: r.currency ?? 'GBP',
+          [colCurrency]: r.currency ?? "GBP",
           [colMarket]: r.market,
           [colMid]: r.mid,
-          [colLow]: r.low,
-          [colHigh]: r.high,
+          [colLow]: r.low ?? r.low_gbp,
+          [colHigh]: r.high ?? r.high_gbp,
           [colProvider]: r.provider,
           [colUpdated]: r.updated_at,
-          [colGbp]: r.gbp,
+          [colGbp]: r.gbp ?? r.price_gbp,
+          ...r,
         }));
+        if (normalizedVariant && !latestRows.length) {
+          const mRowsAll = await m_PriceLatest.findAll({
+            where: { card_id: cardId },
+            order: [["updated_at", "DESC"]],
+            limit: 100,
+            raw: true,
+          });
+          latestRows = mRowsAll.map((r) => ({
+            [colCardId]: r.card_id,
+            [colVar]: r.variant,
+            [colCurrency]: r.currency ?? "GBP",
+            [colMarket]: r.market,
+            [colMid]: r.mid,
+            [colLow]: r.low ?? r.low_gbp,
+            [colHigh]: r.high ?? r.high_gbp,
+            [colProvider]: r.provider,
+            [colUpdated]: r.updated_at,
+            [colGbp]: r.gbp ?? r.price_gbp,
+            ...r,
+          }));
+        }
       }
 
-      if (!rows.length) return [];
+      // 3) Shape + filter meaningless (all-zero) rows
+      const combined = (cacheRows.length ? cacheRows : latestRows).map(shape).filter(hasMeaningfulPrice);
 
-      // De-dupe to the latest per (provider, variation)
+      // 4) Last-chance from CardPriceHistory if still empty
+      if (!combined.length && CardPriceHistory?.findOne) {
+        const histAttrs = CardPriceHistory?.rawAttributes || {};
+        const histNameFor = (cands) => cands.find((c) => !!histAttrs[c]) || null;
+        const hCardId  = histNameFor(["cardId", "card_id"]);
+        const hUpdated = histNameFor(["updatedAt", "updated_at", "timestamp", "observed_at"]);
+        const hCurr    = histNameFor(["currency"]);
+        const hVar     = histNameFor(["variation", "variant"]);
+        const where = hCardId ? { [hCardId]: cardId } : {};
+        const order = hUpdated ? [[hUpdated, "DESC"]] : undefined;
+        const latestHist = await CardPriceHistory.findOne({ where, order, raw: true }).catch(() => null);
+        if (latestHist) {
+          const v = (hVar ? latestHist[hVar] : normalizedVariant || "normal").toString().toLowerCase();
+          const best = gt0(firstDefined(latestHist, [
+            "gbp","market","mid",
+            "price_gbp","price","value","last_gbp","last","avg_gbp","average_gbp","avg","mean","median",
+            "latest_gbp","latest_market","latest_mid"
+          ]));
+          const shaped = {
+            provider: latestHist.provider ?? null,
+            currency: (hCurr && latestHist[hCurr]) || "GBP",
+            gbp: best,
+            market: gt0(latestHist.market) ?? best,
+            mid: gt0(latestHist.mid) ?? best,
+            low: gt0(latestHist.low ?? latestHist.low_gbp),
+            high: gt0(latestHist.high ?? latestHist.high_gbp),
+            variation: v,
+            updatedAt: hUpdated && latestHist[hUpdated] ? new Date(latestHist[hUpdated]).toISOString() : null,
+          };
+          if (hasMeaningfulPrice(shaped)) combined.push(shaped);
+        }
+      }
+
+      // 5) De-dupe to latest per (provider, variation)
+      if (!combined.length) return [];
       const pick = new Map();
-      for (const r of rows) {
-        const v = (r[colVar] || 'normal').toString().toLowerCase();
-        const p = r[colProvider] || 'unknown';
+      for (const r of combined) {
+        const v = (r.variation || "normal").toString().toLowerCase();
+        const p = r.provider || "unknown";
         const key = `${p}|${v}`;
         const cur = pick.get(key);
-        if (!cur) {
-          pick.set(key, r);
-          continue;
-        }
-        const tNew = new Date(r[colUpdated] || 0).getTime();
-        const tCur = new Date(cur[colUpdated] || 0).getTime();
+        if (!cur) { pick.set(key, r); continue; }
+        const tNew = new Date(r.updatedAt || 0).getTime();
+        const tCur = new Date(cur.updatedAt || 0).getTime();
         if (tNew > tCur) pick.set(key, r);
       }
-
-      // Shape to GraphQL type
-      return Array.from(pick.values()).map(r => ({
-        provider: r[colProvider] ?? null,
-        currency: r[colCurrency] ?? 'GBP',
-        gbp: r[colGbp] ?? r[colMarket] ?? r[colMid] ?? null,
-        market: r[colMarket] ?? null,
-        mid: r[colMid] ?? null,
-        low: r[colLow] ?? null,
-        high: r[colHigh] ?? null,
-        variation: (r[colVar] || normalizedVariant || 'normal')?.toString().toLowerCase(),
-        updatedAt: r[colUpdated] ? new Date(r[colUpdated]).toISOString() : null,
-      }));
+      return Array.from(pick.values());
     },
 
     async priceRollups(parent, { window } = {}) {
       const cardId = parent.cardId || parent.id || null;
       if (!cardId) return [];
 
-      const normalizedWindow = typeof window === "string" && window.trim()
-        ? window.trim().toLowerCase()
-        : "30d";
+      const normalizedWindow =
+        typeof window === "string" && window.trim()
+          ? window.trim().toLowerCase()
+          : "30d";
 
       const match = normalizedWindow.match(/^(\d+)d$/);
-      const windowDays = match ? parseInt(match[1], 10) : ({
-        "7d": 7,
-        "30d": 30,
-        "90d": 90,
-      }[normalizedWindow] || 30);
+      const windowDays = match
+        ? parseInt(match[1], 10)
+        : { "7d": 7, "30d": 30, "90d": 90 }[normalizedWindow] || 30;
 
       const since = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
 
@@ -577,8 +758,8 @@ const resolvers = {
     },
 
     image: (parent) => {
-      const images = parent.images || {};
-      return images.large || images.small || parent.image || null;
+      const imgs = resolvers.CardsearchCard.images(parent);
+      return imgs?.large || imgs?.small || parent.image || null;
     },
 
     variations: async (parent, args, ctx, info) => {
@@ -592,7 +773,7 @@ const resolvers = {
   },
 };
 
-/* ---------------- shared helpers (unchanged logic) ---------------- */
+/* ---------------- shared helpers for rollups ---------------- */
 
 function normalizeWindowList(value) {
   if (value == null) return null;

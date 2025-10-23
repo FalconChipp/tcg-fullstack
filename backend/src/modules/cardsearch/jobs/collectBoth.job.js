@@ -63,31 +63,35 @@ export async function collectBoth(opts) {
 
     const setStart = Date.now();
 
-    const ingestRes = await ingestSet({
-      input: tcgdexCode,
-      refresh: refreshSet,
-      dryRun,
-      logger,
-    });
+    let ingestRes = null; 
+    let pricesRes = null; 
+    try {
+      ingestRes = await ingestSet({
+        input: tcgdexCode,
+        refresh: refreshSet,
+        dryRun,
+        logger,
+      });
+      await sleep(pauseMs);
+      pricesRes = await collectPrices({
+        set: tcgdexCode,
+        since: opts?.since, 
+        dryRun,
+        alertPctUp, 
+        alertPctDown,
+        triggerAlerts, 
+        logger, 
+      }); 
+    } catch (err) {
+      logger.error?.(`collectBoth: set ${tcgdexCode} failed: ${err?.message || err}`)
+    }
 
-    await sleep(pauseMs);
-
-    const pricesRes = await collectPrices({
-      set: tcgdexCode,
-      since: opts?.since,
-      dryRun,
-      alertPctUp,
-      alertPctDown,
-      triggerAlerts,
-      logger,
-    });
-
-    totalCards += pricesRes.counts.cards || 0;
-    totalVariants += pricesRes.counts.variants || 0;
-    totalObsCollected += pricesRes.counts.obs?.collected || 0;
-    totalObsWritten += pricesRes.counts.obs?.written || 0;
-    totalLatestUpserts += pricesRes.counts.latest?.upserted || 0;
-    totalAlertsTriggered += pricesRes.alerts?.triggered || 0;
+    totalCards          += pricesRes?.counts?.cards || 0;
+    totalVariants       += pricesRes?.counts?.variants || 0;
+    totalObsCollected   += pricesRes?.counts?.observations?.collected || 0;
+    totalObsWritten     += pricesRes?.counts?.observations?.written   || 0;
+    totalLatestUpserts  += Number(pricesRes?.counts?.latest) || 0;
+    totalAlertsTriggered += pricesRes?.alerts?.triggered || 0;
 
     perSet.push({
       set: tcgdexCode,

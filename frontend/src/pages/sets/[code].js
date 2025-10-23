@@ -272,16 +272,21 @@ const CARDSEARCH_SET_CARDS_QUERY = /* GraphQL */ `
         name
         rarity
         images {
-          small
           large
         }
         latestPrices {
-          variant
+          variation
+          gbp
           market
           mid
           low
           high
           currency
+        }
+        variants {
+          key
+          label
+          default
         }
       }
     }

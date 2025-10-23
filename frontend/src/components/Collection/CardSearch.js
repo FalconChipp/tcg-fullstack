@@ -361,7 +361,7 @@ function makeQueryKey({ name, setCode, number }) {
 
 export default function CardSearch() {
   const { dark } = useTheme();
-  const client = useApolloClient();
+  const client = useApolloClient(); // (unused but kept if you plan to use manually)
 
   const [name, setName] = useState("");
   const [setCode, setSetCode] = useState("");
@@ -394,11 +394,11 @@ export default function CardSearch() {
   const observerRef = useRef(null);
 
   // Apollo query
-  const [runSearch, { fetchMore }] = useLazyQuery(CARDSEARCH_QUERY, {
-    fetchPolicy: "cache-first",
-    nextFetchPolicy: "cache-first",
+  const [runSearch, { fetchMore, client: apolloClient }] = useLazyQuery(CARDSEARCH_QUERY, {
+    fetchPolicy: "network-only",        // CHANGED: always fetch fresh on submit
+    nextFetchPolicy: "cache-first",     // CHANGED: pagination can use cache
     notifyOnNetworkStatusChange: true,
-    returnPartialData: true,
+    returnPartialData: false,           // CHANGED: don't satisfy new params from partial cache
   });
 
   // Explicit submit state (prevents "second search disabled" edge cases)
@@ -422,6 +422,13 @@ export default function CardSearch() {
       observerRef.current = null;
     }
   }, []);
+
+  // NEW: Reset stale flags when the user edits inputs so a new search isn't blocked
+  useEffect(() => {
+    loadingMoreRef.current = false; // NEW
+    setSearchError(null);           // NEW
+    setSubmitting(false);           // NEW
+  }, [name, setCode, number]);
 
   // Kick off a search
   const handleSearch = useCallback(async (e) => {
@@ -468,7 +475,10 @@ export default function CardSearch() {
     setSearchError(null);
     setSubmitting(true);
     try {
-      const res = await runSearch({ variables });
+      const res = await runSearch({
+        variables,
+        context: { queryDeduplication: false }, // CHANGED: avoid Apollo dedup skipping a fresh submit
+      });
       const payload = res?.data?.searchCards;
 
       if (!payload) {
@@ -739,11 +749,23 @@ export default function CardSearch() {
             </div>
           </div>
 
-          {searchError && (
-            <div className="text-light-error dark:text-dark-error text-center mt-4 font-medium">
+          {searchError ? (
+            <div
+              className="text-light-error dark:text-dark-error text-center mt-4 font-medium"
+              role="alert"
+              aria-live="assertive"
+            >
               {searchError.message || "Search failed"}
             </div>
-          )}
+          ) : !submitting ? ( // CHANGED: hide the note while submitting
+            // Friendly note shown only when there is NO error and not submitting
+            <p
+              className="text-sm text-gray-500 dark:text-gray-400 text-center mt-4"
+              aria-live="polite"
+            >
+              Note: Pricing data is still syncing — some prices may be temporarily inaccurate.
+            </p>
+          ) : null}
         </form>
 
         {/* Results */}

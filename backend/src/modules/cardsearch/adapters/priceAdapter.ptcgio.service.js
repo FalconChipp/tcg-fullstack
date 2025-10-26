@@ -13,6 +13,7 @@ if (typeof _fetch !== "function") {
 }
 
 import { resolveToPTCG } from "../services/setMapping.service.js";
+import { canonicalVariantKey, canonicalVariantSet } from "../services/variant.service.js";
 
 const PTCGIO_BASE = process.env.PTCGIO_BASE || "https://api.ptcg.io";
 
@@ -50,26 +51,23 @@ export async function fetchPricesPTCGIO({ set, cardNumbers, variantsByNumber = {
 
     // Try a few common shapes:
     // raw.prices || raw.data?.prices || raw.card?.prices
-    const p = raw?.prices || raw?.data?.prices || raw?.card?.prices || null;
+    const pricePayloads = collectPricePayloads(raw);
+    if (!pricePayloads.length) continue;
 
-    if (!p || typeof p !== "object") continue;
+    const variantSet = canonicalVariantSet(variantsByNumber[number]);
+    const canonicalId = `${resolveToCanonicalSet(ptcgCode)}-${String(number)}`;
 
-    const { currency, market, low, mid, high } = pickPriceFields(p);
-    if (market == null) continue;
-
-    const variants = Array.isArray(variantsByNumber[number]) && variantsByNumber[number].length
-      ? variantsByNumber[number]
-      : ["normal"];
-
-    for (const variant of variants) {
+    for (const payload of pricePayloads) {
+      const variant = payload.variant;
+      if (!variantSet.has(variant)) continue;
       out.push({
-        card_id: `${resolveToCanonicalSet(ptcgCode)}-${String(number)}`, // convert to canonical tcgdex-like code
-        variant: variant.toLowerCase(),
-        currency: currency || "USD",
-        amount: Number(market),
-        observed_at: nowISO,
-        source: "ptcgio",
-        meta: { low, mid, high, raw: p },
+        card_id: canonicalId,
+        variant,
+        currency: payload.currency || "USD",
+        amount: Number(payload.market),
+        observed_at: payload.observedAt || nowISO,
+        source: payload.source,
+        meta: payload.meta,
       });
     }
   }
@@ -104,22 +102,108 @@ async function fetchJsonSafe(url, { retries = 2 } = {}) {
   return null;
 }
 
-function pickPriceFields(p) {
-  // Flatten common vendor payloads
-  const currency = (typeof p.currency === "string" ? p.currency.toUpperCase() : null) ||
-                   (p.usd ? "USD" : p.eur ? "EUR" : p.gbp ? "GBP" : null);
-
-  const low = num(p.low ?? p.floor ?? p.min ?? p.p10 ?? p.lowest ?? p.cheapest);
-  const mid = num(p.mid ?? p.median ?? p.avg ?? p.average);
-  const high = num(p.high ?? p.ceiling ?? p.max ?? p.p90 ?? p.highest);
-  const market = num(p.market ?? p.price ?? p.value ?? mid ?? low ?? high);
-
-  return { currency, market, low, mid, high };
-}
-
 function num(v) {
   const n = typeof v === "number" ? v : Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+function collectPricePayloads(raw) {
+  const payloads = [];
+  const seenVariants = new Set();
+
+  const sections = [
+    { node: raw, label: "ptcgio" },
+    { node: raw?.prices, label: "ptcgio" },
+    { node: raw?.data, label: "ptcgio:data" },
+    { node: raw?.data?.prices, label: "ptcgio:data" },
+    { node: raw?.card, label: "ptcgio:card" },
+    { node: raw?.card?.prices, label: "ptcgio:card" },
+    { node: raw?.tcgplayer, label: "ptcgio:tcgplayer" },
+    { node: raw?.tcgplayer?.prices, label: "ptcgio:tcgplayer" },
+    { node: raw?.data?.tcgplayer, label: "ptcgio:tcgplayer" },
+    { node: raw?.data?.tcgplayer?.prices, label: "ptcgio:tcgplayer" },
+    { node: raw?.cardmarket, label: "ptcgio:cardmarket" },
+    { node: raw?.cardmarket?.prices, label: "ptcgio:cardmarket" },
+    { node: raw?.data?.cardmarket, label: "ptcgio:cardmarket" },
+    { node: raw?.data?.cardmarket?.prices, label: "ptcgio:cardmarket" },
+  ];
+
+  for (const { node, label } of sections) {
+    if (!node || typeof node !== "object") continue;
+
+    const base = pickSimplePrice(node);
+    const variants = pickVariantPrices(node);
+
+    for (const [variant, entry] of variants) {
+      if (seenVariants.has(variant)) continue;
+      if (entry.market == null) continue;
+      payloads.push({
+        variant,
+        market: entry.market,
+        currency: entry.currency,
+        observedAt: entry.observedAt,
+        source: entry.source || label || "ptcgio",
+        meta: entry.meta,
+      });
+      seenVariants.add(variant);
+    }
+
+    if (base && base.market != null && !seenVariants.has("normal")) {
+      payloads.push({
+        variant: "normal",
+        market: base.market,
+        currency: base.currency,
+        observedAt: base.observedAt,
+        source: base.source || label || "ptcgio",
+        meta: base.meta,
+      });
+      seenVariants.add("normal");
+    }
+  }
+
+  return payloads;
+}
+
+function pickSimplePrice(section) {
+  const currency = deduceCurrency(section);
+  const low = num(section.low ?? section.floor ?? section.min ?? section.p10 ?? section.lowest ?? section.cheapest);
+  const mid = num(section.mid ?? section.median ?? section.avg ?? section.average);
+  const high = num(section.high ?? section.ceiling ?? section.max ?? section.p90 ?? section.highest);
+  const market = num(section.market ?? section.price ?? section.value ?? mid ?? low ?? high);
+  const observedAt = typeof section.updated === "string"
+    ? section.updated
+    : typeof section.updatedAt === "string"
+      ? section.updatedAt
+      : null;
+  if (market == null && low == null && mid == null && high == null) {
+    return null;
+  }
+  return { currency, market, low, mid, high, observedAt, meta: section };
+}
+
+function pickVariantPrices(section) {
+  const entries = new Map();
+  for (const [key, value] of Object.entries(section)) {
+    if (!value || typeof value !== "object") continue;
+    const variant = canonicalVariantKey(key, { fallback: null });
+    if (!variant) continue;
+    const price = pickSimplePrice(value);
+    if (!price || price.market == null) continue;
+    if (!entries.has(variant)) {
+      entries.set(variant, price);
+    }
+  }
+  return entries;
+}
+
+function deduceCurrency(section) {
+  const direct = typeof section.currency === "string" ? section.currency.toUpperCase() : null;
+  if (direct) return direct;
+  if (section.usd != null) return "USD";
+  if (section.eur != null) return "EUR";
+  if (section.gbp != null) return "GBP";
+  if (typeof section.currencyCode === "string") return section.currencyCode.toUpperCase();
+  return null;
 }
 
 // Convert a ptcg set code to your canonical (tcgdex-like) set code.

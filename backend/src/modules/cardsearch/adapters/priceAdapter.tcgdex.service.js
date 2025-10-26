@@ -14,6 +14,7 @@ if (typeof _fetch !== "function") {
 }
 
 import { resolveToTcgdex } from "../services/setMapping.service.js";
+import { canonicalVariantKey } from "../services/variant.service.js";
 
 const TCGDEX_BASE = process.env.TCGDEX_BASE || "https://api.tcgdex.net/v2";
 const LANG = process.env.MD_LANG || "en";
@@ -53,13 +54,13 @@ export async function fetchPricesTCGdex({ set, cardNumbers, variantsByNumber = {
       const variantSet = new Set();
 
       for (const v of baseVariants) {
-        const canon = canonicalVariantKey(v) || v;
+        const canon = canonicalVariantKey(v, { fallback: null });
         if (canon) variantSet.add(canon);
       }
 
       const candidateVariantKeys = candidate.variantAmounts ? Object.keys(candidate.variantAmounts) : [];
       for (const v of candidateVariantKeys) {
-        const canon = canonicalVariantKey(v) || v;
+        const canon = canonicalVariantKey(v, { fallback: null });
         if (canon) variantSet.add(canon);
       }
 
@@ -144,38 +145,15 @@ function gatherPriceCandidates(raw) {
   return list;
 }
 
-const VARIANT_KEY_CANON = new Map([
-  ['normal', 'normal'],
-  ['standard', 'normal'],
-  ['default', 'normal'],
-  ['regular', 'normal'],
-  ['reverse', 'reverse'],
-  ['reverseholo', 'reverse'],
-  ['reverseholofoil', 'reverse'],
-  ['holoreverse', 'reverse'],
-  ['reversefoil', 'reverse'],
-  ['holo', 'holo'],
-  ['holfoil', 'holo'],
-  ['holofoil', 'holo'],
-  ['shiny', 'holo'],
-  ['foil', 'foil'],
-  ['firstedition', 'firstEdition'],
-  ['1stedition', 'firstEdition'],
-  ['firsteditionholo', 'firstEdition'],
-]);
-
-function canonicalVariantKey(raw) {
-  if (!raw) return null;
-  const key = String(raw).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-  return VARIANT_KEY_CANON.get(key) || null;
-}
-
 function pickVariantAmount(candidate, variantKey) {
-  const canon = canonicalVariantKey(variantKey) || variantKey;
-  if (candidate?.variantAmounts && candidate.variantAmounts[canon] != null) {
+  const canon = canonicalVariantKey(variantKey, { fallback: null });
+  if (canon && candidate?.variantAmounts && candidate.variantAmounts[canon] != null) {
     return candidate.variantAmounts[canon];
   }
-  return candidate?.market ?? null;
+  if (canon === "normal" || (!canon && variantKey === "normal")) {
+    return candidate?.market ?? null;
+  }
+  return null;
 }
 
 function extractVariantOverrides(obj) {

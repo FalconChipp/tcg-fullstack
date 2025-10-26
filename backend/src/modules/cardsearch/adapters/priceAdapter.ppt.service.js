@@ -14,6 +14,7 @@ if (typeof _fetch !== "function") {
 }
 
 import { resolveSet } from "../services/setMapping.service.js";
+import { canonicalVariantKey, canonicalVariantSet } from "../services/variant.service.js";
 
 const PPT_BASE = process.env.PPT_BASE || "";
 
@@ -56,29 +57,20 @@ export async function fetchPricesPPT({ set, cardNumbers, variantsByNumber = {} }
     // Common shapes for simple pricing services:
     // { currency: 'USD', price: 1.23 } or { market: 1.23, currency: 'USD' } or nested vendor
     const p = raw?.prices || raw?.price || raw;
+    const variantSet = canonicalVariantSet(variantsByNumber[number]);
+    const payloads = collectVariantPayloads(p, { fallbackCurrency: "USD" });
+    if (!payloads.length) continue;
 
-    const currency = (typeof p?.currency === "string" ? p.currency.toUpperCase() : null) ||
-                     (p?.usd ? "USD" : p?.eur ? "EUR" : p?.gbp ? "GBP" : null) || "USD";
-
-    const low = num(p.low ?? p.floor ?? p.min ?? p.p10 ?? p.lowest);
-    const mid = num(p.mid ?? p.median ?? p.avg ?? p.average);
-    const high = num(p.high ?? p.ceiling ?? p.max ?? p.p90 ?? p.highest);
-    const market = num(p.market ?? p.price ?? p.value ?? mid ?? low ?? high);
-    if (market == null) continue;
-
-    const variants = Array.isArray(variantsByNumber[number]) && variantsByNumber[number].length
-      ? variantsByNumber[number]
-      : ["normal"];
-
-    for (const variant of variants) {
+    for (const payload of payloads) {
+      if (!variantSet.has(payload.variant)) continue;
       out.push({
         card_id: id,
-        variant: variant.toLowerCase(),
-        currency,
-        amount: Number(market),
-        observed_at: nowISO,
-        source: "ppt",
-        meta: { low, mid, high, raw: p },
+        variant: payload.variant,
+        currency: payload.currency || "USD",
+        amount: Number(payload.market),
+        observed_at: payload.observedAt || nowISO,
+        source: payload.source || "ppt",
+        meta: payload.meta,
       });
     }
   }
@@ -114,6 +106,77 @@ async function fetchJsonSafe(url, { retries = 2 } = {}) {
 function num(v) {
   const n = typeof v === "number" ? v : Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+function collectVariantPayloads(section, { fallbackCurrency } = {}) {
+  if (!section || typeof section !== "object") return [];
+
+  const payloads = [];
+  const base = pickSectionPrice(section, { fallbackCurrency });
+  const variants = new Map();
+
+  for (const [key, value] of Object.entries(section)) {
+    if (!value || typeof value !== "object") continue;
+    const variant = canonicalVariantKey(key, { fallback: null });
+    if (!variant) continue;
+    const price = pickSectionPrice(value, { fallbackCurrency });
+    if (!price || price.market == null) continue;
+    if (!variants.has(variant)) {
+      variants.set(variant, price);
+    }
+  }
+
+  for (const [variant, price] of variants) {
+    payloads.push({
+      variant,
+      market: price.market,
+      currency: price.currency,
+      observedAt: price.observedAt,
+      source: price.source || "ppt",
+      meta: price.meta,
+    });
+  }
+
+  if (base && base.market != null && !variants.has("normal")) {
+    payloads.push({
+      variant: "normal",
+      market: base.market,
+      currency: base.currency,
+      observedAt: base.observedAt,
+      source: base.source || "ppt",
+      meta: base.meta,
+    });
+  }
+
+  return payloads;
+}
+
+function pickSectionPrice(section, { fallbackCurrency } = {}) {
+  const currency = typeof section.currency === "string"
+    ? section.currency.toUpperCase()
+    : section.usd != null
+      ? "USD"
+      : section.eur != null
+        ? "EUR"
+        : section.gbp != null
+          ? "GBP"
+          : fallbackCurrency || null;
+
+  const low = num(section.low ?? section.floor ?? section.min ?? section.p10 ?? section.lowest);
+  const mid = num(section.mid ?? section.median ?? section.avg ?? section.average);
+  const high = num(section.high ?? section.ceiling ?? section.max ?? section.p90 ?? section.highest);
+  const market = num(section.market ?? section.price ?? section.value ?? mid ?? low ?? high);
+  const observedAt = typeof section.updated === "string"
+    ? section.updated
+    : typeof section.updatedAt === "string"
+      ? section.updatedAt
+      : null;
+
+  if (market == null && low == null && mid == null && high == null) {
+    return null;
+  }
+
+  return { currency, market, low, mid, high, observedAt, meta: section };
 }
 
 export default { fetchPricesPPT };

@@ -28,6 +28,7 @@ import { fileURLToPath } from "node:url";
 
 import { sequelize, m_Set, m_Card, m_CardVariant, m_PriceObservation, m_PriceLatest, m_PriceRollup } from "../../../models/index.js";
 import { resolveSet, resolveToTcgdex } from "../services/setMapping.service.js";
+import { canonicalVariantKey } from "../services/variant.service.js";
 
 import { fetchPricesTCGdex } from "../adapters/priceAdapter.tcgdex.service.js";
 import { fetchPricesPTCGIO } from "../adapters/priceAdapter.ptcgio.service.js";
@@ -162,7 +163,7 @@ export async function collectPrices(opts) {
 
   const rawObs = [...obsDex, ...obsPtcg, ...obsPpt].map((o) => ({
     card_id: normalizeId(o.card_id),
-    variant: String(o.variant || "normal").toLowerCase(),
+    variant: canonicalVariantKey(o.variant),
     currency: (o.currency || "USD").toUpperCase(),
     amount: o.amount != null ? Number(o.amount) : null,
     observed_at: toISO(o.observed_at),
@@ -342,7 +343,7 @@ async function savePriceSample({
   provider,
   observedAt,
 }, { transaction } = {}) {
-  const v = String(variant || "normal").toLowerCase();
+  const v = canonicalVariantKey(variant);
   const observed = observedAt ? new Date(observedAt) : new Date();
   const amount = market ?? mid ?? low ?? high ?? null;
   if (amount == null) return;
@@ -423,7 +424,7 @@ export function groupVariantsByNumber(varRows) {
     const num = parts.slice(1).join("-");
     if (!num) continue;
     const list = byNum.get(num) || [];
-    list.push(r.variant);
+    list.push(canonicalVariantKey(r.variant));
     byNum.set(num, list);
   }
   return byNum;
@@ -536,7 +537,7 @@ function groupVariantsByCardId(varRows) {
   for (const r of varRows) {
     const id = String(r.card_id);
     const list = byId.get(id) || [];
-    list.push(r.variant);
+    list.push(canonicalVariantKey(r.variant));
     byId.set(id, list);
   }
   return byId;

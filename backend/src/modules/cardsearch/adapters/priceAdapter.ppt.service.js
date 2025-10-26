@@ -58,20 +58,16 @@ export async function fetchPricesPPT({ set, cardNumbers, variantsByNumber = {} }
     // { currency: 'USD', price: 1.23 } or { market: 1.23, currency: 'USD' } or nested vendor
     const p = raw?.prices || raw?.price || raw;
     const variantSet = canonicalVariantSet(variantsByNumber[number]);
-    const remapVariant = createVariantResolver(variantSet);
     const payloads = collectVariantPayloads(p, { fallbackCurrency: "USD" });
     if (!payloads.length) continue;
 
     for (const payload of payloads) {
-      const variant = remapVariant(payload.variant);
-      if (!variant) continue;
-      const amount = num(payload.market);
-      if (amount == null) continue;
+      if (!variantSet.has(payload.variant)) continue;
       out.push({
         card_id: id,
-        variant,
+        variant: payload.variant,
         currency: payload.currency || "USD",
-        amount,
+        amount: Number(payload.market),
         observed_at: payload.observedAt || nowISO,
         source: payload.source || "ppt",
         meta: payload.meta,
@@ -153,22 +149,6 @@ function collectVariantPayloads(section, { fallbackCurrency } = {}) {
   }
 
   return payloads;
-}
-
-function createVariantResolver(variantSet) {
-  const accepted = new Set(variantSet || []);
-  const singleton = accepted.size === 1 ? [...accepted][0] : null;
-
-  return (incoming) => {
-    const variant = canonicalVariantKey(incoming, { fallback: null }) || incoming || null;
-    if (variant && accepted.has(variant)) {
-      return variant;
-    }
-    if (variant === "normal" && singleton && singleton !== "normal") {
-      return singleton;
-    }
-    return null;
-  };
 }
 
 function pickSectionPrice(section, { fallbackCurrency } = {}) {

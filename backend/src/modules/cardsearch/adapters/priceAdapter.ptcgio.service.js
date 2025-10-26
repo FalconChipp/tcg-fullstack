@@ -55,19 +55,16 @@ export async function fetchPricesPTCGIO({ set, cardNumbers, variantsByNumber = {
     if (!pricePayloads.length) continue;
 
     const variantSet = canonicalVariantSet(variantsByNumber[number]);
-    const remapVariant = createVariantResolver(variantSet);
     const canonicalId = `${resolveToCanonicalSet(ptcgCode)}-${String(number)}`;
 
     for (const payload of pricePayloads) {
-      const variant = remapVariant(payload.variant);
-      if (!variant) continue;
-      const amount = num(payload.market);
-      if (amount == null) continue;
+      const variant = payload.variant;
+      if (!variantSet.has(variant)) continue;
       out.push({
         card_id: canonicalId,
         variant,
         currency: payload.currency || "USD",
-        amount,
+        amount: Number(payload.market),
         observed_at: payload.observedAt || nowISO,
         source: payload.source,
         meta: payload.meta,
@@ -207,22 +204,6 @@ function deduceCurrency(section) {
   if (section.gbp != null) return "GBP";
   if (typeof section.currencyCode === "string") return section.currencyCode.toUpperCase();
   return null;
-}
-
-function createVariantResolver(variantSet) {
-  const accepted = new Set(variantSet || []);
-  const singleton = accepted.size === 1 ? [...accepted][0] : null;
-
-  return (incoming) => {
-    const variant = canonicalVariantKey(incoming, { fallback: null }) || incoming || null;
-    if (variant && accepted.has(variant)) {
-      return variant;
-    }
-    if (variant === "normal" && singleton && singleton !== "normal") {
-      return singleton;
-    }
-    return null;
-  };
 }
 
 // Convert a ptcg set code to your canonical (tcgdex-like) set code.

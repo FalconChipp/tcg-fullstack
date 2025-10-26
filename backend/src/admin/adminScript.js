@@ -697,7 +697,7 @@ function init() {
   bindQuickActions();
   bindTableHandlers();
   refreshAll(true).catch((err) => appendLog('err', err.message));
-  setInterval(() => refreshAll(false), 30000);
+  setInterval(() => refreshAll(false), 60000);
 }
 
 if (document.readyState === 'loading') {

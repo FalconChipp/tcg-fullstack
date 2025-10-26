@@ -357,7 +357,7 @@ export function adminPageHtml() {
       <div class="meta">
         <div class="meta-item">
           <span class="refresh-dot" aria-hidden="true"></span>
-          <span>Auto refresh 15s</span>
+          <span>Auto refresh 60s</span>
         </div>
         <div class="meta-item">
           <span class="mini">Last sync</span>
@@ -490,15 +490,24 @@ export function adminPageHtml() {
           </header>
           <div class="card-body">
             <ul id="rulesList" class="rules-list"></ul>
-            <div class="mini" style="margin-top:12px">
-              Cron expressions follow <code>minute hour day-of-month month day-of-week</code>.
-              <div style="margin-top:6px">Examples:</div>
-              <ul class="rules-list" style="margin-top:6px">
-                <li><strong>15 * * * *</strong> - every hour at :15</li>
-                <li><strong>0 3 * * *</strong> - daily at 03:00</li>
-                <li><strong>0 12 * * MON</strong> - every Monday at noon</li>
-              </ul>
-              Use <span class="mini" style="font-style:italic">UTC</span> unless a task specifies a different timezone.
+            <div class="mini" style="margin-top:12px">
+
+              Cron expressions follow <code>minute hour day-of-month month day-of-week</code>.
+
+              <div style="margin-top:6px">Examples:</div>
+
+              <ul class="rules-list" style="margin-top:6px">
+
+                <li><strong>15 * * * *</strong> - every hour at :15</li>
+
+                <li><strong>0 3 * * *</strong> - daily at 03:00</li>
+
+                <li><strong>0 12 * * MON</strong> - every Monday at noon</li>
+
+              </ul>
+
+              Use <span class="mini" style="font-style:italic">UTC</span> unless a task specifies a different timezone.
+
             </div>
           </div>
         </div>

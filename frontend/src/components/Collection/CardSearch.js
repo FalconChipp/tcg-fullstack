@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, startTransition } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { gql, useApolloClient, useLazyQuery } from "@apollo/client";
+import { gql, useLazyQuery } from "@apollo/client"; // REMOVED: useApolloClient
 
 import { getCookie } from "@/utils/cookieUtils";
 import { useTheme } from "@/hooks/ThemeProvider";
@@ -20,7 +20,7 @@ const AddToCollectionPanel = dynamic(() => import("./AddToCollectionPanel"), { s
 const CardDetailsModal   = dynamic(() => import("../UserProfile/CardDetailsModal"), { ssr: false });
 
 /* ---------------- GraphQL: cardsearch module ---------------- */
-
+/** CHANGED: We rely on backend-normalized `latestPrices` (already GBP or with market ready to show). */
 const CARDSEARCH_QUERY = gql`
   query CardsearchCollectionSearch($input: CardSearchInput!) {
     searchCards: cardsearchSearchCards(input: $input) {
@@ -60,217 +60,79 @@ const CARDSEARCH_EXACT_LIMIT = 12;
 const FALLBACK_SYMBOL_IMAGE = "https://placehold.co/50x50/webp?text=Icon";
 const GBP_SYMBOL = '\u00A3';
 
-/* ---------------- Helpers ---------------- */
+/* ---------------- Helpers: simplified to match backend outputs ---------------- */
 
-function canonicalVariantKey(raw) {
-  const value = String(raw ?? 'normal').trim().toLowerCase();
-  if (!value) return 'normal';
-  if (value === 'reverse' || value === 'reverse holo' || value === 'reverse-holo' || value === 'reverseholo' || value === 'reverseholofoil') return 'reverseHolofoil';
-  if (value === 'holo' || value === 'holofoil' || value === 'holo foil') return 'holofoil';
-  if (value === 'firstedition' || value === 'first edition' || value === '1stedition' || value === '1st edition') return 'firstEdition';
-  return value;
+// REMOVED: canonicalVariantKey/normalizePriceEntry/normalizePriceList/firstNumber/collectVariantList
+// because backend already canonicalizes variants and prices into `latestPrices`.
+
+// ADDED: minimal positive-number guard
+function pos(n) {
+  return typeof n === "number" && Number.isFinite(n) && n > 0;
 }
 
-function getBestPrice(prices) {
-  if (!Array.isArray(prices) || prices.length === 0) return null;
-  const pref = ["normal", "holofoil", "holo", "reverseHolofoil", "reverse"];
-  for (const key of pref) {
-    const hit = prices.find((p) => p?.variation === key && hasPrice(p));
-    if (hit) return hit;
-  }
-  return prices.find((p) => hasPrice(p)) || null;
-}
-
-function hasPrice(entry) {
-  if (!entry) return false;
-  // treat zero/negative as "no price"
-  const isGood = (v) => typeof v === 'number' && Number.isFinite(v) && v > 0;
-  return [entry.market, entry.tcgplayer, entry.cardmarket, entry.gbp, entry.mid, entry.low, entry.high].some(isGood);
-}
-
-function computeAveragePrice(entry) {
-  if (!entry || !hasPrice(entry)) return null;
-  const pick = (v) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null);
-
-  if (pick(entry.gbp) != null) return entry.gbp;
-  if (pick(entry.market) != null) return entry.market;
-
-  const primary = [];
-  const t = pick(entry.tcgplayer); if (t != null) primary.push(t);
-  const c = pick(entry.cardmarket); if (c != null) primary.push(c);
-
-  if (primary.length === 2) return (primary[0] + primary[1]) / 2;
-  if (primary.length === 1) return primary[0];
-
-  const fallback = firstNumber(entry.gbp, entry.mid, entry.low, entry.high);
-  if (fallback != null) return fallback;
+// ADDED: pick the best numeric price from a single price entry, preferring GBP → market → mid/low/high
+function pickDisplayPrice(entry) {
+  if (!entry) return null;
+  if (pos(entry.gbp)) return entry.gbp;
+  if (pos(entry.market)) return entry.market;
+  if (pos(entry.mid)) return entry.mid;
+  if (pos(entry.low)) return entry.low;
+  if (pos(entry.high)) return entry.high;
   return null;
 }
 
+// ADDED: choose a single “best” price row for a card
+function getBestPriceRow(prices) {
+  if (!Array.isArray(prices) || prices.length === 0) return null;
+  // prefer normal/holofoil/reverseHolofoil order if available
+  const pref = ["normal", "holofoil", "reverseHolofoil"];
+  for (const key of pref) {
+    const row = prices.find(p => (p?.variation || "").toLowerCase() === key.toLowerCase() && pickDisplayPrice(p) != null);
+    if (row) return row;
+  }
+  // else first row that has any usable number
+  return prices.find(p => pickDisplayPrice(p) != null) || null;
+}
+
+// ADDED: currency format (GBP only)
 function formatGBP(value) {
   if (value == null || Number.isNaN(value)) return `${GBP_SYMBOL}--`;
   return `${GBP_SYMBOL}${Number(value).toFixed(2)}`;
 }
 
-function firstNumber(...values) {
-  for (const value of values) {
-    if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
-  }
-  return null;
+// CHANGED: simpler item mapper — we trust backend fields
+function mapCardsearchItems(items) {
+  if (!Array.isArray(items) || items.length === 0) return [];
+  return items.map((it, idx) => {
+    const setRecord = it.set || {};
+    const setCode = it.setCode || setRecord.code || "";
+    const number = it.number || "";
+    const id = it.cardId || it.id || (setCode && number ? `${setCode}-${number}` : `card-${idx}`);
+    const image = it.images?.large || null;
+
+    // Keep variants as the API returns them; no canonicalization needed client-side
+    const variants = Array.isArray(it.variants)
+      ? it.variants.map(v => (typeof v === "string" ? v : (v?.key || v?.label || "normal")))
+      : ["normal"];
+
+    return {
+      id,
+      cardId: id,
+      name: it.name || "",
+      set: setCode,
+      setCode,
+      setName: setRecord.name || setCode || "",
+      number,
+      image,
+      tcgImageUrl: image,
+      rarity: it.rarity || null,
+      variations: variants,
+      prices: Array.isArray(it.latestPrices) ? it.latestPrices : [], // CHANGED: use latestPrices directly
+    };
+  });
 }
 
-function normalizePriceEntry(price) {
-  if (!price || typeof price !== 'object') return null;
-  const variation = canonicalVariantKey(price.variation ?? price.variant ?? 'normal');
-  const providerRaw = price.provider ?? price.source ?? null;
-  const providerKey = providerRaw ? String(providerRaw).toLowerCase() : '';
-  const currency = String(price.currency ?? price.curr ?? 'GBP').toUpperCase();
-
-  const market = firstNumber(price.gbp, price.market, price.mid, price.price, price.value);
-  const mid = firstNumber(price.mid);
-  const low = firstNumber(price.low);
-  const high = firstNumber(price.high);
-  const updatedAt = price.updatedAt || price.updated_at || null;
-
-  const entry = {
-    variation,
-    provider: providerRaw || null,
-    currency,
-    market,
-    mid,
-    low,
-    high,
-    updatedAt,
-  };
-
-  if (currency === 'GBP' && market != null) entry.gbp = market;
-  if (currency === 'USD' && market != null) entry.usd = market;
-  if (currency === 'EUR' && market != null) entry.eur = market;
-
-  if (typeof price.gbp === 'number' && price.gbp > 0) entry.gbp = price.gbp;
-  if (typeof price.usd === 'number' && price.usd > 0) entry.usd = price.usd;
-  if (typeof price.eur === 'number' && price.eur > 0) entry.eur = price.eur;
-
-  if (Array.isArray(price.sources)) {
-    entry.sources = price.sources;
-    for (const src of price.sources) {
-      if (!src) continue;
-      const srcProvider = typeof src.provider === 'string' ? src.provider.toLowerCase() : '';
-      const srcValue = firstNumber(src.market, src.mid, src.price, src.value);
-      if (srcProvider.includes('tcg') && srcValue != null && entry.tcgplayer == null) entry.tcgplayer = srcValue;
-      if (srcProvider.includes('cardmarket') && srcValue != null && entry.cardmarket == null) entry.cardmarket = srcValue;
-      if (entry.market == null && srcValue != null) entry.market = srcValue;
-    }
-  } else if (price.sources && typeof price.sources === 'object') {
-    const values = Object.values(price.sources).filter(Boolean);
-    if (values.length) entry.sources = values;
-    for (const src of values) {
-      const srcProvider = typeof src.provider === 'string' ? src.provider.toLowerCase() : '';
-      const srcValue = firstNumber(src.market, src.mid, src.price, src.value);
-      if (srcProvider.includes('tcg') && srcValue != null && entry.tcgplayer == null) entry.tcgplayer = srcValue;
-      if (srcProvider.includes('cardmarket') && srcValue != null && entry.cardmarket == null) entry.cardmarket = srcValue;
-      if (entry.market == null && srcValue != null) entry.market = srcValue;
-    }
-  }
-
-  const tcgValue = firstNumber(price.tcgplayer, providerKey.includes('tcg') ? market : null);
-  if (tcgValue != null) entry.tcgplayer = tcgValue;
-
-  const cmktValue = firstNumber(price.cardmarket, providerKey.includes('cardmarket') ? market : null);
-  if (cmktValue != null) entry.cardmarket = cmktValue;
-
-  if (entry.market == null) {
-    entry.market = firstNumber(entry.tcgplayer, entry.cardmarket, entry.mid, entry.low, entry.high);
-  }
-
-  if (price.sampleSize != null) entry.sampleSize = price.sampleSize;
-
-  return entry;
-}
-
-function normalizePriceList(list) {
-  if (!Array.isArray(list)) return [];
-  const byVariant = new Map();
-
-  for (const price of list) {
-    const entry = normalizePriceEntry(price);
-    if (!entry) continue;
-    const key = entry.variation || 'normal';
-    const existing = byVariant.get(key);
-
-    const sourceSnapshot = entry.provider && entry.market != null
-      ? { provider: entry.provider, currency: entry.currency, market: entry.market, updatedAt: entry.updatedAt }
-      : null;
-
-    if (!existing) {
-      const base = { ...entry };
-      if (entry.sources) {
-        base.sources = Array.isArray(entry.sources) ? [...entry.sources] : [entry.sources];
-      } else if (sourceSnapshot) {
-        base.sources = [sourceSnapshot];
-      }
-      byVariant.set(key, base);
-      continue;
-    }
-
-    if (entry.tcgplayer != null) existing.tcgplayer = entry.tcgplayer;
-    if (entry.cardmarket != null) existing.cardmarket = entry.cardmarket;
-    if (entry.market != null && existing.market == null) existing.market = entry.market;
-    if (entry.mid != null && existing.mid == null) existing.mid = entry.mid;
-    if (entry.low != null && existing.low == null) existing.low = entry.low;
-    if (entry.high != null && existing.high == null) existing.high = entry.high;
-    if (entry.gbp != null && existing.gbp == null) existing.gbp = entry.gbp;
-    if (entry.usd != null && existing.usd == null) existing.usd = entry.usd;
-    if (entry.eur != null && existing.eur == null) existing.eur = entry.eur;
-
-    const existingUpdated = existing.updatedAt ? Date.parse(existing.updatedAt) : null;
-    const entryUpdated = entry.updatedAt ? Date.parse(entry.updatedAt) : null;
-    if (entryUpdated != null && (existingUpdated == null || entryUpdated > existingUpdated)) {
-      existing.updatedAt = entry.updatedAt;
-    }
-
-    if (entry.sources) {
-      const merged = Array.isArray(existing.sources) ? existing.sources : [];
-      merged.push(...(Array.isArray(entry.sources) ? entry.sources : [entry.sources]));
-      existing.sources = merged;
-    } else if (sourceSnapshot) {
-      const merged = Array.isArray(existing.sources) ? existing.sources : [];
-      merged.push(sourceSnapshot);
-      existing.sources = merged;
-    }
-  }
-
-  return Array.from(byVariant.values()).filter(hasPrice);
-}
-
-function collectVariantList(item) {
-  const variants = new Set();
-
-  const pushVariant = (value) => {
-    const key = canonicalVariantKey(value);
-    if (key) variants.add(key);
-  };
-
-  if (Array.isArray(item?.variants)) {
-    for (const variant of item.variants) {
-      if (typeof variant === 'string') {
-        pushVariant(variant);
-      } else if (variant && typeof variant === 'object') {
-        pushVariant(variant.key || variant.variant || variant.displayName || variant.label);
-      }
-    }
-  }
-
-  const priceSources = Array.isArray(item?.latestPrices) ? item.latestPrices : Array.isArray(item?.prices) ? item.prices : [];
-  for (const price of priceSources) {
-    if (!price) continue;
-    pushVariant(price.variation || price.variant || price.displayName || price.label);
-  }
-
-  const result = Array.from(variants).filter(Boolean);
-  return result.length ? result : ['normal'];
-}
-
+// Kept: stable keying + pagination merge
 function canonicalCardKey(card, fallbackIndex = 0) {
   if (!card) return `card-${fallbackIndex}`;
   const id = card.cardId || card.id;
@@ -286,45 +148,6 @@ function canonicalCardKey(card, fallbackIndex = 0) {
     return `${String(card.name).toLowerCase()}-${fallbackIndex}`;
   }
   return `card-${fallbackIndex}`;
-}
-
-function normalizeCardsearchItem(item, index = 0) {
-  if (!item) return null;
-
-  const setRecord = item.set || {};
-  const setCode = item.setCode || setRecord.code || '';
-  const number = item.number || '';
-  const setName = setRecord.name || item.setName || setCode || '';
-  const image = item.images?.large || item.images?.small || item.image || null;
-  const variations = collectVariantList(item);
-  const prices = normalizePriceList(item.latestPrices ?? item.prices ?? []);
-  const allowed = new Set(variations.length ? variations : ['normal']);
-  const filteredPrices = prices.filter((price) => allowed.has(price.variation || 'normal'));
-
-  const preferredId = item.cardId || item.id || (setCode && number ? `${setCode}-${number}` : null);
-  const id = preferredId || `card-${index}`;
-
-  return {
-    id,
-    cardId: preferredId || id,
-    name: item.name || '',
-    set: setCode || '',
-    setCode: setCode || '',
-    setName,
-    number: number || '',
-    image,
-    tcgImageUrl: image,
-    rarity: item.rarity || null,
-    variations,
-    prices: filteredPrices,
-  };
-}
-
-function mapCardsearchItems(items) {
-  if (!Array.isArray(items) || !items.length) return [];
-  return items
-    .map((item, index) => normalizeCardsearchItem(item, index))
-    .filter(Boolean);
 }
 
 function mergeCardLists(existing, incoming) {
@@ -361,7 +184,6 @@ function makeQueryKey({ name, setCode, number }) {
 
 export default function CardSearch() {
   const { dark } = useTheme();
-  const client = useApolloClient(); // (unused but kept if you plan to use manually)
 
   const [name, setName] = useState("");
   const [setCode, setSetCode] = useState("");
@@ -394,11 +216,11 @@ export default function CardSearch() {
   const observerRef = useRef(null);
 
   // Apollo query
-  const [runSearch, { fetchMore, client: apolloClient }] = useLazyQuery(CARDSEARCH_QUERY, {
-    fetchPolicy: "network-only",        // CHANGED: always fetch fresh on submit
-    nextFetchPolicy: "cache-first",     // CHANGED: pagination can use cache
+  const [runSearch, { fetchMore }] = useLazyQuery(CARDSEARCH_QUERY, {
+    fetchPolicy: "network-only",
+    nextFetchPolicy: "cache-first",
     notifyOnNetworkStatusChange: true,
-    returnPartialData: false,           // CHANGED: don't satisfy new params from partial cache
+    returnPartialData: false,
   });
 
   // Explicit submit state (prevents "second search disabled" edge cases)
@@ -423,11 +245,11 @@ export default function CardSearch() {
     }
   }, []);
 
-  // NEW: Reset stale flags when the user edits inputs so a new search isn't blocked
+  // Reset flags when filters change
   useEffect(() => {
-    loadingMoreRef.current = false; // NEW
-    setSearchError(null);           // NEW
-    setSubmitting(false);           // NEW
+    loadingMoreRef.current = false;
+    setSearchError(null);
+    setSubmitting(false);
   }, [name, setCode, number]);
 
   // Kick off a search
@@ -439,10 +261,10 @@ export default function CardSearch() {
     lastKeyRef.current = key;
     loadingMoreRef.current = false;
 
-    // kill any previous infinite-scroll observer so it won't fire mid-search
+    // stop previous infinite-scroll observer
     disconnectObserver();
 
-    // if we already have cached results for these params, show immediately
+    // instant bucket display
     const bucket = bucketsRef.current.get(key);
     if (bucket) {
       startTransition(() => {
@@ -477,21 +299,20 @@ export default function CardSearch() {
     try {
       const res = await runSearch({
         variables,
-        context: { queryDeduplication: false }, // CHANGED: avoid Apollo dedup skipping a fresh submit
+        context: { queryDeduplication: false },
       });
       const payload = res?.data?.searchCards;
-
       if (!payload) {
-        // restore cached hasMore if any, but don't lock the UI
         if (bucket) setHasMore(bucket.hasNextPage);
         return;
       }
 
       const items = mapCardsearchItems(payload.items);
-      const totalCount = Number(payload.total ?? payload.totalCount ?? items.length);
+      const totalCount = Number(payload.total ?? items.length);
       const initialOffset = Number(payload.offset ?? 0);
       const nextOffset = Math.min(initialOffset + items.length, totalCount);
       const pageSize = Number(payload.limit ?? limit);
+
       const bucketNext = {
         items,
         hasNextPage: nextOffset < totalCount,
@@ -511,8 +332,7 @@ export default function CardSearch() {
       }
     } catch (err) {
       setSearchError(err instanceof Error ? err : new Error(String(err)));
-      // keep UI interactive
-      setHasMore(bucket ? bucket.hasNextPage : false);
+      if (bucket) setHasMore(bucket.hasNextPage);
     } finally {
       setSubmitting(false);
     }
@@ -605,7 +425,7 @@ export default function CardSearch() {
     }
   }, [fetchMore, hasMore, currentKey, name, setCode, number]);
 
-  // Infinite scroll (simple & cheap)
+  // Infinite scroll
   useEffect(() => {
     if (!hasMore) {
       disconnectObserver();
@@ -628,7 +448,7 @@ export default function CardSearch() {
     return () => disconnectObserver();
   }, [hasMore, loadMoreResults, results.length, currentKey, disconnectObserver]);
 
-  // Wishlist
+  // Wishlist (kept)
   const handleAddToWishlist = async (card) => {
     const token = getCookie("authToken");
     if (!token) {
@@ -757,8 +577,7 @@ export default function CardSearch() {
             >
               {searchError.message || "Search failed"}
             </div>
-          ) : !submitting ? ( // CHANGED: hide the note while submitting
-            // Friendly note shown only when there is NO error and not submitting
+          ) : !submitting ? (
             <p
               className="text-sm text-gray-500 dark:text-gray-400 text-center mt-4"
               aria-live="polite"
@@ -775,7 +594,7 @@ export default function CardSearch() {
               <div className="bg-light-surface dark:bg-dark-surface rounded-2xl shadow flex flex-col p-3 min-h-[300px]" key={idx}>
                 <div className="w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-xl mb-3 relative shimmer"></div>
                 <div className="mt-2 flex flex-col gap-2">
-                  <div className="h-3.5 bg-light-alt dark:bg-dark-alt rounded w-full shimmer"></div>
+                  <div className="h-3.5 bg-light-alt dark:bg-dark-alt rounded w/full shimmer"></div>
                   <div className="h-3.5 bg-light-alt dark:bg-dark-alt rounded w-3/4 shimmer"></div>
                   <div className="h-3.5 bg-light-alt dark:bg-dark-alt rounded w-1/2 shimmer"></div>
                 </div>
@@ -787,12 +606,12 @@ export default function CardSearch() {
             <h2 className="text-xl font-bold mb-6 ml-1">Search Results</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {results.map((card, idx) => {
-                const best = getBestPrice(card.prices);
-                const averagePrice = computeAveragePrice(best);
-                const setKey = card.set || card.setCode || '';
-                const numKey = card.number || '';
+                const bestRow = getBestPriceRow(card.prices);
+                const displayPrice = pickDisplayPrice(bestRow);
+                const setKey = card.set || card.setCode || "";
+                const numKey = card.number || "";
                 const fallbackKey = `${setKey}-${numKey}`.trim();
-                const imageKey = card.id || card.cardId || (fallbackKey && fallbackKey !== '-' ? fallbackKey : `card-${idx}`);
+                const imageKey = card.id || card.cardId || (fallbackKey && fallbackKey !== "-" ? fallbackKey : `card-${idx}`);
                 const isLoaded = !!imageLoadedMap[imageKey];
                 const isPriority = idx < 8;
 
@@ -848,14 +667,14 @@ export default function CardSearch() {
 
                       <div className="flex gap-3 text-sm my-1">
                         <div>
-                          <span className="font-bold text-light-accent dark:text-dark-accent">Average</span>
+                          <span className="font-bold text-light-accent dark:text-dark-accent">Price</span>
                           <span className="font-semibold ml-1 text-light-text dark:text-dark-text">
-                            {formatGBP(averagePrice)}
+                            {formatGBP(displayPrice)}
                           </span>
                         </div>
-                        {best?.variation && best.variation !== "normal" ? (
+                        {bestRow?.variation && bestRow.variation !== "normal" ? (
                           <span className="ml-1 text-xs text-light-textMuted dark:text-dark-textMuted">
-                            ({formatVariation(best.variation)})
+                            ({formatVariation(bestRow.variation)})
                           </span>
                         ) : null}
                       </div>
@@ -945,18 +764,4 @@ export default function CardSearch() {
       </div>
     </div>
   );
-}
-
-/* ---------------- Utilities ---------------- */
-
-function normalizeError(err) {
-  if (!err) return null;
-  if (typeof err === "string") return new Error(err);
-  if (err?.networkError?.result?.errors?.[0]?.message) return new Error(err.networkError.result.errors[0].message);
-  if (err?.message) return new Error(err.message);
-  try {
-    return new Error(JSON.stringify(err));
-  } catch {
-    return new Error("Unknown error");
-  }
 }

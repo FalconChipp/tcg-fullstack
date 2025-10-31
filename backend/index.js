@@ -5,7 +5,8 @@ import express from "express";
 import http from "http";
 import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@apollo/server/express4";
-import cors from "cors";
+// REMOVED: cors package to avoid accidental duplicates
+// import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import compression from "compression";
@@ -29,11 +30,7 @@ import { startExpiredMessageCleanup } from "./src/jobs/messageCleanup.js";
 import { startNotificationCleanup } from "./src/jobs/notificationCleanup.js";
 
 import { typeDefs, resolvers } from "./src/schema.js";
-import {
-  sequelize,
-  User,
-  Profile,
-} from "./src/models/index.js";
+import { sequelize, User, Profile } from "./src/models/index.js";
 import * as models from "./src/models/index.js";
 
 // Admin page assets
@@ -66,14 +63,18 @@ app.set("trust proxy", ["loopback", "127.0.0.1", "::1"]);
 // Static assets
 app.use("/achievements", express.static("public/achievements"));
 
-/* ============================
-   CORS helpers (shared)
-   ============================ */
-app.use((req, _res, next) => {
-  if (req.headers.origin) logger.info(`[CORS] Origin: ${req.headers.origin}`);
-  next();
-});
+/* =============================================================================
+   GLOBAL CORS: single source of truth + hard de-dupe
+   -----------------------------------------------------------------------------
+   Why global?
+   - We saw duplicate ACAO in the browser ("value1, value1"). That happens when
+     more than one middleware sets it. Mount *one* CORS layer globally, first.
+   - We override res.setHeader/res.append for CORS names to prevent doubling.
+   - We short-circuit OPTIONS with 204.
+   - We add optional tracing with CORS_TRACE=1 to log final CORS headers.
+============================================================================= */
 
+// CHANGED: normalized origin helpers and allow-list pulled up here
 function normalizeOrigin(s) {
   if (!s) return "";
   return String(s).trim().toLowerCase().replace(/\/+$/, "");
@@ -85,61 +86,115 @@ const extraDev = (process.env.CORS_EXTRA_ORIGINS || "").split(",").map(normalize
 const ALLOWED = Array.from(new Set([...allowedOrigins, ...extraDev]));
 logger.info(`[CORS] Allow-list parsed (${ALLOWED.length}): ${ALLOWED.join(", ") || "(none)"}`);
 
-const baseCorsOptions = {
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  exposedHeaders: ["Authorization"],
-  preflightContinue: false,
-  optionsSuccessStatus: 204,
-};
+function isOriginAllowed(origin, reqHost) {
+  if (!origin) return true; // native apps/curl/etc.
+  const norm = normalizeOrigin(origin);
+  if (ALLOWED.length === 0 || ALLOWED.includes(norm)) return true;
+  const hostFromOrigin = norm.replace(/^https?:\/\//, "");
+  return !!(reqHost && hostFromOrigin === String(reqHost).toLowerCase());
+}
 
-// ADDED: per-origin allow + Vary header to prevent cache poisoning
-function corsWithReq(req, res, next) {
-  const opts = {
-    ...baseCorsOptions,
-    origin: (origin, cb) => {
-      if (!origin) return cb(null, true); // native apps / curl
-      const norm = normalizeOrigin(origin);
-      if (ALLOWED.length === 0 || ALLOWED.includes(norm)) return cb(null, true);
+// ADDED: names to de-dupe
+const CORS_HEADER_KEYS = [
+  "access-control-allow-origin",
+  "access-control-allow-credentials",
+  "access-control-expose-headers",
+  "access-control-allow-methods",
+  "access-control-allow-headers",
+  "access-control-max-age",
+];
 
-      // Also allow same-host (useful behind proxy)
-      const host = (req.headers.host || "").toLowerCase();
-      const hostFromOrigin = norm.replace(/^https?:\/\//, "");
-      if (host && hostFromOrigin === host) return cb(null, true);
+// ADDED: tiny helper to set CORS once on a response
+function applyCorsOnce(req, res) {
+  // Clean slate — ensure no duplicates
+  res.removeHeader("Access-Control-Allow-Origin");
+  res.removeHeader("Access-Control-Allow-Credentials");
+  res.removeHeader("Access-Control-Expose-Headers");
+  res.removeHeader("Access-Control-Allow-Methods");
+  res.removeHeader("Access-Control-Allow-Headers");
+  res.removeHeader("Access-Control-Max-Age");
 
-      return cb(new Error(`Not allowed by CORS: ${origin}`));
-    },
-    // ADDED: ensure preflight covers typical custom headers
-    allowedHeaders: [
-      "Authorization",
-      "Content-Type",
-      "Origin",
-      "Accept",
-      "X-Requested-With",
-      "X-Access-Token",
-      "X-Admin-Token",
-    ],
-  };
-
-  // ADDED: vary by Origin for intermediaries/CDNs
   res.setHeader("Vary", "Origin");
 
-  return cors(opts)(req, res, next);
+  const origin = req.headers.origin || "";
+  const allowed = isOriginAllowed(origin, req.headers.host);
+
+  if (allowed && origin) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Expose-Headers", "Authorization");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Authorization,Content-Type,Origin,Accept,X-Requested-With,X-Access-Token,X-Admin-Token"
+    );
+    res.setHeader("Access-Control-Max-Age", "86400");
+  }
 }
 
-// ADDED: tiny detector to find duplicate CORS setting on a route
-function logIfCorsAlreadySet(label) {
-  return (req, res, next) => {
-    const has = res.getHeader("Access-Control-Allow-Origin");
-    if (has) logger.warn(`[CORS duplicate?] ${label} already has ACAO=${has} before corsWithReq`);
-    next();
+// ADDED: global de-dupe wrapper + single CORS applier
+app.use((req, res, next) => {
+  // quick visibility
+  if (req.headers.origin) logger.info(`[CORS] Origin: ${req.headers.origin} -> ${req.method} ${req.url}`);
+
+  // Wrap header setters to *never* append CORS headers as arrays
+  const origSetHeader = res.setHeader.bind(res);
+  const origAppend = res.append ? res.append.bind(res) : null;
+  const origEnd = res.end.bind(res);
+  const isCorsHeader = (name) => CORS_HEADER_KEYS.includes(String(name).toLowerCase());
+
+  res.setHeader = (name, value) => {
+    if (isCorsHeader(name)) {
+      if (Array.isArray(value)) value = value[0];
+      return origSetHeader(name, value); // overwrite single value
+    }
+    return origSetHeader(name, value);
   };
-}
+
+  if (origAppend) {
+    res.append = (name, value) => {
+      if (isCorsHeader(name)) {
+        if (Array.isArray(value)) value = value[0];
+        return res.setHeader(name, value); // never append for CORS
+      }
+      return origAppend(name, value);
+    };
+  }
+
+  // Apply our CORS headers exactly once at the start of the pipeline
+  if (!req._corsOnceApplied) {
+    req._corsOnceApplied = true;
+    applyCorsOnce(req, res);
+  }
+
+  // Short-circuit preflight globally
+  if (req.method === "OPTIONS") {
+    if (process.env.CORS_TRACE) {
+      const h = Object.fromEntries(
+        CORS_HEADER_KEYS.map((k) => [k, res.getHeader(k)])
+      );
+      logger.info(`[CORS TRACE] OPTIONS -> 204 with headers: ${JSON.stringify(h)}`);
+    }
+    return res.status(204).end();
+  }
+
+  // Log final headers on finish if tracing
+  if (process.env.CORS_TRACE) {
+    res.on("finish", () => {
+      const h = Object.fromEntries(
+        CORS_HEADER_KEYS.map((k) => [k, res.getHeader(k)])
+      );
+      logger.info(`[CORS TRACE] ${req.method} ${req.url} -> ${res.statusCode} headers: ${JSON.stringify(h)}`);
+    });
+  }
+
+  return next();
+});
 
 /* ============================
-   Socket.IO
+   Socket.IO (CORS aligned)
    ============================ */
-// CHANGED: use the same allow-list as Express (removed origin: "*")
+// CHANGED: use the same allow-list as Express (no "*")
 const io = new SocketIOServer(httpServer, {
   cors: {
     credentials: true,
@@ -194,7 +249,8 @@ app.post(
 /* ============================
    Security / Parsers
    ============================ */
-// REMOVED (global CORS): app.use(corsWithReq); app.options("*", corsWithReq);
+// REMOVED: global cors() usage to avoid accidental duplicates
+
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(compression());
 
@@ -291,10 +347,7 @@ const upload = multer({
   },
 });
 
-// ADDED: apply CORS only to /upload/avatar
-app.options("/upload/avatar", logIfCorsAlreadySet("upload-OPTIONS"), corsWithReq);
-app.use("/upload/avatar", logIfCorsAlreadySet("upload"), corsWithReq);
-
+// CHANGED: no per-route CORS — global CORS already applied
 app.post("/upload/avatar", upload.single("avatar"), async (req, res) => {
   try {
     const userId = getUserIdFromAuthHeader(req.headers.authorization);
@@ -352,7 +405,7 @@ app.get("/debug/me", (req, res) => {
   res.json({ user: req.user || null });
 });
 
-// Routers (if they serve cross-site requests from your FE, consider wrapping with corsWithReq too)
+// Routers
 app.use(authSessionRouter);
 app.use(discordAuthRouter);
 
@@ -400,11 +453,7 @@ const apolloServer = new ApolloServer({
 });
 await apolloServer.start();
 
-// ADDED: CORS ONLY for /graphql, before Apollo. This prevents duplicate headers.
-// Also logs if any header is already set before corsWithReq.
-app.options("/graphql", logIfCorsAlreadySet("graphql-OPTIONS"), corsWithReq);
-app.use("/graphql", logIfCorsAlreadySet("graphql"), corsWithReq);
-
+// CHANGED: no extra CORS here — global CORS already applied at top
 app.use(
   "/graphql",
   expressMiddleware(apolloServer, {

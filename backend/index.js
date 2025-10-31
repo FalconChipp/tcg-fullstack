@@ -66,9 +66,91 @@ app.set("trust proxy", ["loopback", "127.0.0.1", "::1"]);
 // Static assets
 app.use("/achievements", express.static("public/achievements"));
 
-// --- Socket.IO ---
+/* ============================
+   CORS helpers (shared)
+   ============================ */
+app.use((req, _res, next) => {
+  if (req.headers.origin) logger.info(`[CORS] Origin: ${req.headers.origin}`);
+  next();
+});
+
+function normalizeOrigin(s) {
+  if (!s) return "";
+  return String(s).trim().toLowerCase().replace(/\/+$/, "");
+}
+
+const allowedOriginsRaw = process.env.CORS_ORIGINS || "";
+const allowedOrigins = allowedOriginsRaw.split(",").map(normalizeOrigin).filter(Boolean);
+const extraDev = (process.env.CORS_EXTRA_ORIGINS || "").split(",").map(normalizeOrigin).filter(Boolean);
+const ALLOWED = Array.from(new Set([...allowedOrigins, ...extraDev]));
+logger.info(`[CORS] Allow-list parsed (${ALLOWED.length}): ${ALLOWED.join(", ") || "(none)"}`);
+
+const baseCorsOptions = {
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  exposedHeaders: ["Authorization"],
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+};
+
+// ADDED: per-origin allow + Vary header to prevent cache poisoning
+function corsWithReq(req, res, next) {
+  const opts = {
+    ...baseCorsOptions,
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true); // native apps / curl
+      const norm = normalizeOrigin(origin);
+      if (ALLOWED.length === 0 || ALLOWED.includes(norm)) return cb(null, true);
+
+      // Also allow same-host (useful behind proxy)
+      const host = (req.headers.host || "").toLowerCase();
+      const hostFromOrigin = norm.replace(/^https?:\/\//, "");
+      if (host && hostFromOrigin === host) return cb(null, true);
+
+      return cb(new Error(`Not allowed by CORS: ${origin}`));
+    },
+    // ADDED: ensure preflight covers typical custom headers
+    allowedHeaders: [
+      "Authorization",
+      "Content-Type",
+      "Origin",
+      "Accept",
+      "X-Requested-With",
+      "X-Access-Token",
+      "X-Admin-Token",
+    ],
+  };
+
+  // ADDED: vary by Origin for intermediaries/CDNs
+  res.setHeader("Vary", "Origin");
+
+  return cors(opts)(req, res, next);
+}
+
+// ADDED: tiny detector to find duplicate CORS setting on a route
+function logIfCorsAlreadySet(label) {
+  return (req, res, next) => {
+    const has = res.getHeader("Access-Control-Allow-Origin");
+    if (has) logger.warn(`[CORS duplicate?] ${label} already has ACAO=${has} before corsWithReq`);
+    next();
+  };
+}
+
+/* ============================
+   Socket.IO
+   ============================ */
+// CHANGED: use the same allow-list as Express (removed origin: "*")
 const io = new SocketIOServer(httpServer, {
-  cors: { origin: "*", methods: ["GET", "POST"] },
+  cors: {
+    credentials: true,
+    methods: ["GET", "POST"],
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      const norm = normalizeOrigin(origin);
+      if (ALLOWED.length === 0 || ALLOWED.includes(norm)) return cb(null, true);
+      return cb(new Error(`Socket.IO CORS blocked: ${origin}`));
+    },
+  },
 });
 app.set("io", io);
 
@@ -110,51 +192,9 @@ app.post(
 );
 
 /* ============================
-   CORS / Security / Parsers
+   Security / Parsers
    ============================ */
-app.use((req, _res, next) => {
-  if (req.headers.origin) logger.info(`[CORS] Origin: ${req.headers.origin}`);
-  next();
-});
-
-function normalizeOrigin(s) {
-  if (!s) return "";
-  return String(s).trim().toLowerCase().replace(/\/+$/, "");
-}
-
-const allowedOriginsRaw = process.env.CORS_ORIGINS || "";
-const allowedOrigins = allowedOriginsRaw.split(",").map(normalizeOrigin).filter(Boolean);
-const extraDev = (process.env.CORS_EXTRA_ORIGINS || "").split(",").map(normalizeOrigin).filter(Boolean);
-const ALLOWED = Array.from(new Set([...allowedOrigins, ...extraDev]));
-logger.info(`[CORS] Allow-list parsed (${ALLOWED.length}): ${ALLOWED.join(", ") || "(none)"}`);
-
-const baseCorsOptions = {
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  exposedHeaders: ["Authorization"],
-  preflightContinue: false,
-  optionsSuccessStatus: 204,
-};
-function corsWithReq(req, res, next) {
-  const opts = {
-    ...baseCorsOptions,
-    origin: (origin, cb) => {
-      if (!origin) return cb(null, true);
-      const norm = normalizeOrigin(origin);
-      if (ALLOWED.length === 0 || ALLOWED.includes(norm)) return cb(null, true);
-
-      const host = (req.headers.host || "").toLowerCase();
-      const hostFromOrigin = norm.replace(/^https?:\/\//, "");
-      if (host && hostFromOrigin === host) return cb(null, true);
-
-      return cb(new Error(`Not allowed by CORS: ${origin}`));
-    },
-  };
-  return cors(opts)(req, res, next);
-}
-app.use(corsWithReq);
-app.options("*", corsWithReq);
-
+// REMOVED (global CORS): app.use(corsWithReq); app.options("*", corsWithReq);
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(compression());
 
@@ -251,6 +291,10 @@ const upload = multer({
   },
 });
 
+// ADDED: apply CORS only to /upload/avatar
+app.options("/upload/avatar", logIfCorsAlreadySet("upload-OPTIONS"), corsWithReq);
+app.use("/upload/avatar", logIfCorsAlreadySet("upload"), corsWithReq);
+
 app.post("/upload/avatar", upload.single("avatar"), async (req, res) => {
   try {
     const userId = getUserIdFromAuthHeader(req.headers.authorization);
@@ -308,6 +352,7 @@ app.get("/debug/me", (req, res) => {
   res.json({ user: req.user || null });
 });
 
+// Routers (if they serve cross-site requests from your FE, consider wrapping with corsWithReq too)
 app.use(authSessionRouter);
 app.use(discordAuthRouter);
 
@@ -354,6 +399,11 @@ const apolloServer = new ApolloServer({
   },
 });
 await apolloServer.start();
+
+// ADDED: CORS ONLY for /graphql, before Apollo. This prevents duplicate headers.
+// Also logs if any header is already set before corsWithReq.
+app.options("/graphql", logIfCorsAlreadySet("graphql-OPTIONS"), corsWithReq);
+app.use("/graphql", logIfCorsAlreadySet("graphql"), corsWithReq);
 
 app.use(
   "/graphql",

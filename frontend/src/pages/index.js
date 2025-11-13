@@ -5,10 +5,10 @@ import Layout from "@/components/Layout/Layout";
 import HeroSection from "@/components/Layout/Hero";
 import CardSearch from "@/components/Collection/CardSearch";
 import KeyFeatures from "@/components/Layout/KeyFeatures";
-import FAQ /* , { FAQ_ITEMS } */ from "@/components/Layout/FAQ"; // If you exported FAQ_ITEMS, uncomment it
+import FAQ /* , { FAQ_ITEMS } */ from "@/components/Layout/FAQ"; 
 import DiscordJoinBar from "@/components/Layout/DiscordBar";
 import AuthModal from "@/components/Auth/AuthModal";
-// import Landing from "@/components/Layout/Landing"; // REMOVED (unused)
+// import Landing from "@/components/Layout/Landing"; 
 
 // Modular homepage sections for acquisition focus
 import ProofStrip from "@/components/Home/ProofStrip";
@@ -16,7 +16,8 @@ import IntroFeatureCards from "@/components/Home/IntroFeatureCards";
 import SearchIntro from "@/components/Home/SearchIntro";
 import OnboardingQuickStart from "@/components/Home/OnboardingQuickStart";
 import Landing from "@/components/Layout/Landing";
-// import EvolvedProtectionSpotlight from "@/components/Partners/EvolvedSpotlight";
+import EvolvedProtectionSpotlight from "@/components/Partners/EvolvedSpotlight";
+import MobileAppPromo from "@/components/Home/AppBanner";
 
 export default function Home() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -24,7 +25,6 @@ export default function Home() {
   return (
     <Layout
       noTopPadding
-      /* NEW: Centralised SEO via Layout */
       seo={{
         title: "SixByFive TCG — Track, value, and show off your Pokémon collection",
         description:
@@ -35,26 +35,16 @@ export default function Home() {
       }}
     >
       <div className="pt-20">
-        {/* HERO SECTION — copy-only recommendations (no structural changes)
-           Headline: "Track, value, and show off your Pokémon collection."
-           Subhead:  "Add cards in seconds. Build shareable binders. Stay on top of prices. Free to start."
-           Primary CTA: "Start free" → onOpenAuthModal()
-           Secondary CTA (quiet): "Browse public collections" → your public route
-        */}
         <HeroSection onOpenAuthModal={() => setAuthModalOpen(true)} />
 
-        {/* Proof / trust cues directly under the hero */}
-        <ProofStrip />
+        <MobileAppPromo />
 
-        {/* ===== SEARCH MOVED UP ===== */}
         {/* id + scroll-mt so links (e.g., from nav or hero) can jump here cleanly */}
-        <section id="card-search" className="my-8 scroll-mt-28">
-          <SearchIntro />
+        <section id="card-search" className="scroll-mt-28">
           <CardSearch />
         </section>
 
         {/* <EvolvedProtectionSpotlight /> */}
-        {/* Intro features remain for scrollers */}
         <IntroFeatureCards />
 
         {/* 3-step “quick start” onboarding to drive first-session success */}
@@ -63,6 +53,7 @@ export default function Home() {
         {/* Deeper features/FAQ */}
         <KeyFeatures />
         <DiscordJoinBar />
+        {/* <EvolvedProtectionSpotlight mode="banner"/> */}
         <FAQ />
       </div>
 

@@ -122,7 +122,8 @@ export const SET_LOGOS = {
   'Destined Rivals': 'destined-rivals-logo.png',
   'Black Bolt': 'black-bolt-logo.png',
   'White Flare': 'white-flare-logo.png',
-  'Mega Evolution': 'mega-evolutions-base-logo.png',  
+  'Mega Evolution': 'mega-evolutions-base-logo.png', 
+  'Phantasmal Flames' : 'phantasmal-flames-logo.png', 
 
   // Trainer Kits, Vaults, Classic, Special, etc.
   'Detective Pikachu': 'detective-pikachu-logo.png',

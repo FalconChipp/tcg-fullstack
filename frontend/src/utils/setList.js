@@ -4,6 +4,7 @@
 const setList = [
   // Mega Evolution Era 
   { abbr: "MEG", code : "me01", name: "Mega Evolution", logo: "/assets/set-logos/mega-evolutions-base-logo.png" },
+  { abbr: "PFL", code : "me02", name: "Phantasmal Flames", loho: "/assets/set-logos/phantasmal-flames-logo.png "},
 
   // Scarlet & Violet era
   { abbr: "SVP", code: "svp", name: "Scarlet & Violet Promos", logo: "/assets/set-logos/scarlet-violet-base-logo.png" },

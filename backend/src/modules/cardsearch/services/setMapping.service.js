@@ -4,7 +4,7 @@
 export const ALIASES = Object.freeze({
   // Mega Evolution sets:
   'MEG':   { tcgdex: 'me01',     ptcg: 'me1' },           // Mega Evolutions Base Set
-  'PFL':   { tcgdex: null,       ptcg: null },            // Phantasmal Flames 
+  'PFL':   { tcgdex: 'me02',       ptcg: 'me2' },            // Phantasmal Flames 
 
   // Scarlet & Violet sets:
   'SVP':   { tcgdex: 'svp',      ptcg: 'svp' },           // Scarlet & Violet Promos

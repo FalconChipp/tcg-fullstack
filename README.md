@@ -1,56 +1,41 @@
 # TCG Fullstack Monorepo
 
-This repository bundles the complete SixByFive TCG platform: a public web app, an administrative dashboard, and the Node.js GraphQL backend that powers both. Use this document as the canonical entry point for understanding the system, spinning up local environments, and planning changes across the stack.
+This repository bundles the complete SixByFive TCG platform: the public web app and the Node.js GraphQL backend that powers it. Use this document as the canonical entry point for understanding the system, spinning up local environments, and planning changes across the stack.
 
 ## Repository Layout
 
-- ackend/ – Express + Apollo GraphQL API, market data ingestion workers, Stripe billing, notifications, and all business logic.
-- rontend/ – Customer-facing Next.js application for collection management, binder tools, marketplace browsing, and subscriptions.
-- dashboard/ – Staff-only Next.js dashboard used to triage data, monitor jobs, and exercise admin workflows.
-- h/ – Auxiliary scripts or personal workspace (not part of the core app).
+- **backend/** â€” Express + Apollo GraphQL API, market data ingestion workers, Stripe billing, notifications, and business logic.
+- **frontend/** â€” Customer-facing Next.js application for collection management, binder tools, marketplace browsing, subscriptions, and built-in admin tools.
+- **h/** â€” Auxiliary scripts or personal workspace (not part of the core app).
+Each subproject maintains its own `package.json`, dependencies, and README with detailed guidance. Treat them as independent Node applications that happen to share a repo and deployment cadence.
 
-Each subproject maintains its own package.json, dependencies, and README with detailed guidance. Treat them as independent Node applications that happen to share a repo and deployment cadence.
+   - Provides the single GraphQL endpoint used by the web app (`/graphql`).
+   - Exposes RESTful admin maintenance endpoints under `/admin/md2/*` for market data control.
+   - Orchestrates the Marketdata v2 pipeline (set ingest, price collection, FX refresh, rollups) and stores derived artefacts in `backend/data/marketdata2`.
 
-## High-Level Architecture
+2. **Frontend (Customer Web App + Admin)**
+   - Handles auth (NextAuth + Google OAuth), binder UI/drag-and-drop, marketplace views, notifications, and admin workflows.
+3. **Shared Concepts**
+   - Schema lives in `backend/src/schema/typeDefs.js` and `backend/src/schema/resolvers.js`. Schema is composed from feature modules under `backend/src/modules/**/typeDefs.js` and `backend/src/modules/**/resolvers.js`.
+```bash
 
-1. **Backend (API + Jobs)**
-   - Provides the single GraphQL endpoint used by both web apps (/graphql).
-   - Exposes RESTful admin maintenance endpoints under /admin/md2/* for market data control.
-   - Uses Sequelize to connect to MySQL in production (SQLite fallback for local testing).
-   - Orchestrates the Marketdata v2 pipeline (set ingest, price collection, FX refresh, rollups) and stores derived artefacts in ackend/data/marketdata2.
+```
+> Tip: copy each subproject's `.env.example` / `.env.*` as `.env.local` and adjust credentials before running.
+| Component | Build Command   | Runtime Command | Typical Host              |
+|-----------|-----------------|-----------------|---------------------------|
+| backend   | npm install     | npm start       | Node server/PM2/Render    |
+| frontend  | npm run build   | npm run start   | Netlify/Vercel/Static CDN |
 
-2. **Frontend (Customer Web App)**
-   - Communicates with the backend via Apollo Client.
-   - Handles auth (NextAuth + Google OAuth), binder UI/drag-and-drop, marketplace views, and notifications.
-   - Ships as a standalone Next.js 14 build (Netlify ready), but expects the backend reachable at runtime.
+Ensure `NEXT_PUBLIC_GRAPHQL_ENDPOINT` points at the deployed backend for the frontend. The backend requires `ADMIN_API_TOKEN`, `JWT_SECRET`, DB credentials, Stripe keys, and marketdata provider keys at minimum.
 
-3. **Dashboard (Staff Tools)**
-   - Shares the GraphQL backend and uses the same schema, but authenticates with admin tokens stored in localStorage.
-   - Provides lightweight views into user stats, moderation data, and marketdata status.
-
-4. **Shared Concepts**
-   - GraphQL schema is composed from feature modules under ackend/src/modules/**/typeDefs.js + esolvers.js.
-   - Market data is cached in JSON alongside relational tables (m_* models) so web clients can mix static and live data.
-   - Environment variables are defined per app; secrets should be managed using your deployment platform (Vercel/Netlify/Render/etc.).
-
-## Prerequisites
-
-- **Node.js** 18 or newer.
-- **npm** (ships with Node 18).
-- **MySQL 8** (or a compatible hosted instance) for backend persistence.
-- Optional: **Redis** or external services depending on future features (not required today).
-
-## Quickstart: Local Development
-
-`ash
-# Clone once
-git clone <repo-url>
-cd tcg-fullstack
-
-# Install dependencies for each app
-(cd backend && npm install)
-(cd frontend && npm install)
-(cd dashboard && npm install)
+- JSON caches live under `backend/data/marketdata2` (sets, cards, FX).
+- Scheduled ticks (`metadataTick`, `pricingTick`, `patchTick`) are orchestrated from `backend/src/tasks/marketdata2.schedule.js` and can be invoked manually via REST or GraphQL mutations.
+- Rollups aggregate observations for 1/7/30/90-day spans accessible via models `m_PriceDaily`, `m_PriceLatest`, `m_PriceRollup`.
+- Admin tooling within the frontend currently has no dedicated automated suite; spot-check through `npm run build` to catch breaking GraphQL changes.
+- **Port conflicts**: ensure 3000/4000 are free or override in env files.
+- **DB connectivity**: confirm `.env` host/port and that MySQL accepts TCP connections.
+- **Marketdata jobs**: check admin endpoints `/admin/md2/providers` and scheduler logs in backend console.
+For subsystem-specific instructions, continue with the READMEs inside `backend/` and `frontend/`.
 
 # Start backend first (port 4000)
 (cd backend && npm run dev)

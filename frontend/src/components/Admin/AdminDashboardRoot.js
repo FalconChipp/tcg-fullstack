@@ -122,7 +122,7 @@ export default function AdminDashboardRoot() {
         <header className="h-14 border-b border-white/5 bg-black/40 flex items-center px-4 md:px-6 justify-between">
           <h1 className="text-sm font-semibold">{activeLabel}</h1>
           <span className="text-xs text-neutral-400">
-            <a href="http://localhost:3000">Return to main site</a>
+            <a href="https://tcg.sixbyfive.com">Return to main site</a>
           </span>
         </header>
 

@@ -16,10 +16,20 @@ const typeDefs = gql`
     card: CardsearchCard
   }
 
+  type AdminUserCollectionSummary {
+    userId: ID!
+    username: String! 
+    email: String! 
+    totalCards: Int! 
+    distinctCards: Int! 
+  }
+
   extend type Query {
     myCollection: [Collection!]!
     collection(userId: ID!): [Collection!]!
     collectionEntry(cardId: String!, variation: String): Collection
+
+    adminUserCollections(limit: Int, search: String) : [AdminUserCollectionSummary!]!
   }
 
   extend type Mutation {

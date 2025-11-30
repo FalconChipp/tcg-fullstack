@@ -75,6 +75,7 @@ import init_m_PriceObservation from './m_PriceObservation.js';
 // NEW: rollups table for fast 7/30/90 reads
 import init_m_PriceRollup from './m_PriceRollup.js';
 import initUserDiscordLink from './UserDiscordLink.js'; 
+import OrderFactory from './Order.js';
 
 /* ---------------- Initialize (legacy) ---------------- */
 const User = UserFactory(sequelize, DataTypes);
@@ -106,6 +107,7 @@ const BinderSlot = BinderSlotFactory(sequelize, DataTypes);
 const PriceAlert = PriceAlertFactory(sequelize, DataTypes);
 const UserNotificationPref = UserNotificationPrefFactory(sequelize, DataTypes);
 const UserDiscordLink = initUserDiscordLink(sequelize, DataTypes);
+const Order = OrderFactory(sequelize, DataTypes);
 
 /* ---------------- Initialize (cardsearch) ---------------- */
 const m_Set = init_m_Set(sequelize, DataTypes);
@@ -259,6 +261,20 @@ Transaction.belongsTo(Listing, { foreignKey: 'relatedId', constraints: false, as
 User.hasMany(ShippingLabel, { foreignKey: 'userId', onDelete: 'CASCADE' });
 ShippingLabel.belongsTo(User, { foreignKey: 'userId' });
 
+Order.belongsTo(Listing, { foreignKey: 'listingId', as: 'listing', onDelete: 'CASCADE'});
+Listing.hasMany(Order, { foreignKey: 'listingId', as: 'orders', onDelete: 'CASCADE'});
+Order.belongsTo(User, { foreignKey: 'buyerId', as: 'buyer', onDelete: 'CASCADE'});
+User.hasMany(Order, { foreignKey: 'buyerId', as: 'ordersPlaced'});
+Order.belongsTo(User, { foreignKey: 'sellerId', as: 'seller'});
+User.hasMany(Order, { foreignKey: 'sellerId', as: 'ordersSold'}); 
+
+/* ---------------- Order associations (via model.associate) ---------------- */
+// Your Order model already defines associations in Order.associate.
+// Call it here so they are actually registered.
+if (typeof Order.associate === 'function') {
+  Order.associate({ User, Listing });
+}
+
 /* ---------------- Legacy price/search cleanup ---------------- */
 // CHANGED: CardPriceCache & CardPriceHistory kept for compat & deterministic pricing.
 
@@ -308,7 +324,7 @@ export {
   PriceAlert, UserNotificationPref,
   AdminAction, UserAchievement, Offer, SubscriptionAddOn,
   Reward, ChatAgreement, ReportedUser,
-  Binder, BinderPage, BinderSlot, UserDiscordLink,
+  Binder, BinderPage, BinderSlot, UserDiscordLink, Order,
 
   // marketdata2 models
   m_Set, m_Card, m_CardVariant,

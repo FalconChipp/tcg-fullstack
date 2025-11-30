@@ -2,7 +2,7 @@
   "development": {
     "username": "tcg_user",
     "password": "theo",
-    "database": "sixbyfive_tcg_new",
+    "database": "sixbyfive_tcg",
     "host": "127.0.0.1",
     "dialect": "mysql"
   },

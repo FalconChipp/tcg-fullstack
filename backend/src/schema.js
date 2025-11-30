@@ -12,7 +12,6 @@ import wishlistTypeDefs from './modules/wishlist/typeDefs.js';
 import achievementsTypeDefs from './modules/achievements/typeDefs.js';
 import rewardsTypeDefs from './modules/rewards/typeDefs.js';
 import auditTypeDefs from './modules/audit/typeDefs.js';
-import marketplaceTypeDefs from './modules/marketplace/typeDefs.js';
 import tradingTypeDefs from './modules/trading/typeDefs.js';
 import bindersTypeDefs from './modules/binders/typeDefs.js';
 import messagesTypeDefs from './modules/messages/typeDefs.js';
@@ -22,6 +21,7 @@ import shippingTypeDefs from './modules/shipping/typeDefs.js';
 import adminTypeDefs from './modules/admin/typeDefs.js';
 import cardsearchTypeDefs from './modules/cardsearch/typeDefs.js';
 import alertsTypeDefs from './modules/alerts/typeDefs.js';
+import marketplaceTypeDefs from './modules/marketplace/graphql/typeDefs.js';
 
 // ---- Import resolvers from all modules ----
 import authResolvers from './modules/auth/resolvers.js';
@@ -32,7 +32,6 @@ import wishlistResolvers from './modules/wishlist/resolvers.js';
 import achievementsResolvers from './modules/achievements/resolvers.js';
 import rewardsResolvers from './modules/rewards/resolvers.js';
 import auditResolvers from './modules/audit/resolvers.js';
-import marketplaceResolvers from './modules/marketplace/resolvers.js';
 import tradingResolvers from './modules/trading/resolvers.js';
 import bindersResolvers from './modules/binders/resolvers.js';
 import messagesResolvers from './modules/messages/resolvers.js';
@@ -42,6 +41,7 @@ import shippingResolvers from './modules/shipping/resolvers.js';
 import adminResolvers from './modules/admin/resolvers.js';
 import cardsearchResolvers from './modules/cardsearch/resolvers.js';
 import alertsResolvers from './modules/alerts/resolvers.js';
+import marketplaceResolvers from './modules/marketplace/graphql/resolvers.js'
 
 // ---- Merge all typeDefs ----
 export const typeDefs = mergeTypeDefs([

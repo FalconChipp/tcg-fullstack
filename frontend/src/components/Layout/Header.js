@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useContext, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image"; // ⭐ IMAGE LOGO
 import { useTheme } from "@/hooks/ThemeProvider";
 import AuthModal from "../Auth/AuthModal";
 import { setCookie } from "@/utils/cookieUtils";
@@ -10,14 +11,12 @@ import { useRouter } from "next/router";
 import NotificationBell from "@/components/Notifications/NotificationBell";
 import { useNotifications } from "@/hooks/useNotifications";
 
-// Helper for header nav links (neutral text, accent only for active/hover)
 const HeaderNavLink = ({ href, children, isActive, id }) => (
   <Link
     id={id}
     href={href}
-    aria-current={isActive ? "page" : undefined} // a11y
-    className={`
-      text-base font-medium px-3 py-2 border-b-2 transition
+    aria-current={isActive ? "page" : undefined}
+    className={`text-base font-medium px-3 py-2 border-b-2 transition
       ${
         isActive
           ? "text-light-accent dark:text-dark-accent border-light-accent dark:border-dark-accent font-semibold"
@@ -39,6 +38,7 @@ export default function Header({ onStartTour }) {
   const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+
   const { items: notifications, markAllRead: markAllNotificationsRead } = useNotifications({
     token,
     pollMs: 45000,
@@ -67,26 +67,21 @@ export default function Header({ onStartTour }) {
     setMenuOpen(false);
   };
 
-  // Overlay for mobile menu
   const MobileOverlay = () =>
     menuOpen ? (
       <div
         className="fixed inset-0 z-40 bg-black/40 transition-opacity duration-300"
         onClick={() => setMenuOpen(false)}
-        aria-label="Close menu"
       />
     ) : null;
 
   return (
     <>
-      {/* Main Header */}
       <header
         id="main-header"
-        role="banner"
         className={`
           fixed top-0 left-0 w-full z-50
-          transition-all duration-300
-          border-b
+          transition-all duration-300 border-b
           ${
             isScrolled
               ? "shadow-xl bg-light-surface/90 dark:bg-dark-surface/90 border-light-border dark:border-dark-border backdrop-blur"
@@ -94,204 +89,141 @@ export default function Header({ onStartTour }) {
           }
         `}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-20">
-            {/* Left: Logo and Nav */}
-            <div className="flex items-center gap-8">
-              {/* Logo */}
-              <Link
-                href="/"
-                className="flex items-center font-extrabold text-2xl tracking-tight text-light-accent dark:text-dark-accent"
-                aria-label="SixByFive TCG Home"
-              >
-                SIXBYFIVE
-                <span className="ml-1 text-xs font-mono text-light-accentLight dark:text-dark-accentLight">
-                  TCG
-                </span>
-              </Link>
+        <div className="relative">
+
+          {/* ⭐ IMAGE LOGO — positioned far-left */}
+          <Link
+            href="/"
+            className="
+              absolute left-3 sm:left-6 top-1/2 -translate-y-1/2
+              flex items-center
+            "
+            aria-label="SixByFive TCG Home"
+          >
+            {/* Single version (white logo always) */}
+            <Image
+              src="/assets/tcg-logo-white.png"
+              alt="SixByFive TCG"
+              width={165}
+              height={40}
+              className="object-contain"
+              priority
+            />
+          </Link>
+
+          {/* Add left padding so the nav stays aligned correctly */}
+          <div className="max-w-7xl mx-auto pl-20 pr-4 sm:pr-6">
+            <div className="flex items-center justify-between h-20">
 
               {/* Desktop Nav */}
               <nav className="hidden md:flex items-center gap-1" aria-label="Primary">
                 <HeaderNavLink href="/" isActive={pathname === "/"}>Home</HeaderNavLink>
-                <HeaderNavLink id="about-discord-link" href="/about" isActive={pathname === "/about"}>
-                  About
-                </HeaderNavLink>
-                <HeaderNavLink id="subscriptions-link" href="/sets" isActive={pathname === "/sets"}>
-                  All Sets
-                </HeaderNavLink>
+                <HeaderNavLink href="/about" isActive={pathname === "/about"}>About</HeaderNavLink>
+                <HeaderNavLink href="/sets" isActive={pathname === "/sets"}>All Sets</HeaderNavLink>
+                {/* <HeaderNavLink href="/marketplace" isActive={pathname === "/marketplace"}>Marketplace</HeaderNavLink> */}
               </nav>
-            </div>
 
-            {/* Center: User Search */}
-            <div className="hidden md:block flex-1 max-w-md mx-8" aria-label="Search users">
-              <UserSearchDropdown />
-            </div>
-
-            {/* Right: Notifications, Auth, Settings, Mobile */}
-            <div className="flex items-center gap-2 md:gap-3">
-              {user && (
-                <NotificationBell
-                  notifications={notifications}
-                  onMarkAllRead={markAllNotificationsRead}
-                />
-              )}
-
-              {loading ? (
-                <div className="animate-pulse h-8 w-20 bg-light-border dark:bg-dark-border rounded" />
-              ) : user ? (
-                <div className="relative">
-                  <div
-                    className="
-                      flex items-center gap-1 px-1 py-1 rounded-xl transition bg-transparent
-                      focus-within:ring-2
-                      focus-within:ring-light-accent dark:focus-within:ring-dark-accent
-                      focus-within:ring-offset-2
-                      focus-within:ring-offset-light-surface dark:focus-within:ring-offset-dark-surface
-                    "
-                  >
-                    <button
-                      id="profile-link"
-                      type="button"
-                      onClick={() => setUserDropdownOpen(v => !v)}
-                      aria-haspopup="menu"
-                      aria-expanded={userDropdownOpen ? "true" : "false"}
-                      aria-controls="user-menu"
-                      className="
-                        flex items-center gap-2 py-1 px-3 rounded-full
-                        hover:bg-light-alt dark:hover:bg-dark-alt
-                        text-base font-medium text-light-text dark:text-dark-text
-                        transition
-                        /* kill any inner focus visuals */
-                        focus:outline-none focus-visible:outline-none
-                        focus:ring-0 focus-visible:ring-0 focus:ring-offset-0
-                        shadow-none border-0
-                      "
-                    >
-                      <span>{user.username}</span>
-                      <i className="fas fa-chevron-down text-xs ml-1" aria-hidden="true" />
-                    </button>
-                  </div>
-
-
-                  {userDropdownOpen && (
-                    <div
-                      id="user-menu"
-                      role="menu"
-                      className="absolute right-0 mt-2 w-52 rounded-xl shadow-lg bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border z-30 py-2 animate-fadeIn"
-                    >
-                      <Link
-                        href={`/profile/${user.username}`}
-                        className="block px-4 py-2 text-base text-light-text dark:text-dark-text hover:text-light-accent dark:hover:text-dark-accent rounded transition-colors"
-                        onClick={() => setUserDropdownOpen(false)}
-                        role="menuitem"
-                      >
-                        Profile
-                      </Link>
-                      <Link
-                        href="/account"
-                        className="block px-4 py-2 text-base text-light-text dark:text-dark-text hover:text-light-accent dark:hover:text-dark-accent rounded transition-colors"
-                        onClick={() => setUserDropdownOpen(false)}
-                        role="menuitem"
-                      >
-                        Account Details
-                      </Link>
-                      <button
-                        onClick={onStartTour}
-                        className="block w-full text-left px-4 py-2 text-base hover:bg-light-accent hover:text-white rounded transition-colors"
-                        role="menuitem"
-                        type="button"
-                      >
-                        Redo Onboarding Tour
-                      </button>
-                      <button
-                        onClick={handleSignOut}
-                        className="block w-full text-left px-4 py-2 text-base hover:bg-light-error hover:text-white dark:hover:bg-dark-error dark:hover:text-white rounded transition-colors"
-                        role="menuitem"
-                        type="button"
-                      >
-                        Sign Out
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <button
-                  onClick={() => setAuthModalOpen(true)}
-                  className="
-                    px-4 py-2 rounded-xl shadow-sm transition text-base font-medium
-                    bg-light-accent hover:bg-light-accentLight text-white
-                    dark:bg-dark-accent dark:hover:bg-dark-accentLight dark:text-white
-                    focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accentLight
-                  "
-                >
-                  Start free
-                </button>
-              )}
-
-              {/* Theme Settings Dropdown */}
-              <div
-                className="relative"
-                onMouseEnter={() => {
-                  if (settingsTimeoutRef.current) clearTimeout(settingsTimeoutRef.current);
-                  setSettingsDropdownOpen(true);
-                }}
-                onMouseLeave={() => {
-                  settingsTimeoutRef.current = setTimeout(
-                    () => setSettingsDropdownOpen(false),
-                    250
-                  );
-                }}
-              >
-                <button
-                  className="text-lg rounded-full p-2 hover:bg-light-alt dark:hover:bg-dark-alt transition text-light-text dark:text-dark-text"
-                  aria-haspopup="true"
-                  aria-expanded={settingsDropdownOpen ? "true" : "false"}
-                  aria-label="Open settings"
-                  type="button"
-                >
-                  <i className="fas fa-cog" />
-                </button>
-                {settingsDropdownOpen && (
-                  <div
-                    className="absolute right-0 mt-2 w-56 rounded-xl shadow-lg bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border p-4 z-30 animate-fadeIn"
-                    role="menu"
-                    aria-label="Settings"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-base font-medium text-light-text dark:text-dark-text">
-                        Dark Mode
-                      </span>
-                      <button
-                        onClick={toggleDark}
-                        className="relative inline-flex h-6 w-11 items-center rounded-full bg-light-border dark:bg-dark-border transition-colors focus:outline-none"
-                        role="switch"
-                        aria-checked={dark ? "true" : "false"}
-                        aria-label="Toggle dark mode"
-                        type="button"
-                      >
-                        <span
-                          className={`
-                            inline-block h-4 w-4 transform rounded-full transition-transform
-                            ${dark ? "bg-dark-accent translate-x-6" : "bg-light-accent translate-x-1"}
-                          `}
-                        />
-                      </button>
-                    </div>
-                  </div>
-                )}
+              {/* Search */}
+              <div className="hidden md:block flex-1 max-w-md mx-8">
+                <UserSearchDropdown />
               </div>
 
-              {/* Hamburger for Mobile */}
-              <button
-                onClick={() => setMenuOpen((v) => !v)}
-                className="md:hidden text-lg rounded-full p-2 hover:bg-light-alt dark:hover:bg-dark-alt transition text-light-text dark:text-dark-text"
-                aria-label="Open menu"
-                aria-controls="mobile-menu"
-                aria-expanded={menuOpen ? "true" : "false"}
-                type="button"
-              >
-                <i className="fas fa-bars" />
-              </button>
+              {/* Right side */}
+              <div className="flex items-center gap-2 md:gap-3">
+                {user && (
+                  <NotificationBell
+                    notifications={notifications}
+                    onMarkAllRead={markAllNotificationsRead}
+                  />
+                )}
+
+                {loading ? (
+                  <div className="animate-pulse h-8 w-20 bg-light-border dark:bg-dark-border rounded" />
+                ) : user ? (
+                  <div className="relative">
+                    <div className="flex items-center gap-1 px-1 py-1 rounded-xl">
+                      <button
+                        onClick={() => setUserDropdownOpen((v) => !v)}
+                        className="flex items-center gap-2 py-1 px-3 rounded-full hover:bg-light-alt dark:hover:bg-dark-alt"
+                      >
+                        <span>{user.username}</span>
+                        <i className="fas fa-chevron-down text-xs ml-1" />
+                      </button>
+                    </div>
+
+                    {userDropdownOpen && (
+                      <div className="absolute right-0 mt-2 w-52 rounded-xl shadow-lg bg-light-surface dark:bg-dark-surface border py-2 z-30 animate-fadeIn">
+                        <Link href={`/profile/${user.username}`} className="block px-4 py-2 hover:text-light-accent">
+                          Profile
+                        </Link>
+                        <Link href="/account" className="block px-4 py-2 hover:text-light-accent">
+                          Account Details
+                        </Link>
+                        <button onClick={onStartTour} className="block w-full text-left px-4 py-2 hover:bg-light-accent hover:text-white">
+                          Redo Onboarding Tour
+                        </button>
+                        <button onClick={handleSignOut} className="block w-full text-left px-4 py-2 hover:bg-light-error hover:text-white">
+                          Sign Out
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setAuthModalOpen(true)}
+                    className="px-4 py-2 rounded-xl bg-light-accent hover:bg-light-accentLight text-white"
+                  >
+                    Start free
+                  </button>
+                )}
+
+                {/* Settings */}
+                {/* <div
+                  className="relative"
+                  onMouseEnter={() => {
+                    if (settingsTimeoutRef.current)
+                      clearTimeout(settingsTimeoutRef.current);
+                    setSettingsDropdownOpen(true);
+                  }}
+                  onMouseLeave={() => {
+                    settingsTimeoutRef.current = setTimeout(
+                      () => setSettingsDropdownOpen(false),
+                      250
+                    );
+                  }}
+                >
+                  <button className="text-lg rounded-full p-2 hover:bg-light-alt dark:hover:bg-dark-alt">
+                    <i className="fas fa-cog" />
+                  </button>
+
+                  {settingsDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-56 rounded-xl shadow-lg bg-light-surface dark:bg-dark-surface border p-4 z-30 animate-fadeIn">
+                      <div className="flex items-center justify-between">
+                        <span>Dark Mode</span>
+                        <button
+                          onClick={toggleDark}
+                          className="relative inline-flex h-6 w-11 items-center rounded-full bg-light-border dark:bg-dark-border"
+                        >
+                          <span
+                            className={`
+                              inline-block h-4 w-4 transform rounded-full transition-transform
+                              ${dark ? "bg-dark-accent translate-x-6" : "bg-light-accent translate-x-1"}
+                            `}
+                          />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div> */}
+
+                {/* Mobile menu button */}
+                <button
+                  onClick={() => setMenuOpen((v) => !v)}
+                  className="md:hidden text-lg rounded-full p-2 hover:bg-light-alt dark:hover:bg-dark-alt"
+                >
+                  <i className="fas fa-bars" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -302,62 +234,47 @@ export default function Header({ onStartTour }) {
 
       {/* Mobile Menu */}
       <div
-        id="mobile-menu"
-        role="dialog"
-        aria-modal="true"
         className={`
           fixed top-0 right-0 w-80 h-full z-50
-          transform transition-transform duration-300 ease-in-out
+          transform transition-transform duration-300
           ${menuOpen ? "translate-x-0" : "translate-x-full"}
-          bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text
-          shadow-2xl border-l border-light-border dark:border-dark-border
+          bg-light-surface dark:bg-dark-surface shadow-2xl border-l
         `}
         style={{ maxWidth: "90vw" }}
       >
         <div className="p-6 flex flex-col h-full">
           <div className="flex justify-between items-center mb-8">
-            <h2 className="text-xl font-bold text-light-text dark:text-dark-text">Menu</h2>
-            <button
-              onClick={() => setMenuOpen(false)}
-              className="text-lg rounded-full p-2 hover:bg-light-alt dark:hover:bg-dark-alt transition text-light-text dark:text-dark-text"
-              aria-label="Close menu"
-              type="button"
-            >
+            <h2 className="text-xl font-bold">Menu</h2>
+            <button onClick={() => setMenuOpen(false)} className="p-2 hover:bg-light-alt dark:hover:bg-dark-alt">
               <i className="fas fa-times" />
             </button>
           </div>
 
-          <nav className="flex flex-col space-y-4 flex-grow" aria-label="Mobile Primary">
+          <nav className="flex flex-col space-y-4 flex-grow">
             <HeaderNavLink href="/" isActive={pathname === "/"}>Home</HeaderNavLink>
             <HeaderNavLink href="/about" isActive={pathname === "/about"}>About</HeaderNavLink>
             <HeaderNavLink href="/sets" isActive={pathname === "/sets"}>All Sets</HeaderNavLink>
+            <HeaderNavLink href="/marketplace" isActive={pathname === "/marketplace"}>Marketplace</HeaderNavLink>
           </nav>
 
           <div className="mt-auto pt-8">
             {user ? (
               <>
-                <p className="mb-2 text-sm text-light-textMuted dark:text-dark-textMuted">
-                  Signed in as <b>{user.username}</b>
-                </p>
+                <p className="mb-2 text-sm">Signed in as <b>{user.username}</b></p>
                 <button
                   onClick={handleSignOut}
-                  className="w-full px-4 py-2 rounded-lg transition-colors text-base
-                    bg-light-error hover:bg-light-error/90 text-white
-                    dark:bg-dark-error dark:hover:bg-dark-error/90 dark:text-white
-                  "
-                  type="button"
+                  className="w-full px-4 py-2 rounded-lg bg-light-error text-white hover:bg-light-error/90"
                 >
                   Sign Out
                 </button>
               </>
             ) : (
               <button
-                onClick={() => { setAuthModalOpen(true); setMenuOpen(false); }}
-                className="w-full px-4 py-2 rounded-lg shadow text-base
-                  bg-light-accent hover:bg-light-accentLight text-white
-                  dark:bg-dark-accent dark:hover:bg-dark-accentLight dark:text-white
-                "
-                type="button"
+                onClick={() => {
+                  setAuthModalOpen(true);
+                  setMenuOpen(false);
+                }}
+                className="w-full px-4 py-2 rounded-lg bg-light-accent hover:bg-light-accentLight text-white"
               >
                 Start free
               </button>
@@ -375,10 +292,10 @@ export default function Header({ onStartTour }) {
         />
       )}
 
-      {/* Fade-in anim for dropdowns */}
+      {/* Animations */}
       <style jsx global>{`
         .animate-fadeIn {
-          animation: fadeIn 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+          animation: fadeIn 0.18s ease-out;
         }
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(12px); }

@@ -1,9 +1,11 @@
 // src/modules/collections/resolvers.js
 
-import { Collection, Wishlist, m_Card, sequelize } from '../../models/index.js';
+import { Collection, Wishlist, m_Card, sequelize, User } from '../../models/index.js';
 import { ensureCardExists } from '../cards/ensureCardExists.service.js'; // CHANGED
 import { requireAuth } from './helpers.js';
 import { maybeGrantAchievement } from '../achievements/helpers.js';
+import { requireAdmin } from '../users/helpers.js';
+import { Op, fn, col } from 'sequelize';
 
 // Normalize variation to null if empty, undefined, or blank
 function normalizeVariation(v) {
@@ -38,6 +40,54 @@ const resolvers = {
           wishlist: false,
         },
         include: [{ model: m_Card, as: 'card' }]
+      });
+    },
+
+    adminUserCollections: async (_parent, { limit, search }, ctx) => {
+      requireAdmin(ctx);
+
+      // search by username / email
+      const userWhere =
+        search && search.trim()
+          ? {
+              [Op.or]: [
+                { username: { [Op.like]: `%${search.trim()}%` } },
+                { email: { [Op.like]: `%${search.trim()}%` } },
+              ],
+            }
+          : {};
+
+      const rows = await Collection.findAll({
+        attributes: [
+          "userId",
+          [fn("SUM", col("quantity")), "totalCards"],
+          [fn("COUNT", fn("DISTINCT", col("cardId"))), "distinctCards"],
+        ],
+        include: [
+          {
+            model: User,
+            required: true,
+            attributes: ["id", "username", "email"],
+            where: userWhere,
+          },
+        ],
+        group: ["Collection.userId", "User.id"],
+        order: [[User, "username", "ASC"]],
+        limit: limit ?? 200,
+        subQuery: false,
+      });
+
+      return rows.map((row) => {
+        const json = row.toJSON();
+        const u = json.User || {};
+
+        return {
+          userId: json.userId,
+          username: u.username || "",
+          email: u.email || "",
+          totalCards: Number(json.totalCards ?? 0),
+          distinctCards: Number(json.distinctCards ?? 0),
+        };
       });
     },
   },

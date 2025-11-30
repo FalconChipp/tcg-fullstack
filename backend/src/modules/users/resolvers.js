@@ -52,6 +52,11 @@ const resolvers = {
           createdAt: j.createdAt,
           updatedAt: j.updatedAt,
 
+          isAdmin: typeof j.isAdmin === "number" ? j.isAdmin === 1 : !!j.isAdmin,
+          isBanned: typeof j.isBanned === "number" ? j.isBanned === 1 : !!j.isBanned,
+
+          avatar: j.avatar ?? j.Profile?.avatar ?? null,
+
           mfaEnabled: j.twoFactorEnabled ?? j.mfaEnabled ?? false,
 
           oauthProvider: j.oauthProvider ?? null,

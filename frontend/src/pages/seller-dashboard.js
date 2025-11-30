@@ -2,7 +2,7 @@
 import React from "react";
 import Head from "next/head";
 import Layout from "@/components/Layout/Layout";
-import SellerDashboard from "@/components/Marketplace/SellerDashboard";
+import SellerDashboard from "@/components/Marketplace_Archive/SellerDashboard";
 
 export default function SellerDashboardPage() {
   return (

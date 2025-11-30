@@ -14,7 +14,7 @@ import SetAutocomplete from "./SearchComponents/SetAutocomplete";
 import { mapCardToDetail } from "@/utils/mapData";
 import { formatVariation } from "@/utils/formatVariation";
 import CardSkeleton from "../UI/CardSkeleton";
-
+import SearchIntro from "../Home/SearchIntro";
 // Lazily load heavy panels so the search UI becomes interactive sooner
 const AddToCollectionPanel = dynamic(() => import("./AddToCollectionPanel"), { ssr: false });
 const CardDetailsModal   = dynamic(() => import("../UserProfile/CardDetailsModal"), { ssr: false });
@@ -514,7 +514,7 @@ export default function CardSearch() {
         <div className="text-center mb-10">
           <h1 className="text-4xl font-extrabold mb-2 tracking-tight">Pokemon Card Search</h1>
           <p className="text-lg text-light-textMuted dark:text-dark-textMuted">
-            Search for any Pokemon card and add it to your collection
+            Search for any Pokemon card and add it to your collection/wishlist
           </p>
         </div>
 
@@ -524,6 +524,7 @@ export default function CardSearch() {
           onSubmit={handleSearch}
           className="bg-light-surface dark:bg-dark-surface rounded-2xl p-8 pt-8 pb-5 shadow-lg dark:shadow-[0_6px_24px_0_rgba(12,8,24,0.18)] mb-9 border border-light-border dark:border-dark-border transition-colors"
         >
+          <SearchIntro />
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5 mb-0">
             <div>
               <label className="block text-base font-medium mb-2">Card Name</label>

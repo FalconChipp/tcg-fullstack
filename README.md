@@ -6,7 +6,6 @@ This repository bundles the complete SixByFive TCG platform: the public web app 
 
 - **backend/** — Express + Apollo GraphQL API, market data ingestion workers, Stripe billing, notifications, and business logic.
 - **frontend/** — Customer-facing Next.js application for collection management, binder tools, marketplace browsing, subscriptions, and built-in admin tools.
-- **h/** — Auxiliary scripts or personal workspace (not part of the core app).
 Each subproject maintains its own `package.json`, dependencies, and README with detailed guidance. Treat them as independent Node applications that happen to share a repo and deployment cadence.
 
    - Provides the single GraphQL endpoint used by the web app (`/graphql`).
@@ -54,21 +53,21 @@ For subsystem-specific instructions, continue with the READMEs inside `backend/`
 | Component | Build Command      | Runtime Command | Typical Host              |
 |-----------|--------------------|-----------------|---------------------------|
 | backend   | 
-pm install      | 
-pm start     | Node server/PM2/Render    |
+npm install      | 
+npm start     | Node server/PM2/Render    |
 | frontend  | 
-pm run build    | 
-pm run start | Netlify/Vercel/Static CDN |
+npm run build    | 
+npm run start | Netlify/Vercel/Static CDN |
 | dashboard | 
-pm run build    | 
-pm run start | Netlify/Vercel            |
+npm run build    | 
+npm run start | Netlify/Vercel            |
 
 Ensure NEXT_PUBLIC_GRAPHQL_ENDPOINT points at the deployed backend for both web apps. The backend requires ADMIN_API_TOKEN, JWT_SECRET, DB credentials, Stripe keys, and marketdata provider keys at minimum.
 
 ## Data & Marketdata Pipeline
 
-- JSON caches live under ackend/data/marketdata2 (sets, cards, FX).
-- Scheduled ticks (metadataTick, pricingTick, patchTick) are orchestrated from ackend/src/tasks/marketdata2.schedule.js and can be invoked manually via REST or GraphQL mutations.
+- JSON caches live under backend/data/marketdata2 (sets, cards, FX).
+- Scheduled ticks (metadataTick, pricingTick, patchTick) are orchestrated from backend/src/tasks/marketdata2.schedule.js and can be invoked manually via REST or GraphQL mutations.
 - Price ingestion hits multiple providers (TCGdex, PokemonTCG.io, PokemonPriceTracker) with FX normalization to GBP.
 - Rollups aggregate observations for 1/7/30/90-day spans accessible via models m_PriceDaily, m_PriceLatest, m_PriceRollup.
 
@@ -93,4 +92,4 @@ pm run build to catch breaking GraphQL changes.
 - **Marketdata jobs**: check admin endpoints /admin/md2/providers and scheduler logs in backend console.
 - **Auth issues**: verify JWT secret consistency between backend and web apps; clear cookies/localStorage during debugging.
 
-For subsystem-specific instructions, continue with the READMEs inside ackend/, rontend/, and dashboard/.
+For subsystem-specific instructions, continue with the READMEs inside backend/ and frontend/.

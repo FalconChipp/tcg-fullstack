@@ -1,6 +1,4 @@
 /backend/node_modules
-/dashboard/node_modules
-/dashboard/.next
 /frontend/node_modules
 /frontend/.next
 backend/.env
@@ -8,7 +6,6 @@ backend/db/create_tables.sql
 backend/package-lock.json
 /frontend/.netlify/
 frontend/package-lock.json
-dashboard/package-lock.json
 *.zip
 /backend/uploads/avatars
 backend/schema.graphql

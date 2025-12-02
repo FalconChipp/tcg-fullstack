@@ -121,6 +121,7 @@ export default function Header({ onStartTour }) {
                 <HeaderNavLink href="/about" isActive={pathname === "/about"}>About</HeaderNavLink>
                 <HeaderNavLink href="/sets" isActive={pathname === "/sets"}>All Sets</HeaderNavLink>
                 {/* <HeaderNavLink href="/marketplace" isActive={pathname === "/marketplace"}>Marketplace</HeaderNavLink> */}
+                <HeaderNavLink href="/blog" isActive={pathname === "/blog"}>Blog</HeaderNavLink>
               </nav>
 
               {/* Search */}

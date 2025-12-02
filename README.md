@@ -42,8 +42,6 @@ For subsystem-specific instructions, continue with the READMEs inside `backend/`
 # In another terminal, run the frontend (port 3000)
 (cd frontend && npm run dev)
 
-# Optionally, run the admin dashboard (port 3030)
-(cd dashboard && npm run dev)
 `
 
 > Tip: copy each subproject's .env.example / .env.* as .env.local and adjust credentials before running.

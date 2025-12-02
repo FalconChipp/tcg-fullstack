@@ -136,7 +136,19 @@ export default function SetsPage({ sets }) {
     () =>
       sets.map((set) => {
         const rawEra = (set.era || "").trim().toLowerCase();
-        const era = ERA_LABELS[rawEra] ? rawEra : "misc";
+
+        let era = ERA_LABELS[rawEra] ? rawEra : "misc";
+
+        const code = (set.code || "").trim().toLowerCase();
+        const series = (set.series || "").trim().toLowerCase();
+
+        if (
+          (series.includes("scarlet") && series.includes("violet")) ||
+          code.startsWith("sv")
+        ) {
+          era = "sv";
+        }
+
         return {
           ...set,
           era,

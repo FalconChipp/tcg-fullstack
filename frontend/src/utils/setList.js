@@ -4,10 +4,10 @@
 const setList = [
   // Mega Evolution Era 
   { abbr: "MEG", code : "me01", name: "Mega Evolution", logo: "/assets/set-logos/mega-evolutions-base-logo.png" },
-  { abbr: "PFL", code : "me02", name: "Phantasmal Flames", loho: "/assets/set-logos/phantasmal-flames-logo.png "},
+  { abbr: "PFL", code : "me02", name: "Phantasmal Flames", logo: "/assets/set-logos/phantasmal-flames-logo.png "},
 
   // Scarlet & Violet era
-  { abbr: "SVP", code: "svp", name: "Scarlet & Violet Promos", logo: "/assets/set-logos/scarlet-violet-base-logo.png" },
+  { abbr: "SVP", code: "svp", name: "Scarlet & Violet Promos", logo: "/assets/set-logos/promo-logo.webp" },
   { abbr: "SVI", code: "sv01", name: "Scarlet & Violet Base Set", logo: "/assets/set-logos/scarlet-violet-base-logo.png" },
   { abbr: "PAL", code: "sv02", name: "Paldea Evolved", logo: "/assets/set-logos/paldea-evolved-logo.png" },
   { abbr: "OBF", code: "sv03", name: "Obsidian Flames", logo: "/assets/set-logos/obsidian-flames-logo.png" },
@@ -23,15 +23,15 @@ const setList = [
   { abbr: "PRE", code: "sv08.5", name: "Prismatic Evolutions", logo: "/assets/set-logos/prismatic-evolutions-logo.png" },
   { abbr: "JTG", code: "sv09", name: "Journey Together", logo: "/assets/set-logos/journey-together-logo.png" },
   { abbr: "DRI", code: "sv10", name: "Destined Rivals", logo: "/assets/set-logos/destined-rivals-logo.png" },
-  { abbr: "BLK", code: "blk", name: "Unknown Set BLK", logo: "/assets/set-logos/black-bolt-logo.png" },
-  { abbr: "WHT", code: "wht", name: "Unknown Set WHT", logo: "/assets/set-logos/white-flare-logo.png" },
+  { abbr: "BLK", code: "blk", name: "Black Bolt", logo: "/assets/set-logos/black-bolt-logo.png" },
+  { abbr: "WHT", code: "wht", name: "White Flare", logo: "/assets/set-logos/white-flare-logo.png" },
 
   // Sword & Shield era
-  { abbr: "SWSH", code: "swshp", name: "Sword & Shield Promos", logo: "/assets/set-logos/sword-shield-logo.png" },
+  { abbr: "SWSH", code: "swshp", name: "Sword & Shield Promos", logo: "/assets/set-logos/promo-logo.webp" },
   { abbr: "SSH", code: "swsh1", name: "Sword & Shield", logo: "/assets/set-logos/sword-shield-logo.png" },
   { abbr: "RCL", code: "swsh2", name: "Rebel Clash", logo: "/assets/set-logos/rebel-clash-logo.png" },
   { abbr: "DAA", code: "swsh3", name: "Darkness Ablaze", logo: "/assets/set-logos/darkness-ablaze-logo.png" },
-  { abbr: "CPA", code: "swsh3.5", name: "Champion's Path", logo: "/assets/set-logos/champions-path-logo.png" },
+  { abbr: "CPA", code: "swsh3.5", name: "Champion's Path", logo: "/assets/set-logos/champions-path-logo.webp" },
   { abbr: "VIV", code: "swsh4", name: "Vivid Voltage", logo: "/assets/set-logos/vivid-voltage-logo.png" },
   { abbr: "SHF", code: "swsh4.5", name: "Shining Fates", logo: "/assets/set-logos/shining-fates-logo.png" },
   { abbr: "BST", code: "swsh5", name: "Battle Styles", logo: "/assets/set-logos/battle-styles-logo.png" },
@@ -48,7 +48,7 @@ const setList = [
   { abbr: "FUT", code: "fut2020", name: "Pokémon Futsal 2020", logo: "/assets/set-logos/pokemon-futsal-2020-logo.png" },
 
   // Sun & Moon era
-  { abbr: "SM", code: "smp", name: "Sun & Moon Black Star Promos", logo: "/assets/set-logos/sun-moon-logo.png" },
+  { abbr: "SM", code: "smp", name: "Sun & Moon Black Star Promos", logo: "/assets/set-logos/promo-logo.webp" },
   { abbr: "SUM", code: "sm1", name: "Sun & Moon", logo: "/assets/set-logos/sun-moon-logo.png" },
   { abbr: "GRI", code: "sm2", name: "Guardians Rising", logo: "/assets/set-logos/guardians-rising-logo.png" },
   { abbr: "BUS", code: "sm3", name: "Burning Shadows", logo: "/assets/set-logos/burning-shadows-logo.png" },
@@ -68,7 +68,7 @@ const setList = [
   { abbr: "SMA", code: "sma", name: "Hidden Fates Shiny Vault", logo: "/assets/set-logos/hidden-fates-logo.png" },
 
   // XY era
-  { abbr: "XYP", code: "xyp", name: "XY Black Star Promos", logo: "/assets/set-logos/xy-logo.png" },
+  { abbr: "XYP", code: "xyp", name: "XY Black Star Promos", logo: "/assets/set-logos/promo-logo.webp" },
   { abbr: "KSS", code: "xy0", name: "Kalos Starter Set", logo: "/assets/set-logos/kalos-starter-logo.png" },
   { abbr: "XY", code: "xy1", name: "XY Base Set", logo: "/assets/set-logos/xy-logo.png" },
   { abbr: "FLF", code: "xy2", name: "Flashfire", logo: "/assets/set-logos/flashfire-logo.png" },
@@ -86,7 +86,7 @@ const setList = [
   { abbr: "EVO", code: "xy12", name: "Evolutions", logo: "/assets/set-logos/evolutions-logo.png" },
 
   // Black & White era
-  { abbr: "BW", code: "bwp", name: "BW Black Star Promos", logo: "/assets/set-logos/black-white-logo.png" },
+  { abbr: "BW", code: "bwp", name: "BW Black Star Promos", logo: "/assets/set-logos/promo-logo.webp" },
   { abbr: "BLW", code: "bw1", name: "Black & White", logo: "/assets/set-logos/black-white-logo.png" },
   { abbr: "EPO", code: "bw2", name: "Emerging Powers", logo: "/assets/set-logos/emerging-powers-logo.png" },
   { abbr: "NVI", code: "bw3", name: "Noble Victories", logo: "/assets/set-logos/noble-victories-logo.png" },
@@ -102,7 +102,7 @@ const setList = [
   { abbr: "RC", code: "rc", name: "Radiant Collection", logo: "/assets/set-logos/radiant-collection-logo.png" },
 
   // Diamond & Pearl era
-  { abbr: "DPP", code: "dpp", name: "DP Black Star Promos", logo: "/assets/set-logos/diamond-pearl-logo.png" },
+  { abbr: "DPP", code: "dpp", name: "DP Black Star Promos", logo: "/assets/set-logos/promo-logo.webp" },
   { abbr: "DP", code: "dp1", name: "Diamond & Pearl", logo: "/assets/set-logos/diamond-pearl-logo.png" },
   { abbr: "MT", code: "dp2", name: "Mysterious Treasures", logo: "/assets/set-logos/mysterious-treasures-logo.png" },
   { abbr: "SW", code: "dp3", name: "Secret Wonders", logo: "/assets/set-logos/secret-wonders-logo.png" },
@@ -153,10 +153,10 @@ const setList = [
   { abbr: "N4", code: "neo4", name: "Neo Destiny", logo: "/assets/set-logos/neo-destiny-logo.png" },
 
   // Original Series
-  { abbr: "BS", code: "base1", name: "Base Set", logo: "/assets/set-logos/base-set-logo.png" },
+  { abbr: "BS", code: "base1", name: "Base Set", logo: "/assets/set-logos/pokemon-tcg-logo.png" },
   { abbr: "JU", code: "base2", name: "Jungle", logo: "/assets/set-logos/jungle-logo.png" },
   { abbr: "FO", code: "base3", name: "Fossil", logo: "/assets/set-logos/fossil-logo.png" },
-  { abbr: "B2", code: "base4", name: "Base Set 2", logo: "/assets/set-logos/base-set-2-logo.png" },
+  { abbr: "B2", code: "base4", name: "Base Set 2", logo: "/assets/set-logos/base-set-2-logo.webp" },
   { abbr: "TR", code: "base5", name: "Team Rocket", logo: "/assets/set-logos/team-rocket-logo.png" },
   { abbr: "G1", code: "gym1", name: "Gym Heroes", logo: "/assets/set-logos/gym-heroes-logo.png" },
   { abbr: "G2", code: "gym2", name: "Gym Challenge", logo: "/assets/set-logos/gym-challenge-logo.png" },

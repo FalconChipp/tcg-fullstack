@@ -24,7 +24,7 @@ import { norm, tokenizeName } from "./normalizers.service.js";
  * Normalize & clamp pagination.
  */
 export function normalizePagination(input, opts = {}) {
-  const maxLimit = Number.isFinite(opts.maxLimit) ? opts.maxLimit : 200;
+  const maxLimit = Number.isFinite(opts.maxLimit) ? opts.maxLimit : 300;
   const defaultLimit = Number.isFinite(opts.defaultLimit) ? opts.defaultLimit : 50;
 
   let limit = Number(input?.limit);

@@ -1,10 +1,10 @@
 "use client";
-import React, { useState, useRef, useEffect } from "react"; // CHANGED: add refs/effect for smooth height animation
 
-// NEW: centralise invite for reuse in copy (edit if needed)
+import React, { useState, useRef, useEffect } from "react";
+
+// Centralised invite for reuse in copy
 const DISCORD_INVITE = "https://discord.gg/PRMbMbRE2H";
 
-// CHANGED: reordered & tightened answers; added a price-tracking FAQ
 const FAQ_ITEMS = [
   {
     q: "Is the site free to use?",
@@ -44,13 +44,12 @@ const FAQ_ITEMS = [
   },
 ];
 
-// NEW: collapsible answer with measured height (no hard-coded max)
+// Collapsible answer with smooth measured height
 function Collapsible({ id, isOpen, children }) {
   const innerRef = useRef(null);
   const [height, setHeight] = useState(0);
 
   useEffect(() => {
-    // measure when open or content changes
     if (innerRef.current) {
       const h = innerRef.current.scrollHeight;
       setHeight(h);
@@ -61,14 +60,22 @@ function Collapsible({ id, isOpen, children }) {
     <div
       id={id}
       className={`
-        px-6 text-light-textSecondary dark:text-dark-textSecondary overflow-hidden
-        transition-all duration-300 ease-in-out
-        ${isOpen ? "opacity-100 pb-4" : "opacity-0 pb-0"}
+        overflow-hidden transition-all duration-300 ease-in-out
+        ${isOpen ? "opacity-100" : "opacity-0"}
       `}
       style={{ maxHeight: isOpen ? height : 0 }}
       aria-hidden={!isOpen}
     >
-      <div ref={innerRef}>{children}</div>
+      <div
+        ref={innerRef}
+        className="
+          px-6 pt-3 pb-5
+          text-sm md:text-[15px]
+          text-light-textSecondary dark:text-dark-textSecondary
+        "
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -77,58 +84,110 @@ export default function FAQ() {
   const [open, setOpen] = useState(null);
 
   return (
-    <section className="py-12 px-2 sm:px-4 bg-light-background dark:bg-dark-background transition-colors">
-      <h2 className="text-3xl font-bold text-center mb-10 text-light-text dark:text-dark-text drop-shadow">
-        FAQ
-      </h2>
+    <section className="py-16 px-4 bg-light-background dark:bg-dark-background transition-colors">
+      <div className="mx-auto max-w-6xl flex flex-col gap-10 md:flex-row">
+        {/* Left column: intro + Discord CTA */}
+        <div className="md:w-1/3">
+          <h2 className="text-3xl md:text-4xl font-bold text-light-text dark:text-dark-text drop-shadow-sm">
+            Questions?
+          </h2>
+          <p className="mt-3 text-sm md:text-base text-light-textSecondary dark:text-dark-textSecondary">
+            SixByFive is in active development, and we&apos;re constantly
+            improving it with feedback from real collectors. Here are some of
+            the most common questions — and if you&apos;re still not sure,
+            we&apos;re only a message away.
+          </p>
 
-      <div className="max-w-2xl mx-auto space-y-4">
-        {FAQ_ITEMS.map((f, i) => {
-          const isOpen = open === i;
-          const bodyId = `faq-body-${i}`;
-
-          return (
-            <div
-              key={i}
-              className={`
-                rounded-2xl border transition-all
-                bg-light-surface dark:bg-dark-surface
-                ${isOpen
-                  ? "border-light-accent dark:border-dark-accent shadow-xl"
-                  : "border-light-border dark:border-dark-border"}
-                ${isOpen
-                  ? "ring-2 ring-light-accent dark:ring-dark-accent"
-                  : "hover:border-light-accent dark:hover:border-dark-accent"}
-                ${isOpen ? "z-10" : ""}
-              `}
-              style={{ position: isOpen ? "relative" : undefined }}
+          <div className="mt-5 space-y-2 text-sm text-light-textSecondary dark:text-dark-textSecondary">
+            <p>Need help, found a bug, or want to request a feature?</p>
+            <a
+              href={DISCORD_INVITE}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="
+                inline-flex items-center gap-2 rounded-full
+                bg-light-accent text-white
+                dark:bg-dark-accent dark:text-white
+                px-4 py-2 text-xs font-semibold
+                shadow hover:bg-light-accentLight dark:hover:bg-dark-accentLight
+                transition
+              "
             >
-              <button
-                className={`
-                  w-full text-left flex justify-between items-center px-6 py-4
-                  font-semibold text-lg focus:outline-none focus:ring-2 rounded-2xl
-                  transition-colors
-                  ${isOpen
-                    ? "text-light-accent dark:text-dark-accent bg-light-alt dark:bg-dark-alt"
-                    : "text-light-text dark:text-dark-text bg-transparent"}
-                `}
-                onClick={() => setOpen(isOpen ? null : i)}
-                aria-expanded={isOpen}
-                aria-controls={bodyId}
-              >
-                <span>{f.q}</span>
-                <span className="ml-4 text-xl" aria-hidden="true">
-                  {isOpen ? "−" : "+"}
-                </span>
-              </button>
+              <span>Join the Discord</span>
+              <span aria-hidden="true">↗</span>
+            </a>
+            <p className="text-[11px] text-light-textMuted dark:text-dark-textMuted">
+              Early feature testing, roadmap previews, and direct feedback
+              all happen there.
+            </p>
+          </div>
+        </div>
 
-              {/* CHANGED: answer now uses measured height for smooth animation */}
-              <Collapsible id={bodyId} isOpen={isOpen}>
-                {f.a}
-              </Collapsible>
-            </div>
-          );
-        })}
+        {/* Right column: accordion list */}
+        <div className="md:w-2/3">
+          <div className="space-y-4">
+            {FAQ_ITEMS.map((f, i) => {
+              const isOpen = open === i;
+              const bodyId = `faq-body-${i}`;
+
+              return (
+                <div
+                  key={i}
+                  className={`
+                    rounded-2xl border transition-all
+                    bg-light-surface dark:bg-dark-surface
+                    ${
+                      isOpen
+                        ? "border-light-accent dark:border-dark-accent shadow-xl ring-2 ring-light-accent/60 dark:ring-dark-accent/70"
+                        : "border-light-border dark:border-dark-border hover:border-light-accent/70 dark:hover:border-dark-accent/70"
+                    }
+                  `}
+                  style={{ position: isOpen ? "relative" : undefined }}
+                >
+                  <button
+                    className={`
+                      w-full text-left flex justify-between items-center px-6 py-4
+                      font-semibold text-sm md:text-base focus:outline-none rounded-2xl
+                      transition-colors
+                      ${
+                        isOpen
+                          ? "text-light-accent dark:text-dark-accent bg-light-alt dark:bg-dark-alt"
+                          : "text-light-text dark:text-dark-text bg-transparent"
+                      }
+                    `}
+                    onClick={() => setOpen(isOpen ? null : i)}
+                    aria-expanded={isOpen}
+                    aria-controls={bodyId}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`
+                          inline-flex h-6 w-6 items-center justify-center rounded-full text-xs
+                          ${
+                            isOpen
+                              ? "bg-light-accent text-white dark:bg-dark-accent"
+                              : "bg-light-surfaceAlt text-light-textSecondary dark:bg-dark-surfaceAlt dark:text-dark-textSecondary"
+                          }
+                        `}
+                        aria-hidden="true"
+                      >
+                        ?
+                      </span>
+                      <span>{f.q}</span>
+                    </div>
+                    <span className="ml-4 text-xl" aria-hidden="true">
+                      {isOpen ? "−" : "+"}
+                    </span>
+                  </button>
+
+                  <Collapsible id={bodyId} isOpen={isOpen}>
+                    {f.a}
+                  </Collapsible>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </section>
   );

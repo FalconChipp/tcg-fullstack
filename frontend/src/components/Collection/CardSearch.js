@@ -1,4 +1,5 @@
-﻿"use client";
+﻿// src/components/Collection/CardSearch.js
+"use client";
 
 import React, {
   useState,
@@ -10,7 +11,7 @@ import React, {
 } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { gql, useLazyQuery } from "@apollo/client"; // REMOVED: useApolloClient
+import { gql, useLazyQuery } from "@apollo/client";
 
 import { getCookie } from "@/utils/cookieUtils";
 import { useTheme } from "@/hooks/ThemeProvider";
@@ -18,10 +19,10 @@ import { getSetLogo } from "@/utils/setLogos";
 import StatusMessage from "@/components/UI/StatusMessage";
 import PokemonAutocomplete from "./SearchComponents/PokemonAutocomplete";
 import SetAutocomplete from "./SearchComponents/SetAutocomplete";
-import AdvancedFilters from "./SearchComponents/AdvancedFilters"; // NEW: advanced filter panel
+import AdvancedFilters from "./SearchComponents/AdvancedFilters";
 import { mapCardToDetail } from "@/utils/mapData";
 import { formatVariation } from "@/utils/formatVariation";
-import CardSkeleton from "../UI/CardSkeleton";
+import CardSkeleton from "../UI/CardSkeleton"; // kept in case you want it later
 import SearchIntro from "../Home/SearchIntro";
 
 // Lazily load heavy panels so the search UI becomes interactive sooner
@@ -34,7 +35,7 @@ const CardDetailsModal = dynamic(
 );
 
 /* ---------------- GraphQL: cardsearch module ---------------- */
-/** We rely on backend-normalized `latestPrices` (already GBP or with market ready to show). */
+
 const CARDSEARCH_QUERY = gql`
   query CardsearchCollectionSearch($input: CardSearchInput!) {
     searchCards: cardsearchSearchCards(input: $input) {
@@ -77,20 +78,17 @@ const CARDSEARCH_QUERY = gql`
 `;
 
 const CARDSEARCH_PAGE_SIZE = 48;
-const CARDSEARCH_EXACT_LIMIT = 12; 
+const CARDSEARCH_EXACT_LIMIT = 12;
 
-// Fallback set icon
 const FALLBACK_SYMBOL_IMAGE = "https://placehold.co/50x50/webp?text=Icon";
 const GBP_SYMBOL = "\u00A3";
 
-/* ---------------- Helpers: simplified to match backend outputs ---------------- */
+/* ---------------- Helpers ---------------- */
 
-// Minimal positive-number guard
 function pos(n) {
   return typeof n === "number" && Number.isFinite(n) && n > 0;
 }
 
-// Pick the best numeric price from a single price entry, preferring GBP → market → mid/low/high
 function pickDisplayPrice(entry) {
   if (!entry) return null;
   if (pos(entry.gbp)) return entry.gbp;
@@ -101,10 +99,8 @@ function pickDisplayPrice(entry) {
   return null;
 }
 
-// Choose a single “best” price row for a card
 function getBestPriceRow(prices) {
   if (!Array.isArray(prices) || prices.length === 0) return null;
-  // prefer normal/holofoil/reverseHolofoil order if available
   const pref = ["normal", "holofoil", "reverseHolofoil"];
   for (const key of pref) {
     const row = prices.find(
@@ -114,17 +110,14 @@ function getBestPriceRow(prices) {
     );
     if (row) return row;
   }
-  // else first row that has any usable number
   return prices.find((p) => pickDisplayPrice(p) != null) || null;
 }
 
-// Currency format (GBP only)
 function formatGBP(value) {
   if (value == null || Number.isNaN(value)) return `${GBP_SYMBOL}--`;
   return `${GBP_SYMBOL}${Number(value).toFixed(2)}`;
 }
 
-// Simpler item mapper — we trust backend fields
 function mapCardsearchItems(items) {
   if (!Array.isArray(items) || items.length === 0) return [];
   return items.map((it, idx) => {
@@ -137,7 +130,6 @@ function mapCardsearchItems(items) {
       (setCode && number ? `${setCode}-${number}` : `card-${idx}`);
     const image = it.images?.large || null;
 
-    // Keep variants as the API returns them; no canonicalization needed client-side
     const variants = Array.isArray(it.variants)
       ? it.variants.map((v) =>
           typeof v === "string" ? v : v?.key || v?.label || "normal"
@@ -156,12 +148,11 @@ function mapCardsearchItems(items) {
       tcgImageUrl: image,
       rarity: it.rarity || null,
       variations: variants,
-      prices: Array.isArray(it.latestPrices) ? it.latestPrices : [], // use latestPrices directly
+      prices: Array.isArray(it.latestPrices) ? it.latestPrices : [],
     };
   });
 }
 
-// Stable keying + pagination merge
 function canonicalCardKey(card, fallbackIndex = 0) {
   if (!card) return `card-${fallbackIndex}`;
   const id = card.cardId || card.id;
@@ -209,7 +200,7 @@ function makeQueryKey({ name, setCode, number }) {
   });
 }
 
-/* ---------------- NEW: Filter + sort helper ---------------- */
+/* ---------------- Filters + sort ---------------- */
 
 function applyFiltersAndSort(cards, filters) {
   if (!Array.isArray(cards) || cards.length === 0 || !filters) return cards;
@@ -233,10 +224,9 @@ function applyFiltersAndSort(cards, filters) {
   const hasRarityFilter = raritySet.size > 0;
   const hasVariationFilter = variationSet.size > 0;
 
-  // Rarity ordering for more sensible sorting
   const rarityOrder = {
     Common: 1,
-    "Common ": 1, // sometimes with trailing space
+    "Common ": 1,
     Uncommon: 2,
     Rare: 3,
     "Double rare": 4,
@@ -246,27 +236,22 @@ function applyFiltersAndSort(cards, filters) {
     "Hyper rare": 8,
   };
 
-  // --- Filtering ---
   let filtered = cards.filter((card) => {
     const bestRow = getBestPriceRow(card.prices);
     const price = pickDisplayPrice(bestRow);
 
-    // Price presence filter
     if (onlyHasPrices && (price == null || Number.isNaN(price))) {
       return false;
     }
 
-    // Numeric price filters (null prices are allowed unless onlyHasPrices)
     if (min != null && price != null && price < min) return false;
     if (max != null && price != null && price > max) return false;
 
-    // Rarity filter
     if (hasRarityFilter) {
       const r = card.rarity || "";
       if (!raritySet.has(r)) return false;
     }
 
-    // "only cards with reverse variant"
     if (onlyHasReverse) {
       const hasReverse =
         Array.isArray(card.variations) &&
@@ -274,8 +259,6 @@ function applyFiltersAndSort(cards, filters) {
       if (!hasReverse) return false;
     }
 
-    // Variations multi-select filter:
-    // keep cards that have ANY of the selected variant keys/labels
     if (hasVariationFilter) {
       const hasAny =
         Array.isArray(card.variations) &&
@@ -286,7 +269,6 @@ function applyFiltersAndSort(cards, filters) {
     return true;
   });
 
-  // --- Sorting ---
   if (!sortBy || sortBy === "relevance") {
     return filtered;
   }
@@ -309,7 +291,6 @@ function applyFiltersAndSort(cards, filters) {
 
     switch (sortBy) {
       case "price-asc": {
-        // nulls last
         if (aPrice == null && bPrice == null) return 0;
         if (aPrice == null) return 1;
         if (bPrice == null) return -1;
@@ -358,8 +339,7 @@ export default function CardSearch() {
   const [setCode, setSetCode] = useState("");
   const [number, setNumber] = useState("");
 
-  // local result buckets keyed by queryKey so switching filters feels instant
-  const bucketsRef = useRef(new Map()); // key -> { items, hasNextPage, totalCount, nextOffset, pageSize }
+  const bucketsRef = useRef(new Map());
   const lastKeyRef = useRef(null);
 
   const [results, setResults] = useState([]);
@@ -368,7 +348,6 @@ export default function CardSearch() {
   const [searchError, setSearchError] = useState(null);
   const [statusMessage, setStatusMessage] = useState(null);
 
-  // NEW: advanced filters state
   const [filters, setFilters] = useState({
     minPrice: "",
     maxPrice: "",
@@ -384,18 +363,15 @@ export default function CardSearch() {
   const [showCardDetail, setShowCardDetail] = useState(false);
   const [cardDetailData, setCardDetailData] = useState(null);
 
-  // Track which images finished loading at least once
   const [imageLoadedMap, setImageLoadedMap] = useState({});
   const [hasSearched, setHasSearched] = useState(false);
 
   const isExactCardSearch = Boolean(setCode && number);
 
-  // throttle loadMore so we never queue two at once
   const loadingMoreRef = useRef(false);
   const loadMoreTriggerRef = useRef(null);
   const observerRef = useRef(null);
 
-  // Apollo query
   const [runSearch, { fetchMore }] = useLazyQuery(CARDSEARCH_QUERY, {
     fetchPolicy: "network-only",
     nextFetchPolicy: "cache-first",
@@ -403,7 +379,6 @@ export default function CardSearch() {
     returnPartialData: false,
   });
 
-  // Explicit submit state (prevents "second search disabled" edge cases)
   const [submitting, setSubmitting] = useState(false);
 
   const currentKey = useMemo(
@@ -411,7 +386,6 @@ export default function CardSearch() {
     [name, setCode, number]
   );
 
-  // NEW: derive available rarity + variation lists from current base results
   const availableRarities = useMemo(() => {
     const set = new Set();
     results.forEach((card) => {
@@ -424,15 +398,12 @@ export default function CardSearch() {
     const set = new Set();
     results.forEach((card) => {
       if (Array.isArray(card.variations)) {
-        card.variations.forEach((v) => {
-          if (v) set.add(v);
-        });
+        card.variations.forEach((v) => v && set.add(v));
       }
     });
     return Array.from(set).sort();
   }, [results]);
 
-  // NEW: filtered + sorted view over the raw results
   const filteredResults = useMemo(
     () => applyFiltersAndSort(results, filters),
     [results, filters]
@@ -457,14 +428,12 @@ export default function CardSearch() {
     }
   }, []);
 
-  // Reset flags when search params change
   useEffect(() => {
     loadingMoreRef.current = false;
     setSearchError(null);
     setSubmitting(false);
   }, [name, setCode, number]);
 
-  // Kick off a search
   const handleSearch = useCallback(
     async (e) => {
       if (e?.preventDefault) e.preventDefault();
@@ -474,10 +443,8 @@ export default function CardSearch() {
       lastKeyRef.current = key;
       loadingMoreRef.current = false;
 
-      // stop previous infinite-scroll observer
       disconnectObserver();
 
-      // instant bucket display
       const bucket = bucketsRef.current.get(key);
       if (bucket) {
         startTransition(() => {
@@ -553,7 +520,6 @@ export default function CardSearch() {
     [name, setCode, number, runSearch, isExactCardSearch, disconnectObserver]
   );
 
-  // Load more results using cardsearch pagination
   const loadMoreResults = useCallback(
     async () => {
       if (loadingMoreRef.current || !hasMore) return;
@@ -654,7 +620,6 @@ export default function CardSearch() {
     [fetchMore, hasMore, currentKey, name, setCode, number]
   );
 
-  // Infinite scroll
   useEffect(() => {
     if (!hasMore) {
       disconnectObserver();
@@ -678,9 +643,8 @@ export default function CardSearch() {
     observerRef.current = observer;
     observer.observe(node);
     return () => disconnectObserver();
-  }, [hasMore, loadMoreResults, filteredResults.length, currentKey, disconnectObserver]); // CHANGED: depends on filteredResults.length
+  }, [hasMore, loadMoreResults, filteredResults.length, currentKey, disconnectObserver]);
 
-  // Wishlist (kept)
   const handleAddToWishlist = async (card) => {
     const token = getCookie("authToken");
     if (!token) {
@@ -728,7 +692,6 @@ export default function CardSearch() {
     }
   };
 
-  // Card details modal
   function handleCardDetail(card) {
     const detail = {
       ...mapCardToDetail(card),
@@ -741,8 +704,16 @@ export default function CardSearch() {
     setShowCardDetail(true);
   }
 
+  // CHANGED: only force full-screen height once search/results exist
+  const hasActiveResultsSection =
+    hasSearched || submitting || results.length > 0;
+
   return (
-    <div className="min-h-screen bg-light-background text-light-text dark:bg-dark-background dark:text-dark-text transition-colors">
+    <div
+      className={`${
+        hasActiveResultsSection ? "min-h-screen " : ""
+      }bg-light-background text-light-text dark:bg-dark-background dark:text-dark-text transition-colors`}
+    >
       <div className="max-w-[1200px] mx-auto px-5 py-10">
         {/* Header */}
         <div className="text-center mb-10">
@@ -835,206 +806,178 @@ export default function CardSearch() {
           />
         </form>
 
-        {/* Advanced Filters (applies to both new and cached search results) */}
-        
-
-        {/* Results */}
-        {submitting && results.length === 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {Array.from({ length: 4 }).map((_, idx) => (
-              <div
-                className="bg-light-surface dark:bg-dark-surface rounded-2xl shadow flex flex-col p-3 min-h-[300px]"
-                key={idx}
-              >
-                <div className="w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-xl mb-3 relative shimmer"></div>
-                <div className="mt-2 flex flex-col gap-2">
-                  <div className="h-3.5 bg-light-alt dark:bg-dark-alt rounded w/full shimmer"></div>
-                  <div className="h-3.5 bg-light-alt dark:bg-dark-alt rounded w-3/4 shimmer"></div>
-                  <div className="h-3.5 bg-light-alt dark:bg-dark-alt rounded w-1/2 shimmer"></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : results.length > 0 ? (
-          <div>
-            {/* Header + counts */}
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between mb-4 ml-1 gap-2">
-              <h2 className="text-xl font-bold">Search Results</h2>
-              <p className="text-sm text-light-textMuted dark:text-dark-textMuted">
-                Showing{" "}
-                <span className="font-semibold">{filteredResults.length}</span>{" "}
-                of <span className="font-semibold">{results.length}</span> cards
-              </p>
+        {/* Results area: only shows after a search (or while searching) */}
+        {hasSearched || submitting ? (
+          submitting && results.length === 0 ? (
+            <div className="flex items-center justify-center py-10 text-light-textMuted dark:text-dark-textMuted">
+              <span className="inline-block w-[22px] h-[22px] mr-3 border-4 border-light-accent dark:border-dark-accent border-r-transparent rounded-full animate-spin" />
+              Searching cards…
             </div>
-
-            {/* No results after filters */}
-            {filteredResults.length === 0 ? (
-              <div className="text-center text-light-textMuted dark:text-dark-textMuted text-lg py-8">
-                No cards match your filters. Try relaxing them.
+          ) : results.length > 0 ? (
+            <div>
+              {/* Header + counts */}
+              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between mb-4 ml-1 gap-2">
+                <h2 className="text-xl font-bold">Search Results</h2>
+                <p className="text-sm text-light-textMuted dark:text-dark-textMuted">
+                  Showing{" "}
+                  <span className="font-semibold">{filteredResults.length}</span>{" "}
+                  of <span className="font-semibold">{results.length}</span> cards
+                </p>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {filteredResults.map((card, idx) => {
-                  const bestRow = getBestPriceRow(card.prices);
-                  const displayPrice = pickDisplayPrice(bestRow);
-                  const setKey = card.set || card.setCode || "";
-                  const numKey = card.number || "";
-                  const fallbackKey = `${setKey}-${numKey}`.trim();
-                  const imageKey =
-                    card.id ||
-                    card.cardId ||
-                    (fallbackKey && fallbackKey !== "-"
-                      ? fallbackKey
-                      : `card-${idx}`);
-                  const isLoaded = !!imageLoadedMap[imageKey];
-                  const isPriority = idx < 8;
 
-                  return (
-                    <div
-                      className="bg-light-surface dark:bg-dark-surface rounded-2xl shadow hover:shadow-2xl flex flex-col p-3 min-h-[320px] transition border border-light-border dark:border-dark-border"
-                      key={imageKey}
-                      onClick={() => handleCardDetail(card)}
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ")
-                          handleCardDetail(card);
-                      }}
-                      role="button"
-                      aria-label={`View details for ${card.name}`}
-                    >
-                      <div className="relative w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-xl mb-3 overflow-hidden">
-                        <div
-                          className={`absolute inset-0 rounded-xl transition-opacity duration-300 ${
-                            isLoaded
-                              ? "opacity-0"
-                              : "opacity-100 animate-pulse bg-gradient-to-br from-light-alt/70 via-light-surface to-light-surface dark:from-dark-alt/70 dark:via-dark-surface dark:to-dark-surface"
-                          }`}
-                        />
-                        <Image
-                          src={card.tcgImageUrl || card.image}
-                          alt={card.name}
-                          fill
-                          sizes="(max-width: 640px) 100vw,
-                                  (max-width: 1024px) 50vw,
-                                  (max-width: 1280px) 33vw,
-                                  25vw"
-                          className={`object-contain object-center rounded-xl transition-opacity duration-300 ${
-                            isLoaded ? "opacity-100" : "opacity-0"
-                          }`}
-                          onLoadingComplete={() => markImageLoaded(imageKey)}
-                          onLoad={() => markImageLoaded(imageKey)}
-                          {...(isPriority
-                            ? { priority: true }
-                            : { loading: "lazy" })}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <div className="flex justify-between items-start gap-2">
-                          <span className="text-base font-bold flex-1 truncate">
-                            {card.name}
-                          </span>
-                          <img
-                            src={getSetLogo(card.setName, card.set)}
-                            alt={card.setName || "Set logo"}
-                            className="w-8 h-5 rounded bg-light-alt dark:bg-dark-alt"
-                            onError={(e) => {
-                              e.currentTarget.onerror = null;
-                              e.currentTarget.src = FALLBACK_SYMBOL_IMAGE;
-                            }}
-                            loading="lazy"
-                            decoding="async"
+              {/* No results after filters */}
+              {filteredResults.length === 0 ? (
+                <div className="text-center text-light-textMuted dark:text-dark-textMuted text-lg py-8">
+                  No cards match your filters. Try relaxing them.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                  {filteredResults.map((card, idx) => {
+                    const bestRow = getBestPriceRow(card.prices);
+                    const displayPrice = pickDisplayPrice(bestRow);
+                    const setKey = card.set || card.setCode || "";
+                    const numKey = card.number || "";
+                    const fallbackKey = `${setKey}-${numKey}`.trim();
+                    const imageKey =
+                      card.id ||
+                      card.cardId ||
+                      (fallbackKey && fallbackKey !== "-"
+                        ? fallbackKey
+                        : `card-${idx}`);
+                    const isLoaded = !!imageLoadedMap[imageKey];
+                    const isPriority = idx < 8;
+
+                    return (
+                      <div
+                        className="bg-light-surface dark:bg-dark-surface rounded-2xl shadow hover:shadow-2xl flex flex-col p-3 min-h-[320px] transition border border-light-border dark:border-dark-border"
+                        key={imageKey}
+                        onClick={() => handleCardDetail(card)}
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ")
+                            handleCardDetail(card);
+                        }}
+                        role="button"
+                        aria-label={`View details for ${card.name}`}
+                      >
+                        <div className="relative w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-xl mb-3 overflow-hidden">
+                          <div
+                            className={`absolute inset-0 rounded-xl transition-opacity duration-300 ${
+                              isLoaded
+                                ? "opacity-0"
+                                : "opacity-100 animate-pulse bg-gradient-to-br from-light-alt/70 via-light-surface to-light-surface dark:from-dark-alt/70 dark:via-dark-surface dark:to-dark-surface"
+                            }`}
+                          />
+                          <Image
+                            src={card.tcgImageUrl || card.image}
+                            alt={card.name}
+                            fill
+                            sizes="(max-width: 640px) 100vw,
+                                    (max-width: 1024px) 50vw,
+                                    (max-width: 1280px) 33vw,
+                                    25vw"
+                            className={`object-contain object-center rounded-xl transition-opacity duration-300 ${
+                              isLoaded ? "opacity-100" : "opacity-0"
+                            }`}
+                            onLoadingComplete={() => markImageLoaded(imageKey)}
+                            onLoad={() => markImageLoaded(imageKey)}
+                            {...(isPriority
+                              ? { priority: true }
+                              : { loading: "lazy" })}
                           />
                         </div>
-                        <div className="flex justify-between text-sm text-light-textMuted dark:text-dark-textMuted">
-                          <span className="whitespace-nowrap">
-                            {card.setName}
-                          </span>
-                          <span className="font-semibold">#{card.number}</span>
-                        </div>
-
-                        <div className="flex gap-3 text-sm my-1">
-                          <div>
-                            <span className="font-bold text-light-accent dark:text-dark-accent">
-                              Price
+                        <div className="flex flex-col gap-1">
+                          <div className="flex justify-between items-start gap-2">
+                            <span className="text-base font-bold flex-1 truncate">
+                              {card.name}
                             </span>
-                            <span className="font-semibold ml-1 text-light-text dark:text-dark-text">
-                              {formatGBP(displayPrice)}
-                            </span>
+                            <img
+                              src={getSetLogo(card.setName, card.set)}
+                              alt={card.setName || "Set logo"}
+                              className="w-8 h-5 rounded bg-light-alt dark:bg-dark-alt"
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = FALLBACK_SYMBOL_IMAGE;
+                              }}
+                              loading="lazy"
+                              decoding="async"
+                            />
                           </div>
-                          {bestRow?.variation &&
-                          bestRow.variation !== "normal" ? (
-                            <span className="ml-1 text-xs text-light-textMuted dark:text-dark-textMuted">
-                              ({formatVariation(bestRow.variation)})
+                          <div className="flex justify-between text-sm text-light-textMuted dark:text-dark-textMuted">
+                            <span className="whitespace-nowrap">
+                              {card.setName}
                             </span>
-                          ) : null}
-                        </div>
+                            <span className="font-semibold">#{card.number}</span>
+                          </div>
 
-                        <div className="flex gap-2 mt-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedCardDetail(card);
-                              setPanelOpen(true);
-                            }}
-                            className="rounded-lg px-4 py-2 bg-light-accent dark:bg-dark-accent text-light-surface dark:text-dark-surface font-semibold hover:bg-light-accentLight dark:hover:bg-dark-accentLight hover:text-light-surface dark:hover:text-dark-surface transition"
-                          >
-                            Add
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleAddToWishlist(card);
-                            }}
-                            className="rounded-lg px-4 py-2 border-2 border-light-accent dark:border-dark-accent text-light-accent dark:text-dark-accent font-semibold hover:bg-light-accent dark:hover:bg-dark-accent hover:text-light-surface dark:hover:text-dark-surface transition"
-                          >
-                            Wishlist
-                          </button>
+                          <div className="flex gap-3 text-sm my-1">
+                            <div>
+                              <span className="font-bold text-light-accent dark:text-dark-accent">
+                                Price
+                              </span>
+                              <span className="font-semibold ml-1 text-light-text dark:text-dark-text">
+                                {formatGBP(displayPrice)}
+                              </span>
+                            </div>
+                            {bestRow?.variation &&
+                            bestRow.variation !== "normal" ? (
+                              <span className="ml-1 text-xs text-light-textMuted dark:text-dark-textMuted">
+                                ({formatVariation(bestRow.variation)})
+                              </span>
+                            ) : null}
+                          </div>
+
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedCardDetail(card);
+                                setPanelOpen(true);
+                              }}
+                              className="rounded-lg px-4 py-2 bg-light-accent dark:bg-dark-accent text-light-surface dark:text-dark-surface font-semibold hover:bg-light-accentLight dark:hover:bg-dark-accentLight hover:text-light-surface dark:hover:text-dark-surface transition"
+                            >
+                              Add
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAddToWishlist(card);
+                              }}
+                              className="rounded-lg px-4 py-2 border-2 border-light-accent dark:border-dark-accent text-light-accent dark:text-dark-accent font-semibold hover:bg-light-accent dark:hover:bg-dark-accent hover:text-light-surface dark:hover:text-dark-surface transition"
+                            >
+                              Wishlist
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              )}
 
-            <div ref={loadMoreTriggerRef} aria-hidden="true" />
-            {(hasMore || isLoadingMore) && (
-              <div className="flex items-center justify-center gap-4 mt-12 mb-4 text-lg text-light-textMuted dark:text-dark-textMuted">
-                {isLoadingMore ? (
-                  <>
-                    <span className="inline-block w-[22px] h-[22px] border-4 border-light-accent dark:border-dark-accent border-r-transparent rounded-full animate-spin"></span>
-                    Loading more cards...
-                  </>
-                ) : (
-                  <span>Scroll to load more cards</span>
-                )}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div>
-            {hasSearched && (
+              <div ref={loadMoreTriggerRef} aria-hidden="true" />
+              {(hasMore || isLoadingMore) && (
+                <div className="flex items-center justify-center gap-4 mt-12 mb-4 text-lg text-light-textMuted dark:text-dark-textMuted">
+                  {isLoadingMore ? (
+                    <>
+                      <span className="inline-block w-[22px] h-[22px] border-4 border-light-accent dark:border-dark-accent border-r-transparent rounded-full animate-spin"></span>
+                      Loading more cards...
+                    </>
+                  ) : (
+                    <span>Scroll to load more cards</span>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            !submitting &&
+            hasSearched && (
               <div className="text-center text-light-textMuted dark:text-dark-textMuted text-lg py-8">
                 No results found. Try adjusting your search criteria.
               </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-2">
-              {Array.from({ length: 4 }).map((_, idx) => (
-                <CardSkeleton
-                  key={idx}
-                  dark={dark}
-                  message={
-                    !hasSearched
-                      ? "No cards yet\nTry searching for a Pokemon, set, or number"
-                      : undefined
-                  }
-                  actionLabel={!hasSearched ? "Search cards" : undefined}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+            )
+          )
+        ) : null}
 
         {/* Add & Status Panels */}
         {panelOpen && selectedCardDetail && (
@@ -1044,7 +987,6 @@ export default function CardSearch() {
           />
         )}
 
-        {/* Status Message */}
         <div className="fixed top-5 right-5 z-50">
           {statusMessage && (
             <StatusMessage
@@ -1055,7 +997,6 @@ export default function CardSearch() {
           )}
         </div>
 
-        {/* Card Details Modal */}
         {showCardDetail && cardDetailData && (
           <CardDetailsModal
             card={cardDetailData}

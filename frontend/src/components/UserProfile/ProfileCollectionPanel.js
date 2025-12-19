@@ -198,6 +198,7 @@ export default function ProfileCollectionPanel({
   onAddToCollection,
   onCardUpdated,
   dark,
+  onCollectionValueChange, // NEW: callback for header
 }) {
   const { token } = useContext(AuthContext);
 
@@ -215,6 +216,24 @@ export default function ProfileCollectionPanel({
   useEffect(() => {
     setDisplayCollection(collection.value || []);
   }, [collection.value]);
+
+  // NEW: compute total collection value from current displayCollection
+  const collectionValue = useMemo(
+    () =>
+      (displayCollection || []).reduce((sum, card) => {
+        const price = getCardGBP(card) ?? 0;
+        const qty = card.quantity || 1;
+        return sum + price * qty;
+      }, 0),
+    [displayCollection]
+  );
+
+  // NEW: notify parent (Profile page) whenever value changes
+  useEffect(() => {
+    if (typeof onCollectionValueChange === "function") {
+      onCollectionValueChange(collectionValue);
+    }
+  }, [collectionValue, onCollectionValueChange]);
 
   const [setFilter, setSetFilter] = useState("");
   const [rarityFilter, setRarityFilter] = useState("");
@@ -380,58 +399,72 @@ export default function ProfileCollectionPanel({
 
   return (
     <section className="w-full max-w-8xl mx-auto mt-6">
-      {/* Filters / search / sort */}
-      <div className="max-w-3xl flex flex-wrap justify-start gap-2 items-center px-4 py-2 mb-6 transition-all">
-        <div className="relative w-[250px]">
-          <input
-            type="text"
-            placeholder="Search"
-            className="w-full bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 pl-8 py-1.5 border border-light-border dark:border-dark-border focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm transition h-9 font-semibold"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-light-textSecondary dark:text-dark-textSecondary pointer-events-none">
-            <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <circle cx="11" cy="11" r="8" />
-              <path d="M21 21l-4.35-4.35" />
-            </svg>
+      {/* Filters / search / sort + optional total badge */}
+      <div className="flex flex-col gap-2 mb-4 px-4">
+        <div className="max-w-3xl flex flex-wrap justify-start gap-2 items-center py-2 transition-all">
+          <div className="relative w-[250px]">
+            <input
+              type="text"
+              placeholder="Search"
+              className="w-full bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 pl-8 py-1.5 border border-light-border dark:border-dark-border focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm transition h-9 font-semibold"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-light-textSecondary dark:text-dark-textSecondary pointer-events-none">
+              <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+            </span>
+          </div>
+          <select
+            value={setFilter}
+            onChange={(e) => setSetFilter(e.target.value)}
+            className="w-[110px] bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 py-1.5 border border-light-border dark:border-dark-border focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm transition h-9 font-semibold"
+          >
+            <option value="">Set</option>
+            {allSets.map((set) => (
+              <option key={set} value={set}>
+                {set}
+              </option>
+            ))}
+          </select>
+          <select
+            value={rarityFilter}
+            onChange={(e) => setRarityFilter(e.target.value)}
+            className="w-[110px] bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 py-1.5 border border-light-border dark:border-dark-border focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm transition h-9 font-semibold"
+          >
+            <option value="">Rarity</option>
+            {allRarities.map((rarity) => (
+              <option key={rarity} value={rarity}>
+                {rarity}
+              </option>
+            ))}
+          </select>
+          <select
+            value={sortOption}
+            onChange={(e) => setSortOption(e.target.value)}
+            className="w-[130px] bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 py-1.5 border border-light-border dark:border-dark-border focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm transition h-9 font-semibold"
+          >
+            {SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* NEW: small summary line (optional) */}
+        <div className="flex items-center justify-between text-xs text-light-textMuted dark:text-dark-textMuted">
+          <span>
+            Showing <span className="font-semibold">{sortedCards.length}</span> of{" "}
+            <span className="font-semibold">{displayCollection.length}</span> cards
+          </span>
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-light-alt dark:bg-dark-alt border border-light-border/70 dark:border-dark-border/70 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+            Estimated value:&nbsp;
+            {collectionValue > 0 ? formatCurrency(collectionValue) : "—"}
           </span>
         </div>
-        <select
-          value={setFilter}
-          onChange={(e) => setSetFilter(e.target.value)}
-          className="w-[110px] bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 py-1.5 border border-light-border dark:border-dark-border focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm transition h-9 font-semibold"
-        >
-          <option value="">Set</option>
-          {allSets.map((set) => (
-            <option key={set} value={set}>
-              {set}
-            </option>
-          ))}
-        </select>
-        <select
-          value={rarityFilter}
-          onChange={(e) => setRarityFilter(e.target.value)}
-          className="w-[110px] bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 py-1.5 border border-light-border dark:border-dark-border focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm transition h-9 font-semibold"
-        >
-          <option value="">Rarity</option>
-          {allRarities.map((rarity) => (
-            <option key={rarity} value={rarity}>
-              {rarity}
-            </option>
-          ))}
-        </select>
-        <select
-          value={sortOption}
-          onChange={(e) => setSortOption(e.target.value)}
-          className="w-[130px] bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 py-1.5 border border-light-border dark:border-dark-border focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm transition h-9 font-semibold"
-        >
-          {SORT_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
       </div>
 
       {/* Card Grid */}

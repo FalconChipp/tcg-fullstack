@@ -389,9 +389,18 @@ function ListingDetailInner() {
     [isProduct, isMockId, listing]
   );
 
+  // Only show size options for POD / clothing products.
+  // 3D prints, stands, etc. should not have a size selector.
   var sizeOptions = useMemo(
     function () {
       if (!isProduct) return [];
+
+      // 🔽 NEW: gate by fulfilmentType
+      var fulfil = listing && listing.fulfilmentType;
+      if (fulfil !== "POD") {
+        // Non-POD items (e.g. 3D prints) -> no sizes
+        return [];
+      }
 
       return [
         { id: "size-s", value: "size-s", label: "S" },
@@ -401,8 +410,9 @@ function ListingDetailInner() {
         { id: "size-xxl", value: "size-xxl", label: "XXL" },
       ];
     },
-    [isProduct]
+    [isProduct, listing]
   );
+
 
   var _useStateColour = useState(null);
   var selectedColourId = _useStateColour[0];

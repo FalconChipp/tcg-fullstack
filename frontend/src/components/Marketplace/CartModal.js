@@ -19,15 +19,20 @@
 //       * Estimated total
 //   - Note if ordering both CLOTHING (POD) and 3D_PRINT items that
 //     parcels will arrive separately.
+//            backend as Authorization / X-Access-Token so
+//            /checkout/create-stripe-session passes requireAuth.
 
 "use client";
 
 import React, {
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useState,
 } from "react";
+
+import { AuthContext } from "@/components/Auth/AuthProvider";
 
 /* ----------------- Cart helpers ----------------- */
 
@@ -158,6 +163,10 @@ export default function CartModal(props) {
   var isOpen = !!(props && props.isOpen);
   var onClose = (props && props.onClose) || function () {};
 
+  var auth = useContext(AuthContext) || {};
+  var accessToken = auth.accessToken || auth.token || null;
+  var isAuthenticated = !!auth.isAuthenticated || !!accessToken;
+
   var _useStateItems = useState([]);
   var items = _useStateItems[0];
   var setItems = _useStateItems[1];
@@ -240,7 +249,6 @@ export default function CartModal(props) {
     }
   }
 
-  // NEW: shipping estimate + grand total
   var shippingInfo = useMemo(
     function () {
       return computeShippingInfo(items);
@@ -330,6 +338,11 @@ export default function CartModal(props) {
       return;
     }
 
+    if (!isAuthenticated || !accessToken) {
+      setError("Please sign in to checkout.");
+      return;
+    }
+
     setError("");
 
     var ok = validateForm();
@@ -353,12 +366,20 @@ export default function CartModal(props) {
       // eslint-disable-next-line no-console
       console.log("[CartModal] starting checkout with payload", payload);
 
+      var headers = {
+        "Content-Type": "application/json",
+      };
+
+      if (accessToken) {
+        // Backend CORS allows both Authorization and X-Access-Token, so send both
+        headers.Authorization = "Bearer " + accessToken;
+        headers["X-Access-Token"] = accessToken;
+      }
+
       var res = await fetch(base + "/checkout/create-stripe-session", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        // include cookies so req.user is set on the backend
+        headers: headers,
+        // keep cookies in case you also use cookie-based auth anywhere
         credentials: "include",
         body: JSON.stringify(payload),
       });

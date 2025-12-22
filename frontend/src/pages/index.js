@@ -40,7 +40,7 @@ export default function Home() {
         // ogImage: "https://tcg.sixbyfive.com/og-image.png", // OPTIONAL override
       }}
     >
-      <div className="pt-20">
+      <div className="pt-20 bg-transparent">
         {/* HERO: what SixByFive is + main CTA */}
         <HeroSection onOpenAuthModal={() => setAuthModalOpen(true)} />
 

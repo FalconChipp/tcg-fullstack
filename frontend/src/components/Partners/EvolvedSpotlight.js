@@ -36,7 +36,6 @@ const FALLBACK_HERO =
  */
 export default function EvolvedProtectionSpotlight({
   partnerName = "Evolved Protection",
-  // CHANGED: remove invalid JSX default here; accept any (string/JSX)
   tagline,
   blurb = "Trusted sleeves, toploaders & shields for serious collectors.",
   bullets = ["Sleeves that actually fit", "Toploaders you can trust", "UK-based, collector first"],

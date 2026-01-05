@@ -59,15 +59,15 @@ a {
 }
 
 .dark a {
-  color: var(--color-primary);
+  color: var(--color-text);
 }
 
 a:hover {
-  color: var(--color-secondary);
+  color: var(--color-text);
 }
 
 .dark a:hover {
-  color: var(--color-secondary);
+  color: var(--color-text);
 }
 
 /* Buttons */

@@ -118,6 +118,7 @@ export default function Header({ onStartTour }) {
               {/* Desktop Nav */}
               <nav className="hidden md:flex items-center gap-1" aria-label="Primary">
                 <HeaderNavLink href="/" isActive={pathname === "/"}>Home</HeaderNavLink>
+                <HeaderNavLink href="/search" isActive={pathname === "/search"}>Search</HeaderNavLink>
                 <HeaderNavLink href="/about" isActive={pathname === "/about"}>About</HeaderNavLink>
                 <HeaderNavLink href="/sets" isActive={pathname === "/sets"}>All Sets</HeaderNavLink>
                 {/* <HeaderNavLink href="/marketplace" isActive={pathname === "/marketplace"}>Marketplace</HeaderNavLink> */}

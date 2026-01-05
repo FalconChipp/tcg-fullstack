@@ -4,14 +4,13 @@
 import React, { useState, useEffect, useContext, useCallback } from "react";
 import StatusMessage from "@/components/UI/StatusMessage";
 import { FaDiscord, FaGoogle } from "react-icons/fa";
-import { AuthContext } from "../Auth/AuthProvider";
+import { AuthContext } from "../../Auth/AuthProvider";
 
 // Backend REST base (for /auth/discord/* and unlink)
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
 // GraphQL API for account mutations
 const GRAPHQL_ENDPOINT = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
 
-// --- Password rule utils (unchanged) ---
 function getPasswordRules(pw) {
   return {
     length: pw.length >= 8,

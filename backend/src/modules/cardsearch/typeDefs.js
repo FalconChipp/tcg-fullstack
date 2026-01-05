@@ -60,16 +60,26 @@ const typeDefs = /* GraphQL */ `
     name: String!
     rarity: String
     supertype: String
-    subtypes: [String!]
-    types: [String!]
+
+    subtype: String
+    subtypes: [String!] @deprecated(reason: "Use subtype (singular) unless you add array support in resolver.")
+    types: [String!] @deprecated(reason: "Not currently resolved from m_Card mapping.")
+
     regulationMark: String
     illustrator: String
     images: CardImages
-    set: CardsearchSet!
+
+    # UPDATED:
+    # Resolver can return null if set lookup fails.
+    set: CardsearchSet
 
     variants: [CardVariant!]!
     latestPrices(variant: String): [CardPrice!]!
-    priceRollups(window: String!): [CardPriceRollup!]!
+
+    # UPDATED:
+    # Resolver accepts missing window and defaults to 30d.
+    # Keep argument optional to match implementation flexibility.
+    priceRollups(window: String): [CardPriceRollup!]!
 
     priceRollupsAll(variants: [String!], windows: [Int!]): [CardsearchPriceRollups!]!
 
@@ -128,7 +138,8 @@ const typeDefs = /* GraphQL */ `
 
   "A single timepoint; used inside CardsearchPriceRollups.latest"
   type CardsearchPricePoint {
-    date: String!                # YYYY-MM-DD
+    # UPDATED: resolver can emit null date when it can't determine one.
+    date: String
     low: Float
     mid: Float
     high: Float
@@ -137,8 +148,9 @@ const typeDefs = /* GraphQL */ `
 
   "Aggregated stats for a window (min/max/avg and change vs start)"
   type CardsearchRollupWindow {
-    startDate: String!           # inclusive
-    endDate: String!             # inclusive
+    # UPDATED: your rollup assembly can return null start/end (table fallback sets them null)
+    startDate: String
+    endDate: String
     count: Int!                  # number of observations in window
 
     min: Float
@@ -179,6 +191,51 @@ const typeDefs = /* GraphQL */ `
     limit: Int!
     offset: Int!
     items: [CardsearchCard!]!
+  }
+
+  # ---------------------------------------------------------------------------
+  # Bulk add to Collection (used by Batch Add / search workbench)
+  # ---------------------------------------------------------------------------
+
+  "Single card entry for bulk-add"
+  input CardsearchBulkAddItemInput {
+    cardId: ID!
+    quantity: Int!               # number of copies to add (must be > 0)
+  }
+
+  """
+  Bulk add cards to a user's personal collection.
+
+  userId is optional if your GraphQL context already knows the authenticated user.
+  source is a freeform tag (e.g. 'batch-search', 'import', etc.).
+  """
+  input CardsearchBulkAddInput {
+    userId: ID
+    items: [CardsearchBulkAddItemInput!]!
+    source: String
+  }
+
+  "Per-card result for bulk-add"
+  type CardsearchBulkAddResultItem {
+    # UPDATED:
+    # Resolver may return null cardId for malformed inputs (so the UI can show the bad row).
+    cardId: ID
+
+    # UPDATED:
+    # Resolver can carry through null/invalid quantities to report validation failures cleanly.
+    quantity: Int
+
+    created: Boolean!
+    previousQuantity: Int
+    newQuantity: Int
+    error: String
+  }
+
+  "Overall result for bulk-add"
+  type CardsearchBulkAddResult {
+    ok: Boolean!
+    message: String
+    items: [CardsearchBulkAddResultItem!]!
   }
 
   # -------- Queries -----------------------------------------------------------
@@ -240,7 +297,7 @@ const typeDefs = /* GraphQL */ `
     latestCoveragePct: Float
     observationsCount: Int
     staleDays: Int                # days since last price update
-    enabled: Boolean             # whether scheduler will pick this set
+    enabled: Boolean              # whether scheduler will pick this set
   }
 
   type Mutation {
@@ -252,6 +309,9 @@ const typeDefs = /* GraphQL */ `
 
     "Recompute rollups for a set or the entire catalog"
     cardsearchAdminRebuildRollups(set: String): CardsearchAdminJobResult!
+
+    "Bulk add cards to the authenticated user's collection"
+    cardsearchBulkAddToCollection(input: CardsearchBulkAddInput!): CardsearchBulkAddResult!
   }
 `;
 

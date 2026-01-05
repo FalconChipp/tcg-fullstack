@@ -1,8 +1,4 @@
 // src/components/Account/NotificationsTab.js
-// REWRITE: wire to backend GraphQL (myNotificationPrefs / setNotificationPrefs)
-// - Preserves previous styling + layout
-// - Keeps local dirty state and StatusMessage
-// - Removes localStorage-only logic; still falls back to defaults if API fails
 
 "use client";
 

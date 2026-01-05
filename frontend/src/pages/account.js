@@ -9,12 +9,12 @@ import Layout from "@/components/Layout/Layout";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 
 // Tab content (kept as-is)
-import SecurityTab from "@/components/Account/SecurityTab";
-import NotificationsTab from "@/components/Account/NotificationsTab";
-import SubscriptionTab from "@/components/Account/SubscriptionTab";
-import MarketplaceTab from "@/components/Account/MarketplaceTab";
-import PrivacyTab from "@/components/Account/PrivacyTab";
-import SupportTab from "@/components/Account/SupportTab";
+import SecurityTab from "@/components/Admin/Account/SecurityTab";
+import NotificationsTab from "@/components/Admin/Account/NotificationsTab";
+import SubscriptionTab from "@/components/Admin/Account/SubscriptionTab";
+import MarketplaceTab from "@/components/Admin/Account/MarketplaceTab";
+import PrivacyTab from "@/components/Admin/Account/PrivacyTab";
+import SupportTab from "@/components/Admin/Account/SupportTab";
 
 // Icons
 import {

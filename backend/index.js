@@ -5,7 +5,6 @@ import express from "express";
 import http from "http";
 import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@apollo/server/express4";
-// REMOVED: cors package to avoid accidental duplicates
 // import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -78,7 +77,6 @@ app.use("/achievements", express.static("public/achievements"));
    GLOBAL CORS: single source of truth + hard de-dupe
 ============================================================================= */
 
-// CHANGED: normalized origin helpers and allow-list pulled up here
 function normalizeOrigin(s) {
   if (!s) return "";
   return String(s).trim().toLowerCase().replace(/\/+$/, "");
@@ -118,7 +116,6 @@ const CORS_HEADER_KEYS = [
   "access-control-max-age",
 ];
 
-// ADDED: tiny helper to set CORS once on a response
 function applyCorsOnce(req, res) {
   // Clean slate — ensure no duplicates
   res.removeHeader("Access-Control-Allow-Origin");
@@ -149,7 +146,6 @@ function applyCorsOnce(req, res) {
   }
 }
 
-// ADDED: global de-dupe wrapper + single CORS applier
 app.use((req, res, next) => {
   // quick visibility
   if (req.headers.origin)
@@ -220,7 +216,6 @@ app.use((req, res, next) => {
 /* ============================
    Socket.IO (CORS aligned)
    ============================ */
-// CHANGED: use the same allow-list as Express (no "*")
 const io = new SocketIOServer(httpServer, {
   cors: {
     credentials: true,
@@ -341,7 +336,6 @@ app.post(
 /* ============================
    Security / Parsers
    ============================ */
-// REMOVED: global cors() usage to avoid accidental duplicates
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(compression());

@@ -58,7 +58,7 @@ export default function Layout({
 
   return (
     // 🔄 Wrap the whole layout in the snow background
-    <SnowBackground enabled={true}>
+    <SnowBackground enabled={false}>
       <div
         className={
           dark

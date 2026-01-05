@@ -326,11 +326,10 @@ export {
   Reward, ChatAgreement, ReportedUser,
   Binder, BinderPage, BinderSlot, UserDiscordLink, Order,
 
-  // marketdata2 models
   m_Set, m_Card, m_CardVariant,
   m_PriceObservation, m_PriceDaily, m_PriceLatest,
-  m_PriceRollup, // ADDED
-  CardPriceCache, // CHANGED
-  CardPriceHistory, // CHANGED
+  m_PriceRollup, 
+  CardPriceCache, 
+  CardPriceHistory, 
 };
 

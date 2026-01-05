@@ -11,6 +11,7 @@ import React, {
 } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
+import Link from "next/link"; // NEW: link to batch workbench page
 import { gql, useLazyQuery } from "@apollo/client";
 
 import { getCookie } from "@/utils/cookieUtils";
@@ -409,10 +410,10 @@ export default function CardSearch() {
     [results, filters]
   );
 
-  const showStatusMessage = (type, message) => {
+  // CHANGED: use toast only — let StatusMessage auto-dismiss handle timing
+  const showStatusMessage = useCallback((type, message) => {
     setStatusMessage({ type, message });
-    setTimeout(() => setStatusMessage(null), 5000);
-  };
+  }, []);
 
   const markImageLoaded = useCallback((id) => {
     if (!id) return;
@@ -512,12 +513,13 @@ export default function CardSearch() {
         }
       } catch (err) {
         setSearchError(err instanceof Error ? err : new Error(String(err)));
+        showStatusMessage("error", "Search failed. Please try again."); // NEW: toast feedback
         if (bucket) setHasMore(bucket.hasNextPage);
       } finally {
         setSubmitting(false);
       }
     },
-    [name, setCode, number, runSearch, isExactCardSearch, disconnectObserver]
+    [name, setCode, number, runSearch, isExactCardSearch, disconnectObserver, showStatusMessage]
   );
 
   const loadMoreResults = useCallback(
@@ -569,10 +571,7 @@ export default function CardSearch() {
         const mergedTotal = Number(
           payload.total ?? prev.totalCount ?? combined.length
         );
-        const mergedOffset = Math.min(
-          nextOffset + newItems.length,
-          mergedTotal
-        );
+        const mergedOffset = Math.min(nextOffset + newItems.length, mergedTotal);
         const merged = {
           ...prev,
           items: combined,
@@ -592,6 +591,7 @@ export default function CardSearch() {
         }
       } catch (err) {
         setSearchError(err instanceof Error ? err : new Error(String(err)));
+        showStatusMessage("error", "Couldn’t load more results."); // NEW: toast feedback
         const key = lastKeyRef.current || currentKey;
         if (key) {
           const prev = bucketsRef.current.get(key);
@@ -617,7 +617,7 @@ export default function CardSearch() {
         setIsLoadingMore(false);
       }
     },
-    [fetchMore, hasMore, currentKey, name, setCode, number]
+    [fetchMore, hasMore, currentKey, name, setCode, number, showStatusMessage]
   );
 
   useEffect(() => {
@@ -705,8 +705,7 @@ export default function CardSearch() {
   }
 
   // CHANGED: only force full-screen height once search/results exist
-  const hasActiveResultsSection =
-    hasSearched || submitting || results.length > 0;
+  const hasActiveResultsSection = hasSearched || submitting || results.length > 0;
 
   return (
     <div
@@ -723,6 +722,36 @@ export default function CardSearch() {
           <p className="text-lg text-light-textMuted dark:text-dark-textMuted">
             Search for any Pokemon card and add it to your collection/wishlist
           </p>
+
+          <div className="mt-5 mx-auto max-w-7xl rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface px-5 py-4 shadow-sm dark:shadow-[0_6px_24px_0_rgba(12,8,24,0.18)]">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="text-left">
+                <div className="text-sm font-semibold">
+                  Adding lots of cards?
+                </div>
+                <div className="text-sm text-light-textMuted dark:text-dark-textMuted">
+                  Use the Batch Add workbench to build a selection across multiple searches and save everything in one go.
+                </div>
+              </div>
+
+              <Link
+                href="/search"
+                className="
+                  inline-flex items-center justify-center
+                  rounded-xl
+                  bg-light-accent dark:bg-dark-accent
+                  px-4 py-2
+                  text-sm font-semibold
+                  text-white
+                  hover:text-white
+                  hover:bg-light-accentLight dark:hover:bg-dark-accentLight
+                  transition
+                "
+              >
+                Open Batch Add →
+              </Link>
+            </div>
+          </div>
         </div>
 
         {/* Search Form */}
@@ -987,6 +1016,7 @@ export default function CardSearch() {
           />
         )}
 
+        {/* Toast */}
         <div className="fixed top-5 right-5 z-50">
           {statusMessage && (
             <StatusMessage

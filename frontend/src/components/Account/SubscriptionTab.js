@@ -14,25 +14,21 @@ import StatusMessage from "@/components/UI/StatusMessage";
 /* =========================
    Helpers
    ========================= */
-// NEW: consistent currency formatter
 function formatGBP(valueInPence) {
   if (typeof valueInPence !== "number") return valueInPence || "";
   return `£${(valueInPence / 100).toFixed(2)}`;
 }
-// NEW: normalize interval copy
 function intervalLabel(interval) {
   if (!interval) return "";
   if (interval.toLowerCase() === "month" || interval.toLowerCase() === "mo") return "/mo";
   if (interval.toLowerCase() === "year" || interval.toLowerCase() === "yr") return "/yr";
   return `/${interval}`;
 }
-// NEW: safe array
 const toArray = (v) => (Array.isArray(v) ? v : v ? [v] : []);
 
 /* =========================
    Modal (accessible)
    ========================= */
-// CHANGED: a11y attributes, clearer copy, consistent buttons
 function SubscriptionModal({ open, type, plan, onConfirm, onClose, loading }) {
   if (!open) return null;
 
@@ -152,7 +148,6 @@ function SubscriptionModal({ open, type, plan, onConfirm, onClose, loading }) {
 /* =========================
    Presentational bits
    ========================= */
-// NEW: clean badge
 function Chip({ children, tone = "neutral" }) {
   const tones = {
     neutral: "bg-light-alt dark:bg-dark-alt text-light-textMuted dark:text-dark-textMuted border-light-border dark:border-dark-border",
@@ -218,7 +213,6 @@ function CurrentPlanCard({ current, onCancel, onReactivate }) {
   );
 }
 
-// NEW: plan card with consistent styles
 function PlanCard({ plan, isCurrent, onChoose }) {
   return (
     <div
@@ -279,7 +273,6 @@ function PlanCard({ plan, isCurrent, onChoose }) {
   );
 }
 
-// NEW: invoice list (table-like but responsive)
 function InvoiceList({ invoices = [] }) {
   if (!invoices.length) {
     return <div className="text-sm text-light-textMuted dark:text-dark-textMuted">No invoices found.</div>;
@@ -324,7 +317,6 @@ export default function SubscriptionTab({ user, token }) {
   const [modal, setModal] = useState({ type: null, plan: null });
   const [actionLoading, setActionLoading] = useState(false);
 
-  // CHANGED: load all data together + error safety
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -413,7 +405,6 @@ export default function SubscriptionTab({ user, token }) {
     );
   }
 
-  // CHANGED: single spaced layout (no nested heavy frames)
   return (
     <div className="space-y-8">
       <div className="flex items-baseline justify-between">

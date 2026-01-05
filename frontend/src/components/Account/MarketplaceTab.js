@@ -4,15 +4,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import StatusMessage from "@/components/UI/StatusMessage";
 
-/* =========================================================
-   CHANGED/ADDED:
-   - Structured sections: Seller profile, Payout (coming soon),
-     Shipping profiles, Vacation mode, Trade rules, Blocked users
-   - Accessible toggles and radios, consistent card UI
-   - Local persistence via localStorage (swap to API later)
-   - Clear "Coming soon" disabled actions where backend is needed
-   ========================================================= */
-
 const LS_KEY = "sixbyfive:marketplace_prefs:v1";
 
 const defaultState = (user) => ({

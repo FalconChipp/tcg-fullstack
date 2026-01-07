@@ -1,7 +1,7 @@
 import { User, Profile, sequelize } from '../../models/index.js';
 import { Op } from 'sequelize';
 import winston from 'winston';
-import { verifyJwt, comparePassword } from '../auth/helpers.js'; // <--- make sure comparePassword is imported!
+import { verifyJwt, comparePassword } from '../auth/helpers.js';
 import { PROFILE_STATUSES } from '../../models/Profile.js';
 import { requireAdmin } from './helpers.js';
 
@@ -20,6 +20,16 @@ const logger = winston.createLogger({
     )
   ),
 });
+
+// ADDED: helper to detect "mobile local" avatar paths that should never be stored
+function isLocalDeviceAvatar(value) {
+  if (!value || typeof value !== 'string') return false;
+  return (
+    value.startsWith('file://') ||
+    value.startsWith('content://') ||
+    value.includes('/cache/ImagePicker/')
+  );
+}
 
 // --- Resolvers ---
 const resolvers = {
@@ -55,6 +65,8 @@ const resolvers = {
           isAdmin: typeof j.isAdmin === "number" ? j.isAdmin === 1 : !!j.isAdmin,
           isBanned: typeof j.isBanned === "number" ? j.isBanned === 1 : !!j.isBanned,
 
+          // NOTE: You return avatar here from either User.avatar or Profile.avatar.
+          // If the "bad" value is stored in Profile.avatar, web will break.
           avatar: j.avatar ?? j.Profile?.avatar ?? null,
 
           mfaEnabled: j.twoFactorEnabled ?? j.mfaEnabled ?? false,
@@ -79,13 +91,11 @@ const resolvers = {
 
       let profile = await Profile.findOne({ where: { userId: user.id } });
 
-      // Keep your auto-create behavior (optional)
       if (!profile) {
         profile = await Profile.create({ userId: user.id });
         logger.info(`[PROFILE] Created blank profile for user ${username}`);
       }
 
-      // Attach for downstream resolvers if you rely on it
       profile.user = user;
       logger.info(`[PROFILE] Fetched profile for user ${username}`);
       return profile;
@@ -93,7 +103,6 @@ const resolvers = {
 
     userById: async (_parent, { id }) => {
       const user = await User.findByPk(id, {
-        // OPTIONAL: include these if you want parity with `me`
         include: [
           { model: Profile, required: false },
           { model: UserDiscordLink, as: "DiscordLink", required: false },
@@ -110,7 +119,6 @@ const resolvers = {
           { [Op.like]: `%${query.toLowerCase()}%` }
         ),
         limit,
-        // CHANGED: use object form for include (consistent with others)
         include: [{ model: Profile, required: false }],
       });
       logger.info(`[PROFILE] Search users for "${query}" found ${users.length}`);
@@ -119,8 +127,10 @@ const resolvers = {
 
     allUsers: async (_parent, { limit = 100 }, { token }) => {
       requireAdmin(token);
-      // CHANGED: consistent include form
-      const users = await User.findAll({ limit, include: [{ model: Profile, required: false }] });
+      const users = await User.findAll({
+        limit,
+        include: [{ model: Profile, required: false }],
+      });
       logger.info(`[ADMIN] allUsers queried`);
       return users;
     },
@@ -132,15 +142,19 @@ const resolvers = {
     updateProfile: async (_, args, { token }) => {
       if (!token) throw new Error('Not authenticated');
       const payload = verifyJwt(token);
+
       let profile = await Profile.findOne({ where: { userId: payload.id } });
       if (!profile) {
         profile = await Profile.create({ userId: payload.id });
       }
 
+      // REMOVED: avatar must NOT be set via this mutation
+      // This is the bug that stores Expo ImagePicker cache paths into the DB.
+      // Only allow avatar changes via POST /upload/avatar (multipart).
       const allowed = [
         'bio',
         'favouritePokemon',
-        'avatar',
+        // 'avatar', // REMOVED
         'country',
         'showcase',
         'status',
@@ -156,11 +170,27 @@ const resolvers = {
         'wantsMarketplace',
       ];
 
+      // ADDED: If a client still sends avatar, hard-block it so you notice immediately.
+      if (args.avatar !== undefined) {
+        // If it looks like a phone-local URI, it's definitely wrong.
+        if (isLocalDeviceAvatar(args.avatar)) {
+          throw new Error(
+            'Invalid avatar value. Please upload avatar via /upload/avatar (multipart/form-data).'
+          );
+        }
+
+        // Even if it doesn't look local, we still refuse here to keep one source of truth.
+        throw new Error(
+          'Avatar cannot be updated via updateProfile. Use /upload/avatar instead.'
+        );
+      }
+
       for (const field of allowed) {
         if (args[field] === undefined) continue;
         if (field === 'status' && !PROFILE_STATUSES.includes(args.status)) continue;
         profile[field] = args[field];
       }
+
       console.log('Updating profile with:', profile.toJSON());
 
       await profile.save();
@@ -195,37 +225,30 @@ const resolvers = {
       return true;
     },
 
-    // --- PRIVACY: Export User Data (password required) ---
     exportUserData: async (_, { password }, { token }) => {
       if (!token) throw new Error("Not authenticated");
       const payload = verifyJwt(token);
       const user = await User.findByPk(payload.id, { include: [{ model: Profile }] });
       if (!user) throw new Error("User not found");
 
-      // PASSWORD CHECK (required!)
       const isValid = await comparePassword(password, user.password);
       if (!isValid) throw new Error("Password incorrect.");
 
-      // 1. Gather all user data (add any relations needed here)
       const data = {
         user: user.toJSON(),
         profile: user.Profile ? user.Profile.toJSON() : null,
-        // Add more related models as needed
       };
 
-      // 2. Write to a temporary file
       const exportDir = path.resolve(process.cwd(), "exports");
       if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir, { recursive: true });
       const fileName = `user_${user.id}_${Date.now()}.json`;
       const filePath = path.join(exportDir, fileName);
       fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
 
-      // 3. Return download URL to the JSON file
       logger.info(`[USER] Exported data for user ${user.id} to ${filePath}`);
       return `/exports/${fileName}`;
     },
 
-    // --- PRIVACY: Delete Account (password + confirmation required) ---
     deleteAccount: async (_, { password, confirm }, { token }) => {
       if (!token) throw new Error("Not authenticated");
       const payload = verifyJwt(token);
@@ -233,18 +256,14 @@ const resolvers = {
       const user = await User.findByPk(payload.id);
       if (!user) throw new Error("User not found");
 
-      // PASSWORD CHECK (required!)
       const isValid = await comparePassword(password, user.password);
       if (!isValid) throw new Error("Password incorrect.");
 
-      // Confirm step (require "DELETE")
       if (confirm !== "DELETE") {
         throw new Error("Confirmation failed. Type DELETE to confirm account deletion.");
       }
 
-      // Delete Profile (if exists)
       await Profile.destroy({ where: { userId: payload.id } });
-      // Delete User
       await User.destroy({ where: { id: payload.id } });
       logger.info(`[USER] Deleted account ${payload.id}`);
 
@@ -261,6 +280,7 @@ const resolvers = {
       return User.findByPk(user.referrerId);
     }
   },
+
   Profile: {
     user: async (profile) => {
       return User.findByPk(profile.userId);

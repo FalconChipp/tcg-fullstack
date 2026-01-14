@@ -20,3 +20,4 @@ frontend/.env
 /backend/src/modules/cardsearch/.cache
 backend/scripts/find-bad-sdl-agnostic.cjs
 backend/scripts/find-bad-sdl.cjs
+/frontend/src/pages/dev

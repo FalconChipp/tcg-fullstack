@@ -22,6 +22,7 @@
     "apollo-upload-client": "^18.0.1",
     "framer-motion": "^12.16.0",
     "graphql": "^16.10.0",
+    "html-to-image": "^1.11.13",
     "lucide-react": "^0.511.0",
     "next": "15.0.7",
     "next-auth": "^4.24.11",

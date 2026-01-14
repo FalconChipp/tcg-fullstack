@@ -277,12 +277,14 @@ export default function ProfilePage({ user, error }) {
 
           {activeTab === "wishlist" && (
             <ProfileWishlistPanel
-              wishlist={wl?.entries || []}  // safe access to entries
-              user={userForQueries}
+              wishlist={wl?.entries || []}
               isOwnProfile={isOwnProfile}
               onCardRemoved={handleRemoveFromWishlist}
               onMoveToCollection={handleMoveToCollection}
-              setStatus={status.set}
+              setToastStatus={status.set}     // ✅ renamed
+              setWishlist={setWishlist}       // ✅ from useWishlistData
+              refreshWishlist={refreshWishlist} // ✅ from useWishlistData
+              dark={dark}
             />
           )}
 

@@ -23,6 +23,11 @@ export default (sequelize) => {
         allowNull: false,
         // associations set up in index.js
       },
+      status: {
+        type: DataTypes.ENUM('ACTIVE', 'GRAIL', 'EVENTUAL', 'UPGRADE'),
+        allowNull: false,
+        defaultValue: 'ACTIVE',
+      },
       variation: { type: DataTypes.STRING, allowNull: true },
       condition: { type: DataTypes.STRING, allowNull: true },
       quantity: { type: DataTypes.INTEGER, defaultValue: 1, allowNull: false },

@@ -1,3 +1,10 @@
+// H:\tcg-fullstack\frontend\src\hooks\useProfileCollection.js
+//
+// UPDATED (2026-01-13):
+// - FIX: Normalize wishlist entry.status on fetch so UI never falls back to ACTIVE incorrectly
+// - Defensive: ensures wishlist shape is always { entries: [] }
+// - No changes to queries required (you already request `status`)
+
 import { useState, useEffect } from "react";
 
 const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
@@ -46,11 +53,33 @@ function readCache(userId) {
 
 function writeCache(userId, data) {
   try {
-    localStorage.setItem(
-      cacheKey(userId),
-      JSON.stringify({ ts: Date.now(), data })
-    );
+    localStorage.setItem(cacheKey(userId), JSON.stringify({ ts: Date.now(), data }));
   } catch {}
+}
+
+/**
+ * ✅ NEW: normalize wishlist entry status at the source (this hook).
+ * This prevents UI components from ever "defaulting to ACTIVE" due to missing/odd casing.
+ */
+const WISHLIST_STATUSES = new Set(["ACTIVE", "GRAIL", "EVENTUAL", "UPGRADE"]);
+
+function normalizeWishlistStatus(status) {
+  if (typeof status !== "string") return "ACTIVE";
+  const s = status.trim().toUpperCase();
+  return WISHLIST_STATUSES.has(s) ? s : "ACTIVE";
+}
+
+function normalizeWishlistPayload(payload) {
+  const base = payload && typeof payload === "object" ? payload : {};
+  const entries = Array.isArray(base.entries) ? base.entries : [];
+
+  return {
+    ...base,
+    entries: entries.map((e) => ({
+      ...e,
+      status: normalizeWishlistStatus(e?.status), // ✅ CHANGED: enforced
+    })),
+  };
 }
 
 // ---------- hook ----------
@@ -120,6 +149,7 @@ export default function useProfileCollection({ userId, token }) {
               cardId
               variation
               quantity
+              status
               card {
                 id
                 name
@@ -166,9 +196,7 @@ export default function useProfileCollection({ userId, token }) {
 
         if (aborted) return;
 
-        const rawCollection = Array.isArray(colJson?.data?.collection)
-          ? colJson.data.collection
-          : [];
+        const rawCollection = Array.isArray(colJson?.data?.collection) ? colJson.data.collection : [];
 
         // Flatten & keep only non-wishlist entries (we do NO upstream hydration here)
         const flat = [];
@@ -185,13 +213,13 @@ export default function useProfileCollection({ userId, token }) {
             ...entry,
             ...card,
             setName: card.set?.name || card.setName || null, // CHANGED
-            prices: Array.isArray(card.latestPrices)
-              ? card.latestPrices.filter(Boolean)
-              : [], // CHANGED
+            prices: Array.isArray(card.latestPrices) ? card.latestPrices.filter(Boolean) : [], // CHANGED
             variations: Array.isArray(card.variants)
               ? card.variants.map((v) => v?.key || v?.variant).filter(Boolean)
               : Array.isArray(card.variations)
-                ? card.variations.map((v) => (typeof v === "string" ? v : v?.key || v?.variant)).filter(Boolean)
+                ? card.variations
+                    .map((v) => (typeof v === "string" ? v : v?.key || v?.variant))
+                    .filter(Boolean)
                 : null, // CHANGED
             cardId: entry.cardId,
             quantity: entry.quantity,
@@ -208,9 +236,11 @@ export default function useProfileCollection({ userId, token }) {
         setCollectionValue(getCollectionTotalValue(flat));
         writeCache(userId, flat);
 
-        // Wishlist (non-blocking)
-        const wish = wishJson?.data?.wishlist ?? { entries: [] };
-        setWishlist(wish);
+        // ✅ CHANGED: Wishlist normalization (non-blocking)
+        // Ensures `status` is preserved and uppercased; prevents UI defaulting to ACTIVE.
+        const wishRaw = wishJson?.data?.wishlist ?? { entries: [] };
+        const wishNormalized = normalizeWishlistPayload(wishRaw);
+        setWishlist(wishNormalized);
 
         // If there was no cache, flip loading off now
         if (!cached) setLoading(false);

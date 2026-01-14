@@ -1,6 +1,14 @@
-import { gql } from 'graphql-tag';
+import { gql } from "graphql-tag";
 
 export default gql`
+
+  enum WishlistStatus {
+    ACTIVE
+    GRAIL
+    EVENTUAL
+    UPGRADE
+  }
+
   type Listing {
     id: ID!
     userId: ID!
@@ -12,6 +20,7 @@ export default gql`
     status: String
     createdAt: String
   }
+
   type WishlistEntry {
     id: ID!
     userId: ID!
@@ -23,9 +32,12 @@ export default gql`
     movedToCollectionAt: String
     createdAt: String
     updatedAt: String
+
     card: CardsearchCard
     marketplaceListings: [Listing!]!
     forTradeUsers: [User!]!
+
+    status: WishlistStatus!
   }
 
   type WishlistPage {
@@ -42,13 +54,49 @@ export default gql`
   }
 
   extend type Mutation {
-    addToWishlist(cardId: String!, quantity: Int, condition: String, variation: String, notes: String): WishlistEntry!
+    addToWishlist(
+      cardId: String!
+      quantity: Int
+      condition: String
+      variation: String
+      notes: String
+      status: WishlistStatus
+    ): WishlistEntry!
+
     removeFromWishlist(cardId: String!, variation: String): Boolean!
-    updateWishlistEntry(cardId: String!, variation: String, quantity: Int, condition: String, notes: String): WishlistEntry!
+
+    updateWishlistEntry(
+      cardId: String!
+      variation: String
+      quantity: Int
+      condition: String
+      notes: String
+      status: WishlistStatus
+    ): WishlistEntry!
+
     # moveToCollection mutation is defined in the collection module
 
-    adminAddToWishlist(userId: ID!, cardId: String!, quantity: Int, condition: String, variation: String, notes: String): WishlistEntry!
+    adminAddToWishlist(
+      userId: ID!
+      cardId: String!
+      quantity: Int
+      condition: String
+      variation: String
+      notes: String
+      status: WishlistStatus
+    ): WishlistEntry!
+
     adminRemoveFromWishlist(userId: ID!, cardId: String!, variation: String): Boolean!
     adminClearWishlist(userId: ID!): Boolean!
+
+    adminUpdateWishlistEntry(
+      userId: ID!
+      cardId: String!
+      variation: String
+      quantity: Int
+      condition: String
+      notes: String
+      status: WishlistStatus
+    ): WishlistEntry!
   }
 `;

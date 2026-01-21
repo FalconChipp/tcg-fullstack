@@ -122,6 +122,7 @@ export const SET_LOGOS = {
   'Destined Rivals': 'destined-rivals-logo.png',
   'Black Bolt': 'black-bolt-logo.png',
   'White Flare': 'white-flare-logo.png',
+  'Mega Evolution Promos': 'promo-logo.webp',
   'Mega Evolution': 'mega-evolutions-base-logo.png', 
   'Phantasmal Flames' : 'phantasmal-flames-logo.png', 
 

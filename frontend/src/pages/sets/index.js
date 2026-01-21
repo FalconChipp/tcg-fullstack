@@ -290,9 +290,9 @@ export default function SetsPage({ sets }) {
                       <p className="text-xs text-light-textMuted dark:text-dark-textMuted mt-1">
                         Code: {set.code?.toUpperCase()}
                       </p>
-                      <p className="text-xs text-light-textMuted dark:text-dark-textMuted">
+                      {/* <p className="text-xs text-light-textMuted dark:text-dark-textMuted">
                         Cards: {set.totalCards != null ? set.totalCards : "TBA"}
-                      </p>
+                      </p> */}
                     </div>
                   </Link>
                 ))}

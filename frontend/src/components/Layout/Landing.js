@@ -8,6 +8,10 @@
  * - ADDED: Maintenance-focused hero, optional ETA countdown (via env), system status tiles, action buttons.
  * - ADDED: Safer env-driven links for Status/Discord so you don’t ship broken anchors.
  * - CHANGED: Kept the same gradient + light/dark tokens for visual consistency.
+ *
+ * NEW (2026-01-24):
+ * - ADDED: "down" status type (red) for tiles.
+ * - CHANGED: Status tile mapping to reflect: App up, Database up, Site up, API down.
  */
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -64,10 +68,11 @@ export default function Landing() {
   // Replace with live data if you have a status endpoint.
   // =============================
   const components = [
-    { name: "API", status: "operational" },
+    // CHANGED (2026-01-24): reflect your actual situation
+    { name: "API", status: "down" },
     { name: "Website", status: "operational" },
     { name: "App", status: "operational" },
-    { name: "Database", status: "maintenance" },
+    { name: "Database", status: "operational" },
   ];
 
   // --- Format countdown text (repurposed) ---
@@ -76,6 +81,36 @@ export default function Landing() {
     : `${countdown.days}d ${String(countdown.hours).padStart(2, "0")}h ${String(
         countdown.minutes
       ).padStart(2, "0")}m ${String(countdown.seconds).padStart(2, "0")}s`;
+
+  // ADDED (2026-01-24): central mapping for status label + classes
+  function getStatusMeta(status) {
+    // Normalize just in case someone passes "Down"/"DOWN"
+    const s = String(status || "").toLowerCase();
+
+    if (s === "operational") {
+      return {
+        label: "Operational",
+        pillClass:
+          "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+      };
+    }
+
+    // NEW: Down state (red)
+    if (s === "down") {
+      return {
+        label: "Down",
+        pillClass:
+          "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+      };
+    }
+
+    // Default: maintenance (yellow) – keeps existing behaviour
+    return {
+      label: "Maintenance",
+      pillClass:
+        "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
+    };
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-light-accent/5 via-light-background to-light-surface dark:from-dark-surface dark:via-dark-background dark:to-dark-alt flex flex-col">
@@ -120,14 +155,26 @@ export default function Landing() {
             >
               Retry now
             </button>
+
+            {/* OPTIONAL (kept): Discord button */}
             {DISCORD_URL ? (
               <a
                 href={DISCORD_URL}
                 target="_blank"
                 rel="noreferrer"
-              className="rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text font-semibold text-base py-2 px-4 hover:border-light-accent dark:hover:border-dark-accent transition-colors"
+                className="rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text font-semibold text-base py-2 px-4 hover:border-light-accent dark:hover:border-dark-accent transition-colors"
               >
                 Join our Discord
+              </a>
+            ) : null}
+
+            {/* OPTIONAL: Status page link (uses env-driven STATUS_URL) */}
+            {STATUS_URL ? (
+              <a
+                href={STATUS_URL}
+                className="rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text font-semibold text-base py-2 px-4 hover:border-light-accent dark:hover:border-dark-accent transition-colors"
+              >
+                View status
               </a>
             ) : null}
           </div>
@@ -139,28 +186,27 @@ export default function Landing() {
         <h3 className="text-xl font-heading font-bold mb-3 text-light-text dark:text-dark-text">
           What’s affected?
         </h3>
+
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {components.map((c) => {
-            const isUp = c.status === "operational";
+            // CHANGED (2026-01-24): Use the unified status mapping (operational / maintenance / down)
+            const meta = getStatusMeta(c.status);
+
             return (
               <li
                 key={c.name}
                 className="flex items-center justify-between rounded-xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface px-4 py-3"
               >
                 <span className="font-medium text-light-text dark:text-dark-text">{c.name}</span>
-                <span
-                  className={`text-xs font-semibold px-2 py-1 rounded ${
-                    isUp
-                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                      : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300"
-                  }`}
-                >
-                  {isUp ? "Operational" : "Maintenance"}
+
+                <span className={`text-xs font-semibold px-2 py-1 rounded ${meta.pillClass}`}>
+                  {meta.label}
                 </span>
               </li>
             );
           })}
         </ul>
+
         <p className="mt-3 text-sm text-light-textMuted dark:text-dark-textMuted">
           Tip: If you’re seeing this page unexpectedly, try clearing cache and reloading.
         </p>

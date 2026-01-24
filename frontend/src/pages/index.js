@@ -29,8 +29,7 @@ export default function Home() {
 
   return (
     <>
-      {/*
-      <Layout
+      {/* <Layout
         noTopPadding
         seo={{
           // ✅ Tweaked to match the newer positioning we discussed
@@ -43,50 +42,36 @@ export default function Home() {
         }}
       >
         <div className="pt-20 bg-transparent">
-          {/* HERO: what SixByFive is + main CTA */}
           <HeroSection onOpenAuthModal={() => setAuthModalOpen(true)} />
 
-          {/* Mobile app promo strip (Android live, iOS coming soon) */}
           <MobileAppPromo />
 
-          {/* SEARCH: immediately let visitors try the product
-              ✅ Wrapped in container + alt surface + border for visual separation */}
           <section
             id="card-search"
             className="scroll-mt-28 border-b border-light-border/40 dark:border-dark-border/40 bg-light-surfaceAlt dark:bg-dark-surfaceAlt"
           >
             <div className="mx-auto max-w-6xl px-4 py-10 sm:py-12 lg:py-14">
-              {/* NOTE: SearchIntro lives inside CardSearch now, so no separate component here */}
               <CardSearch />
             </div>
           </section>
 
-          {/* “WHAT YOU CAN DO”: high-level capabilities / feature cards */}
           <IntroFeatureCards />
 
-          {/* ✅ NEW: REAL ACTIVITY STATS (currently using fake numbers in LiveStats.js) */}
-          {/* <LiveStats /> */}
 
-          {/* HOW TO START: simple 3–4 step “onboarding” explainer */}
           <OnboardingQuickStart />
 
-          {/* Deeper feature breakdown + community / FAQ */}
           <KeyFeatures />
           <DiscordJoinBar />
           <FAQ />
 
-          {/* Optional partner spotlight if/when you want it back */}
-          {/* <EvolvedProtectionSpotlight mode="banner" /> */}
         </div>
 
-        {/* Global auth modal (triggered from hero, header, etc.) */}
         <AuthModal
           isOpen={authModalOpen}
           onClose={() => setAuthModalOpen(false)}
           onAuthSuccess={() => setAuthModalOpen(false)}
         />
-      </Layout>
-      */}
+      </Layout> */}
 
       {/* Maintenance landing page (for special cases) */}
       <Landing />

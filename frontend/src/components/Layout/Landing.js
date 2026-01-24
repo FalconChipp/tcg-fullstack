@@ -169,14 +169,6 @@ export default function Landing() {
             ) : null}
 
             {/* OPTIONAL: Status page link (uses env-driven STATUS_URL) */}
-            {STATUS_URL ? (
-              <a
-                href={STATUS_URL}
-                className="rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text font-semibold text-base py-2 px-4 hover:border-light-accent dark:hover:border-dark-accent transition-colors"
-              >
-                View status
-              </a>
-            ) : null}
           </div>
         </div>
       </header>

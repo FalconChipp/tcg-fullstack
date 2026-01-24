@@ -29,7 +29,7 @@ export default function Home() {
 
   return (
     <>
-      {/* <Layout
+      <Layout
         noTopPadding
         seo={{
           // ✅ Tweaked to match the newer positioning we discussed
@@ -71,10 +71,10 @@ export default function Home() {
           onClose={() => setAuthModalOpen(false)}
           onAuthSuccess={() => setAuthModalOpen(false)}
         />
-      </Layout> */}
+      </Layout>
 
       {/* Maintenance landing page (for special cases) */}
-      <Landing />
+      {/* <Landing /> */}
     </>
   );
 }

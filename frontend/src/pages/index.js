@@ -20,14 +20,14 @@ import EvolvedProtectionSpotlight from "@/components/Partners/EvolvedSpotlight";
 // ❌ REMOVED UNUSED IMPORTS:
 // import ProofStrip from "@/components/Home/ProofStrip";
 // import SearchIntro from "@/components/Home/SearchIntro";
-// import Landing from "@/components/Layout/Landing";
+import Landing from "@/components/Layout/Landing";
 // import EvolvedProtectionSpotlight from "@/components/Partners/EvolvedSpotlight";
 
 export default function Home() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
   return (
-    <Layout
+    {/*<Layout
       noTopPadding
       seo={{
         // ✅ Tweaked to match the newer positioning we discussed
@@ -83,8 +83,8 @@ export default function Home() {
         onClose={() => setAuthModalOpen(false)}
         onAuthSuccess={() => setAuthModalOpen(false)}
       />
-    </Layout>
+    </Layout> */}
     // Maintenance landing page (for special cases)
-    // <Landing />
+    <Landing />
   );
 }

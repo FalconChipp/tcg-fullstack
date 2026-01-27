@@ -39,7 +39,16 @@ export default function Header({ onStartTour }) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
-  const { items: notifications, markAllRead: markAllNotificationsRead } = useNotifications({
+  const {
+    items: notifications,
+    unread,
+    markAllRead: markAllNotificationsRead,
+    markOneRead: markNotificationRead,
+    dismissOne: dismissNotification,
+    loadMore: loadMoreNotifications,
+    hasMore,
+    loadingMore,
+  } = useNotifications({
     token,
     pollMs: 45000,
   });
@@ -58,6 +67,19 @@ export default function Header({ onStartTour }) {
   }, []);
 
   const pathname = router.pathname;
+
+  const handleNotificationClick = (notification) => {
+    if (!notification) return;
+    if (notification.id) markNotificationRead(notification.id);
+    if (notification.linkUrl) {
+      router.push(notification.linkUrl);
+    }
+  };
+
+  const handleNotificationDismiss = (notification) => {
+    if (!notification?.id) return;
+    dismissNotification(notification.id);
+  };
 
   const handleSignOut = () => {
     setUser(null);
@@ -136,6 +158,12 @@ export default function Header({ onStartTour }) {
                   <NotificationBell
                     notifications={notifications}
                     onMarkAllRead={markAllNotificationsRead}
+                    onItemClick={handleNotificationClick}
+                    onDismiss={handleNotificationDismiss}
+                    onLoadMore={loadMoreNotifications}
+                    hasMore={hasMore}
+                    loadingMore={loadingMore}
+                    unreadCount={unread}
                   />
                 )}
 

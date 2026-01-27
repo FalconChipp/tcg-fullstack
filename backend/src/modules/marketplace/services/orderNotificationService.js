@@ -29,18 +29,7 @@
 import emailBase from '../../../emails/emailBase.js';
 import { sendMail } from '../../../utils/email.js';
 import { sendOrderNotification } from '../../../utils/discordWebhook.js';
-
-/* -------------------------------------------------------------------------- */
-/*  TEMP APP NOTIFICATIONS (Stub)                                             */
-/* -------------------------------------------------------------------------- */
-
-const appNotificationService = {
-  async sendNotification({ userId, type, title, body, data }) {
-    if (!userId) return;
-    // eslint-disable-next-line no-console
-    console.log('[APP NOTIFICATION][stub]', { userId, type, title, body, data });
-  },
-};
+import { notifyUser } from '../../../utils/notifications.js';
 
 /* -------------------------------------------------------------------------- */
 /*  Helpers                                                                   */
@@ -449,6 +438,19 @@ function buildBuyerFulfilmentAppNotification(order, normalisedStatus) {
   };
 }
 
+async function sendAppNotification(payload) {
+  if (!payload?.userId) return;
+  await notifyUser({
+    userId: payload.userId,
+    type: payload.type || 'order',
+    title: payload.title,
+    body: payload.body,
+    meta: payload.data,
+    sendEmail: false,
+    sendPush: false,
+  });
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Discord payload for PRODUCT listings                                      */
 /* -------------------------------------------------------------------------- */
@@ -500,7 +502,7 @@ export async function sendOrderPlacedNotifications(orderOrId, ctx) {
 
   const buyerAppPayload = buildBuyerAppNotification(order);
   const buyerAppPromise = buyerAppPayload
-    ? appNotificationService.sendNotification(buyerAppPayload).catch((err) => {
+    ? sendAppNotification(buyerAppPayload).catch((err) => {
         // eslint-disable-next-line no-console
         console.error(
           '[orderNotificationService] Buyer app notification failed:',
@@ -533,7 +535,7 @@ export async function sendOrderPlacedNotifications(orderOrId, ctx) {
 
     const sellerAppPayload = buildSellerAppNotification(order);
     const sellerAppPromise = sellerAppPayload
-      ? appNotificationService.sendNotification(sellerAppPayload).catch((err) => {
+      ? sendAppNotification(sellerAppPayload).catch((err) => {
           // eslint-disable-next-line no-console
           console.error(
             '[orderNotificationService] Seller app notification failed:',
@@ -614,7 +616,7 @@ export async function sendOrderFulfilmentStatusEmail(orderOrId, status, ctx) {
   // App notification (stub)
   const appPayload = buildBuyerFulfilmentAppNotification(order, normalisedStatus);
   const appPromise = appPayload
-    ? appNotificationService.sendNotification(appPayload).catch((err) => {
+    ? sendAppNotification(appPayload).catch((err) => {
         // eslint-disable-next-line no-console
         console.error(
           '[orderNotificationService] Fulfilment app notification failed:',

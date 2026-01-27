@@ -5,6 +5,7 @@
 import { Notification, UserNotificationPref } from '../../models/index.js';
 import {
   notifyUser as realNotifyUser,
+  notifyBroadcast as realNotifyBroadcast,
   markAsRead as realMarkAsRead,
   markAllAsRead as realMarkAllAsRead,
   dismissNotification as realDismissNotification,
@@ -33,6 +34,7 @@ export function makeNotificationsResolvers({
 
   const {
     notifyUser,
+    notifyBroadcast,
     markAsRead,
     markAllAsRead,
     dismissNotification,
@@ -43,7 +45,7 @@ export function makeNotificationsResolvers({
     Query: {
       async myNotifications(_, { page = 1, pageSize = DEFAULT_PAGE_SIZE, filter = {} }, { token }) {
         const payload = requireAuth(token);
-        const where = { userId: payload.id };
+        const where = { userId: payload.id, isSilent: false };
         if (filter.type) where.type = filter.type;
         if (filter.isRead !== undefined) where.isRead = filter.isRead;
         if (filter.isDismissed !== undefined) where.isDismissed = filter.isDismissed;
@@ -112,7 +114,7 @@ export function makeNotificationsResolvers({
 
       async adminSendBroadcastNotification(_, { input }, { token }) {
         requireAdmin(token);
-        await notifyUser({ ...input, isBroadcast: true });
+        await notifyBroadcast({ ...input });
         return true;
       },
 
@@ -148,6 +150,7 @@ const resolvers = makeNotificationsResolvers({
   auth: { requireAuth: realRequireAuth, requireAdmin: realRequireAdmin },
   utils: {
     notifyUser: realNotifyUser,
+    notifyBroadcast: realNotifyBroadcast,
     markAsRead: realMarkAsRead,
     markAllAsRead: realMarkAllAsRead,
     dismissNotification: realDismissNotification,

@@ -6,6 +6,7 @@ import {
   MessageCircle,
   XCircle,
   Cog,
+  X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -74,7 +75,11 @@ function formatDate(dateStr) {
  * - onRequestClose?: () => void     // NEW child can close itself
  * - onMarkAllRead?: () => void      // NEW don’t mutate props locally
  * - onItemClick?: (notif) => void   // NEW click handler for items
+ * - onDismiss?: (notif) => void     // NEW dismiss handler
  * - timeMode?: 'relative'|'date'    // NEW (default 'relative')
+ * - hasMore?: boolean               // NEW pagination helper
+ * - onLoadMore?: () => void         // NEW pagination handler
+ * - loadingMore?: boolean           // NEW pagination state
  */
 const NotificationDropdown = forwardRef(function NotificationDropdown(
   {
@@ -86,7 +91,11 @@ const NotificationDropdown = forwardRef(function NotificationDropdown(
     onRequestClose, // CHANGED: preferred over setOpen(false)
     onMarkAllRead,
     onItemClick,
+    onDismiss,
     timeMode = "relative",
+    hasMore = false,
+    onLoadMore,
+    loadingMore = false,
   },
   ref
 ) {
@@ -150,6 +159,13 @@ const NotificationDropdown = forwardRef(function NotificationDropdown(
     }
     // Optional: close the menu after click
     onRequestClose ? onRequestClose() : setOpen?.(false);
+  }
+
+  function handleDismiss(n, e) {
+    e?.stopPropagation?.();
+    if (typeof onDismiss === "function") {
+      onDismiss(n);
+    }
   }
 
   // CHANGED: use time mode consistently
@@ -220,7 +236,15 @@ const NotificationDropdown = forwardRef(function NotificationDropdown(
                 data-unread={!n.read ? "true" : "false"}
               >
                 <div className="mt-1 shrink-0 rounded-full p-1 bg-transparent">
-                  {TYPE[n.type]?.icon || TYPE.info.icon}
+                  {n.iconUrl ? (
+                    <img
+                      src={n.iconUrl}
+                      alt=""
+                      className="w-5 h-5 rounded-full object-cover"
+                    />
+                  ) : (
+                    TYPE[n.type]?.icon || TYPE.info.icon
+                  )}
                 </div>
 
                 <div className="flex-1 min-w-0">
@@ -243,12 +267,35 @@ const NotificationDropdown = forwardRef(function NotificationDropdown(
                   ) : null}
                 </div>
 
-                <div className="ml-2 text-xs text-light-textMuted dark:text-dark-textMuted whitespace-nowrap pt-1">
+                <div className="ml-2 text-xs text-light-textMuted dark:text-dark-textMuted whitespace-nowrap pt-1 flex items-start gap-2">
                   {timeFn(n.date)}
+                  <button
+                    type="button"
+                    onClick={(e) => handleDismiss(n, e)}
+                    className="text-light-textMuted dark:text-dark-textMuted hover:text-light-error dark:hover:text-dark-error"
+                    aria-label="Dismiss notification"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </button>
             </li>
           ))}
+          {hasMore && (
+            <li className="px-4 py-3 border-t border-light-border dark:border-dark-border text-center">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onLoadMore?.();
+                }}
+                disabled={loadingMore}
+                className="text-sm text-light-accent dark:text-dark-accent hover:opacity-80 disabled:opacity-50"
+              >
+                {loadingMore ? "Loading…" : "Load more"}
+              </button>
+            </li>
+          )}
         </ul>
       </motion.div>
     </AnimatePresence>

@@ -14,6 +14,11 @@ export function startNotificationCleanup(logger) {
               isDismissed: true,
               updatedAt: { [Op.lt]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
             },
+            {
+              isRead: true,
+              isDismissed: false,
+              updatedAt: { [Op.lt]: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+            },
           ],
         },
       });

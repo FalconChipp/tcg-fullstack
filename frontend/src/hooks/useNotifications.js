@@ -3,6 +3,7 @@
 
 "use client";
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { io } from 'socket.io-client';
 import {
   fetchNotifications,
   fetchUnreadCount,
@@ -15,20 +16,26 @@ import {
 export function useNotifications({ token, pageSize = 10, pollMs = 30000 } = {}) {
   const [items, setItems] = useState([]);
   const [unread, setUnread] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
   const timerRef = useRef(null);
+  const socketRef = useRef(null);
 
   const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
     try {
-      const [{ notifications }, unreadCount] = await Promise.all([
+      const [{ notifications, total: totalCount }, unreadCount] = await Promise.all([
         fetchNotifications({ token, page: 1, pageSize, filter: { isDismissed: false } }),
         fetchUnreadCount({ token }),
       ]);
       setItems((notifications || []).map(mapNotification));
+      setTotal(totalCount || 0);
+      setPage(1);
       setUnread(unreadCount || 0);
     } catch (e) {
       setError(e.message || 'Failed to load notifications');
@@ -46,6 +53,31 @@ export function useNotifications({ token, pageSize = 10, pollMs = 30000 } = {}) 
     }
   }, [load, token, pollMs]);
 
+  useEffect(() => {
+    if (token) return;
+    setItems([]);
+    setUnread(0);
+    setTotal(0);
+    setPage(1);
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
+    const socket = io(baseUrl, {
+      auth: { token },
+      transports: ['websocket'],
+    });
+    socketRef.current = socket;
+    socket.on('notification', () => {
+      load();
+    });
+    return () => {
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [token, load]);
+
   const markAllRead = useCallback(async () => {
     if (!token) return;
     try {
@@ -61,8 +93,20 @@ export function useNotifications({ token, pageSize = 10, pollMs = 30000 } = {}) 
     if (!token) return;
     try {
       await markNotificationRead({ token, id });
-      setItems(prev => prev.map(n => (n.id === id ? { ...n, read: true } : n)));
-      setUnread(u => Math.max(0, u - 1));
+      setItems(prev => {
+        let didUpdate = false;
+        const next = prev.map(n => {
+          if (n.id === id && !n.read) {
+            didUpdate = true;
+            return { ...n, read: true };
+          }
+          return n;
+        });
+        if (didUpdate) {
+          setUnread(u => Math.max(0, u - 1));
+        }
+        return next;
+      });
     } catch (e) {
       console.error('markOneRead failed', e);
     }
@@ -72,11 +116,53 @@ export function useNotifications({ token, pageSize = 10, pollMs = 30000 } = {}) 
     if (!token) return;
     try {
       await dismissNotification({ token, id });
-      setItems(prev => prev.filter(n => n.id !== id));
+      setItems(prev => {
+        const removed = prev.find(n => n.id === id);
+        if (removed && !removed.read) {
+          setUnread(u => Math.max(0, u - 1));
+        }
+        return prev.filter(n => n.id !== id);
+      });
+      setTotal(prev => Math.max(0, prev - 1));
     } catch (e) {
       console.error('dismissOne failed', e);
     }
   }, [token]);
 
-  return { items, unread, loading, error, reload: load, markAllRead, markOneRead, dismissOne };
+  const loadMore = useCallback(async () => {
+    if (!token || loadingMore) return;
+    if (items.length >= total) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const { notifications, total: totalCount } = await fetchNotifications({
+        token,
+        page: nextPage,
+        pageSize,
+        filter: { isDismissed: false },
+      });
+      setItems(prev => [...prev, ...(notifications || []).map(mapNotification)]);
+      setTotal(totalCount || total);
+      setPage(nextPage);
+    } catch (e) {
+      console.error('loadMore failed', e);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [token, loadingMore, items.length, total, page, pageSize]);
+
+  return {
+    items,
+    unread,
+    total,
+    loading,
+    loadingMore,
+    error,
+    hasMore: items.length < total,
+    reload: load,
+    markAllRead,
+    markOneRead,
+    dismissOne,
+    loadMore,
+  };
 }

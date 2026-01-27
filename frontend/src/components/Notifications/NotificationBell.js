@@ -6,6 +6,12 @@ import NotificationDropdown from "./NotificationDropdown";
 export default function NotificationBell({
   notifications = [],
   onMarkAllRead,     // kept optional so dropdown's "Mark all" still works
+  onItemClick,
+  onDismiss,
+  onLoadMore,
+  hasMore = false,
+  loadingMore = false,
+  unreadCount,
   className = "",
 }) {
   const [open, setOpen] = useState(false);
@@ -13,10 +19,10 @@ export default function NotificationBell({
   const menuRef = useRef(null); // track dropdown for outside-click
 
   // Unread count (used only for aria-label)
-  const unread = useMemo(
-    () => notifications.filter((n) => !n.read).length,
-    [notifications]
-  );
+  const unread = useMemo(() => {
+    if (typeof unreadCount === "number") return unreadCount;
+    return notifications.filter((n) => !n.read).length;
+  }, [notifications, unreadCount]);
 
   // Outside click + ESC to close (kept)
   useEffect(() => {
@@ -76,6 +82,11 @@ export default function NotificationBell({
           ref={menuRef}
           onRequestClose={() => setOpen(false)} // child can close itself
           onMarkAllRead={onMarkAllRead}         // pass-through (optional)
+          onItemClick={onItemClick}
+          onDismiss={onDismiss}
+          hasMore={hasMore}
+          onLoadMore={onLoadMore}
+          loadingMore={loadingMore}
         />
       )}
     </div>

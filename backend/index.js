@@ -27,6 +27,8 @@ dns.setDefaultResultOrder?.("ipv4first");
 
 import { startExpiredMessageCleanup } from "./src/jobs/messageCleanup.js";
 import { startNotificationCleanup } from "./src/jobs/notificationCleanup.js";
+import { startNotificationDeliveryJobs } from "./src/jobs/notificationDelivery.js";
+import { setSocketServer } from "./src/utils/socket.js";
 
 import { typeDefs, resolvers } from "./src/schema.js";
 import { sequelize, User, Profile } from "./src/models/index.js";
@@ -229,6 +231,28 @@ const io = new SocketIOServer(httpServer, {
   },
 });
 app.set("io", io);
+setSocketServer(io);
+
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+  if (!token) return next(new Error("unauthorized"));
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    socket.data.userId = payload.id;
+    socket.join(payload.id);
+    return next();
+  } catch (err) {
+    logger.warn(`[socket] auth failed: ${err?.message || err}`);
+    return next(new Error("unauthorized"));
+  }
+});
+
+io.on("connection", (socket) => {
+  logger.info(`[socket] connected: ${socket.data.userId || "unknown"}`);
+  socket.on("disconnect", () => {
+    logger.info(`[socket] disconnected: ${socket.data.userId || "unknown"}`);
+  });
+});
 
 /* ============================
    Admin auth helpers
@@ -649,6 +673,7 @@ try {
   const cleanupIntervals = [
     startExpiredMessageCleanup(logger),
     startNotificationCleanup(logger),
+    ...startNotificationDeliveryJobs(logger),
   ];
 
   // [CARDSEARCH] schedules

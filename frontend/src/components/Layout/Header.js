@@ -72,7 +72,11 @@ export default function Header({ onStartTour }) {
     if (!notification) return;
     if (notification.id) markNotificationRead(notification.id);
     if (notification.linkUrl) {
-      router.push(notification.linkUrl);
+      if (/^https?:\/\//i.test(notification.linkUrl)) {
+        window.open(notification.linkUrl, "_blank", "noopener,noreferrer");
+      } else {
+        router.push(notification.linkUrl);
+      }
     }
   };
 

@@ -5,9 +5,11 @@ import listing_sold from './listing_sold.js';
 import achievement_unlocked from './achievement_unlocked.js';
 import chat_mention from './chat_mention.js';
 import reminder from './reminder.js';
+import info from './info.js';
 import warning from './warning.js';
 import error from './error.js';
 import system from './system.js';
+import price_alert from './price_alert.js';
 
 const templates = {
   trade_offer,
@@ -17,9 +19,11 @@ const templates = {
   achievement_unlocked,
   chat_mention,
   reminder,
+  info,
   warning,
   error,
   system,
+  price_alert,
 };
 
 export default function buildNotificationEmail(type, data) {

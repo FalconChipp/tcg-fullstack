@@ -15,6 +15,15 @@ import Layout from "@/components/Layout/Layout";
 // UPDATED: newest post (Dev Blog #2) first, older ones after
 const POSTS = [
   {
+  slug: "dev-blog-3-safety-before-social",
+  title: "Dev Blog #3 — Safety Before Social: Preparing SixByFive for Community Features",
+  excerpt:
+    "Before social updates, sharing, and community tools can launch, SixByFive needs strong safety, moderation, and age-aware systems built into the foundation.",
+  date: "31 January 2026",
+  readTime: 10,
+  tag: "Dev Blog",
+},
+  {
     slug: "dev-blog-2-data-accuracy",
     title: "Dev Blog #2 — Why I’m Focusing on Data Accuracy Instead of New Features",
     excerpt:

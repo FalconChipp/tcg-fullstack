@@ -1,10 +1,10 @@
 // src/components/UserProfile/ProfileWishlistPanel.js
-// UPDATED (2026-01-13):
-// - Uses updateWishlistEntry mutation via shared gql file (drop updateWishlistStatus.js)
-// - Correctly displays backend `status` (no more fallback-to-ACTIVE for all cards)
-// - After mutation success, updates BOTH local UI state + parent wishlist state
-// - Normalizes statuses to uppercase for consistent chip matching
-// - Keeps optimistic UI + rollback on error
+// UPDATED (2026-01-26):
+// - ADDED: Per-card "Share to Discord" action for wishlist tiles (NO card details modal needed)
+// - ADDED: ShareToDiscordDialog integration (uses Option B endpoints already implemented)
+// - ADDED: Normalizer to build the payload shape expected by /api/discord/share-entry
+// - ADDED: Safe auth token getter (prop -> localStorage -> cookie) so dialog can load guilds/channels
+// - KEEP: Existing wishlist view share (WishlistShareButtons + WishlistShareImageModal)
 
 "use client";
 
@@ -18,6 +18,9 @@ import CardSkeleton from "@/components/UI/CardSkeleton";
 
 import WishlistShareButtons from "./WishlistShareButtons";
 import WishlistShareImageModal from "./WishlistShareImageModal";
+
+// ✅ ADDED: Discord share dialog (same one used elsewhere)
+import ShareToDiscordDialog from "@/components/UserProfile/ShareToDiscordDialog";
 
 import { useMutation } from "@apollo/client";
 import { UPDATE_WISHLIST_ENTRY } from "@/graphql/updateWishlistEntry";
@@ -98,6 +101,88 @@ function normalizeEntries(entries) {
   }));
 }
 
+/* ---------------------------------------------
+   ✅ ADDED: Auth token getter for Discord options
+--------------------------------------------- */
+
+function safeGetAuthTokenFromClient() {
+  try {
+    if (typeof window === "undefined") return "";
+    // 1) localStorage common keys
+    const ls =
+      window.localStorage.getItem("authToken") ||
+      window.localStorage.getItem("token") ||
+      window.localStorage.getItem("sbf_token") ||
+      "";
+    if (ls) return ls;
+
+    // 2) cookie fallback
+    const cookie = window.document?.cookie || "";
+    // try known cookie names: authToken | sbf_token | token
+    const pick = (name) => {
+      const m = cookie.match(new RegExp(`(?:^|; )${name}=([^;]+)`));
+      return m?.[1] ? decodeURIComponent(m[1]) : "";
+    };
+    return pick("authToken") || pick("sbf_token") || pick("token") || "";
+  } catch {
+    return "";
+  }
+}
+
+/* ---------------------------------------------
+   ✅ ADDED: Build Discord payload for wishlist entry
+   This matches backend expectations:
+   - entry.id, entry.cardId, entry.card.name are required
+--------------------------------------------- */
+
+function buildDiscordWishlistPayload(entry) {
+  const card = entry?.card || {};
+  const setCode = card?.set?.code ?? card?.setCode ?? card?.set?.id ?? null;
+  const setName = card?.set?.name ?? card?.setName ?? null;
+
+  return {
+    // ShareToDiscordDialog expects payload.type
+    type: "wishlist",
+
+    // Backend expects entry.id + cardId + card.name
+    id: entry?.id,
+    entryId: entry?.id, // harmless extra; backend normalizer handles entry.id anyway
+    cardId: entry?.cardId ?? card?.id ?? null,
+    variation: entry?.variation ?? entry?.variationKey ?? null,
+
+    // Wishlist fields
+    status: normStatus(entry?.status),
+    quantity: entry?.quantity ?? 1,
+
+    // Card block used by embed builder
+    card: {
+      id: card?.id ?? entry?.cardId ?? null,
+      name: card?.name ?? entry?.name ?? null,
+      number: card?.number ?? null,
+      setCode: setCode ? String(setCode).toUpperCase() : null,
+      setName: setName ? String(setName) : null,
+      rarity: card?.rarity ?? null,
+      images: {
+        small: card?.images?.small ?? null,
+        large: card?.images?.large ?? null,
+      },
+    },
+  };
+}
+
+/* ---------------------------------------------
+   ✅ ADDED: Simple Discord icon (no dependency)
+--------------------------------------------- */
+
+function DiscordIcon({ className = "w-5 h-5" }) {
+  // lightweight inline icon (not exact brand svg, but clear)
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" fill="currentColor">
+      <path d="M19.5 4.8A17.8 17.8 0 0 0 15.7 3c-.2.4-.5 1-.6 1.4a16.4 16.4 0 0 0-4.2 0c-.2-.5-.4-1-.6-1.4A17.9 17.9 0 0 0 6.5 4.8C4.4 7.9 3.8 11 4 14c1.3 1 2.8 1.7 4.4 2.2.3-.4.6-.9.9-1.4-.5-.2-1-.4-1.4-.7l.3-.2c2.7 1.3 5.6 1.3 8.3 0l.3.2c-.5.3-.9.5-1.4.7.3.5.6 1 .9 1.4 1.6-.5 3.1-1.2 4.4-2.2.4-3.5-.7-6.6-2.5-9.2ZM9.3 13.2c-.7 0-1.2-.6-1.2-1.4s.5-1.4 1.2-1.4 1.2.6 1.2 1.4-.5 1.4-1.2 1.4Zm5.4 0c-.7 0-1.2-.6-1.2-1.4s.5-1.4 1.2-1.4 1.2.6 1.2 1.4-.5 1.4-1.2 1.4Z" />
+    </svg>
+  );
+}
+
 export default function ProfileWishlistPanel({
   wishlist = [], // parent passes entries array
   isOwnProfile = false,
@@ -113,6 +198,9 @@ export default function ProfileWishlistPanel({
   // ✅ from useWishlistData
   setWishlist,
   refreshWishlist,
+
+  // ✅ ADDED (optional): pass token in if parent already has it (best)
+  token: tokenProp,
 }) {
   const router = useRouter();
   const { dark: themeDark } = useTheme?.() || {};
@@ -130,6 +218,31 @@ export default function ProfileWishlistPanel({
   }, [wishlist]);
 
   const [updateWishlistEntry, { loading: statusSaving }] = useMutation(UPDATE_WISHLIST_ENTRY);
+
+  /* ----------------------------- ✅ ADDED: Discord share state ----------------------------- */
+
+  const [discordDialogOpen, setDiscordDialogOpen] = useState(false);
+  const [discordPayload, setDiscordPayload] = useState(null);
+
+  // token used by /api/discord/share-options + /api/discord/guild-channels
+  const discordAuthToken = useMemo(() => {
+    return cleanStr(tokenProp) || safeGetAuthTokenFromClient();
+  }, [tokenProp]);
+
+  function openDiscordShareForEntry(entry) {
+    const payload = buildDiscordWishlistPayload(entry);
+
+    // Basic sanity (same checks backend does)
+    if (!payload?.id || !payload?.cardId || !payload?.card?.name) {
+      if (typeof setToastStatus === "function") {
+        setToastStatus({ type: "error", msg: "Missing data required to share this wishlist entry." });
+      }
+      return;
+    }
+
+    setDiscordPayload(payload);
+    setDiscordDialogOpen(true);
+  }
 
   /* ----------------------------- share helpers ----------------------------- */
 
@@ -424,6 +537,17 @@ export default function ProfileWishlistPanel({
           count={0}
           topCards={[]}
         />
+
+        {/* ✅ ADDED: Discord dialog mount (safe even when empty) */}
+        <ShareToDiscordDialog
+          open={discordDialogOpen}
+          onClose={() => setDiscordDialogOpen(false)}
+          isDark={dark}
+          token={discordAuthToken}
+          payload={discordPayload}
+          requestedByUsername={profileUsername || undefined}
+          viewUrl={typeof window !== "undefined" ? window.location.href : undefined}
+        />
       </section>
     );
   }
@@ -561,6 +685,7 @@ export default function ProfileWishlistPanel({
                   relative w-full aspect-[245/337] rounded-lg mb-2 overflow-hidden cursor-pointer
                   ${dark ? "bg-dark-alt" : "bg-light-alt"}
                 `}
+                // KEEP: you can still use onViewCardDetail if parent wants it
                 onClick={() => onViewCardDetail && onViewCardDetail(entry)}
               >
                 <Image
@@ -644,11 +769,40 @@ export default function ProfileWishlistPanel({
                     onClick={() => onMoveToCollection(entry)}
                     className={`
                       h-10 px-4 rounded-lg font-medium transition-colors flex-grow
-                      bg-light-primary hover:bg-light-accent text-white
-                      dark:bg-dark-primary dark:hover:bg-dark-accent
+                      bg-light-accent hover:bg-light-accent text-white
+                      dark:bg-dark-primary dark:hover:bg-dark-accentLight
                     `}
                   >
                     Collect
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openDiscordShareForEntry(entry);
+                    }}
+                    className={`
+                      h-10 w-10 rounded-xl flex items-center justify-center
+                      border shadow-sm transition-all
+                      hover:shadow-md active:scale-[0.98]
+                      focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+                      ${dark
+                        ? "bg-dark-alt border-dark-border text-white hover:border-dark-accent focus-visible:ring-dark-accent focus-visible:ring-offset-dark-surface"
+                        : "bg-light-alt border-light-border text-light-text hover:border-light-accent focus-visible:ring-light-accent focus-visible:ring-offset-light-surface"}
+                    `}
+                    title="Share to Discord"
+                    aria-label="Share to Discord"
+                  >
+                    <span
+                      className={`
+                        inline-flex items-center justify-center
+                        transition-transform duration-200
+                        group-hover:scale-105
+                      `}
+                    >
+                      <DiscordIcon className="w-5 h-5" />
+                    </span>
                   </button>
 
                   <div className="relative" onMouseLeave={() => setConfirmRemoveId(null)}>
@@ -699,6 +853,16 @@ export default function ProfileWishlistPanel({
         setLabel={shareSetLabel}
         count={displayWishlist.length}
         topCards={shareTopCards}
+      />
+
+      <ShareToDiscordDialog
+        open={discordDialogOpen}
+        onClose={() => setDiscordDialogOpen(false)}
+        isDark={dark}
+        token={discordAuthToken}
+        payload={discordPayload}
+        requestedByUsername={profileUsername || undefined}
+        viewUrl={typeof window !== "undefined" ? window.location.href : undefined}
       />
     </section>
   );

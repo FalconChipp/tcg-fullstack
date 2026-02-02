@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useMemo, useContext, useEffect } from "react";
+import React, { useState, useMemo, useContext, useEffect, useRef } from "react"; // CHANGED: add useRef
 import Image from "next/image";
+import { useSearchParams, useRouter } from "next/navigation"; // NEW: read query params + optionally clean URL
 import { getSetLogo } from "@/utils/setLogos";
 import EditCollectionCardModal from "@/components/Collection/EditCollectionCardModal";
 import CardDetailsModal from "@/components/UserProfile/CardDetailsModal";
@@ -164,10 +165,7 @@ function pickPriceEntry(pricesList, desiredVariation) {
 /** Public helper used for both display and sort */
 function getCardGBP(cardLike) {
   // Variation can be on the collection row OR nested card OR default to "normal"
-  const desiredVariation =
-    cardLike?.variation ||
-    cardLike?.card?.variation ||
-    "normal";
+  const desiredVariation = cardLike?.variation || cardLike?.card?.variation || "normal";
 
   const list = normalizePricesList(cardLike);
   const entry = pickPriceEntry(list, desiredVariation);
@@ -198,9 +196,14 @@ export default function ProfileCollectionPanel({
   onAddToCollection,
   onCardUpdated,
   dark,
-  onCollectionValueChange, // NEW: callback for header
+  onCollectionValueChange,
 }) {
   const { token } = useContext(AuthContext);
+
+  // NEW: deep-link params
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const deepLinkHandledRef = useRef(false); // NEW: prevent re-opening
 
   const effectiveUserId = profile?.userId || userId;
 
@@ -210,9 +213,7 @@ export default function ProfileCollectionPanel({
   });
 
   // Local display state for instant updates
-  const [displayCollection, setDisplayCollection] = useState(
-    collection.value || []
-  );
+  const [displayCollection, setDisplayCollection] = useState(collection.value || []);
   useEffect(() => {
     setDisplayCollection(collection.value || []);
   }, [collection.value]);
@@ -252,13 +253,61 @@ export default function ProfileCollectionPanel({
     collection: displayCollection,
   });
 
+  // NEW: open CardDetailsModal from deep link query params
+  //
+  // Expected params:
+  //   ?from=collection&openCard=sv08-175&entryId=<collectionEntryId>&variation=normal
+  //
+  // We match by entryId first (best), then fallback to cardId match.
+  useEffect(() => {
+    if (deepLinkHandledRef.current) return;
+    if (!searchParams) return;
+
+    const from = String(searchParams.get("from") || "").toLowerCase();
+    if (from !== "collection") return;
+
+    const openCard = searchParams.get("openCard"); // canonical cardId like "sv08-175"
+    const entryId = searchParams.get("entryId");   // collection entry UUID
+    const variation = searchParams.get("variation");
+
+    if (!openCard && !entryId) return;
+    if (!Array.isArray(displayCollection) || displayCollection.length === 0) return;
+
+    // Try to find the exact entry row first
+    let match =
+      (entryId
+        ? displayCollection.find((c) => String(c.id) === String(entryId))
+        : null) || null;
+
+    // Fallback to cardId match (canonical)
+    if (!match && openCard) {
+      match =
+        displayCollection.find((c) => String(c.cardId || c.id) === String(openCard)) || null;
+    }
+
+    if (!match) return;
+
+    deepLinkHandledRef.current = true;
+
+    // If variation was provided, attach it so pricing selection is consistent
+    const selected = variation ? { ...match, variation } : match;
+    setSelectedCard(selected);
+
+    // Optional: clean the URL so refresh doesn’t re-open the modal
+    // (Keeps the user on the same page but removes query params)
+    // If you *want* the URL to remain shareable after opening, comment this out.
+    try {
+      const path = window.location.pathname;
+      router.replace(path, { scroll: false });
+    } catch {}
+  }, [searchParams, displayCollection, router]);
+
   const filteredCards = useMemo(() => {
     return (displayCollection || []).filter(
       (card) =>
         (!setFilter || card.setName === setFilter) &&
         (!rarityFilter || card.rarity === rarityFilter) &&
-        (!search ||
-          (card.name || "").toLowerCase().includes(search.toLowerCase()))
+        (!search || (card.name || "").toLowerCase().includes(search.toLowerCase()))
     );
   }, [displayCollection, setFilter, rarityFilter, search]);
 
@@ -270,14 +319,9 @@ export default function ProfileCollectionPanel({
 
     switch (sortBy) {
       case "name":
-        return arr.sort(
-          (a, b) => mult * ((a.name || "").localeCompare(b.name || ""))
-        );
+        return arr.sort((a, b) => mult * ((a.name || "").localeCompare(b.name || "")));
       case "set":
-        return arr.sort(
-          (a, b) =>
-            mult * ((a.setName || "").localeCompare(b.setName || ""))
-        );
+        return arr.sort((a, b) => mult * ((a.setName || "").localeCompare(b.setName || "")));
       case "price":
         return arr.sort((a, b) => {
           const aP = getCardGBP(a) ?? 0;
@@ -290,11 +334,7 @@ export default function ProfileCollectionPanel({
       case "date": {
         const getTime = (c) =>
           c.createdAt
-            ? new Date(
-                typeof c.createdAt === "string"
-                  ? parseInt(c.createdAt, 10)
-                  : c.createdAt
-              ).getTime()
+            ? new Date(typeof c.createdAt === "string" ? parseInt(c.createdAt, 10) : c.createdAt).getTime()
             : 0;
         return arr.sort((a, b) => mult * (getTime(a) - getTime(b)));
       }
@@ -305,9 +345,7 @@ export default function ProfileCollectionPanel({
 
   const fillFirstRowSkeletons = (cardCount) => {
     if (cardCount >= 5) return null;
-    return Array.from({ length: 5 - cardCount }).map((_, idx) => (
-      <CardSkeleton key={`skeleton-fill-${idx}`} />
-    ));
+    return Array.from({ length: 5 - cardCount }).map((_, idx) => <CardSkeleton key={`skeleton-fill-${idx}`} />);
   };
 
   const triggerRemove = (card) => {
@@ -317,9 +355,7 @@ export default function ProfileCollectionPanel({
       setShowQuantityModal(true);
       setConfirmRemoveId(null);
     } else if (confirmRemoveId === card.id) {
-      setDisplayCollection((prev) =>
-        prev.filter((x) => String(x.id) !== String(card.id))
-      );
+      setDisplayCollection((prev) => prev.filter((x) => String(x.id) !== String(card.id)));
       handleRemoveCard(card.id, 1, {
         onError: () => setDisplayCollection(collection.value || []),
       });
@@ -334,9 +370,7 @@ export default function ProfileCollectionPanel({
       setDisplayCollection((prev) =>
         prev
           .map((x) =>
-            String(x.id) === String(removeCard.id)
-              ? { ...x, quantity: x.quantity - quantity }
-              : x
+            String(x.id) === String(removeCard.id) ? { ...x, quantity: x.quantity - quantity } : x
           )
           .filter((x) => x.quantity > 0)
       );
@@ -374,26 +408,13 @@ export default function ProfileCollectionPanel({
     );
   }
 
-  const allSets = Array.from(
-    new Set(
-      (displayCollection || [])
-        .map((card) => card.setName)
-        .filter(Boolean)
-    )
-  );
-  const allRarities = Array.from(
-    new Set(
-      (displayCollection || [])
-        .map((card) => card.rarity)
-        .filter(Boolean)
-    )
-  );
+  const allSets = Array.from(new Set((displayCollection || []).map((card) => card.setName).filter(Boolean)));
+  const allRarities = Array.from(new Set((displayCollection || []).map((card) => card.rarity).filter(Boolean)));
 
   const openEditModal = (card) => {
     setEditingCard(card);
     setSelectedCard(null);
   };
-  const handleCardDetailsEdit = (card) => openEditModal(card);
   const handleCardDetailsRemove = (card) => triggerRemove(card);
   const handleEditModalClose = () => setEditingCard(null);
 
@@ -454,7 +475,6 @@ export default function ProfileCollectionPanel({
           </select>
         </div>
 
-        {/* NEW: small summary line (optional) */}
         <div className="flex items-center justify-between text-xs text-light-textMuted dark:text-dark-textMuted">
           <span>
             Showing <span className="font-semibold">{sortedCards.length}</span> of{" "}
@@ -471,16 +491,11 @@ export default function ProfileCollectionPanel({
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
         {sortedCards.map((card) => {
           const img =
-            card?.images?.large ??
-            card?.images?.small ??
-            card?.image ??
-            card?.tcgImageUrl ??
-            ""; // CHANGED
+            card?.images?.large ?? card?.images?.small ?? card?.image ?? card?.tcgImageUrl ?? "";
           const setLabel =
-            card?.setName ||
-            card?.set?.name ||
-            (card?.setCode ? String(card.setCode).toUpperCase() : ""); // CHANGED
+            card?.setName || card?.set?.name || (card?.setCode ? String(card.setCode).toUpperCase() : "");
           const priceGBP = getCardGBP(card);
+
           return (
             <div
               key={card.id}
@@ -512,6 +527,7 @@ export default function ProfileCollectionPanel({
                   </div>
                 )}
               </div>
+
               <div className="w-full flex flex-col items-start mt-1">
                 <div className="flex justify-between items-center w-full mb-1">
                   <span
@@ -521,26 +537,20 @@ export default function ProfileCollectionPanel({
                     {card.name}
                   </span>
                   {setLabel && (
-                    <img
-                      src={getSetLogo(setLabel)}
-                      alt={setLabel}
-                      className="w-6 h-4 rounded ml-2"
-                    />
+                    <img src={getSetLogo(setLabel)} alt={setLabel} className="w-6 h-4 rounded ml-2" />
                   )}
                 </div>
+
                 <span className="text-sm text-light-textMuted dark:text-dark-textMuted">
                   #{card.number || card.cardId}
                 </span>
 
-                {/* Price line */}
                 {priceGBP != null ? (
                   <span className="text-xs text-green-600 dark:text-green-400 font-bold mt-1">
                     {formatCurrency(priceGBP)}
                   </span>
                 ) : (
-                  <span className="text-xs text-light-textMuted dark:text-dark-textMuted mt-1">
-                    —
-                  </span>
+                  <span className="text-xs text-light-textMuted dark:text-dark-textMuted mt-1">—</span>
                 )}
 
                 {card.createdAt && (
@@ -569,10 +579,14 @@ export default function ProfileCollectionPanel({
                       tabIndex={0}
                     >
                       <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="mr-1" aria-hidden="true">
-                        <path d="M17.25 7.75L12.25 2.75C12.051 2.551 11.799 2.427 11.529 2.427C11.259 2.427 11.007 2.551 10.808 2.75L3.25 10.308V15.25H8.192L15.75 7.692C15.949 7.493 16.201 7.369 16.471 7.369C16.741 7.369 16.993 7.493 17.192 7.692C17.391 7.891 17.515 8.143 17.515 8.413C17.515 8.683 17.391 8.935 17.192 9.134L9.634 16.692C9.435 16.891 9.183 17.015 8.913 17.015C8.643 17.015 8.391 16.891 8.192 16.692C7.993 16.493 7.869 16.241 7.869 15.971C7.869 15.701 7.993 15.449 8.192 15.25L15.75 7.692L17.25 7.75Z" fill="currentColor" />
+                        <path
+                          d="M17.25 7.75L12.25 2.75C12.051 2.551 11.799 2.427 11.529 2.427C11.259 2.427 11.007 2.551 10.808 2.75L3.25 10.308V15.25H8.192L15.75 7.692C15.949 7.493 16.201 7.369 16.471 7.369C16.741 7.369 16.993 7.493 17.192 7.692C17.391 7.891 17.515 8.143 17.515 8.413C17.515 8.683 17.391 8.935 17.192 9.134L9.634 16.692C9.435 16.891 9.183 17.015 8.913 17.015C8.643 17.015 8.391 16.891 8.192 16.692C7.993 16.493 7.869 16.241 7.869 15.971C7.869 15.701 7.993 15.449 8.192 15.25L15.75 7.692L17.25 7.75Z"
+                          fill="currentColor"
+                        />
                       </svg>
                       Edit
                     </button>
+
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -588,25 +602,25 @@ export default function ProfileCollectionPanel({
                       </svg>
                       View
                     </button>
+
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         triggerRemove(card);
                       }}
                       className={`flex items-center gap-1 px-4 py-2 rounded-full text-xs font-semibold bg-light-error hover:bg-light-error dark:bg-dark-error dark:hover:bg-dark-error text-white shadow focus:outline-none focus:ring-2 focus:ring-light-error dark:focus:ring-dark-error transition-all duration-150 active:scale-95 ${
-                        confirmRemoveId === card.id
-                          ? "ring-2 ring-light-error dark:ring-dark-error scale-105"
-                          : ""
+                        confirmRemoveId === card.id ? "ring-2 ring-light-error dark:ring-dark-error scale-105" : ""
                       }`}
-                      title={
-                        confirmRemoveId === card.id
-                          ? "Click to confirm removal"
-                          : "Remove card"
-                      }
+                      title={confirmRemoveId === card.id ? "Click to confirm removal" : "Remove card"}
                       tabIndex={0}
                     >
                       <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="mr-1" aria-hidden="true">
-                        <path d="M5 6h10M8 9v4m4-4v4M3 6h14v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                        <path
+                          d="M5 6h10M8 9v4m4-4v4M3 6h14v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
                       </svg>
                       {confirmRemoveId === card.id ? "Sure?" : "Remove"}
                     </button>
@@ -616,21 +630,24 @@ export default function ProfileCollectionPanel({
             </div>
           );
         })}
-        {fillFirstRowSkeletons(
-          sortedCards.length < 5 ? sortedCards.length : 5
-        )}
+        {fillFirstRowSkeletons(sortedCards.length < 5 ? sortedCards.length : 5)}
       </div>
 
       {/* Modals */}
       {selectedCard && (
         <CardDetailsModal
           card={selectedCard}
+          sourceType="collection"
+          sourceEntry={selectedCard}
+          isOwnProfile={isOwnProfile}
+          username={profile?.username}
           onClose={() => setSelectedCard(null)}
           dark={dark}
           onEdit={isOwnProfile ? (c) => setEditingCard(c) : undefined}
           onDelete={isOwnProfile ? handleCardDetailsRemove : undefined}
         />
       )}
+
       {editingCard && isOwnProfile && (
         <EditCollectionCardModal
           card={editingCard}
@@ -642,12 +659,11 @@ export default function ProfileCollectionPanel({
           }}
           onRemoved={(removedCardId) => {
             setEditingCard(null);
-            setDisplayCollection((prev) =>
-              prev.filter((card) => card.id !== removedCardId)
-            );
+            setDisplayCollection((prev) => prev.filter((card) => card.id !== removedCardId));
           }}
         />
       )}
+
       <QuantitySelectorModal
         isOpen={showQuantityModal}
         onClose={() => {

@@ -1,24 +1,36 @@
+// src/components/Layout/Layout.js
+//
+// UPDATED (2026-01-29):
+// - FIXED: Removed extra fixed/inset overlay wrapper around <MessengerLayout />
+//   That wrapper was causing the Messenger toggle/chat to appear in strange places (eg top-left)
+//   and interfering with pointer-events.
+// - KEEP: MessengerProvider remains wrapping the whole app so MessengerContext works everywhere.
+// - KEEP: All existing layout behaviour unchanged.
+
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
 import { useTheme } from "@/hooks/ThemeProvider";
+
 import Header from "./Header";
 import Footer from "./Footer";
 import BackToTop from "./BackToTop";
+
 import OnboardingTour from "../Onboarding/OnboardingTour";
 import CookieBanner from "../Cookies/CookieBanner";
 import CookieSettingsModal from "../Cookies/CookieSettings";
-// import FullPageLayout from "../../../Archive/FullPageLayout";
-import SEO from "@/components/SEO/SEO"; // NEW
 
-// ✅ Seasonal wrapper for animated snow
-import SnowBackground from "@/components/Seasonal/SnowBackground";
+import SEO from "@/components/SEO/SEO";
+
+// ✅ Ensure casing matches your actual folder name: /components/Messenger/...
+import { MessengerProvider } from "@/components/Messenger/MessengerContext";
+import MessengerLayout from "@/components/Messenger/MessengerLayout";
 
 export default function Layout({
   children,
   hideBackTop = false,
   noTopPadding = false,
-  seo = {}, // NEW: pass page-specific SEO overrides from pages
+  seo = {},
 }) {
   const { dark } = useTheme();
 
@@ -26,25 +38,22 @@ export default function Layout({
   const [showCookieBanner, setShowCookieBanner] = useState(false);
   const [showSaveNotification, setShowSaveNotification] = useState(false);
 
-  const onboardingRef = useRef();
-
-  const startTour = () => onboardingRef.current?.startTour();
+  const onboardingRef = useRef(null);
+  const startTour = () => onboardingRef.current?.startTour?.();
 
   // Apply dark mode class to html element
   useEffect(() => {
-    if (typeof document !== "undefined") {
-      if (dark) {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
-    }
+    if (typeof document === "undefined") return;
+
+    if (dark) document.documentElement.classList.add("dark");
+    else document.documentElement.classList.remove("dark");
   }, [dark]);
 
   const openSettingsModal = () => {
     setShowSettingModal(true);
     setShowCookieBanner(false);
   };
+
   const closeSettingModal = () => setShowSettingModal(false);
 
   const acceptCookies = () => {
@@ -57,8 +66,7 @@ export default function Layout({
   };
 
   return (
-    // 🔄 Wrap the whole layout in the snow background
-    <SnowBackground enabled={false}>
+    <MessengerProvider>
       <div
         className={
           dark
@@ -88,6 +96,8 @@ export default function Layout({
           {children}
         </div>
 
+        <MessengerLayout />
+
         <Footer onCookieSettingsClick={openSettingsModal} />
 
         {showSettingModal && (
@@ -98,13 +108,13 @@ export default function Layout({
         )}
 
         {showSaveNotification && (
-          <div className="save-notification fixed bottom-5 right-5 bg-green-600 text-white px-5 py-2.5 rounded-md shadow-md z-[1001] text-center">
+          <div className="save-notification fixed bottom-5 right-5 bg-green-600 text-white px-5 py-2.5 rounded-md shadow-md z-[10001] text-center">
             Your cookie settings have been saved.
           </div>
         )}
 
         {!hideBackTop && <BackToTop />}
       </div>
-    </SnowBackground>
+    </MessengerProvider>
   );
 }

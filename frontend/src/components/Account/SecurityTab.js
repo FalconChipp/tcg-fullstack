@@ -409,12 +409,12 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
               <button
                 type="button"
                 onClick={handleLinkDiscord}
-                // disabled={connLoading === "discord"}
-                disabled
+                disabled={connLoading === "discord"}
+                // disabled
                 className="px-5 py-2 rounded-lg font-semibold bg-light-accent dark:bg-dark-accent text-white dark:text-black hover:bg-light-primary dark:hover:bg-dark-primary transition disabled:opacity-50"
               >
-                {/* {connLoading === "discord" ? "Opening…" : "Link Discord"} */}
-                Link (Coming soon)
+                {connLoading === "discord" ? "Opening…" : "Link Discord"}
+                {/* Link (Coming soon) */}
               </button>
             )}
           </li>
@@ -509,7 +509,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
         <button
           type="submit"
           disabled={isOAuth}
-          className="bg-light-accent dark:bg-dark-accent text-white dark:text-black px-6 py-2.5 rounded-xl font-bold hover:bg-light-primary dark:hover:bg-dark-primary transition disabled:opacity-50"
+          className="bg-light-accent dark:bg-dark-accent text-white px-6 py-2.5 rounded-xl font-bold hover:bg-light-primary dark:hover:bg-dark-accentLight transition disabled:opacity-50"
         >
           Change Password
         </button>
@@ -551,7 +551,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
         <button
           type="submit"
           disabled={isOAuth}
-          className="bg-light-accent dark:bg-dark-accent text-white dark:text-black px-6 py-2.5 rounded-xl font-bold hover:bg-light-primary dark:hover:bg-dark-primary transition disabled:opacity-50"
+          className="bg-light-accent dark:bg-dark-accent px-6 py-2.5 rounded-xl font-bold hover:bg-light-primary dark:hover:bg-dark-accentLight transition disabled:opacity-50"
         >
           Change Email
         </button>
@@ -574,7 +574,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
               type="button"
               disabled={twoFA.loading}
               onClick={handleDisable2FA}
-              className="bg-light-warning dark:bg-dark-warning text-light-text dark:text-dark-text px-6 py-2.5 rounded-xl font-bold hover:bg-light-accent dark:hover:bg-dark-accent transition"
+              className="bg-light-warning dark:bg-dark-warning text-light-text dark:text-dark-text px-6 py-2.5 rounded-xl font-bold hover:bg-light-accent dark:hover:bg-dark-accentLight transition"
             >
               Disable 2FA
             </button>
@@ -629,7 +629,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
               type="button"
               disabled={twoFA.loading}
               onClick={handleStart2FA}
-              className="bg-light-accent dark:bg-dark-accent text-white dark:text-black px-6 py-2.5 rounded-xl font-bold hover:bg-light-primary dark:hover:bg-dark-primary transition"
+              className="bg-light-accent dark:bg-dark-accent px-6 py-2.5 rounded-xl font-bold hover:bg-light-primary dark:hover:bg-dark-accentLight transition"
             >
               Enable 2FA
             </button>

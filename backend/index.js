@@ -68,6 +68,9 @@ import checkoutRouter from "./src/routes/checkout.js";
 import ordersService from "./src/modules/marketplace/services/ordersService.js";
 import inkthreadablesWebhook from "./src/webhooks/inkthreadables.js";
 
+// Safety
+import parentVerifyRouter from "./src/routes/parentVerify.js"
+
 // --- Logger Setup ---
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || "info",
@@ -313,13 +316,6 @@ app.use(compression());
 app.use(bodyParser.json({ limit: "10mb" }));
 app.use(bodyParser.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
-app.use(expressStatusMonitor({ path: "" })); // ❌ REMOVED (don’t do this) - left here as an example of what NOT to do
-
-// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-// IMPORTANT:
-// If you already had `app.use(expressStatusMonitor({ path: "/status" }))` elsewhere,
-// make sure you ONLY have the ONE above with socketPath set.
-// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 /* ============================
    Rate limit
@@ -474,6 +470,8 @@ app.post("/checkout/test", (req, res) => {
 });
 
 app.post("/webhooks/inkthreadables", express.json({ type: "application/json" }), inkthreadablesWebhook);
+
+app.use(parentVerifyRouter);
 
 /* ============================
    GraphQL (Apollo)

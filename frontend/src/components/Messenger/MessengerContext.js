@@ -1,16 +1,11 @@
 // src/components/Messenger/MessengerContext.js
 //
-// UPDATED (2026-01-30):
-// - FIX: Use dedicated Socket.IO path "/realtime/socket.io" to avoid collision with express-status-monitor (socket.io v2)
-// - FIX: Force polling + disable websocket upgrade while WS is unstable ("Invalid frame header")
-// - ADD: Strong debug logs for connect/connect_error/disconnect + payload visibility
-// - FIX: Backend origin resolution supports NEXT_PUBLIC_API_URL + NEXT_PUBLIC_API_BASE_URL
-// - KEEP: existing GraphQL fetch logic + optimistic sendMessage
-//
-// NOTE:
-// - Backend Socket.IO must be created with: path: "/realtime/socket.io"
-// - This client must connect with the same path.
-//
+// UPDATED (2026-02-06):
+// - FIX: Report functions were incorrectly declared inside loadChatWithUser (invalid hook usage).
+// - FIX: reportUser/reportMessage are now top-level provider actions and exposed via context.
+// - REMOVE: reportUser/reportMessage stored inside messagesByUserId buckets (wrong place).
+// - FIX: Missing semicolon for M_REPORT_MESSAGE.
+// - KEEP: All existing chat logic (pagination, merge, optimistic send, deny handling, socket refresh).
 
 "use client";
 
@@ -45,7 +40,9 @@ function getGraphqlEndpoint() {
   const legacy = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
   if (legacy) return normalizeOriginUrl(legacy);
 
-  const backend = normalizeOriginUrl(process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000");
+  const backend = normalizeOriginUrl(
+    process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000"
+  );
   return `${backend}/graphql`;
 }
 
@@ -68,6 +65,10 @@ function getBackendOrigin() {
   return normalizeOriginUrl("http://localhost:4000");
 }
 
+/**
+ * GraphQL fetch helper
+ * - Throws a rich error object so we can detect chat-denied without crashing the site.
+ */
 async function gqlFetch({ token, query, variables }) {
   const endpoint = getGraphqlEndpoint();
 
@@ -81,11 +82,22 @@ async function gqlFetch({ token, query, variables }) {
   });
 
   const json = await res.json().catch(() => null);
-  if (!json) throw new Error("GraphQL: invalid JSON response");
+  if (!json) {
+    const e = new Error("GraphQL: invalid JSON response");
+    e.code = "BAD_RESPONSE";
+    throw e;
+  }
 
   if (json.errors?.length) {
+    const first = json.errors[0] || {};
     const msg = json.errors.map((e) => e.message).join(" | ");
-    throw new Error(msg || "GraphQL error");
+    const e = new Error(msg || "GraphQL error");
+
+    e.graphQLErrors = json.errors;
+    e.extensions = first.extensions || null;
+    e.code = first.extensions?.code || null;
+
+    throw e;
   }
 
   return json.data;
@@ -125,6 +137,48 @@ const M_MARK_CHAT_READ = `
   }
 `;
 
+// ✅ Reports
+const M_REPORT_USER = `
+  mutation ReportUser($userId: ID!, $reason: String!, $details: String) {
+    reportUser(userId: $userId, reason: $reason, details: $details)
+  }
+`;
+
+const M_REPORT_MESSAGE = `
+  mutation ReportMessage($messageId: ID!, $reason: String!, $details: String) {
+    reportMessage(messageId: $messageId, reason: $reason, details: $details)
+  }
+`;
+
+function getExtensionsFromError(err) {
+  return err?.extensions || err?.graphQLErrors?.[0]?.extensions || null;
+}
+
+function isChatDeniedError(err) {
+  const ext = getExtensionsFromError(err);
+  const code = ext?.code || err?.code || null;
+  const msg = String(err?.message || "");
+
+  if (code === "CAPABILITY_DENIED") return true;
+  if (code === "CHAT_AGREEMENT_REQUIRED") return true;
+  if (code === "CHAT_BANNED") return true;
+
+  if (msg === "Chat access denied") return true;
+  if (msg.includes("Chat access denied")) return true;
+
+  return false;
+}
+
+function extractChatDeniedMeta(err) {
+  const ext = getExtensionsFromError(err) || {};
+  return {
+    message: err?.message || "Chat is restricted for this account.",
+    code: ext?.code || err?.code || null,
+    capability: ext?.capability || null,
+    restrictionLevel: ext?.restrictionLevel || null,
+  };
+}
+
 export function MessengerProvider({ children }) {
   const { token, user } = useContext(AuthContext);
 
@@ -138,11 +192,34 @@ export function MessengerProvider({ children }) {
 
   const myUserId = user?.id || null;
 
+  const [chatDenied, setChatDenied] = useState(false);
+  const [chatDeniedMeta, setChatDeniedMeta] = useState(null);
+
   // realtime refs
   const socketRef = useRef(null);
   const refreshTimerRef = useRef(null);
   const openChatsRef = useRef(new Set());
   const messagesRef = useRef({});
+
+  const pauseAutoRefreshRef = useRef(false);
+
+  const clearChatDenied = useCallback(() => {
+    pauseAutoRefreshRef.current = false;
+    setChatDenied(false);
+    setChatDeniedMeta(null);
+  }, []);
+
+  const handleChatDenied = useCallback((err) => {
+    if (!isChatDeniedError(err)) return false;
+
+    const meta = extractChatDeniedMeta(err);
+
+    pauseAutoRefreshRef.current = true;
+    setChatDenied(true);
+    setChatDeniedMeta(meta);
+
+    return true;
+  }, []);
 
   useEffect(() => {
     openChatsRef.current = new Set(openChats.map((c) => String(c.userId)));
@@ -152,30 +229,51 @@ export function MessengerProvider({ children }) {
     messagesRef.current = messagesByUserId || {};
   }, [messagesByUserId]);
 
-  const refreshThreads = useCallback(async () => {
+  useEffect(() => {
     if (!token) {
-      setThreads([]);
+      pauseAutoRefreshRef.current = false;
+      setChatDenied(false);
+      setChatDeniedMeta(null);
       return;
     }
-
-    setThreadsLoading(true);
-    try {
-      const data = await gqlFetch({
-        token,
-        query: Q_MY_CHATS,
-        variables: { page: 1, pageSize: 50 },
-      });
-
-      const list = Array.isArray(data?.myChats) ? data.myChats : [];
-      setThreads(list);
-    } catch (e) {
-      console.error("[Messenger] myChats failed:", e);
-    } finally {
-      setThreadsLoading(false);
-    }
+    pauseAutoRefreshRef.current = false;
+    setChatDenied(false);
+    setChatDeniedMeta(null);
   }, [token]);
 
-  // debounce refresh for bursts
+  const refreshThreads = useCallback(
+    async ({ force = false } = {}) => {
+      if (!token) {
+        setThreads([]);
+        return;
+      }
+
+      if (pauseAutoRefreshRef.current && !force) return;
+
+      setThreadsLoading(true);
+      try {
+        const data = await gqlFetch({
+          token,
+          query: Q_MY_CHATS,
+          variables: { page: 1, pageSize: 50 },
+        });
+
+        const list = Array.isArray(data?.myChats) ? data.myChats : [];
+        setThreads(list);
+
+        pauseAutoRefreshRef.current = false;
+        setChatDenied(false);
+        setChatDeniedMeta(null);
+      } catch (e) {
+        const denied = handleChatDenied(e);
+        if (!denied) console.error("[Messenger] myChats failed:", e);
+      } finally {
+        setThreadsLoading(false);
+      }
+    },
+    [token, handleChatDenied]
+  );
+
   const refreshThreadsSoon = useCallback(() => {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     refreshTimerRef.current = setTimeout(() => {
@@ -184,16 +282,23 @@ export function MessengerProvider({ children }) {
   }, [refreshThreads]);
 
   const loadChatWithUser = useCallback(
-    async (otherUserId) => {
+    async (otherUserId, { force = false, page = 1, pageSize = 50, mode = "replace" } = {}) => {
       if (!token || !otherUserId) return [];
+      if (pauseAutoRefreshRef.current && !force) return [];
+
+      const userId = String(otherUserId);
 
       setMessagesByUserId((prev) => {
-        const current = prev[otherUserId];
+        const current = prev[userId];
+        const currentItems = Array.isArray(current?.items) ? current.items : [];
         return {
           ...prev,
-          [otherUserId]: {
+          [userId]: {
             loading: true,
-            items: Array.isArray(current?.items) ? current.items : [],
+            items: currentItems,
+            page: Number.isFinite(current?.page) ? current.page : 1,
+            pageSize: Number.isFinite(current?.pageSize) ? current.pageSize : pageSize,
+            hasMore: typeof current?.hasMore === "boolean" ? current.hasMore : true,
           },
         };
       });
@@ -202,32 +307,102 @@ export function MessengerProvider({ children }) {
         const data = await gqlFetch({
           token,
           query: Q_CHAT_WITH_USER,
-          variables: { userId: otherUserId, page: 1, pageSize: 50 },
+          variables: { userId, page, pageSize },
         });
 
         const msgs = Array.isArray(data?.chatWithUser) ? data.chatWithUser : [];
 
-        setMessagesByUserId((prev) => ({
-          ...prev,
-          [otherUserId]: { loading: false, items: msgs },
-        }));
+        setMessagesByUserId((prev) => {
+          const current = prev[userId];
+          const existing = Array.isArray(current?.items) ? current.items : [];
+
+          let merged = [];
+          if (mode === "replace") merged = msgs;
+          else if (mode === "prepend") merged = [...msgs, ...existing];
+          else merged = [...existing, ...msgs];
+
+          const byId = new Map();
+          for (const m of merged) {
+            if (!m || !m.id) continue;
+            byId.set(String(m.id), m);
+          }
+
+          const clientOnly = merged.filter((m) => m && !m.id);
+          const deduped = [...byId.values(), ...clientOnly];
+
+          deduped.sort((a, b) => {
+            const ta = new Date(a?.createdAt || 0).getTime();
+            const tb = new Date(b?.createdAt || 0).getTime();
+            return ta - tb;
+          });
+
+          const hasMore = msgs.length >= pageSize;
+
+          return {
+            ...prev,
+            [userId]: {
+              loading: false,
+              items: deduped,
+              page,
+              pageSize,
+              hasMore,
+            },
+          };
+        });
+
+        pauseAutoRefreshRef.current = false;
+        setChatDenied(false);
+        setChatDeniedMeta(null);
 
         return msgs;
       } catch (e) {
-        console.error("[Messenger] chatWithUser failed:", e);
-        setMessagesByUserId((prev) => ({
-          ...prev,
-          [otherUserId]: { loading: false, items: prev?.[otherUserId]?.items || [] },
-        }));
+        const denied = handleChatDenied(e);
+        if (!denied) console.error("[Messenger] chatWithUser failed:", e);
+
+        setMessagesByUserId((prev) => {
+          const current = prev[userId];
+          return {
+            ...prev,
+            [userId]: {
+              ...(current || {}),
+              loading: false,
+              items: Array.isArray(current?.items) ? current.items : [],
+              page: Number.isFinite(current?.page) ? current.page : 1,
+              pageSize: Number.isFinite(current?.pageSize) ? current.pageSize : pageSize,
+              hasMore: typeof current?.hasMore === "boolean" ? current.hasMore : true,
+            },
+          };
+        });
+
         return [];
       }
     },
-    [token]
+    [token, handleChatDenied]
+  );
+
+  const loadMoreChatWithUser = useCallback(
+    async (otherUserId, { force = false } = {}) => {
+      if (!token || !otherUserId) return [];
+      const userId = String(otherUserId);
+
+      const current = messagesRef.current?.[userId];
+      const page = Number.isFinite(current?.page) ? current.page : 1;
+      const pageSize = Number.isFinite(current?.pageSize) ? current.pageSize : 50;
+      const hasMore = typeof current?.hasMore === "boolean" ? current.hasMore : true;
+
+      if (!hasMore) return [];
+      if (current?.loading) return [];
+
+      return loadChatWithUser(userId, { force, page: page + 1, pageSize, mode: "prepend" });
+    },
+    [token, loadChatWithUser]
   );
 
   const markChatRead = useCallback(
     async (otherUserId) => {
       if (!token || !otherUserId) return;
+      if (pauseAutoRefreshRef.current) return;
+
       try {
         await gqlFetch({
           token,
@@ -239,60 +414,66 @@ export function MessengerProvider({ children }) {
           prev.map((t) => (t?.user?.id === otherUserId ? { ...t, unreadCount: 0 } : t))
         );
       } catch (e) {
-        console.warn("[Messenger] markChatRead failed:", e);
+        const denied = handleChatDenied(e);
+        if (!denied) console.warn("[Messenger] markChatRead failed:", e);
       }
     },
-    [token]
+    [token, handleChatDenied]
   );
 
   const openChat = useCallback(
     async (otherUserId) => {
-      if (!token || !otherUserId || otherUserId === myUserId) return;
+      if (!token || !otherUserId) return;
 
       setOpenChats((prev) => {
-        const exists = prev.some((c) => c.userId === otherUserId);
-        if (exists) {
+        const already = prev.find((c) => String(c.userId) === String(otherUserId));
+        if (already) {
           return prev.map((c) =>
-            c.userId === otherUserId ? { ...c, minimised: false } : c
+            String(c.userId) === String(otherUserId) ? { ...c, minimised: false } : c
           );
         }
         return [...prev, { userId: otherUserId, minimised: false }];
       });
 
-      setSidebarOpen(false);
-
-      await loadChatWithUser(otherUserId);
-      await markChatRead(otherUserId);
+      loadChatWithUser(otherUserId, { page: 1, pageSize: 50, mode: "replace" }).catch(() => {});
+      markChatRead(otherUserId).catch(() => {});
     },
-    [token, myUserId, loadChatWithUser, markChatRead]
+    [token, loadChatWithUser, markChatRead]
   );
 
   const closeChat = useCallback((otherUserId) => {
-    setOpenChats((prev) => prev.filter((c) => c.userId !== otherUserId));
+    setOpenChats((prev) => prev.filter((c) => String(c.userId) !== String(otherUserId)));
   }, []);
 
   const minimiseChat = useCallback((otherUserId) => {
     setOpenChats((prev) =>
-      prev.map((c) => (c.userId === otherUserId ? { ...c, minimised: true } : c))
+      prev.map((c) => (String(c.userId) === String(otherUserId) ? { ...c, minimised: true } : c))
     );
   }, []);
 
   const restoreChat = useCallback((otherUserId) => {
     setOpenChats((prev) =>
-      prev.map((c) => (c.userId === otherUserId ? { ...c, minimised: false } : c))
+      prev.map((c) => (String(c.userId) === String(otherUserId) ? { ...c, minimised: false } : c))
     );
   }, []);
 
   const sendMessage = useCallback(
-    async (receiverId, content, meta = null) => {
-      if (!token) throw new Error("Not authenticated");
-      if (!receiverId) throw new Error("Missing receiverId");
+    async (receiverId, content, meta = null, { _retryClientId = null } = {}) => {
+      if (!token) return null;
+      if (!receiverId) return null;
+      if (pauseAutoRefreshRef.current) return null;
 
       const clean = String(content || "").trim();
       if (!clean) return null;
 
+      const clientId =
+        _retryClientId || `client-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
       const optimistic = {
         id: `optimistic-${Date.now()}`,
+        __clientId: clientId,
+        __status: "sending",
+        __error: null,
         senderId: myUserId || "me",
         receiverId,
         content: clean,
@@ -302,14 +483,20 @@ export function MessengerProvider({ children }) {
         meta,
       };
 
-      // optimistic UI append
       setMessagesByUserId((prev) => {
         const current = prev[receiverId];
         const items = Array.isArray(current?.items) ? current.items : [];
-        return { ...prev, [receiverId]: { loading: false, items: [...items, optimistic] } };
+        const withoutSameClient = items.filter((m) => m?.__clientId !== clientId);
+        return {
+          ...prev,
+          [receiverId]: {
+            ...(current || {}),
+            loading: false,
+            items: [...withoutSameClient, optimistic],
+          },
+        };
       });
 
-      // optimistic thread bump
       setThreads((prev) => {
         const existing = prev.find((t) => t?.user?.id === receiverId);
         const updatedThread = {
@@ -334,8 +521,12 @@ export function MessengerProvider({ children }) {
         setMessagesByUserId((prev) => {
           const current = prev[receiverId];
           const items = Array.isArray(current?.items) ? current.items : [];
-          const next = items.map((m) => (m.id === optimistic.id ? saved : m));
-          return { ...prev, [receiverId]: { loading: false, items: next } };
+          const next = items.map((m) => {
+            if (m?.__clientId === clientId) return saved;
+            if (m?.id === optimistic.id) return saved;
+            return m;
+          });
+          return { ...prev, [receiverId]: { ...(current || {}), loading: false, items: next } };
         });
 
         setThreads((prev) => {
@@ -349,38 +540,111 @@ export function MessengerProvider({ children }) {
           return [updatedThread, ...rest];
         });
 
+        pauseAutoRefreshRef.current = false;
+        setChatDenied(false);
+        setChatDeniedMeta(null);
+
         return saved;
       } catch (e) {
         console.error("[Messenger] sendMessage failed:", e);
 
-        // rollback optimistic message
         setMessagesByUserId((prev) => {
           const current = prev[receiverId];
           const items = Array.isArray(current?.items) ? current.items : [];
-          return {
-            ...prev,
-            [receiverId]: { loading: false, items: items.filter((m) => m.id !== optimistic.id) },
-          };
+          const next = items.map((m) => {
+            if (m?.__clientId === clientId || m?.id === optimistic.id) {
+              return { ...m, __status: "failed", __error: e?.message || "Failed to send" };
+            }
+            return m;
+          });
+          return { ...prev, [receiverId]: { ...(current || {}), loading: false, items: next } };
         });
 
+        const denied = handleChatDenied(e);
+        if (denied) return null;
+
+        return null;
+      }
+    },
+    [token, myUserId, handleChatDenied]
+  );
+
+  const retryFailedMessage = useCallback(
+    async (receiverId, clientId) => {
+      if (!token || !receiverId || !clientId) return null;
+
+      const bucket = messagesRef.current?.[receiverId];
+      const items = Array.isArray(bucket?.items) ? bucket.items : [];
+      const msg = items.find((m) => m?.__clientId === clientId);
+
+      if (!msg) return null;
+      if (msg?.__status !== "failed") return null;
+
+      return sendMessage(receiverId, msg.content, msg.meta || null, { _retryClientId: clientId });
+    },
+    [token, sendMessage]
+  );
+
+  // ✅ NEW: Report actions (top-level, proper hooks)
+  const reportUser = useCallback(
+    async (userId, reason, details = null) => {
+      if (!token) throw new Error("Not logged in.");
+      if (!userId) throw new Error("Missing user id.");
+      if (!reason) throw new Error("Missing reason.");
+
+      try {
+        const data = await gqlFetch({
+          token,
+          query: M_REPORT_USER,
+          variables: { userId, reason, details },
+        });
+
+        if (!data?.reportUser) throw new Error("Report could not be submitted.");
+        return true;
+      } catch (e) {
+        const denied = handleChatDenied(e);
+        if (denied) throw new Error("Chat is restricted for this account.");
         throw e;
       }
     },
-    [token, myUserId]
+    [token, handleChatDenied]
   );
 
-  // load threads on login
+  const reportMessage = useCallback(
+    async (messageId, reason, details = null) => {
+      if (!token) throw new Error("Not logged in.");
+      if (!messageId) throw new Error("Missing message id.");
+      if (!reason) throw new Error("Missing reason.");
+
+      try {
+        const data = await gqlFetch({
+          token,
+          query: M_REPORT_MESSAGE,
+          variables: { messageId, reason, details },
+        });
+
+        if (!data?.reportMessage) throw new Error("Report could not be submitted.");
+        return true;
+      } catch (e) {
+        const denied = handleChatDenied(e);
+        if (denied) throw new Error("Chat is restricted for this account.");
+        throw e;
+      }
+    },
+    [token, handleChatDenied]
+  );
+
   useEffect(() => {
     if (!token) {
       setThreads([]);
       setMessagesByUserId({});
       setOpenChats([]);
+      clearChatDenied();
       return;
     }
     refreshThreads();
-  }, [token, refreshThreads]);
+  }, [token, refreshThreads, clearChatDenied]);
 
-  // ✅ Socket connect + newMessage listener (polling-only for now)
   useEffect(() => {
     if (!token) {
       if (socketRef.current) {
@@ -392,43 +656,22 @@ export function MessengerProvider({ children }) {
 
     const origin = getBackendOrigin();
 
-    // recreate per token (avoid stale auth)
     if (socketRef.current) {
       socketRef.current.disconnect();
       socketRef.current = null;
     }
 
-    console.log("[Messenger] socket env snapshot", {
-      origin,
-      path: SOCKET_PATH,
-      NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL,
-      NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
-      NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
-      NEXT_PUBLIC_BACKEND_GRAPHQL_ENDPOINT: process.env.NEXT_PUBLIC_BACKEND_GRAPHQL_ENDPOINT,
-    });
-
     const s = socketIo(origin, {
-      path: SOCKET_PATH, // ✅ NEW: avoid status-monitor collision
+      path: SOCKET_PATH,
       auth: { token },
-
-      // ✅ Keep stable while debugging
       transports: ["polling"],
       upgrade: false,
-
       reconnection: true,
       reconnectionAttempts: 10,
       withCredentials: true,
     });
 
     socketRef.current = s;
-
-    console.log("[Messenger] creating socket", {
-      origin,
-      path: SOCKET_PATH,
-      transports: ["polling"],
-      upgrade: false,
-      tokenPresent: !!token,
-    });
 
     s.on("connect", () => console.log("[Messenger] socket connected", { id: s.id }));
     s.on("disconnect", (reason) => console.warn("[Messenger] socket disconnected", reason));
@@ -437,20 +680,21 @@ export function MessengerProvider({ children }) {
     );
 
     s.on("newMessage", (payload) => {
-      console.log("[Messenger] newMessage", payload);
-
       const fromIdRaw = payload?.from;
       const fromId = fromIdRaw != null ? String(fromIdRaw) : "";
-      if (!fromId) {
-        console.warn("[Messenger] newMessage missing from", payload);
-        return;
-      }
+      if (!fromId) return;
 
-      refreshThreadsSoon();
+      if (!pauseAutoRefreshRef.current) {
+        refreshThreadsSoon();
 
-      // only refresh messages if the chat is open (keeps calls down)
-      if (openChatsRef.current.has(fromId)) {
-        loadChatWithUser(fromId).catch(() => {});
+        if (openChatsRef.current.has(fromId)) {
+          loadChatWithUser(fromId, {
+            force: true,
+            page: 1,
+            pageSize: 50,
+            mode: "merge",
+          }).catch(() => {});
+        }
       }
     });
 
@@ -466,6 +710,10 @@ export function MessengerProvider({ children }) {
       openSidebar: () => setSidebarOpen(true),
       closeSidebar: () => setSidebarOpen(false),
 
+      chatDenied,
+      chatDeniedMeta,
+      clearChatDenied,
+
       threads,
       threadsLoading,
       refreshThreads,
@@ -478,11 +726,20 @@ export function MessengerProvider({ children }) {
 
       messagesByUserId,
       loadChatWithUser,
+      loadMoreChatWithUser,
       sendMessage,
+      retryFailedMessage,
       markChatRead,
+
+      // ✅ Expose reporting to the popup
+      reportUser,
+      reportMessage,
     }),
     [
       sidebarOpen,
+      chatDenied,
+      chatDeniedMeta,
+      clearChatDenied,
       threads,
       threadsLoading,
       refreshThreads,
@@ -493,8 +750,12 @@ export function MessengerProvider({ children }) {
       restoreChat,
       messagesByUserId,
       loadChatWithUser,
+      loadMoreChatWithUser,
       sendMessage,
+      retryFailedMessage,
       markChatRead,
+      reportUser,
+      reportMessage,
     ]
   );
 

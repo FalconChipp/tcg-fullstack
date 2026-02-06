@@ -1,4 +1,5 @@
 // src/components/Account/SecurityTab.js
+
 "use client";
 
 import React, { useState, useEffect, useContext, useCallback } from "react";
@@ -42,6 +43,66 @@ function removeQueryParam(param) {
   window.history.replaceState({}, document.title, url.toString());
 }
 
+/* =========================
+   Helpers
+========================= */
+
+function toInputDateValue(dateLike) {
+  // Converts Date/ISO/string into YYYY-MM-DD for <input type="date">
+  if (!dateLike) return "";
+  const d = new Date(dateLike);
+  if (Number.isNaN(d.getTime())) return "";
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function formatDateTime(dateLike) {
+  if (!dateLike) return "";
+  const d = new Date(dateLike);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString();
+}
+
+function computeFrontendRestriction({ dob, backendLevel }) {
+  // Trust backend if present (source of truth when available)
+  if (backendLevel) return backendLevel;
+
+  // No DOB => safe default
+  if (!dob) return "full";
+
+  const d = new Date(dob);
+  if (Number.isNaN(d.getTime())) return "full";
+
+  const now = new Date();
+  let age = now.getFullYear() - d.getFullYear();
+  const m = now.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+
+  if (age < 13) return "child";
+  if (age < 16) return "teen";
+  return "none";
+}
+
+async function gqlRequest({ token, query, variables }) {
+  if (!GRAPHQL_ENDPOINT) throw new Error("GRAPHQL endpoint is not configured (NEXT_PUBLIC_GRAPHQL_ENDPOINT).");
+
+  const res = await fetch(GRAPHQL_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!json) throw new Error("Invalid server response");
+  if (json.errors?.length) throw new Error(json.errors[0]?.message || "Request failed");
+  return json.data;
+}
+
 export default function SecurityTab({ user: userProp, token: tokenProp }) {
   // Prefer AuthContext, fall back to props if this component is used elsewhere
   const auth = useContext(AuthContext);
@@ -77,10 +138,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
               changePassword(currentPassword: $currentPassword, newPassword: $newPassword)
             }
           `,
-          variables: {
-            currentPassword: pwFields.current,
-            newPassword: pwFields.new,
-          },
+          variables: { currentPassword: pwFields.current, newPassword: pwFields.new },
         }),
       });
       const json = await res.json();
@@ -121,10 +179,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
               changeEmail(newEmail: $newEmail, currentPassword: $currentPassword)
             }
           `,
-          variables: {
-            newEmail: emailFields.email,
-            currentPassword: emailFields.currentPassword,
-          },
+          variables: { newEmail: emailFields.email, currentPassword: emailFields.currentPassword },
         }),
       });
       const json = await res.json();
@@ -235,11 +290,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
         throw new Error(json.errors?.[0]?.message || "Failed to disable 2FA");
       }
     } catch (err) {
-      setTwoFA((s) => ({
-        ...s,
-        loading: false,
-        generalStatus: { type: "error", msg: err.message },
-      }));
+      setTwoFA((s) => ({ ...s, loading: false, generalStatus: { type: "error", msg: err.message } }));
     }
   }
 
@@ -248,47 +299,158 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
   // ==========================================
   const [discordLinked, setDiscordLinked] = useState(!!user?.discordId);
   const [discordUsername, setDiscordUsername] = useState(user?.discordUsername || null);
-  const [connLoading, setConnLoading] = useState(null); // 'discord' | null
+  const [connLoading, setConnLoading] = useState(null);
   const [connStatus, setConnStatus] = useState(null);
 
-  // Keep local row in sync with global user
+  const capabilities = user?.capabilities || null;
+  const canConnectDiscord = capabilities?.canConnectDiscord !== undefined ? !!capabilities.canConnectDiscord : true;
+
   useEffect(() => {
     setDiscordLinked(!!user?.discordId);
     setDiscordUsername(user?.discordUsername || null);
   }, [user?.discordId, user?.discordUsername]);
 
+  // ==========================
+  // Safety / Parent verification state (UPDATED)
+  // ==========================
+
+  const [safetyFields, setSafetyFields] = useState({
+    dob: toInputDateValue(user?.dob),
+    parentEmail: user?.parentEmail || "",
+  });
+
+  const [safetyStatus, setSafetyStatus] = useState(null);
+  const [safetyLoading, setSafetyLoading] = useState(false);
+
+  const DOB_LOCK_KEY = (userId) => `sbf_dob_locked:${userId}`;
+  const DOB_VALUE_KEY = (userId) => `sbf_dob_value:${userId}`;
+
+  const [dobLocked, setDobLocked] = useState(() => {
+    try {
+      if (typeof window === "undefined") return !!user?.dob;
+      const id = user?.id;
+      if (!id) return !!user?.dob;
+
+      const locked = window.localStorage.getItem(DOB_LOCK_KEY(id)) === "1";
+      return locked || !!user?.dob;
+    } catch {
+      return !!user?.dob;
+    }
+  });
+
+  const [dobLockedValue, setDobLockedValue] = useState(() => {
+    try {
+      if (typeof window === "undefined") return "";
+      const id = user?.id;
+      if (!id) return "";
+      return window.localStorage.getItem(DOB_VALUE_KEY(id)) || "";
+    } catch {
+      return "";
+    }
+  });
+
+  useEffect(() => {
+    if (!user?.id) return;
+    if (!user?.dob) return;
+
+    const formatted = toInputDateValue(user.dob);
+
+    setDobLocked(true);
+    setDobLockedValue(formatted);
+
+    try {
+      window.localStorage.setItem(DOB_LOCK_KEY(user.id), "1");
+      window.localStorage.setItem(DOB_VALUE_KEY(user.id), formatted);
+    } catch {
+      // ignore storage errors (private mode etc.)
+    }
+  }, [user?.id, user?.dob]);
+
+  // - If locked: prefer backend dob, else use persisted value
+  // - If unlocked: use live input (safetyFields.dob)
+  const dobEffective = dobLocked ? (toInputDateValue(user?.dob) || dobLockedValue || "") : safetyFields.dob;
+  const hasDob = !!dobEffective;
+
+  useEffect(() => {
+    setSafetyFields((prev) => ({
+      dob: dobLocked ? (toInputDateValue(user?.dob) || dobLockedValue || prev.dob) : prev.dob,
+      parentEmail: user?.parentEmail || "",
+    }));
+  }, [user?.dob, user?.parentEmail, dobLocked, dobLockedValue]);
+
+  const restrictionLevel = computeFrontendRestriction({
+    dob: dobEffective,
+    backendLevel: user?.capabilities?.restrictionLevel,
+  });
+
+  const parentVerifiedAt = user?.parentVerifiedAt || null;
+
+  const requiresParentApproval = restrictionLevel === "teen" && !parentVerifiedAt;
+
+  const restrictionKnown = true;
+
+  const showParentEmail = hasDob && restrictionKnown && requiresParentApproval;
+
   // Small helper to refetch me and optionally push it back into AuthContext
   const refetchMe = useCallback(async () => {
     if (!token) return null;
+
     try {
-      const res = await fetch(GRAPHQL_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          query: `
-            query {
-              me {
-                id
-                username
-                email
-                emailVerified
-                discordId
-                discordUsername
-                twoFactorEnabled
-                lastLogin
-                createdAt
-                updatedAt
+      const data = await gqlRequest({
+        token,
+        query: `
+          query {
+            me {
+              id
+              username
+              email
+              emailVerified
+              discordId
+              discordUsername
+              twoFactorEnabled
+              lastLogin
+              createdAt
+              updatedAt
+
+              # Safety fields (camelCase)
+              dob
+              parentEmail
+              parentVerifiedAt
+
+              # Derived permissions
+              capabilities {
+                restrictionLevel
+                isMinor
+                requiresParentApproval
+                canUseCollection
+                canMessage
+                canTrade
+                canPost
+                canConnectDiscord
+                canShareToDiscord
               }
             }
-          `,
-        }),
+          }
+        `,
       });
-      const json = await res.json();
-      const fresh = json?.data?.me ?? null;
+
+      const fresh = data?.me ?? null;
       if (fresh) {
         setDiscordLinked(!!fresh.discordId);
         setDiscordUsername(fresh.discordUsername || null);
-        // If we have AuthContext, update global user so the whole app is consistent
+
+        if (fresh.id && fresh.dob) {
+          const formatted = toInputDateValue(fresh.dob);
+          setDobLocked(true);
+          setDobLockedValue(formatted);
+          try {
+            window.localStorage.setItem(DOB_LOCK_KEY(fresh.id), "1");
+            window.localStorage.setItem(DOB_VALUE_KEY(fresh.id), formatted);
+          } catch {
+            // ignore
+          }
+        }
+
         if (setAuthUser) setAuthUser(fresh);
       }
       return fresh;
@@ -297,19 +459,34 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
     }
   }, [token, setAuthUser]);
 
+  // Why: If AuthContext user came from a query that DIDN'T include dob, user?.dob will be null even though DB has it.
+  // This fetch ensures we pull dob from backend and lock the input reliably.
+  useEffect(() => {
+    if (!token) return;
+    refetchMe();
+  }, [token, refetchMe]);
+
   // After OAuth callback (?linked=discord), show success, clean URL, and refetch me
   useEffect(() => {
     const linked = getQueryParam("linked");
     if (linked === "discord") {
       setConnStatus({ type: "success", msg: "Discord account linked successfully." });
       removeQueryParam("linked");
-      refetchMe(); // <- get fresh discordId/username for UI & context
+      refetchMe();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleLinkDiscord() {
     try {
+      if (!canConnectDiscord) {
+        setConnStatus({
+          type: "error",
+          msg: "Discord linking is restricted for this account. If you're under 16, you will need parent approval first.",
+        });
+        return;
+      }
+
       setConnLoading("discord");
       setConnStatus({ type: "loading", msg: "Opening Discord…" });
 
@@ -349,14 +526,145 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
       const ok = r.ok && body?.ok;
       if (ok) {
         setConnStatus({ type: "success", msg: "Discord unlinked." });
-        await refetchMe(); // <- refresh global user & row
+        await refetchMe();
       } else {
         setConnStatus({ type: "error", msg: "Unlink failed." });
       }
-    } catch (e) {
+    } catch {
       setConnStatus({ type: "error", msg: "Unlink failed." });
     } finally {
       setConnLoading(null);
+    }
+  }
+
+  async function handleSaveSafetyProfile(e) {
+    e.preventDefault();
+    if (!token) {
+      setSafetyStatus({ type: "error", msg: "You must be logged in." });
+      return;
+    }
+
+    setSafetyStatus(null);
+    setSafetyLoading(true);
+
+    try {
+      const variables = {};
+
+      // Only include DOB if not locked yet
+      if (!dobLocked) {
+        variables.dob = safetyFields.dob ? safetyFields.dob : null;
+      }
+
+      // Only send parentEmail if we are actually showing it (i.e. required)
+      variables.parentEmail = showParentEmail && safetyFields.parentEmail ? safetyFields.parentEmail.trim() : null;
+
+      const data = await gqlRequest({
+        token,
+        query: `
+          mutation UpdateSafetyProfile($dob: String, $parentEmail: String) {
+            updateSafetyProfile(dob: $dob, parentEmail: $parentEmail) {
+              ok
+              error
+              user {
+                id
+                dob
+                parentEmail
+                parentVerifiedAt
+                capabilities {
+                  restrictionLevel
+                  isMinor
+                  requiresParentApproval
+                  canMessage
+                  canTrade
+                  canPost
+                  canConnectDiscord
+                  canShareToDiscord
+                }
+              }
+            }
+          }
+        `,
+        variables,
+      });
+
+      const payload = data?.updateSafetyProfile;
+      if (!payload?.ok) throw new Error(payload?.error || "Failed to save");
+
+      if (payload?.user?.id && payload?.user?.dob) {
+        const formatted = toInputDateValue(payload.user.dob);
+
+        setDobLocked(true);
+        setDobLockedValue(formatted);
+
+        try {
+          window.localStorage.setItem(DOB_LOCK_KEY(payload.user.id), "1");
+          window.localStorage.setItem(DOB_VALUE_KEY(payload.user.id), formatted);
+        } catch {
+          // ignore
+        }
+      }
+
+      if (payload?.user && setAuthUser) {
+        setAuthUser({ ...(user || {}), ...payload.user });
+      }
+
+      setSafetyStatus({ type: "success", msg: "Saved." });
+      await refetchMe();
+    } catch (err) {
+      setSafetyStatus({ type: "error", msg: err.message || "Failed to save" });
+    } finally {
+      setSafetyLoading(false);
+    }
+  }
+
+  async function handleRequestParentVerification() {
+    if (!token) {
+      setSafetyStatus({ type: "error", msg: "You must be logged in." });
+      return;
+    }
+
+    setSafetyStatus(null);
+    setSafetyLoading(true);
+
+    try {
+      const data = await gqlRequest({
+        token,
+        query: `
+          mutation RequestParentVerification {
+            requestParentVerification {
+              ok
+              error
+              user {
+                id
+                parentEmail
+                parentVerifiedAt
+                capabilities {
+                  restrictionLevel
+                  requiresParentApproval
+                  canConnectDiscord
+                  canMessage
+                }
+              }
+            }
+          }
+        `,
+      });
+
+      const payload = data?.requestParentVerification;
+      if (!payload?.ok) throw new Error(payload?.error || "Failed to send email");
+
+      if (payload?.user && setAuthUser) setAuthUser({ ...(user || {}), ...payload.user });
+
+      setSafetyStatus({
+        type: "success",
+        msg: "Verification email sent to your parent/guardian. Ask them to click the approval link.",
+      });
+
+      await refetchMe();
+    } catch (err) {
+      setSafetyStatus({ type: "error", msg: err.message || "Failed to send email" });
+    } finally {
+      setSafetyLoading(false);
     }
   }
 
@@ -365,6 +673,125 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
   // =======================
   return (
     <div className="space-y-10">
+      {/* SAFETY / PARENT APPROVAL */}
+      <section className="bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border rounded-2xl px-6 py-8 shadow">
+        <h2 className="text-xl font-bold mb-2 text-light-primary dark:text-dark-primary">Safety & Parent Approval</h2>
+
+        <p className="text-sm text-light-textMuted dark:text-dark-textMuted mb-6">
+          Some community features (messaging, trading, Discord linking/sharing) will require parent/guardian approval for
+          under-16 accounts.
+        </p>
+
+        <div className="mb-4 text-sm">
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            <div>
+              <span className="text-light-textMuted dark:text-dark-textMuted">Restriction level:</span>{" "}
+              <span className="font-semibold">{restrictionLevel}</span>
+            </div>
+
+            <div>
+              <span className="text-light-textMuted dark:text-dark-textMuted">Parent verified:</span>{" "}
+              <span className="font-semibold">{parentVerifiedAt ? `Yes (${formatDateTime(parentVerifiedAt)})` : "No"}</span>
+            </div>
+
+            {requiresParentApproval && !parentVerifiedAt && (
+              <div className="text-amber-600 dark:text-amber-400 font-semibold">
+                Parent approval required to unlock community features.
+              </div>
+            )}
+          </div>
+        </div>
+
+        <form onSubmit={handleSaveSafetyProfile} className="space-y-5">
+          {/* DOB */}
+          <div>
+            <label className="block mb-1 font-semibold text-light-text dark:text-dark-text">
+              Date of birth {dobLocked ? "(locked)" : "(optional)"}
+            </label>
+
+            <input
+              type="date"
+              value={dobLocked ? (toInputDateValue(user?.dob) || dobLockedValue || "") : safetyFields.dob}
+              disabled={dobLocked}
+              onChange={(e) => setSafetyFields((f) => ({ ...f, dob: e.target.value }))}
+              className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text transition disabled:opacity-60"
+            />
+
+            {dobLocked ? (
+              <div className="mt-1 text-xs text-light-textMuted dark:text-dark-textMuted">
+                Your date of birth is locked once set. If this is incorrect, contact support.
+              </div>
+            ) : (
+              <div className="mt-1 text-xs text-light-textMuted dark:text-dark-textMuted">
+                If you leave this blank, your account will be treated as restricted by default.
+              </div>
+            )}
+          </div>
+
+          {/* Parent email (only show when actually required + known) */}
+          {showParentEmail ? (
+            <div>
+              <label className="block mb-1 font-semibold text-light-text dark:text-dark-text">
+                Parent/guardian email (only required if under 16)
+              </label>
+              <input
+                type="email"
+                value={safetyFields.parentEmail}
+                onChange={(e) => setSafetyFields((f) => ({ ...f, parentEmail: e.target.value }))}
+                placeholder="parent@example.com"
+                className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text transition"
+              />
+            </div>
+          ) : (
+            <div className="text-xs text-light-textMuted dark:text-dark-textMuted">
+              {!hasDob
+                ? "Add your date of birth first to determine if parent/guardian approval is required."
+                : requiresParentApproval
+                ? "Parent/guardian approval is required for this account."
+                : "Parent/guardian approval is not required for this account."}
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="submit"
+              disabled={safetyLoading}
+              className="bg-light-accent dark:bg-dark-accent text-white px-6 py-2.5 rounded-xl font-bold hover:bg-light-primary dark:hover:bg-dark-accentLight transition disabled:opacity-50"
+            >
+              {safetyLoading ? "Saving…" : "Save"}
+            </button>
+
+            <button
+              type="button"
+              disabled={safetyLoading || !showParentEmail || !safetyFields.parentEmail || !!parentVerifiedAt}
+              onClick={handleRequestParentVerification}
+              className="px-6 py-2.5 rounded-xl font-bold border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text hover:bg-light-surface dark:hover:bg-dark-surface transition disabled:opacity-50"
+            >
+              {parentVerifiedAt ? "Already verified" : safetyLoading ? "Sending…" : "Send approval email"}
+            </button>
+          </div>
+
+          {safetyStatus && (
+            <div className="mt-2">
+              <StatusMessage type={safetyStatus.type} message={safetyStatus.msg} onClose={() => setSafetyStatus(null)} />
+            </div>
+          )}
+
+          {/* Capability preview (useful during testing) */}
+          {capabilities && (
+            <div className="mt-4 text-xs text-light-textMuted dark:text-dark-textMuted">
+              <div className="font-semibold mb-1">Feature access:</div>
+              <div className="flex flex-wrap gap-x-6 gap-y-1">
+                <span>Messaging: {capabilities.canMessage ? "✅" : "❌"}</span>
+                <span>Trading: {capabilities.canTrade ? "✅" : "❌"}</span>
+                <span>Discord linking: {capabilities.canConnectDiscord ? "✅" : "❌"}</span>
+                <span>Discord sharing: {capabilities.canShareToDiscord ? "✅" : "❌"}</span>
+              </div>
+            </div>
+          )}
+        </form>
+      </section>
+
       {/* CONNECTED ACCOUNTS */}
       <section className="bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border rounded-2xl px-6 py-8 shadow">
         <h2 className="text-xl font-bold mb-6 text-light-primary dark:text-dark-primary">Connected Accounts</h2>
@@ -381,6 +808,13 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
               </span>
               <div>
                 <div className="font-semibold">Discord</div>
+
+                {!canConnectDiscord && (
+                  <div className="mt-0.5 text-sm text-amber-600 dark:text-amber-400 font-semibold">
+                    Restricted — parent approval required
+                  </div>
+                )}
+
                 {discordLinked ? (
                   <div className="mt-0.5 text-sm text-light-textMuted dark:text-dark-textMuted">
                     Connected as{" "}
@@ -389,9 +823,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
                     </span>
                   </div>
                 ) : (
-                  <div className="mt-0.5 text-sm text-light-textMuted dark:text-dark-textMuted">
-                    Link your Discord account
-                  </div>
+                  <div className="mt-0.5 text-sm text-light-textMuted dark:text-dark-textMuted">Link your Discord account</div>
                 )}
               </div>
             </div>
@@ -409,12 +841,10 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
               <button
                 type="button"
                 onClick={handleLinkDiscord}
-                disabled={connLoading === "discord"}
-                // disabled
+                disabled={connLoading === "discord" || !canConnectDiscord}
                 className="px-5 py-2 rounded-lg font-semibold bg-light-accent dark:bg-dark-accent text-white dark:text-black hover:bg-light-primary dark:hover:bg-dark-primary transition disabled:opacity-50"
               >
                 {connLoading === "discord" ? "Opening…" : "Link Discord"}
-                {/* Link (Coming soon) */}
               </button>
             )}
           </li>
@@ -599,7 +1029,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
                 className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text transition"
                 maxLength={6}
                 inputMode="numeric"
-                pattern="\d*"
+                pattern="\\d*"
                 autoComplete="off"
               />
             </div>

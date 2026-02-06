@@ -1,19 +1,26 @@
 // src/components/Messenger/MessengerSidebar.js
 //
-// UPDATED (2026-01-29):
-// - WIRED: expects real `myChats` objects: { user, lastMessage, unreadCount }
-// - FIX: openChat now uses userId, not thread.id
-// - ADDED: loading state
+// UPDATED (2026-02-06):
+// - ADD: Search box (filters by username + last message content).
+// - ADD: Last message time (HH:MM) on each row.
+// - KEEP: unread badges + active highlighting + loading/empty states.
 
 "use client";
 
-import React from "react";
-import { X } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { X, Search } from "lucide-react";
 import { motion } from "framer-motion";
 
 function resolveAvatar(avatar) {
   if (!avatar) return "https://placehold.co/40/webp";
   return avatar;
+}
+
+function formatTime(ts) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 export default function MessengerSidebar({
@@ -23,6 +30,19 @@ export default function MessengerSidebar({
   openChats = [],
   onClose,
 }) {
+  const [q, setQ] = useState("");
+
+  const filtered = useMemo(() => {
+    const query = String(q || "").trim().toLowerCase();
+    if (!query) return threads;
+
+    return threads.filter((t) => {
+      const name = String(t?.user?.username || "").toLowerCase();
+      const last = String(t?.lastMessage?.content || "").toLowerCase();
+      return name.includes(query) || last.includes(query);
+    });
+  }, [threads, q]);
+
   return (
     <motion.aside
       className="
@@ -36,13 +56,29 @@ export default function MessengerSidebar({
         <div className="flex flex-col">
           <span className="font-bold text-lg">Messages</span>
           <span className="text-xs text-light-textMuted dark:text-dark-textMuted">
-            {loading ? "Loading..." : `${threads.length} conversation${threads.length === 1 ? "" : "s"}`}
+            {loading
+              ? "Loading..."
+              : `${threads.length} conversation${threads.length === 1 ? "" : "s"}`}
           </span>
         </div>
 
         <button onClick={onClose} aria-label="Close messenger" type="button">
           <X className="w-6 h-6" />
         </button>
+      </div>
+
+      {/* Search */}
+      <div className="p-3 border-b border-light-border dark:border-dark-border">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-light-border dark:border-dark-border bg-light-alt/40 dark:bg-dark-alt/40">
+          <Search className="w-4 h-4 text-light-textMuted dark:text-dark-textMuted" />
+          <input
+            type="text"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search messages…"
+            className="flex-1 bg-transparent outline-none text-sm"
+          />
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-2">
@@ -58,11 +94,18 @@ export default function MessengerSidebar({
           </div>
         )}
 
-        {threads.map((t) => {
+        {!loading && threads.length > 0 && filtered.length === 0 && (
+          <div className="text-light-textMuted dark:text-dark-textMuted py-12 text-center">
+            No conversations match your search.
+          </div>
+        )}
+
+        {filtered.map((t) => {
           const userId = t?.user?.id;
           const name = t?.user?.username || "User";
           const avatar = resolveAvatar(t?.user?.avatar);
           const last = t?.lastMessage?.content || "";
+          const time = formatTime(t?.lastMessage?.createdAt);
           const isActive = userId && openChats.includes(userId);
           const hasUnread = (t?.unreadCount || 0) > 0;
 
@@ -88,7 +131,13 @@ export default function MessengerSidebar({
               />
 
               <div className="flex-1 min-w-0">
-                <div className="font-semibold truncate">{name}</div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="font-semibold truncate">{name}</div>
+                  <div className="text-[11px] text-light-textMuted dark:text-dark-textMuted shrink-0">
+                    {time}
+                  </div>
+                </div>
+
                 <div className="text-xs text-light-textMuted dark:text-dark-textMuted truncate">
                   {last || " "}
                 </div>

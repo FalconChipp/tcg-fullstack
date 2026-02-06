@@ -1,21 +1,60 @@
 // backend/src/routes/discord/discordShare.js
+//
+// UPDATED (2026-02-02):
+// - ADD: Safety enforcement for all Discord share actions via requireCapability(user, "canShareToDiscord")
+// - CHANGED: requireUserAuth -> requireShareAuth (auth + capability gate in one place)
+// - CHANGED: requestedBy.username no longer falls back to email (avoid leaking emails to Discord)
+// - ADD: message normalization + max length protection
+// - REMOVE: unused UserDiscordLink import (model is accessed via models/index.js in token helper)
+//
+// Notes:
+// - This assumes req.user is attached by attachUser() middleware before this router is mounted.
+// - This router is "user-initiated" (not bot-initiated). Bot calls are done via callBotJson() with x-sbf-key.
 
 import express from "express";
 import crypto from "crypto";
 
 import { UserDiscordLink } from "../../models/index.js";
-
 import { refreshAccessToken } from "../../modules/intergrations/discord/oauth.service.js";
-
+import { requireCapability } from "../../modules/safety/guards.js";
 import { checkShareRateLimit } from "../../utils/shareRateLimit.js";
 
 const router = express.Router();
 
 /* ============================== helpers ============================== */
 
-function requireUserAuth(req, res, next) {
-  if (req.user?.id) return next();
-  return res.status(401).json({ ok: false, error: "unauthorized" });
+function normalizeMessage(v, maxLen = 400) {
+  if (!v) return "";
+  const s = String(v).trim();
+  if (!s) return "";
+  // Prevent huge payloads / spam walls
+  return s.length > maxLen ? `${s.slice(0, maxLen).trim()}…` : s;
+}
+
+/**
+ * CHANGED: auth + capability gate in one middleware
+ * - Requires logged-in user (req.user)
+ * - Enforces safety capability: canShareToDiscord
+ */
+function requireShareAuth(req, res, next) {
+  if (!req.user?.id) {
+    return res.status(401).json({ ok: false, error: "unauthorized" });
+  }
+
+  try {
+    // ✅ NEW: safety enforcement for Discord sharing
+    requireCapability(req.user, "canShareToDiscord", { action: "share to Discord" });
+  } catch (e) {
+    // requireCapability throws; return clean 403 to client
+    return res.status(403).json({
+      ok: false,
+      error: "forbidden",
+      reason: "capability_denied",
+      message: e?.message || "Not allowed to share to Discord",
+    });
+  }
+
+  return next();
 }
 
 /* -------------------- BOT SERVICE HTTP HELPERS -------------------- */
@@ -237,16 +276,19 @@ function normalizeEntryToBotPayload({ type, entry, user, message }) {
   const priceGBP = pickPriceGBPFromLatestPrices(card?.latestPrices, variation);
   const cardCanonicalId = entry?.cardId ?? card?.id ?? null;
 
+  // ✅ CHANGED: never fall back to email for Discord display — avoid accidental PII leaks
+  const safeUsername = user?.username || "SBF User";
+
   return {
     type,
     entryId: String(entry?.id || ""),
 
     channelId: null,
-    message: message ? String(message).trim() : "",
+    message: normalizeMessage(message),
 
     requestedBy: {
       userId: String(user?.id || ""),
-      username: user?.username || user?.email || "SBF User",
+      username: safeUsername,
     },
 
     card: {
@@ -303,7 +345,8 @@ function normalizeEntryToBotPayload({ type, entry, user, message }) {
 
 /* ============================== target selection routes ============================== */
 
-router.get("/share/guilds", requireUserAuth, async (req, res) => {
+// CHANGED: use requireShareAuth (auth + safety)
+router.get("/share/guilds", requireShareAuth, async (req, res) => {
   try {
     const tok = await getValidDiscordAccessTokenForUser(req.user.id);
     if (!tok.ok) return res.status(400).json({ ok: false, error: tok.error });
@@ -345,7 +388,8 @@ router.get("/share/guilds", requireUserAuth, async (req, res) => {
   }
 });
 
-router.get("/share/guilds/:guildId/channels", requireUserAuth, async (req, res) => {
+// CHANGED: use requireShareAuth (auth + safety)
+router.get("/share/guilds/:guildId/channels", requireShareAuth, async (req, res) => {
   try {
     const guildId = String(req.params.guildId || "").trim();
     if (!guildId) return res.status(400).json({ ok: false, error: "guildId is required" });
@@ -375,7 +419,8 @@ router.get("/share/guilds/:guildId/channels", requireUserAuth, async (req, res) 
 
 /* ============================== share routes ============================== */
 
-router.post("/share/collection", requireUserAuth, async (req, res) => {
+// CHANGED: use requireShareAuth (auth + safety)
+router.post("/share/collection", requireShareAuth, async (req, res) => {
   try {
     const { guildId, channelId, entry, message } = req.body || {};
     const gid = String(guildId || "").trim();
@@ -386,25 +431,27 @@ router.post("/share/collection", requireUserAuth, async (req, res) => {
       return res.status(400).json({ ok: false, error: "entry is missing required fields (id, cardId, card.name)" });
     }
 
+    const safeMsg = normalizeMessage(message);
+
     const limit = checkShareRateLimit(req.user.id, {
       type: "collection",
-      guildId: gid || null, 
-      channelId: cid, 
+      guildId: gid || null,
+      channelId: cid,
       entry: {
-        id: entry.id, 
-        cardId: entry.cardId, 
-        variation: entry.variation ?? entry.variationKey ?? null, 
+        id: entry.id,
+        cardId: entry.cardId,
+        variation: entry.variation ?? entry.variationKey ?? null,
       },
-      message: message ? String(message).trim() : "",
-    }); 
+      message: safeMsg,
+    });
 
     if (!limit.ok) {
-      const msg = 
+      const msg =
         limit.reason === "duplicate"
-        ? "You have just shared the same collection entry. Please wait before sharing again. Spamming isn't cool"
-        : limit.reason === "minute" 
-          ? "You're sharing too fast"
-          : "Daily share limit reached";
+          ? "You have just shared the same collection entry. Please wait before sharing again."
+          : limit.reason === "minute"
+            ? "You're sharing too fast."
+            : "Daily share limit reached.";
 
       return res.status(429).json({ ok: false, error: "rate_limited", reason: limit.reason, message: msg });
     }
@@ -425,7 +472,7 @@ router.post("/share/collection", requireUserAuth, async (req, res) => {
       type: "collection",
       entry,
       user: req.user,
-      message,
+      message: safeMsg,
     });
     payload.channelId = cid;
     if (gid) payload.guildId = gid;
@@ -438,7 +485,8 @@ router.post("/share/collection", requireUserAuth, async (req, res) => {
   }
 });
 
-router.post("/share/wishlist", requireUserAuth, async (req, res) => {
+// CHANGED: use requireShareAuth (auth + safety)
+router.post("/share/wishlist", requireShareAuth, async (req, res) => {
   try {
     const { guildId, channelId, entry, message } = req.body || {};
     const gid = String(guildId || "").trim();
@@ -449,6 +497,8 @@ router.post("/share/wishlist", requireUserAuth, async (req, res) => {
       return res.status(400).json({ ok: false, error: "entry is missing required fields (id, cardId, card.name)" });
     }
 
+    const safeMsg = normalizeMessage(message);
+
     const limit = checkShareRateLimit(req.user.id, {
       type: "wishlist",
       guildId: gid || null,
@@ -458,15 +508,15 @@ router.post("/share/wishlist", requireUserAuth, async (req, res) => {
         cardId: entry.cardId,
         variation: entry.variation ?? entry.variationKey ?? null,
       },
-      message: message ? String(message).trim() : "",
+      message: safeMsg,
     });
 
     if (!limit.ok) {
       const msg =
         limit.reason === "duplicate"
-          ? "You have just shared the same wishlist entry. Please wait before sharing again. Spamming isn't cool"
+          ? "You have just shared the same wishlist entry. Please wait before sharing again."
           : limit.reason === "minute"
-            ? "You’re sharing too fast"
+            ? "You're sharing too fast."
             : "Daily share limit reached.";
 
       return res.status(429).json({ ok: false, error: "rate_limited", reason: limit.reason, message: msg });
@@ -488,7 +538,7 @@ router.post("/share/wishlist", requireUserAuth, async (req, res) => {
       type: "wishlist",
       entry,
       user: req.user,
-      message,
+      message: safeMsg,
     });
     payload.channelId = cid;
     if (gid) payload.guildId = gid;

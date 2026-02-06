@@ -1,25 +1,49 @@
-// src/routes/discordBot.js
+// backend/src/routes/discordBot.js
 //
-// NEW (2026-01-22):
-// - Returns an invite URL to install the SixByFive bot into a Discord server.
-// - This is NOT user OAuth. It’s the standard bot installation URL.
-// - Optional: allow passing guildId to preselect the server in Discord UI.
+// UPDATED (2026-02-02):
+// - ADD: Auth + safety gate (canConnectDiscord) so minors/unauthorized users can't access Discord install flow
+// - ADD: guildId validation (Discord snowflake format)
+// - ADD: cache headers (short) to reduce repeated calls
+// - KEEP: env-configurable permissions + invite URL generation
 
 import express from "express";
+import { requireCapability } from "../modules/safety/guards.js";
 
 const router = express.Router();
 
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 
-// Minimal permission set:
-// - Send Messages
-// - Embed Links
-// - Read Message History
-// - Use External Emojis (optional)
-// - Add Reactions (optional)
-// - Manage Roles (only if you want the bot to grant roles after linking)
-const DEFAULT_PERMISSIONS = process.env.DISCORD_BOT_PERMISSIONS || "274878221376"; 
-// ^ change this if you want (I’ll explain below)
+// Minimal permission set (env override supported)
+const DEFAULT_PERMISSIONS = process.env.DISCORD_BOT_PERMISSIONS || "274878221376";
+
+/* ============================== helpers ============================== */
+
+function requireDiscordAccess(req, res, next) {
+  if (!req.user?.id) {
+    return res.status(401).json({ ok: false, error: "unauthorized" });
+  }
+
+  try {
+    // ✅ Gate "Discord connection/installation" behind safety rule
+    requireCapability(req.user, "canConnectDiscord", { action: "connect Discord" });
+  } catch (e) {
+    return res.status(403).json({
+      ok: false,
+      error: "forbidden",
+      reason: "capability_denied",
+      message: e?.message || "Not allowed to connect Discord",
+    });
+  }
+
+  return next();
+}
+
+// Discord snowflake IDs are numeric strings (typically 17-20 digits)
+function isValidSnowflake(id) {
+  if (!id) return false;
+  const s = String(id).trim();
+  return /^[0-9]{15,25}$/.test(s);
+}
 
 function buildBotInviteUrl({ guildId } = {}) {
   if (!CLIENT_ID) throw new Error("DISCORD_CLIENT_ID missing");
@@ -27,25 +51,38 @@ function buildBotInviteUrl({ guildId } = {}) {
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
     scope: "bot applications.commands",
-    permissions: DEFAULT_PERMISSIONS,
+    permissions: String(DEFAULT_PERMISSIONS),
   });
 
   // Optional preselect guild
   if (guildId) params.set("guild_id", String(guildId));
+
   // Optional: avoid user choosing other servers (only use if you really want)
   // params.set("disable_guild_select", "true");
 
   return `https://discord.com/oauth2/authorize?${params.toString()}`;
 }
 
-router.get("/discord/bot/invite-url", (req, res) => {
+/* ============================== routes ============================== */
+
+// CHANGED: gated behind auth + canConnectDiscord
+router.get("/discord/bot/invite-url", requireDiscordAccess, (req, res) => {
   try {
-    const guildId = typeof req.query.guildId === "string" ? req.query.guildId : null;
+    const rawGuildId = typeof req.query.guildId === "string" ? req.query.guildId : null;
+    const guildId = rawGuildId && isValidSnowflake(rawGuildId) ? rawGuildId.trim() : null;
+
+    if (rawGuildId && !guildId) {
+      return res.status(400).json({ ok: false, error: "Invalid guildId" });
+    }
+
+    // Small cache to reduce hammering (optional)
+    res.setHeader("Cache-Control", "private, max-age=60");
+
     const url = buildBotInviteUrl({ guildId });
-    res.json({ ok: true, url });
+    return res.json({ ok: true, url });
   } catch (e) {
     console.error("[DiscordBot] invite-url error:", e);
-    res.status(500).json({ ok: false, error: "Failed to build invite url" });
+    return res.status(500).json({ ok: false, error: "Failed to build invite url" });
   }
 });
 

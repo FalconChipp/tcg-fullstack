@@ -1,17 +1,4 @@
 // backend/src/modules/messages/resolvers.js
-//
-// UPDATED (2026-02-06):
-// - FIX: Align resolvers to your actual schema (myChats/chatWithUser/sendMessage/etc).
-// - FIX: HARD enforcement of messaging restrictions server-side:
-//        requireChatAgreement + requireNotChatBanned + requireCanMessage
-// - RESTORE: chat agreement queries/mutation, admin actions.
-// - FIX (CRITICAL): Add Message field resolvers that coerce NULL -> safe defaults
-//        for GraphQL non-null fields (Boolean! etc). This prevents myChats/chatWithUser
-//        from failing and returning an empty UI when legacy DB rows contain NULLs.
-// - FIX: Normalize sender/receiver/content mapping so both camelCase + snake_case DB
-//        shapes work during migrations.
-// - KEEP: block/mute/report flows mapped to your schema names.
-//
 
 import { Op } from "sequelize";
 import {
@@ -137,9 +124,18 @@ function visibleToMe(meId, msg) {
   return true;
 }
 
+// ✅ Helper: safely attach reportDetails to a JSON-like object
+function attachReportDetails(existingMeta, details, extra = {}) {
+  const base = existingMeta && typeof existingMeta === "object" ? existingMeta : {};
+  return {
+    ...base,
+    ...extra,
+    reportDetails: details || null,
+  };
+}
+
 export default {
   Query: {
-    // myChats(page, pageSize): [ChatSummary!]!
     myChats: async (_, { page, pageSize }, ctx) => {
       const me = await enforceMessagingAccess(ctx);
 
@@ -154,7 +150,6 @@ export default {
         limit: 5000,
       });
 
-      // Group by "other user" thread
       const byOther = new Map(); // otherId -> { lastMessage, unreadCount }
 
       for (const msg of rows) {
@@ -173,7 +168,6 @@ export default {
 
         const isToMe = receiverId === String(me.id);
         const isUnread = !getBool(msg, "isRead", "is_read", false);
-
         const deletedByReceiver = getBool(msg, "deletedByReceiver", "deleted_by_receiver", false);
 
         if (isToMe && isUnread && !deletedByReceiver) {
@@ -184,7 +178,6 @@ export default {
 
       const allOtherIds = Array.from(byOther.keys());
 
-      // paginate threads
       const start = (p - 1) * limit;
       const end = start + limit;
       const pageOtherIds = allOtherIds.slice(start, end);
@@ -196,9 +189,6 @@ export default {
       });
       const userMap = new Map(users.map((u) => [String(u.id), u]));
 
-      // IMPORTANT: ChatSummary.user is NON-NULL in your schema.
-      // If we can't load the other user for any reason, skip that thread
-      // rather than returning null and nuking the whole GraphQL response.
       const out = [];
       for (const otherId of pageOtherIds) {
         const otherUser = userMap.get(String(otherId));
@@ -215,7 +205,6 @@ export default {
       return out;
     },
 
-    // chatWithUser(userId, page, pageSize): [Message!]!
     chatWithUser: async (_, { userId, page, pageSize }, ctx) => {
       const me = await enforceMessagingAccess(ctx);
       const otherId = String(userId || "").trim();
@@ -278,8 +267,9 @@ export default {
       });
     },
 
+    // ✅ P0 FIX: await requireAdmin
     adminQueryChatBlocks: async (_, { page, pageSize, filter }, ctx) => {
-      requireAdmin(ctx.token);
+      await requireAdmin(ctx.token);
 
       const p = clampPage(page);
       const limit = clampPageSize(pageSize);
@@ -297,8 +287,9 @@ export default {
       });
     },
 
+    // ✅ P0 FIX: await requireAdmin
     adminQueryMessages: async (_, { filter, page, pageSize }, ctx) => {
-      requireAdmin(ctx.token);
+      await requireAdmin(ctx.token);
 
       const p = clampPage(page);
       const limit = clampPageSize(pageSize);
@@ -317,8 +308,9 @@ export default {
       });
     },
 
+    // ✅ P0 FIX: await requireAdmin
     adminQueryReportedMessages: async (_, { page, pageSize, filter }, ctx) => {
-      requireAdmin(ctx.token);
+      await requireAdmin(ctx.token);
 
       const p = clampPage(page);
       const limit = clampPageSize(pageSize);
@@ -335,8 +327,9 @@ export default {
       });
     },
 
+    // ✅ P0 FIX: await requireAdmin
     adminQueryReportedUsers: async (_, { page, pageSize, filter }, ctx) => {
-      requireAdmin(ctx.token);
+      await requireAdmin(ctx.token);
 
       const p = clampPage(page);
       const limit = clampPageSize(pageSize);
@@ -375,7 +368,6 @@ export default {
         content: clean,
         meta: meta ?? null,
 
-        // ✅ ensure non-null fields (for schema)
         isRead: false,
         deletedBySender: false,
         deletedByReceiver: false,
@@ -403,7 +395,6 @@ export default {
         // ignore
       }
 
-      // keep frontend listener compatibility
       try {
         if (ctx?.io) {
           ctx.io.to(String(otherId)).emit("newMessage", { from: String(me.id) });
@@ -453,11 +444,14 @@ export default {
       return true;
     },
 
-    reportMessage: async (_, { messageId, reason }, ctx) => {
+    // ✅ P1 FIX: accept details + persist in meta
+    reportMessage: async (_, { messageId, reason, details }, ctx) => {
       const me = await requireUserFromContext(ctx);
 
       const id = String(messageId || "").trim();
       const r = String(reason || "").trim();
+      const d = details != null ? String(details).trim() : "";
+
       if (!id) throw new Error("message_id_required");
       if (!r) throw new Error("reason_required");
 
@@ -468,23 +462,36 @@ export default {
       msg.isFlagged = true;
       msg.flagReason = r.slice(0, 500);
       msg.flaggedById = me.id;
-      await msg.save();
 
+      msg.meta = attachReportDetails(msg.meta, d || null, {
+        reportedAt: new Date().toISOString(),
+        reportMode: "MESSAGE",
+      });
+
+      await msg.save();
       return true;
     },
 
-    reportUser: async (_, { userId, reason }, ctx) => {
+    // ✅ P1 FIX: accept details + persist to ReportedUser.details
+    reportUser: async (_, { userId, reason, details }, ctx) => {
       const me = await requireUserFromContext(ctx);
 
       const otherId = String(userId || "").trim();
       const r = String(reason || "").trim();
+      const d = details != null ? String(details).trim() : "";
+
       if (!otherId) throw new Error("user_id_required");
       if (!r) throw new Error("reason_required");
 
       await ReportedUser.create({
         userId: otherId,
         reporterId: me.id,
-        reason: r.slice(0, 2000),
+
+        // ✅ IMPORTANT: your DB column is varchar(255)
+        reason: r.slice(0, 255),
+
+        // ✅ NEW COLUMN: TEXT
+        details: d ? d.slice(0, 4000) : null,
       });
 
       return true;
@@ -507,7 +514,7 @@ export default {
     },
 
     adminDeleteMessage: async (_, { id }, ctx) => {
-      requireAdmin(ctx.token);
+      await requireAdmin(ctx.token);
       const msgId = String(id || "").trim();
       if (!msgId) throw new Error("message_id_required");
       await Message.destroy({ where: { id: msgId } });
@@ -515,7 +522,7 @@ export default {
     },
 
     adminBanUserFromChat: async (_, { userId, reason }, ctx) => {
-      requireAdmin(ctx.token);
+      await requireAdmin(ctx.token);
       const targetId = String(userId || "").trim();
       if (!targetId) throw new Error("user_id_required");
 
@@ -530,7 +537,7 @@ export default {
     },
 
     adminUnbanUserFromChat: async (_, { userId }, ctx) => {
-      requireAdmin(ctx.token);
+      await requireAdmin(ctx.token);
       const targetId = String(userId || "").trim();
       if (!targetId) throw new Error("user_id_required");
 
@@ -542,7 +549,7 @@ export default {
     },
 
     adminClearUserReport: async (_, { userId }, ctx) => {
-      requireAdmin(ctx.token);
+      await requireAdmin(ctx.token);
       const targetId = String(userId || "").trim();
       if (!targetId) throw new Error("user_id_required");
 
@@ -550,25 +557,49 @@ export default {
       return true;
     },
 
-    adminSendSystemMessage: async (_, { content, meta }, ctx) => {
-      requireAdmin(ctx.token);
+    adminSendSystemMessage: async (_, { receiverId, content, meta }, ctx) => {
+      await requireAdmin(ctx.token);
+
+      const me = await requireUserFromContext(ctx);
+
+      const otherId = String(receiverId || "").trim();
+      if (!otherId) throw new Error("receiver_id_required");
 
       const clean = String(content || "").trim();
       if (!clean) throw new Error("content_required");
 
       await Message.create({
-        senderId: null,
-        receiverId: null,
+        senderId: me.id,
+        receiverId: otherId,
         content: clean,
         meta: meta ?? null,
 
-        // satisfy schema defaults
-        isRead: true,
+        isRead: false,
         deletedBySender: false,
         deletedByReceiver: false,
         isFlagged: false,
         isSystemMessage: true,
       });
+
+      try {
+        await notifyUser(otherId, {
+          type: "system_message",
+          title: "System Message",
+          body: clean.slice(0, 120),
+          linkUrl: "/messages",
+        });
+      } catch {
+        // ignore
+      }
+
+      try {
+        if (ctx?.io) {
+          ctx.io.to(String(otherId)).emit("newMessage", { from: String(me.id) });
+          ctx.io.to(`user:${String(otherId)}`).emit("newMessage", { from: String(me.id) });
+        }
+      } catch {
+        // ignore
+      }
 
       return true;
     },
@@ -633,10 +664,6 @@ export default {
     },
   },
 
-  // =========================================================
-  // CRITICAL: Message field resolvers to satisfy your schema
-  // (prevents NULL Boolean! values from killing myChats/chatWithUser)
-  // =========================================================
   Message: {
     id: (m) => m?.id,
 

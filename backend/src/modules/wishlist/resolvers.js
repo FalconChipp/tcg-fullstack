@@ -215,7 +215,7 @@ const resolvers = {
       { userId, cardId, quantity = 1, condition, variation, notes, status }, // schema includes condition; keep it but ignore if you don't store it
       { token }
     ) => {
-      requireAdmin(token);
+      await requireAdmin(token);
       const t = await sequelize.transaction();
 
       try {
@@ -233,7 +233,6 @@ const resolvers = {
           entry.quantity = (entry.quantity || 0) + quantity;
           if (notes !== undefined) entry.notes = notes;
 
-          // ✅ status update if provided
           if (status !== undefined) entry.status = normalized;
 
           await entry.save({ transaction: t });
@@ -260,7 +259,7 @@ const resolvers = {
     },
 
     adminRemoveFromWishlist: async (_, { userId, cardId, variation }, { token }) => {
-      requireAdmin(token);
+      await requireAdmin(token);
 
       const entry = await Wishlist.findOne({
         where: { userId, cardId, variation },
@@ -272,7 +271,7 @@ const resolvers = {
     },
 
     adminClearWishlist: async (_, { userId }, { token }) => {
-      requireAdmin(token);
+      await requireAdmin(token);
       await Wishlist.destroy({ where: { userId } });
       return true;
     },
@@ -283,7 +282,7 @@ const resolvers = {
       { userId, cardId, variation, quantity, condition, notes, status },
       { token }
     ) => {
-      requireAdmin(token);
+      await requireAdmin(token);
 
       const t = await sequelize.transaction();
       try {

@@ -56,7 +56,7 @@ const resolvers = {
       return { trades: rows, total: count, page, pageSize };
     },
     tradeDisputes: async (_, { status, page = 1, pageSize = DEFAULT_PAGE_SIZE }, { token }) => {
-      requireAdmin(token);
+      await requireAdmin(token);
       const where = {};
       if (status) where.status = status;
       return TradeDispute.findAll({
@@ -236,7 +236,7 @@ const resolvers = {
       return dispute;
     },
     adminResolveTradeDispute: async (_, { tradeId, resolution }, { token }) => {
-      requireAdmin(token);
+      await requireAdmin(token);
       const trade = await Trade.findByPk(tradeId);
       if (!trade || !trade.disputeId) throw new Error('Trade/dispute not found');
       const dispute = await TradeDispute.findByPk(trade.disputeId);
@@ -250,7 +250,7 @@ const resolvers = {
       return dispute;
     },
     blockUserFromTrade: async (_, { userId }, { token }) => {
-      requireAdmin(token);
+      await requireAdmin(token);
       // Placeholder logic
       return true;
     },

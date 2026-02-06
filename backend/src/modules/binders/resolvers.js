@@ -317,7 +317,7 @@ const resolvers = {
 
     // Admin only
     adminEditBinder: async (_, { id, input }, { token }) => {
-      requireAdmin(token);
+      await requireAdmin(token);
       const binder = await Binder.findByPk(id);
       if (!binder) throw new Error('Not found');
       if (input.name !== undefined) binder.name = input.name;
@@ -336,7 +336,7 @@ const resolvers = {
       return binder;
     },
     adminDeleteBinder: async (_, { id, permanent = false }, { token }) => {
-      requireAdmin(token);
+      await requireAdmin(token);
       const binder = await Binder.findByPk(id);
       if (!binder) return false;
       if (permanent) await binder.destroy();

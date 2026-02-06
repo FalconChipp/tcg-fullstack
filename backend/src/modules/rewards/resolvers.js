@@ -15,7 +15,7 @@ const resolvers = {
   },
   Mutation: {
     grantReward: async (_, { userId, type, achievementId, data }, { token, ip, userAgent }) => {
-      const admin = requireAdmin(token);
+      const admin = await requireAdmin(token);
       const reward = await Reward.create({ userId, type, achievementId: achievementId || null, data });
       await recordAuditLog({
         userId: admin.id,

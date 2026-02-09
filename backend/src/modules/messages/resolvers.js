@@ -442,7 +442,8 @@ export default {
       try {
         const muted = await isMuted(String(otherId), String(me.id));
         if (!muted) {
-          await notifyUser(otherId, {
+          await notifyUser({
+            userId: otherId,
             type: "chat_message",
             title: "New Message",
             body: `New message from ${me.username || "a user"}`,
@@ -646,7 +647,8 @@ export default {
       });
 
       try {
-        await notifyUser(otherId, {
+        await notifyUser({
+          userId: otherId,
           type: "system_message",
           title: "System Message",
           body: clean.slice(0, 120),

@@ -134,6 +134,70 @@ function attachReportDetails(existingMeta, details, extra = {}) {
   };
 }
 
+// ============================================================================
+// ✅ NEW: AdminAction compatibility helpers
+// Fixes: notNull Violation: AdminAction.adminId/actionType cannot be null
+// ============================================================================
+
+function adminActionAttrs() {
+  return AdminAction?.rawAttributes || {};
+}
+
+function pickFirstExistingKey(obj, keys) {
+  for (const k of keys) {
+    if (Object.prototype.hasOwnProperty.call(obj, k)) return k;
+  }
+  return null;
+}
+
+function buildAdminActionPayload({ adminId, targetUserId, actionType, reason }) {
+  const attrs = adminActionAttrs();
+
+  // Your error says these exist:
+  // - adminId
+  // - actionType
+  // We still support variants in case the model differs per env.
+  const adminKey = pickFirstExistingKey(attrs, ["adminId", "adminUserId", "performedById"]);
+  const targetKey = pickFirstExistingKey(attrs, ["userId", "targetUserId", "subjectUserId"]);
+  const typeKey = pickFirstExistingKey(attrs, ["actionType", "type"]);
+  const reasonKey = pickFirstExistingKey(attrs, ["reason", "note", "details"]);
+
+  const payload = {};
+
+  if (!adminKey) throw new Error("AdminAction model missing adminId/adminUserId field");
+  if (!typeKey) throw new Error("AdminAction model missing actionType/type field");
+
+  payload[adminKey] = adminId;
+  payload[typeKey] = actionType;
+
+  // Only set target user if your model supports it
+  if (targetKey) payload[targetKey] = targetUserId;
+
+  if (reasonKey) {
+    const r = String(reason || "").trim();
+    payload[reasonKey] = r ? r.slice(0, 500) : null;
+  }
+
+  // If your model uses timestamps, Sequelize will handle createdAt/updatedAt.
+  return payload;
+}
+
+function buildAdminActionWhere({ targetUserId, actionType }) {
+  const attrs = adminActionAttrs();
+
+  const targetKey = pickFirstExistingKey(attrs, ["userId", "targetUserId", "subjectUserId"]);
+  const typeKey = pickFirstExistingKey(attrs, ["actionType", "type"]);
+
+  if (!typeKey) throw new Error("AdminAction model missing actionType/type field");
+
+  const where = {};
+  where[typeKey] = actionType;
+
+  if (targetKey) where[targetKey] = targetUserId;
+
+  return where;
+}
+
 export default {
   Query: {
     myChats: async (_, { page, pageSize }, ctx) => {
@@ -150,7 +214,7 @@ export default {
         limit: 5000,
       });
 
-      const byOther = new Map(); // otherId -> { lastMessage, unreadCount }
+      const byOther = new Map();
 
       for (const msg of rows) {
         if (!visibleToMe(me.id, msg)) continue;
@@ -177,7 +241,6 @@ export default {
       }
 
       const allOtherIds = Array.from(byOther.keys());
-
       const start = (p - 1) * limit;
       const end = start + limit;
       const pageOtherIds = allOtherIds.slice(start, end);
@@ -267,7 +330,6 @@ export default {
       });
     },
 
-    // ✅ P0 FIX: await requireAdmin
     adminQueryChatBlocks: async (_, { page, pageSize, filter }, ctx) => {
       await requireAdmin(ctx.token);
 
@@ -287,7 +349,6 @@ export default {
       });
     },
 
-    // ✅ P0 FIX: await requireAdmin
     adminQueryMessages: async (_, { filter, page, pageSize }, ctx) => {
       await requireAdmin(ctx.token);
 
@@ -308,7 +369,6 @@ export default {
       });
     },
 
-    // ✅ P0 FIX: await requireAdmin
     adminQueryReportedMessages: async (_, { page, pageSize, filter }, ctx) => {
       await requireAdmin(ctx.token);
 
@@ -327,7 +387,6 @@ export default {
       });
     },
 
-    // ✅ P0 FIX: await requireAdmin
     adminQueryReportedUsers: async (_, { page, pageSize, filter }, ctx) => {
       await requireAdmin(ctx.token);
 
@@ -338,6 +397,7 @@ export default {
       const where = {};
       if (filter?.userId) where.userId = String(filter.userId);
       if (filter?.reporterId) where.reporterId = String(filter.reporterId);
+      if (filter?.isCleared != null) where.isCleared = !!filter.isCleared; // ✅ supports dashboard "Only open"
 
       return ReportedUser.findAll({
         where,
@@ -377,9 +437,7 @@ export default {
 
       try {
         await maybeGrantAchievement(me.id, "first_message");
-      } catch {
-        // ignore
-      }
+      } catch {}
 
       try {
         const muted = await isMuted(String(otherId), String(me.id));
@@ -391,18 +449,14 @@ export default {
             linkUrl: "/messages",
           });
         }
-      } catch {
-        // ignore
-      }
+      } catch {}
 
       try {
         if (ctx?.io) {
           ctx.io.to(String(otherId)).emit("newMessage", { from: String(me.id) });
           ctx.io.to(`user:${String(otherId)}`).emit("newMessage", { from: String(me.id) });
         }
-      } catch {
-        // ignore
-      }
+      } catch {}
 
       return msg;
     },
@@ -444,7 +498,6 @@ export default {
       return true;
     },
 
-    // ✅ P1 FIX: accept details + persist in meta
     reportMessage: async (_, { messageId, reason, details }, ctx) => {
       const me = await requireUserFromContext(ctx);
 
@@ -472,7 +525,6 @@ export default {
       return true;
     },
 
-    // ✅ P1 FIX: accept details + persist to ReportedUser.details
     reportUser: async (_, { userId, reason, details }, ctx) => {
       const me = await requireUserFromContext(ctx);
 
@@ -486,12 +538,9 @@ export default {
       await ReportedUser.create({
         userId: otherId,
         reporterId: me.id,
-
-        // ✅ IMPORTANT: your DB column is varchar(255)
         reason: r.slice(0, 255),
-
-        // ✅ NEW COLUMN: TEXT
         details: d ? d.slice(0, 4000) : null,
+        isCleared: false,
       });
 
       return true;
@@ -521,39 +570,54 @@ export default {
       return true;
     },
 
+    // ✅ FIXED: writes adminId + actionType (or compatible keys)
     adminBanUserFromChat: async (_, { userId, reason }, ctx) => {
       await requireAdmin(ctx.token);
+
+      const admin = await requireUserFromContext(ctx);
+
       const targetId = String(userId || "").trim();
       if (!targetId) throw new Error("user_id_required");
 
-      await AdminAction.create({
-        userId: targetId,
-        type: "CHAT_BAN",
-        reason: String(reason || "").trim().slice(0, 500) || null,
-        createdAt: new Date(),
+      const payload = buildAdminActionPayload({
+        adminId: admin.id,
+        targetUserId: targetId,
+        actionType: "CHAT_BAN",
+        reason: String(reason || "").trim(),
       });
 
+      await AdminAction.create(payload);
       return true;
     },
 
+    // ✅ FIXED: uses actionType (or compatible key) in WHERE
     adminUnbanUserFromChat: async (_, { userId }, ctx) => {
       await requireAdmin(ctx.token);
+
       const targetId = String(userId || "").trim();
       if (!targetId) throw new Error("user_id_required");
 
-      await AdminAction.destroy({
-        where: { userId: targetId, type: "CHAT_BAN" },
+      const where = buildAdminActionWhere({
+        targetUserId: targetId,
+        actionType: "CHAT_BAN",
       });
 
+      await AdminAction.destroy({ where });
       return true;
     },
 
+    // ✅ Better: mark reports cleared, not delete (matches your dashboard)
     adminClearUserReport: async (_, { userId }, ctx) => {
       await requireAdmin(ctx.token);
+
       const targetId = String(userId || "").trim();
       if (!targetId) throw new Error("user_id_required");
 
-      await ReportedUser.destroy({ where: { userId: targetId } });
+      await ReportedUser.update(
+        { isCleared: true },
+        { where: { userId: targetId, isCleared: false } }
+      );
+
       return true;
     },
 
@@ -588,18 +652,14 @@ export default {
           body: clean.slice(0, 120),
           linkUrl: "/messages",
         });
-      } catch {
-        // ignore
-      }
+      } catch {}
 
       try {
         if (ctx?.io) {
           ctx.io.to(String(otherId)).emit("newMessage", { from: String(me.id) });
           ctx.io.to(`user:${String(otherId)}`).emit("newMessage", { from: String(me.id) });
         }
-      } catch {
-        // ignore
-      }
+      } catch {}
 
       return true;
     },

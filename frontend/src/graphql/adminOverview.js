@@ -20,3 +20,26 @@ export const ADMIN_OVERVIEW_QUERY = gql`
     }
   }
 `;
+
+export const ADMIN_REPORTED_USERS_QUERY = gql`
+  query AdminReportedUsers($page: Int, $pageSize: Int, $filter: JSON) {
+    adminQueryReportedUsers(page: $page, pageSize: $pageSize, filter: $filter) {
+      id
+      reason
+      details
+      isCleared
+      createdAt
+      updatedAt
+      user {
+        id
+        username
+        email
+      }
+      reporter {
+        id
+        username
+        email
+      }
+    }
+  }
+`;

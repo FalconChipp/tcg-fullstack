@@ -1,17 +1,4 @@
 // backend/src/modules/messages/helpers.js
-//
-// UPDATED (2026-02-06):
-// - FIX: verifyJwt may be SYNC -> never call .catch on it
-// - ADD: verifyJwtSafe() supports sync OR async verifyJwt implementations
-// - FIX: Throw GraphQLError with stable extension codes (not INTERNAL_SERVER_ERROR)
-// - FIX: Robust token extraction from ctx (ctx.token, ctx.req headers, ctx.request headers)
-// - FIX: AdminAction ban lookup no longer assumes "userId" column
-//        -> auto-detects relevant column names using AdminAction.rawAttributes
-// - KEEP: CHAT_RULES constant
-//
-// NOTE:
-// - This file intentionally avoids hardcoding AdminAction column names.
-// - If AdminAction doesn't support chat bans at all, isChatBanned() will safely return false.
 
 import { GraphQLError } from "graphql";
 import { ChatAgreement, AdminAction } from "../../models/index.js";
@@ -108,7 +95,7 @@ export async function requireChatAgreement(ctxOrToken) {
 }
 
 /* =========================================================
-   ✅ AdminAction column detection helpers
+   AdminAction column detection helpers
 ========================================================= */
 
 function pickAttr(model, candidates) {
@@ -142,7 +129,6 @@ function buildAdminActionWhereForChatBan(userId) {
   ]);
 
   // If we can't find a user column, we can't enforce bans from this table.
-  // (We fail open so chat doesn't crash your app.)
   if (!userField) return null;
 
   const where = { [userField]: userId };

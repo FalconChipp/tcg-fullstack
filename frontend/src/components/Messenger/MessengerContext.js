@@ -1,11 +1,4 @@
 // src/components/Messenger/MessengerContext.js
-//
-// UPDATED (2026-02-06):
-// - FIX: Report functions were incorrectly declared inside loadChatWithUser (invalid hook usage).
-// - FIX: reportUser/reportMessage are now top-level provider actions and exposed via context.
-// - REMOVE: reportUser/reportMessage stored inside messagesByUserId buckets (wrong place).
-// - FIX: Missing semicolon for M_REPORT_MESSAGE.
-// - KEEP: All existing chat logic (pagination, merge, optimistic send, deny handling, socket refresh).
 
 "use client";
 
@@ -23,7 +16,7 @@ import { io as socketIo } from "socket.io-client";
 
 const MessengerContext = createContext(null);
 
-const SOCKET_PATH = "/realtime/socket.io"; // ✅ must match backend
+const SOCKET_PATH = "/realtime/socket.io"; // 
 
 function normalizeOriginUrl(raw) {
   if (!raw) return "";

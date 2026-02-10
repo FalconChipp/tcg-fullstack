@@ -1,12 +1,4 @@
 // backend/src/modules/safety/resolvers.js
-//
-// UPDATED (2026-02-06):
-// - CHANGE: Treat "full" restriction as the safe default when DOB is missing/invalid (depends on capabilities.js).
-// - CHANGE: Parent email is ONLY applicable for "teen" accounts (under-16). For "child"/"full"/"none", parent fields are cleared.
-// - FIX: Only reset parent verification/token if the parent email actually CHANGES (prevents unnecessary re-verification).
-// - FIX: requestParentVerification now only allows "teen" (under-16). Blocks "child", "full", and "none" explicitly.
-// - CHANGE: adminSetUserRestriction now allows "full" as well (so admins can force hard restriction if needed).
-// - KEEP: DOB remains locked once set (server-side enforced).
 
 import { User } from "../../models/index.js";
 import { requireAdmin } from "../messages/helpers.js"; // you already have this
@@ -44,7 +36,6 @@ function clearParentLink(user) {
 
 export default {
   User: {
-    // ✅ expose camelCase fields on User
     dob: (user) => (user?.dob ? String(user.dob) : null),
     restrictionLevel: (user) => computeRestrictionLevel(user),
     parentEmail: (user) => (user?.parent_email ? String(user.parent_email) : null),
@@ -86,7 +77,6 @@ export default {
 
           // If DOB is missing or user isn't teen, parent email is not applicable
           if (!user.dob || restrictionLevel !== "teen") {
-            // ✅ CHANGED: fully clear parent link for non-teen or missing DOB
             clearParentLink(user);
           } else {
             // Teen: allow setting/updating parent email
@@ -94,8 +84,6 @@ export default {
 
             user.parent_email = nextParentEmail;
 
-            // ✅ FIX: only reset verification/tokens if the email actually CHANGED
-            // (or if it was verified but email is now blank)
             const changed = current !== nextParentEmail;
 
             if (changed) {
@@ -105,9 +93,6 @@ export default {
             }
           }
         } else {
-          // ✅ ADDED: Even if parentEmail isn't being updated, enforce clearing for non-teen states.
-          // This prevents stale parent_email/verified_at lingering if user becomes "none" via admin override,
-          // or if your restriction rules change.
           if (!user.dob || restrictionLevel !== "teen") {
             clearParentLink(user);
           }
@@ -131,7 +116,6 @@ export default {
 
         const restrictionLevel = computeRestrictionLevel(user);
 
-        // ✅ CHANGED: only teens (under-16) can do parent verification
         if (restrictionLevel === "none") {
           return { ok: false, error: "not_required_for_adults", user };
         }
@@ -182,7 +166,6 @@ export default {
         const user = await User.findByPk(userId);
         if (!user) return { ok: false, error: "user_not_found", user: null };
 
-        // ✅ CHANGED: allow "full" too (hard restriction / unknown DOB state)
         const allowed = new Set(["full", "child", "teen", "none"]);
         const rl = String(restrictionLevel || "").toLowerCase();
         if (!allowed.has(rl)) return { ok: false, error: "invalid_restriction_level", user: null };

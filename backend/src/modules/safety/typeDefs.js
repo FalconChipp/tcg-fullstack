@@ -1,7 +1,4 @@
 // backend/src/modules/safety/typeDefs.js
-// UPDATED (2026-02-05):
-// - ADD: expose dob/parentEmail/parentVerifiedAt/restrictionLevel on User (camelCase)
-// - KEEP: existing capabilities + mutations
 
 import { gql } from "graphql-tag";
 

@@ -1,16 +1,4 @@
 ﻿// index.js
-//
-// FIXED (2026-01-30):
-// - ✅ FIX: express-status-monitor was spawning Socket.IO v2 on /socket.io (conflicts with your v4 server)
-// - ✅ FIX: move monitor sockets to /status/socket.io via socketPath option
-// - ✅ ADD: explicitly set main Socket.IO server path to /socket.io
-// - ✅ ADD: engine-level debug logs for connection + connection_error
-// - KEEP: your existing setupSocket(io, logger) single setup
-//
-// Why this matters:
-// - socket.io-client@4 uses Engine.IO protocol EIO=4
-// - express-status-monitor depends on socket.io@2 (Engine.IO v3) and by default binds /socket.io
-// - that creates protocol mismatch => "Invalid frame header" + connect_error "server error"
 
 import "dotenv/config";
 import express from "express";
@@ -42,7 +30,6 @@ import { startNotificationCleanup } from "./src/jobs/notificationCleanup.js";
 import { startNotificationDeliveryJobs } from "./src/jobs/notificationDelivery.js";
 import { startUnreadReminderJob } from "./src/jobs/unreadReminder.js";
 
-// ✅ correct import
 import { setupSocket } from "./src/server/realtime/socket.js";
 
 import { typeDefs, resolvers } from "./src/schema.js";
@@ -69,17 +56,21 @@ import ordersService from "./src/modules/marketplace/services/ordersService.js";
 import inkthreadablesWebhook from "./src/webhooks/inkthreadables.js";
 
 // Safety
-import parentVerifyRouter from "./src/routes/parentVerify.js"
+import parentVerifyRouter from "./src/routes/parentVerify.js";
 
 // --- Logger Setup ---
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || "info",
   format: winston.format.combine(
     winston.format.timestamp(),
-    winston.format.printf(({ level, message, timestamp }) => `[${timestamp}] [${level}] ${message}`)
+    winston.format.printf(
+      ({ level, message, timestamp }) => `[${timestamp}] [${level}] ${message}`
+    )
   ),
   transports: [new winston.transports.Console()],
 });
+
+const DEV = process.env.NODE_ENV !== "production";
 
 // --- Express + HTTP Server ---
 const app = express();
@@ -100,17 +91,43 @@ function normalizeOrigin(s) {
   return String(s).trim().toLowerCase().replace(/\/+$/, "");
 }
 
+// env allow list
 const allowedOriginsRaw = process.env.CORS_ORIGINS || "";
-const allowedOrigins = allowedOriginsRaw.split(",").map(normalizeOrigin).filter(Boolean);
-const extraDev = (process.env.CORS_EXTRA_ORIGINS || "").split(",").map(normalizeOrigin).filter(Boolean);
-const ALLOWED = Array.from(new Set([...allowedOrigins, ...extraDev]));
+const allowedOrigins = allowedOriginsRaw
+  .split(",")
+  .map(normalizeOrigin)
+  .filter(Boolean);
 
-logger.info(`[CORS] Allow-list parsed (${ALLOWED.length}): ${ALLOWED.join(", ") || "(none)"}`);
+// extra origins (still env-driven)
+const extraEnv = (process.env.CORS_EXTRA_ORIGINS || "")
+  .split(",")
+  .map(normalizeOrigin)
+  .filter(Boolean);
+
+const devDefaults = DEV
+  ? [
+      "http://localhost:4000",
+      "http://127.0.0.1:4000",
+      "http://10.0.2.2:4000", 
+
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "http://10.0.2.2:3000",
+    ].map(normalizeOrigin)
+  : [];
+
+const ALLOWED = Array.from(new Set([...allowedOrigins, ...extraEnv, ...devDefaults]));
+
+logger.info(
+  `[CORS] DEV=${DEV} allow-list (${ALLOWED.length}): ${ALLOWED.join(", ") || "(none)"}`
+);
 
 function isOriginAllowed(origin, reqHost) {
   if (!origin) return true; // native apps/curl/etc.
   const norm = normalizeOrigin(origin);
   if (ALLOWED.length === 0 || ALLOWED.includes(norm)) return true;
+
+  // fallback: allow if origin host matches request host
   const hostFromOrigin = norm.replace(/^https?:\/\//, "");
   return !!(reqHost && hostFromOrigin === String(reqHost).toLowerCase());
 }
@@ -151,11 +168,14 @@ function applyCorsOnce(req, res) {
 }
 
 app.use((req, res, next) => {
-  if (req.headers.origin) logger.info(`[CORS] Origin: ${req.headers.origin} -> ${req.method} ${req.url}`);
+  if (req.headers.origin) {
+    logger.info(`[CORS] Origin: ${req.headers.origin} -> ${req.method} ${req.url}`);
+  }
 
   const origSetHeader = res.setHeader.bind(res);
   const origAppend = res.append ? res.append.bind(res) : null;
-  const isCorsHeader = (name) => CORS_HEADER_KEYS.includes(String(name).toLowerCase());
+  const isCorsHeader = (name) =>
+    CORS_HEADER_KEYS.includes(String(name).toLowerCase());
 
   res.setHeader = (name, value) => {
     if (isCorsHeader(name)) {
@@ -187,13 +207,9 @@ app.use((req, res, next) => {
 /* ============================
    Socket.IO (CORS aligned)
    ============================ */
-/* ============================
-   Socket.IO (CORS aligned)
-   ============================ */
+
 const io = new SocketIOServer(httpServer, {
-  // ✅ FIX: avoid path collision with express-status-monitor (socket.io v2)
-  // express-status-monitor commonly uses the default "/socket.io"
-  // so we move our realtime server to a dedicated path.
+  // ✅ Dedicated path (no collision with status monitor)
   path: "/realtime/socket.io",
 
   cors: {
@@ -204,7 +220,6 @@ const io = new SocketIOServer(httpServer, {
 
       const norm = normalizeOrigin(origin);
 
-      // ✅ Helpful logging if origin is blocked
       if (ALLOWED.length === 0 || ALLOWED.includes(norm)) return cb(null, true);
 
       const err = new Error(`Socket.IO CORS blocked: ${origin}`);
@@ -213,27 +228,23 @@ const io = new SocketIOServer(httpServer, {
     },
   },
 
-  // Optional: keep defaults, but explicit is clearer
   transports: ["polling", "websocket"],
   allowEIO3: false,
 });
 
 app.set("io", io);
 
-// ✅ Keep your existing setup call
 setupSocket(io, logger);
 
 /* ============================
    Status Monitor
    ============================ */
 
-// ✅ FIX: express-status-monitor spawns its own socket.io@2 by default.
-// If it uses /socket.io, it will conflict with your v4 server.
 // Move it to a dedicated path: /status/socket.io
 app.use(
   expressStatusMonitor({
     path: "/status",
-    socketPath: "/status/socket.io", // ✅ CHANGED: avoid clobbering /socket.io (your realtime)
+    socketPath: "/status/socket.io",
     ignoreStartsWith: "/admin",
   })
 );
@@ -250,62 +261,76 @@ function extractAdminToken(req) {
 }
 function requireAdmin(req, res, next) {
   const expected = process.env.ADMIN_API_TOKEN;
-  if (!expected) return res.status(500).json({ ok: false, error: "ADMIN_API_TOKEN not configured" });
+  if (!expected)
+    return res
+      .status(500)
+      .json({ ok: false, error: "ADMIN_API_TOKEN not configured" });
   const provided = extractAdminToken(req).trim();
-  if (!provided || provided !== expected) return res.status(401).json({ ok: false, error: "unauthorized" });
+  if (!provided || provided !== expected)
+    return res.status(401).json({ ok: false, error: "unauthorized" });
   return next();
 }
 
 /* ============================
    STRIPE WEBHOOK (raw body)
    ============================ */
-app.post("/webhooks/stripe", express.raw({ type: "application/json" }), async (req, res) => {
-  const sig = req.headers["stripe-signature"];
-  const stripeSecret = process.env.STRIPE_SECRET_KEY;
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+app.post(
+  "/webhooks/stripe",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    const sig = req.headers["stripe-signature"];
+    const stripeSecret = process.env.STRIPE_SECRET_KEY;
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-  if (!stripeSecret || !webhookSecret) {
-    logger.error("Stripe webhook error: STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET not configured");
-    return res.status(500).send("Webhook misconfigured");
-  }
-
-  let event;
-  try {
-    const stripe = new Stripe(stripeSecret);
-    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-  } catch (err) {
-    logger.error(`Stripe webhook verify error: ${err.message}`);
-    return res.status(400).send("Webhook Error");
-  }
-
-  logger.info(`Stripe webhook: received event ${event.type}`);
-
-  try {
-    switch (event.type) {
-      case "checkout.session.completed": {
-        const session = event.data.object;
-        const orderId = session.metadata && session.metadata.orderId;
-        if (!orderId) {
-          logger.warn("Stripe webhook: checkout.session.completed with no orderId metadata");
-          break;
-        }
-
-        logger.info(`Stripe webhook: checkout.session.completed for order ${orderId}, session ${session.id}`);
-
-        const ctx = { models, sequelize, logger, user: null };
-        await ordersService.markOrderPaid(orderId, ctx);
-        break;
-      }
-      default:
-        logger.info(`Stripe webhook: Ignoring unhandled event type ${event.type}`);
+    if (!stripeSecret || !webhookSecret) {
+      logger.error(
+        "Stripe webhook error: STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET not configured"
+      );
+      return res.status(500).send("Webhook misconfigured");
     }
 
-    return res.json({ received: true });
-  } catch (err) {
-    logger.error(`Stripe webhook handler error: ${err.stack || err.message}`);
-    return res.status(500).send("Webhook handler error");
+    let event;
+    try {
+      const stripe = new Stripe(stripeSecret);
+      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    } catch (err) {
+      logger.error(`Stripe webhook verify error: ${err.message}`);
+      return res.status(400).send("Webhook Error");
+    }
+
+    logger.info(`Stripe webhook: received event ${event.type}`);
+
+    try {
+      switch (event.type) {
+        case "checkout.session.completed": {
+          const session = event.data.object;
+          const orderId = session.metadata && session.metadata.orderId;
+          if (!orderId) {
+            logger.warn(
+              "Stripe webhook: checkout.session.completed with no orderId metadata"
+            );
+            break;
+          }
+
+          logger.info(
+            `Stripe webhook: checkout.session.completed for order ${orderId}, session ${session.id}`
+          );
+
+          const ctx = { models, sequelize, logger, user: null };
+          await ordersService.markOrderPaid(orderId, ctx);
+          break;
+        }
+        default:
+          logger.info(`Stripe webhook: Ignoring unhandled event type ${event.type}`);
+      }
+
+      return res.json({ received: true });
+    } catch (err) {
+      logger.error(`Stripe webhook handler error: ${err.stack || err.message}`);
+      return res.status(500).send("Webhook handler error");
+    }
   }
-});
+);
 
 /* ============================
    Security / Parsers
@@ -325,7 +350,8 @@ const limiter = rateLimit({
   max: 600,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.ip || req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown",
+  keyGenerator: (req) =>
+    req.ip || req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown",
   skipFailedRequests: true,
   skip: (req) => req.method === "OPTIONS",
 });
@@ -377,7 +403,10 @@ const storage = multer.diskStorage({
           const oldPath = profile.avatar.startsWith("/uploads/")
             ? path.join(process.cwd(), profile.avatar)
             : path.join(AVATAR_DIR, profile.avatar);
-          if (fs.existsSync(oldPath) && oldPath !== path.join(AVATAR_DIR, newFilename)) {
+          if (
+            fs.existsSync(oldPath) &&
+            oldPath !== path.join(AVATAR_DIR, newFilename)
+          ) {
             fs.unlinkSync(oldPath);
             logger.info(`Old avatar deleted: ${oldPath}`);
           }
@@ -394,7 +423,8 @@ const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    if (["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) cb(null, true);
+    if (["image/jpeg", "image/png", "image/webp"].includes(file.mimetype))
+      cb(null, true);
     else cb(new Error("Only image files (jpeg, png, webp) are allowed!"));
   },
 });
@@ -402,8 +432,10 @@ const upload = multer({
 app.post("/upload/avatar", upload.single("avatar"), async (req, res) => {
   try {
     const userId = getUserIdFromAuthHeader(req.headers.authorization);
-    if (!userId) return res.status(401).json({ success: false, error: "No user ID found" });
-    if (!req.file?.filename) return res.status(400).json({ success: false, error: "No file uploaded" });
+    if (!userId)
+      return res.status(401).json({ success: false, error: "No user ID found" });
+    if (!req.file?.filename)
+      return res.status(400).json({ success: false, error: "No file uploaded" });
 
     let profile = await Profile.findOne({ where: { userId } });
     if (!profile) profile = await Profile.create({ userId });
@@ -428,8 +460,11 @@ app.use("/uploads/avatars", express.static(AVATAR_DIR));
 /* ============================
    Health + simple endpoints
    ============================ */
-app.get("/health", (_req, res) => res.json({ status: "ok", timestamp: Date.now() }));
-app.get("/graphql", (_req, res) => res.status(200).send("OK"));
+app.get("/health", (_req, res) =>
+  res.json({ status: "ok", timestamp: Date.now() })
+);
+
+app.get("/graphql-health", (_req, res) => res.status(200).send("OK"));
 
 app.get("/admin", (_req, res) => {
   res.set("Cache-Control", "no-store");
@@ -442,11 +477,17 @@ app.get("/admin/admin.js", (_req, res) => {
 
 // [CARDSEARCH] routes
 try {
-  const { publicRouter, apiRouter } = await import("./src/modules/cardsearch/admin/routes.js");
+  const { publicRouter, apiRouter } = await import(
+    "./src/modules/cardsearch/admin/routes.js"
+  );
   app.use("/admin/cardsearch", publicRouter());
   app.use("/admin/cardsearch", requireAdmin, apiRouter());
-  app.get("/admin/cardsearch", (_req, res) => res.redirect(302, "/admin/cardsearch/ui"));
-  logger.info("[Cardsearch] admin routes mounted at /admin/cardsearch (public UI + protected API)");
+  app.get("/admin/cardsearch", (_req, res) =>
+    res.redirect(302, "/admin/cardsearch/ui")
+  );
+  logger.info(
+    "[Cardsearch] admin routes mounted at /admin/cardsearch (public UI + protected API)"
+  );
 } catch (e) {
   logger.warn(`[Cardsearch] admin routes not available: ${e?.message || e}`);
 }
@@ -469,7 +510,11 @@ app.post("/checkout/test", (req, res) => {
   return res.json({ ok: true, message: "checkout test route reached" });
 });
 
-app.post("/webhooks/inkthreadables", express.json({ type: "application/json" }), inkthreadablesWebhook);
+app.post(
+  "/webhooks/inkthreadables",
+  express.json({ type: "application/json" }),
+  inkthreadablesWebhook
+);
 
 app.use(parentVerifyRouter);
 
@@ -559,8 +604,12 @@ httpServer.keepAliveTimeout = 70 * 1000;
 httpServer.headersTimeout = 75 * 1000;
 httpServer.requestTimeout = 0;
 
-process.on("unhandledRejection", (reason) => logger.error(`UnhandledRejection: ${reason?.stack || reason}`));
-process.on("uncaughtException", (err) => logger.error(`UncaughtException: ${err.stack || err.message}`));
+process.on("unhandledRejection", (reason) =>
+  logger.error(`UnhandledRejection: ${reason?.stack || reason}`)
+);
+process.on("uncaughtException", (err) =>
+  logger.error(`UncaughtException: ${err.stack || err.message}`)
+);
 
 function shouldRunJobs() {
   if (String(process.env.JOBS_ENABLED || "") !== "1") return false;
@@ -604,7 +653,11 @@ try {
   const now = new Date();
 
   logger.info(`[BOOT] Host: ${os.hostname()} | PID ${process.pid}`);
-  logger.info(`[BOOT] Now: ${now.toISOString()} (tz: ${Intl.DateTimeFormat().resolvedOptions().timeZone || "unknown"})`);
+  logger.info(
+    `[BOOT] Now: ${now.toISOString()} (tz: ${
+      Intl.DateTimeFormat().resolvedOptions().timeZone || "unknown"
+    })`
+  );
   logger.info(`[BOOT] CRON_TZ=${CRON_TZ}`);
 
   function shutdown() {

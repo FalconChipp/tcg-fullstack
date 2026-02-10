@@ -11,7 +11,6 @@ function safeStr(v) {
 
 function buildBlockedMessage({ action, caps }) {
   // Keep it user-friendly (and consistent).
-  // You can swap this for ApolloError later if you want typed errors.
   const base = action ? `You cannot ${action}.` : "Action not allowed.";
 
   // If teen + not parent verified, be explicit.

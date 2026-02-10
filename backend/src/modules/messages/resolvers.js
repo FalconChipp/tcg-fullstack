@@ -72,13 +72,12 @@ async function requireUserFromContext(ctx) {
 }
 
 async function enforceMessagingAccess(ctx) {
-  // ✅ Restore chat agreement + ban enforcement
   if (ctx?.token) {
     await requireChatAgreement(ctx.token);
     await requireNotChatBanned(ctx.token);
   }
 
-  // ✅ Safety enforcement (full/child/teen w/out parent)
+  // Safety enforcement (full/child/teen w/out parent)
   const userModel = await requireUserFromContext(ctx);
   requireCanMessage(userModel);
 
@@ -124,7 +123,6 @@ function visibleToMe(meId, msg) {
   return true;
 }
 
-// ✅ Helper: safely attach reportDetails to a JSON-like object
 function attachReportDetails(existingMeta, details, extra = {}) {
   const base = existingMeta && typeof existingMeta === "object" ? existingMeta : {};
   return {
@@ -133,11 +131,6 @@ function attachReportDetails(existingMeta, details, extra = {}) {
     reportDetails: details || null,
   };
 }
-
-// ============================================================================
-// ✅ NEW: AdminAction compatibility helpers
-// Fixes: notNull Violation: AdminAction.adminId/actionType cannot be null
-// ============================================================================
 
 function adminActionAttrs() {
   return AdminAction?.rawAttributes || {};
@@ -153,10 +146,6 @@ function pickFirstExistingKey(obj, keys) {
 function buildAdminActionPayload({ adminId, targetUserId, actionType, reason }) {
   const attrs = adminActionAttrs();
 
-  // Your error says these exist:
-  // - adminId
-  // - actionType
-  // We still support variants in case the model differs per env.
   const adminKey = pickFirstExistingKey(attrs, ["adminId", "adminUserId", "performedById"]);
   const targetKey = pickFirstExistingKey(attrs, ["userId", "targetUserId", "subjectUserId"]);
   const typeKey = pickFirstExistingKey(attrs, ["actionType", "type"]);
@@ -178,7 +167,6 @@ function buildAdminActionPayload({ adminId, targetUserId, actionType, reason }) 
     payload[reasonKey] = r ? r.slice(0, 500) : null;
   }
 
-  // If your model uses timestamps, Sequelize will handle createdAt/updatedAt.
   return payload;
 }
 
@@ -571,7 +559,6 @@ export default {
       return true;
     },
 
-    // ✅ FIXED: writes adminId + actionType (or compatible keys)
     adminBanUserFromChat: async (_, { userId, reason }, ctx) => {
       await requireAdmin(ctx.token);
 
@@ -591,7 +578,6 @@ export default {
       return true;
     },
 
-    // ✅ FIXED: uses actionType (or compatible key) in WHERE
     adminUnbanUserFromChat: async (_, { userId }, ctx) => {
       await requireAdmin(ctx.token);
 
@@ -607,7 +593,6 @@ export default {
       return true;
     },
 
-    // ✅ Better: mark reports cleared, not delete (matches your dashboard)
     adminClearUserReport: async (_, { userId }, ctx) => {
       await requireAdmin(ctx.token);
 

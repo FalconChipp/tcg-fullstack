@@ -122,6 +122,7 @@ export default gql`
 
     agreeToChatRules: Boolean!
     adminDeleteMessage(id: ID!): Boolean!
+    adminWarnUserFromChat( userId: ID!, content: String!, meta: JSON): Boolean!
     adminBanUserFromChat(userId: ID!, reason: String): Boolean!
     adminUnbanUserFromChat(userId: ID!): Boolean!
     adminClearUserReport(userId: ID!): Boolean!

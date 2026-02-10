@@ -7,7 +7,7 @@ export default {
   Query: {
     adminStats: async (_, __, { models, token }) => {
       // --- Permissions: Require admin, using your existing helper ---
-      requireAdmin(token);
+      await requireAdmin(token);
 
       // --- Optionally, get the user object if you want to log or check something else ---
       let userId;

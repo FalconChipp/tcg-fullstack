@@ -12,6 +12,10 @@ export default (sequelize) => {
       discordUsername: { type: DataTypes.STRING(100), allowNull: true },
       avatar: { type: DataTypes.STRING(200), allowNull: true },
       linkedAt: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+
+      discordAccessTokenEnc: { type: DataTypes.TEXT, allowNull: true }, 
+      discordRefreshTokenEnc: { type: DataTypes.TEXT, allowNull: true },
+      discordTokenExpiresAt: { type: DataTypes.DATE, allowNull: true },
     },
     {
       sequelize,

@@ -113,13 +113,13 @@ export function makeNotificationsResolvers({
       },
 
       async adminSendBroadcastNotification(_, { input }, { token }) {
-        requireAdmin(token);
+        await requireAdmin(token);
         await notifyBroadcast({ ...input });
         return true;
       },
 
       async adminDeleteNotification(_, { id }, { token }) {
-        requireAdmin(token);
+        await requireAdmin(token);
         await NotificationModel.destroy({ where: { id } });
         return true;
       },

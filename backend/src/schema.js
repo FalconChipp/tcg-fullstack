@@ -22,6 +22,7 @@ import adminTypeDefs from './modules/admin/typeDefs.js';
 import cardsearchTypeDefs from './modules/cardsearch/typeDefs.js';
 import alertsTypeDefs from './modules/alerts/typeDefs.js';
 import marketplaceTypeDefs from './modules/marketplace/graphql/typeDefs.js';
+import safetyTypeDefs from './modules/safety/typeDefs.js'
 
 // ---- Import resolvers from all modules ----
 import authResolvers from './modules/auth/resolvers.js';
@@ -42,6 +43,7 @@ import adminResolvers from './modules/admin/resolvers.js';
 import cardsearchResolvers from './modules/cardsearch/resolvers.js';
 import alertsResolvers from './modules/alerts/resolvers.js';
 import marketplaceResolvers from './modules/marketplace/graphql/resolvers.js'
+import safetyResolvers from './modules/safety/resolvers.js'
 
 // ---- Merge all typeDefs ----
 export const typeDefs = mergeTypeDefs([
@@ -62,6 +64,7 @@ export const typeDefs = mergeTypeDefs([
   shippingTypeDefs,
   adminTypeDefs,
   cardsearchTypeDefs,
+  safetyTypeDefs,
   alertsTypeDefs,
 ]);
 
@@ -84,6 +87,7 @@ let merged = mergeResolvers([
   adminResolvers,
   cardsearchResolvers,
   alertsResolvers,
+  safetyResolvers,
   authResolvers, // put auth last so most fields win naturally
 ]);
 

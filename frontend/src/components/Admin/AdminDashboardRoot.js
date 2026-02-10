@@ -16,10 +16,12 @@ import AdminBindersPanel from "./AdminBindersPanel";
 import AdminProductsPanel from "./AdminProductsPanel";
 import AdminOrdersPanel from "./AdminOrdersPanel";
 import AdminNotificationsPanel from "./AdminNotificationsPanel";
+import AdminReportedUsersPanel from "./AdminReportedUsersPanel";
 
 const SECTIONS = [
   { id: "overview", label: "Overview" },
   { id: "users", label: "Users" },
+  { id: "reports", label: "Reports" },
   { id: "orders", label: "Orders" },
   { id: "cards", label: "Collections" },
   { id: "products", label: "Products" },
@@ -47,6 +49,8 @@ export default function AdminDashboardRoot() {
         return <AdminOrdersPanel />;
       case "notifications":
         return <AdminNotificationsPanel />;
+      case "reports": 
+        return <AdminReportedUsersPanel />;
       case "overview":
       default:
         return <AdminOverviewPanel />;

@@ -66,12 +66,12 @@ const resolvers = {
   },
   Mutation: {
     addAchievement: async (_, { input }, { token }) => {
-      requireAdmin(token);
+      await requireAdmin(token);
       const achievement = await Achievement.create(input);
       return achievement;
     },
     editAchievement: async (_, { id, input }, { token }) => {
-      requireAdmin(token);
+      await requireAdmin(token);
       const achievement = await Achievement.findByPk(id);
       if (!achievement) throw new Error('Not found');
       Object.assign(achievement, input);
@@ -79,7 +79,7 @@ const resolvers = {
       return achievement;
     },
     deleteAchievement: async (_, { id }, { token }) => {
-      requireAdmin(token);
+      await requireAdmin(token);
       const achievement = await Achievement.findByPk(id);
       if (!achievement) return false;
       achievement.isActive = false;
@@ -87,11 +87,11 @@ const resolvers = {
       return true;
     },
     grantAchievement: async (_, { userId, achievementCode, meta }, { token }) => {
-      requireAdmin(token);
+      await requireAdmin(token);
       return maybeGrantAchievement(userId, achievementCode, meta);
     },
     revokeAchievement: async (_, { userId, achievementCode }, { token }) => {
-      requireAdmin(token);
+      await requireAdmin(token);
       const achievement = await Achievement.findOne({ where: { code: achievementCode } });
       if (!achievement) return false;
       const ua = await UserAchievement.findOne({ where: { userId, achievementId: achievement.id } });

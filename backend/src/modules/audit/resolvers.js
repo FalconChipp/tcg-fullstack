@@ -10,7 +10,7 @@ const resolvers = {
       { userId, action, targetId, targetType, page = 1, pageSize = DEFAULT_PAGE_SIZE },
       { token }
     ) => {
-      requireAdmin(token);
+      await requireAdmin(token);
       const where = {};
       if (userId) where.userId = userId;
       if (action) where.action = action;

@@ -28,7 +28,9 @@ dns.setDefaultResultOrder?.("ipv4first");
 import { startExpiredMessageCleanup } from "./src/jobs/messageCleanup.js";
 import { startNotificationCleanup } from "./src/jobs/notificationCleanup.js";
 import { startNotificationDeliveryJobs } from "./src/jobs/notificationDelivery.js";
-import { setSocketServer } from "./src/utils/socket.js";
+import { startUnreadReminderJob } from "./src/jobs/unreadReminder.js";
+
+import { setupSocket } from "./src/server/realtime/socket.js";
 
 import { typeDefs, resolvers } from "./src/schema.js";
 import { sequelize, User, Profile } from "./src/models/index.js";
@@ -42,14 +44,19 @@ import { adminScriptJs } from "./src/admin/adminScript.js";
 import { registerCardsearchSchedules } from "./src/tasks/cardsearch.schedule.js";
 import { withCookieParser, attachUser } from "./src/middleware/attachUser.js";
 import authSessionRouter from "./src/routes/authSession.js";
+
+// Discord OAuth + Bot
 import discordAuthRouter from "./src/routes/discordAuth.js";
+import discordBotRoutes from "./src/routes/discordBot.js";
+import discordShareRouter from "./src/routes/discord/discordShare.js";
 
 // Checkout
 import checkoutRouter from "./src/routes/checkout.js";
 import ordersService from "./src/modules/marketplace/services/ordersService.js";
 import inkthreadablesWebhook from "./src/webhooks/inkthreadables.js";
-// NOTE: Inkthreadables / POD now handled via podFulfilmentService inside ordersService.markOrderPaid
-// import { submitInkthreadablesOrderIfNeeded } from "./src/services/inkthreadables.js";
+
+// Safety
+import parentVerifyRouter from "./src/routes/parentVerify.js";
 
 // --- Logger Setup ---
 const logger = winston.createLogger({
@@ -57,19 +64,19 @@ const logger = winston.createLogger({
   format: winston.format.combine(
     winston.format.timestamp(),
     winston.format.printf(
-      ({ level, message, timestamp }) =>
-        `[${timestamp}] [${level}] ${message}`
+      ({ level, message, timestamp }) => `[${timestamp}] [${level}] ${message}`
     )
   ),
   transports: [new winston.transports.Console()],
 });
+
+const DEV = process.env.NODE_ENV !== "production";
 
 // --- Express + HTTP Server ---
 const app = express();
 const httpServer = http.createServer(app);
 
 app.set("logger", logger);
-// Honor X-Forwarded-* when behind a proxy (rate limit, TLS, etc.)
 app.set("trust proxy", ["loopback", "127.0.0.1", "::1"]);
 
 // Static assets
@@ -84,31 +91,47 @@ function normalizeOrigin(s) {
   return String(s).trim().toLowerCase().replace(/\/+$/, "");
 }
 
+// env allow list
 const allowedOriginsRaw = process.env.CORS_ORIGINS || "";
 const allowedOrigins = allowedOriginsRaw
   .split(",")
   .map(normalizeOrigin)
   .filter(Boolean);
-const extraDev = (process.env.CORS_EXTRA_ORIGINS || "")
+
+// extra origins (still env-driven)
+const extraEnv = (process.env.CORS_EXTRA_ORIGINS || "")
   .split(",")
   .map(normalizeOrigin)
   .filter(Boolean);
-const ALLOWED = Array.from(new Set([...allowedOrigins, ...extraDev]));
+
+const devDefaults = DEV
+  ? [
+      "http://localhost:4000",
+      "http://127.0.0.1:4000",
+      "http://10.0.2.2:4000", 
+
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "http://10.0.2.2:3000",
+    ].map(normalizeOrigin)
+  : [];
+
+const ALLOWED = Array.from(new Set([...allowedOrigins, ...extraEnv, ...devDefaults]));
+
 logger.info(
-  `[CORS] Allow-list parsed (${ALLOWED.length}): ${
-    ALLOWED.join(", ") || "(none)"
-  }`
+  `[CORS] DEV=${DEV} allow-list (${ALLOWED.length}): ${ALLOWED.join(", ") || "(none)"}`
 );
 
 function isOriginAllowed(origin, reqHost) {
   if (!origin) return true; // native apps/curl/etc.
   const norm = normalizeOrigin(origin);
   if (ALLOWED.length === 0 || ALLOWED.includes(norm)) return true;
+
+  // fallback: allow if origin host matches request host
   const hostFromOrigin = norm.replace(/^https?:\/\//, "");
   return !!(reqHost && hostFromOrigin === String(reqHost).toLowerCase());
 }
 
-// ADDED: names to de-dupe
 const CORS_HEADER_KEYS = [
   "access-control-allow-origin",
   "access-control-allow-credentials",
@@ -119,7 +142,6 @@ const CORS_HEADER_KEYS = [
 ];
 
 function applyCorsOnce(req, res) {
-  // Clean slate — ensure no duplicates
   res.removeHeader("Access-Control-Allow-Origin");
   res.removeHeader("Access-Control-Allow-Credentials");
   res.removeHeader("Access-Control-Expose-Headers");
@@ -136,10 +158,7 @@ function applyCorsOnce(req, res) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader("Access-Control-Expose-Headers", "Authorization");
-    res.setHeader(
-      "Access-Control-Allow-Methods",
-      "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-    );
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
     res.setHeader(
       "Access-Control-Allow-Headers",
       "Authorization,Content-Type,Origin,Accept,X-Requested-With,X-Access-Token,X-Admin-Token"
@@ -149,13 +168,10 @@ function applyCorsOnce(req, res) {
 }
 
 app.use((req, res, next) => {
-  // quick visibility
-  if (req.headers.origin)
-    logger.info(
-      `[CORS] Origin: ${req.headers.origin} -> ${req.method} ${req.url}`
-    );
+  if (req.headers.origin) {
+    logger.info(`[CORS] Origin: ${req.headers.origin} -> ${req.method} ${req.url}`);
+  }
 
-  // Wrap header setters to *never* append CORS headers as arrays
   const origSetHeader = res.setHeader.bind(res);
   const origAppend = res.append ? res.append.bind(res) : null;
   const isCorsHeader = (name) =>
@@ -164,7 +180,7 @@ app.use((req, res, next) => {
   res.setHeader = (name, value) => {
     if (isCorsHeader(name)) {
       if (Array.isArray(value)) value = value[0];
-      return origSetHeader(name, value); // overwrite single value
+      return origSetHeader(name, value);
     }
     return origSetHeader(name, value);
   };
@@ -173,86 +189,65 @@ app.use((req, res, next) => {
     res.append = (name, value) => {
       if (isCorsHeader(name)) {
         if (Array.isArray(value)) value = value[0];
-        return res.setHeader(name, value); // never append for CORS
+        return res.setHeader(name, value);
       }
       return origAppend(name, value);
     };
   }
 
-  // Apply our CORS headers exactly once at the start of the pipeline
   if (!req._corsOnceApplied) {
     req._corsOnceApplied = true;
     applyCorsOnce(req, res);
   }
 
-  // Short-circuit preflight globally
-  if (req.method === "OPTIONS") {
-    if (process.env.CORS_TRACE) {
-      const h = Object.fromEntries(
-        CORS_HEADER_KEYS.map((k) => [k, res.getHeader(k)])
-      );
-      logger.info(
-        `[CORS TRACE] OPTIONS -> 204 with headers: ${JSON.stringify(h)}`
-      );
-    }
-    return res.status(204).end();
-  }
-
-  // Log final headers on finish if tracing
-  if (process.env.CORS_TRACE) {
-    res.on("finish", () => {
-      const h = Object.fromEntries(
-        CORS_HEADER_KEYS.map((k) => [k, res.getHeader(k)])
-      );
-      logger.info(
-        `[CORS TRACE] ${req.method} ${
-          req.url
-        } -> ${res.statusCode} headers: ${JSON.stringify(h)}`
-      );
-    });
-  }
-
+  if (req.method === "OPTIONS") return res.status(204).end();
   return next();
 });
 
 /* ============================
    Socket.IO (CORS aligned)
    ============================ */
+
 const io = new SocketIOServer(httpServer, {
+  // ✅ Dedicated path (no collision with status monitor)
+  path: "/realtime/socket.io",
+
   cors: {
     credentials: true,
     methods: ["GET", "POST"],
     origin: (origin, cb) => {
       if (!origin) return cb(null, true);
+
       const norm = normalizeOrigin(origin);
+
       if (ALLOWED.length === 0 || ALLOWED.includes(norm)) return cb(null, true);
-      return cb(new Error(`Socket.IO CORS blocked: ${origin}`));
+
+      const err = new Error(`Socket.IO CORS blocked: ${origin}`);
+      logger.warn(`[socket][cors] blocked origin=${origin} norm=${norm}`);
+      return cb(err);
     },
   },
+
+  transports: ["polling", "websocket"],
+  allowEIO3: false,
 });
+
 app.set("io", io);
-setSocketServer(io);
 
-io.use((socket, next) => {
-  const token = socket.handshake.auth?.token || socket.handshake.query?.token;
-  if (!token) return next(new Error("unauthorized"));
-  try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-    socket.data.userId = payload.id;
-    socket.join(payload.id);
-    return next();
-  } catch (err) {
-    logger.warn(`[socket] auth failed: ${err?.message || err}`);
-    return next(new Error("unauthorized"));
-  }
-});
+setupSocket(io, logger);
 
-io.on("connection", (socket) => {
-  logger.info(`[socket] connected: ${socket.data.userId || "unknown"}`);
-  socket.on("disconnect", () => {
-    logger.info(`[socket] disconnected: ${socket.data.userId || "unknown"}`);
-  });
-});
+/* ============================
+   Status Monitor
+   ============================ */
+
+// Move it to a dedicated path: /status/socket.io
+app.use(
+  expressStatusMonitor({
+    path: "/status",
+    socketPath: "/status/socket.io",
+    ignoreStartsWith: "/admin",
+  })
+);
 
 /* ============================
    Admin auth helpers
@@ -279,7 +274,6 @@ function requireAdmin(req, res, next) {
 /* ============================
    STRIPE WEBHOOK (raw body)
    ============================ */
-
 app.post(
   "/webhooks/stripe",
   express.raw({ type: "application/json" }),
@@ -311,7 +305,6 @@ app.post(
         case "checkout.session.completed": {
           const session = event.data.object;
           const orderId = session.metadata && session.metadata.orderId;
-
           if (!orderId) {
             logger.warn(
               "Stripe webhook: checkout.session.completed with no orderId metadata"
@@ -323,35 +316,17 @@ app.post(
             `Stripe webhook: checkout.session.completed for order ${orderId}, session ${session.id}`
           );
 
-          // Build ctx similar to your GraphQL context
-          const ctx = {
-            models,
-            sequelize,
-            logger,
-            user: null, // system-initiated
-          };
-
-          // Let ordersService handle:
-          //  - inventory
-          //  - marking the order as paid
-          //  - card listing status
-          //  - notifications (email/app/Discord) + POD fulfilment
+          const ctx = { models, sequelize, logger, user: null };
           await ordersService.markOrderPaid(orderId, ctx);
-
           break;
         }
-
         default:
-          logger.info(
-            `Stripe webhook: Ignoring unhandled event type ${event.type}`
-          );
+          logger.info(`Stripe webhook: Ignoring unhandled event type ${event.type}`);
       }
 
       return res.json({ received: true });
     } catch (err) {
-      logger.error(
-        `Stripe webhook handler error: ${err.stack || err.message}`
-      );
+      logger.error(`Stripe webhook handler error: ${err.stack || err.message}`);
       return res.status(500).send("Webhook handler error");
     }
   }
@@ -360,50 +335,36 @@ app.post(
 /* ============================
    Security / Parsers
    ============================ */
-
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(compression());
 
-// Parsers AFTER Stripe raw route
 app.use(bodyParser.json({ limit: "10mb" }));
 app.use(bodyParser.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
-app.use(expressStatusMonitor({ path: "/status" }));
 
-// Rate limit (skip preflights)
+/* ============================
+   Rate limit
+   ============================ */
 const limiter = rateLimit({
   windowMs: 60 * 1000,
   max: 600,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) =>
-    req.ip ||
-    req.headers["x-forwarded-for"] ||
-    req.socket?.remoteAddress ||
-    "unknown",
+    req.ip || req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown",
   skipFailedRequests: true,
   skip: (req) => req.method === "OPTIONS",
 });
 app.use(limiter);
 
-// ---- Logging: hide noisy admin data GETs ----
-const NOISY_RE =
-  /^\/admin\/cardsearch\/(sets|scheduler\/tasks|ui|adminScript\.js)\b/;
+// ---- Logging ----
+const NOISY_RE = /^\/admin\/cardsearch\/(sets|scheduler\/tasks|ui|adminScript\.js)\b/;
 app.use(
   morgan("combined", {
     skip: (req) => req.method === "GET" && NOISY_RE.test(req.path),
     stream: { write: (msg) => logger.info(msg.trim()) },
   })
 );
-
-let lastRefreshedLogAt = 0;
-function logRefreshedOncePer(minMs, label = "admin-ui") {
-  const now = Date.now();
-  if (now - lastRefreshedLogAt >= minMs) {
-    logger.info(`[${label}] refreshed`);
-    lastRefreshedLogAt = now;
-  }
-}
 
 /* ============================
    Avatar upload
@@ -468,18 +429,13 @@ const upload = multer({
   },
 });
 
-// CHANGED: no per-route CORS — global CORS already applied
 app.post("/upload/avatar", upload.single("avatar"), async (req, res) => {
   try {
     const userId = getUserIdFromAuthHeader(req.headers.authorization);
     if (!userId)
-      return res
-        .status(401)
-        .json({ success: false, error: "No user ID found" });
+      return res.status(401).json({ success: false, error: "No user ID found" });
     if (!req.file?.filename)
-      return res
-        .status(400)
-        .json({ success: false, error: "No file uploaded" });
+      return res.status(400).json({ success: false, error: "No file uploaded" });
 
     let profile = await Profile.findOne({ where: { userId } });
     if (!profile) profile = await Profile.create({ userId });
@@ -507,18 +463,16 @@ app.use("/uploads/avatars", express.static(AVATAR_DIR));
 app.get("/health", (_req, res) =>
   res.json({ status: "ok", timestamp: Date.now() })
 );
-app.get("/graphql", (_req, res) => res.status(200).send("OK"));
 
-// Admin UI
+app.get("/graphql-health", (_req, res) => res.status(200).send("OK"));
+
 app.get("/admin", (_req, res) => {
   res.set("Cache-Control", "no-store");
   res.type("text/html; charset=utf-8").send(adminPageHtml());
 });
 app.get("/admin/admin.js", (_req, res) => {
   res.set("Cache-Control", "no-store");
-  res
-    .type("application/javascript; charset=utf-8")
-    .send(adminScriptJs());
+  res.type("application/javascript; charset=utf-8").send(adminScriptJs());
 });
 
 // [CARDSEARCH] routes
@@ -535,12 +489,10 @@ try {
     "[Cardsearch] admin routes mounted at /admin/cardsearch (public UI + protected API)"
   );
 } catch (e) {
-  logger.warn(
-    `[Cardsearch] admin routes not available: ${e?.message || e}`
-  );
+  logger.warn(`[Cardsearch] admin routes not available: ${e?.message || e}`);
 }
 
-// NEW: cookies then attach req.user
+// cookies then attach req.user
 app.use(withCookieParser());
 app.use(attachUser());
 
@@ -548,34 +500,27 @@ app.get("/debug/me", (req, res) => {
   res.json({ user: req.user || null });
 });
 
-// Routers
-app.use(authSessionRouter);
-app.use(discordAuthRouter);
-
-// Checkout / payments (Stripe)
+// Checkout / payments
 logger.info("[BOOT] Mounting /checkout router");
 app.use("/checkout", checkoutRouter);
 
-// TEMP: direct test route to verify /checkout path is reachable
 app.post("/checkout/test", (req, res) => {
   const log = req.app.get("logger") || console;
   log.info("[TEST] Hit /checkout/test");
   return res.json({ ok: true, message: "checkout test route reached" });
 });
 
-// Inkthreadables POD status webhooks
 app.post(
   "/webhooks/inkthreadables",
   express.json({ type: "application/json" }),
   inkthreadablesWebhook
 );
 
+app.use(parentVerifyRouter);
 
 /* ============================
    GraphQL (Apollo)
    ============================ */
-
-// Expose job runners to GraphQL context (so mutations can call them if needed)
 import { ingestSet as jobIngestSet } from "./src/modules/cardsearch/jobs/ingestSet.job.js";
 import { collectPrices as jobCollectPrices } from "./src/modules/cardsearch/jobs/collectPrices.job.js";
 import { collectBoth as jobCollectBoth } from "./src/modules/cardsearch/jobs/collectBoth.job.js";
@@ -590,12 +535,9 @@ const jobs = {
   fxDaily: jobFxDaily,
 };
 
-// Robust extractor for raw JWT for GraphQL context
 function extractToken(req) {
   const auth = req.headers.authorization || "";
-  if (auth.startsWith("Bearer ")) {
-    return auth.slice(7).trim();
-  }
+  if (auth.startsWith("Bearer ")) return auth.slice(7).trim();
   if (req.cookies) {
     if (req.cookies.authToken) return req.cookies.authToken;
     if (req.cookies.sbf_token) return req.cookies.sbf_token;
@@ -615,13 +557,13 @@ const apolloServer = new ApolloServer({
 });
 await apolloServer.start();
 
-// CHANGED: no extra CORS here — global CORS already applied at top
 app.use(
   "/graphql",
   expressMiddleware(apolloServer, {
     context: async ({ req, res }) => {
       const token = extractToken(req);
       let user = null;
+
       if (token) {
         try {
           const payload = jwt.verify(token, process.env.JWT_SECRET);
@@ -641,19 +583,23 @@ app.use(
         token,
         userAgent: req.headers["user-agent"],
         ip: req.ip,
-        models, // Sequelize models
-        jobs, // <-- expose job runners for resolvers (admin mutations)
+        models,
+        jobs,
       };
     },
   })
 );
 
+app.use(authSessionRouter);
+app.use(discordAuthRouter);
+app.use("/api/discord", discordShareRouter);
+app.use("/api/discord-bot", discordBotRoutes);
+
 /* ============================
-   Boot + Scheduler + Cron
+   Boot
    ============================ */
 const PORT = Number(process.env.PORT || 4000);
 
-// Align with proxy timeouts
 httpServer.keepAliveTimeout = 70 * 1000;
 httpServer.headersTimeout = 75 * 1000;
 httpServer.requestTimeout = 0;
@@ -665,32 +611,47 @@ process.on("uncaughtException", (err) =>
   logger.error(`UncaughtException: ${err.stack || err.message}`)
 );
 
+function shouldRunJobs() {
+  if (String(process.env.JOBS_ENABLED || "") !== "1") return false;
+
+  const lockToInstance0 = String(process.env.JOBS_ENABLED_INSTANCE0 || "1") === "1";
+  const instance = process.env.NODE_APP_INSTANCE;
+
+  if (lockToInstance0 && instance != null && String(instance) !== "0") return false;
+  return true;
+}
+
 try {
   await sequelize.authenticate();
   logger.info("Database connection established.");
   await sequelize.sync();
 
-  const cleanupIntervals = [
-    startExpiredMessageCleanup(logger),
-    startNotificationCleanup(logger),
-    ...startNotificationDeliveryJobs(logger),
-  ];
+  let cleanupIntervals = [];
 
-  // [CARDSEARCH] schedules
+  if (shouldRunJobs()) {
+    cleanupIntervals = [
+      startExpiredMessageCleanup(logger),
+      startNotificationCleanup(logger),
+      startNotificationDeliveryJobs(logger),
+      startUnreadReminderJob(logger),
+    ];
+    logger.info("[BOOT] Jobs Enabled: background jobs started");
+  } else {
+    logger.info("[BOOT] Jobs disabled or not instance 0: skipping");
+  }
+
   if (process.env.CARDSEARCH_SCHED_DISABLE !== "1") {
     try {
       registerCardsearchSchedules();
       logger.info("[Cardsearch] scheduler registered.");
     } catch (e) {
-      logger.warn(
-        `[Cardsearch] scheduler not started: ${e?.message || e}`
-      );
+      logger.warn(`[Cardsearch] scheduler not started: ${e?.message || e}`);
     }
   }
 
   const CRON_TZ = process.env.CRON_TZ || "UTC";
-
   const now = new Date();
+
   logger.info(`[BOOT] Host: ${os.hostname()} | PID ${process.pid}`);
   logger.info(
     `[BOOT] Now: ${now.toISOString()} (tz: ${

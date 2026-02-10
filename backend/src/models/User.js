@@ -1,5 +1,9 @@
 // src/models/User.js
-import { DataTypes, Model } from 'sequelize';
+// UPDATED (2026-02-05):
+// - ADD: safety + parent verification fields so Sequelize can load/save them
+// - KEEP: existing fields unchanged
+
+import { DataTypes, Model } from "sequelize";
 
 export default (sequelize) => {
   class User extends Model {}
@@ -83,15 +87,57 @@ export default (sequelize) => {
         type: DataTypes.BOOLEAN,
         defaultValue: false,
       },
+
+      /* =========================================================
+         SAFETY MODULE FIELDS (ADDED)
+      ========================================================= */
+
+      // Date of birth (store as DATE or STRING depending on your DB column type)
+      // If your DB column is DATE, use DataTypes.DATEONLY.
+      // If your DB column is VARCHAR, use DataTypes.STRING.
+      dob: {
+        type: DataTypes.DATEONLY,
+        allowNull: true,
+      },
+
+      // Manual override ("child" | "teen" | "none") set by admin
+      restriction_level: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+
+      // Parent/guardian email
+      parent_email: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        validate: { isEmail: true },
+      },
+
+      // Parent approval timestamp
+      parent_verified_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+
+      // Parent verification token (hashed) + expiry
+      parent_verify_token_hash: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      parent_verify_token_expires_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+
       createdAt: DataTypes.DATE,
       updatedAt: DataTypes.DATE,
     },
     {
       sequelize,
-      modelName: 'User',
-      tableName: 'users',
+      modelName: "User",
+      tableName: "users",
       timestamps: true,
-      indexes: [{ fields: ['email'] }, { fields: ['username'] }],
+      indexes: [{ fields: ["email"] }, { fields: ["username"] }],
     }
   );
 

@@ -126,7 +126,7 @@ const resolvers = {
     },
 
     allUsers: async (_parent, { limit = 100 }, { token }) => {
-      requireAdmin(token);
+      await requireAdmin(token);
       const users = await User.findAll({
         limit,
         include: [{ model: Profile, required: false }],
@@ -199,7 +199,7 @@ const resolvers = {
     },
 
     adminBanUser: async (_, { userId }, { token }) => {
-      requireAdmin(token);
+      await requireAdmin(token);
       const user = await User.findByPk(userId);
       if (!user) throw new Error('Not found');
       user.isBanned = true;
@@ -209,7 +209,7 @@ const resolvers = {
     },
 
     adminUnbanUser: async (_, { userId }, { token }) => {
-      requireAdmin(token);
+      await requireAdmin(token);
       const user = await User.findByPk(userId);
       if (!user) throw new Error('Not found');
       user.isBanned = false;
@@ -219,7 +219,7 @@ const resolvers = {
     },
 
     adminDeleteUser: async (_, { userId }, { token }) => {
-      requireAdmin(token);
+      await requireAdmin(token);
       await User.destroy({ where: { id: userId } });
       logger.info(`[ADMIN] Deleted user ${userId}`);
       return true;

@@ -83,6 +83,7 @@ import init_m_PriceObservation from "./m_PriceObservation.js";
 import init_m_PriceRollup from "./m_PriceRollup.js";
 import initUserDiscordLink from "./UserDiscordLink.js";
 import OrderFactory from "./Order.js";
+import UserPushTokenFactory from "./UserPushToken.js";
 
 /* ---------------- Initialize (legacy) ---------------- */
 const User = UserFactory(sequelize, DataTypes);
@@ -115,6 +116,7 @@ const PriceAlert = PriceAlertFactory(sequelize, DataTypes);
 const UserNotificationPref = UserNotificationPrefFactory(sequelize, DataTypes);
 const UserDiscordLink = initUserDiscordLink(sequelize, DataTypes);
 const Order = OrderFactory(sequelize, DataTypes);
+const UserPushToken = UserPushTokenFactory(sequelize, DataTypes)
 
 // Initialize chat mute/block models
 const ChatMute = ChatMuteFactory(sequelize, DataTypes);
@@ -302,6 +304,18 @@ User.hasMany(Order, { foreignKey: "buyerId", as: "ordersPlaced" });
 Order.belongsTo(User, { foreignKey: "sellerId", as: "seller" });
 User.hasMany(Order, { foreignKey: "sellerId", as: "ordersSold" });
 
+User.hasMany(UserPushToken, {
+  foreignKey: "userId",
+  as: "pushTokens",
+  onDelete: "CASCADE",
+});
+
+UserPushToken.belongsTo(User, {
+  foreignKey: "userId",
+  as: "user",
+});
+
+
 /* ---------------- Order associations (via model.associate) ---------------- */
 // Your Order model already defines associations in Order.associate.
 // Call it here so they are actually registered.
@@ -395,4 +409,5 @@ export {
   m_PriceRollup,
   CardPriceCache,
   CardPriceHistory,
+  UserPushToken
 };

@@ -1,9 +1,22 @@
 // backend/src/modules/messages/resolvers.js
+//
+// UPDATED (2026-02-16)
+//
+// CHANGES (this revision):
+// - ADD: Remote push send on new message (Expo) via push module
+// - ADD: Remote push send on admin system message (optional, mirrors in-app notify)
+// - KEEP: Existing mute logic (no push if receiver muted the sender)
+// - KEEP: Existing socket + in-app notify behavior
+//
+// NOTE:
+// - This assumes you created: src/modules/push/service.js exporting `sendPushToUserAsync(...)`
+// - This sends payload: { type: "dm", userId: "<SENDER_ID>" } so the app can route to /messages/[userId]
 
 import { Op } from "sequelize";
 import {
   Message,
   User,
+  Profile,
   ChatAgreement,
   ReportedUser,
   AdminAction,
@@ -21,6 +34,8 @@ import {
 import { maybeGrantAchievement } from "../achievements/helpers.js";
 import { notifyUser } from "../../utils/notifications.js";
 import { requireCanMessage } from "../safety/capabilities.js";
+
+import { sendPushToUserAsync } from "../push/push.service.js";
 
 const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 200;
@@ -64,6 +79,155 @@ function toISO(v) {
   return d.toISOString();
 }
 
+/* =============================================================================
+   ✅ User ID resolution (public id -> PK)
+============================================================================= */
+
+function userAttrs() {
+  return User?.rawAttributes || {};
+}
+
+function pickFirstExistingKey(obj, keys) {
+  for (const k of keys) {
+    if (Object.prototype.hasOwnProperty.call(obj, k)) return k;
+  }
+  return null;
+}
+
+/**
+ * Detects which field (if any) your User model uses as a public identifier.
+ * Adjust the priority list as needed.
+ */
+function getUserPublicIdKey() {
+  const attrs = userAttrs();
+  return pickFirstExistingKey(attrs, [
+    "uuid",
+    "publicId",
+    "externalId",
+    "userUuid",
+    "uid",
+    "authId",
+    "clerkId",
+    "firebaseUid",
+  ]);
+}
+
+/**
+ * Resolve any client-supplied id into the real DB PK (users.id).
+ * - Accepts:
+ *   - users.id (PK) (numeric or string)
+ *   - users.<publicIdKey> (uuid/publicId/etc) if present
+ */
+async function resolveUserPkFromAnyId(inputId) {
+  const raw = String(inputId || "").trim();
+  if (!raw) {
+    const err = new Error("user_id_required");
+    err.code = "BAD_USER_INPUT";
+    throw err;
+  }
+
+  const publicKey = getUserPublicIdKey();
+
+  const isNumeric = /^\d+$/.test(raw);
+  const or = [];
+
+  if (isNumeric) or.push({ id: Number(raw) });
+  or.push({ id: raw });
+
+  if (publicKey) or.push({ [publicKey]: raw });
+
+  const u = await User.findOne({
+    where: { [Op.or]: or },
+    attributes: ["id", ...(publicKey ? [publicKey] : []), "username"],
+  });
+
+  if (!u) {
+    const err = new Error("user_not_found");
+    err.code = "USER_NOT_FOUND";
+    throw err;
+  }
+
+  return u.id;
+}
+
+/**
+ * Convert a DB PK -> the "public" id value (if your model has one).
+ * If you don't have a public id column, this falls back to PK.
+ */
+function userPkToPublicId(userModelOrRow) {
+  const publicKey = getUserPublicIdKey();
+  if (!publicKey) return String(userModelOrRow?.id ?? "");
+  const v = userModelOrRow?.[publicKey];
+  return String(v ?? userModelOrRow?.id ?? "");
+}
+
+/* =============================================================================
+   ✅ Avatar normalization for chat
+============================================================================= */
+
+/**
+ * ✅ NEW:
+ * Your avatars are stored in profiles.avatar (e.g. "/uploads/avatars/...png")
+ * but myChats returns `user { avatar }` (User.avatar).
+ *
+ * This helper ensures user.avatar is populated from Profile.avatar if missing.
+ */
+function normalizeUserAvatarFromProfile(userInstanceOrPlain) {
+  if (!userInstanceOrPlain) return userInstanceOrPlain;
+
+  // If it's a Sequelize instance, convert to a plain object so we can safely override fields
+  const u =
+    typeof userInstanceOrPlain.toJSON === "function"
+      ? userInstanceOrPlain.toJSON()
+      : { ...userInstanceOrPlain };
+
+  const profileAvatar =
+    u?.Profile?.avatar ??
+    u?.profile?.avatar ??
+    userInstanceOrPlain?.Profile?.avatar ??
+    userInstanceOrPlain?.profile?.avatar ??
+    null;
+
+  // Prefer User.avatar if present, otherwise fallback to Profile.avatar
+  const resolvedAvatar = u?.avatar ?? profileAvatar ?? null;
+
+  return {
+    ...u,
+    avatar: resolvedAvatar,
+  };
+}
+
+/**
+ * ✅ NEW:
+ * Per-request cache to avoid repeated user lookups for Message fields.
+ * Now includes Profile so avatar works in threads too.
+ */
+function getUserCache(ctx) {
+  if (!ctx) return null;
+  if (!ctx.__userByPkCache) ctx.__userByPkCache = new Map();
+  return ctx.__userByPkCache;
+}
+
+async function findUserByPkCached(ctx, pk) {
+  const cache = getUserCache(ctx);
+  const key = String(pk);
+  if (cache && cache.has(key)) return cache.get(key);
+
+  // ✅ CHANGED: include Profile so we can fallback to Profile.avatar
+  const u = await User.findByPk(pk, {
+    include: [{ model: Profile, required: false }],
+  });
+
+  const normalized = u ? normalizeUserAvatarFromProfile(u) : null;
+
+  if (cache) cache.set(key, normalized);
+  return normalized;
+}
+
+/* =============================================================================
+   Auth helpers
+============================================================================= */
+
 async function requireUserFromContext(ctx) {
   if (!ctx?.user?.id) throw new Error("Not authenticated");
   const u = await User.findByPk(ctx.user.id);
@@ -77,19 +241,18 @@ async function enforceMessagingAccess(ctx) {
     await requireNotChatBanned(ctx.token);
   }
 
-  // Safety enforcement (full/child/teen w/out parent)
   const userModel = await requireUserFromContext(ctx);
   requireCanMessage(userModel);
 
   return userModel;
 }
 
-async function assertNotBlocked(meId, otherId) {
+async function assertNotBlocked(mePk, otherPk) {
   const row = await ChatBlock.findOne({
     where: {
       [Op.or]: [
-        { blockerId: meId, blockedId: otherId },
-        { blockerId: otherId, blockedId: meId },
+        { blockerId: mePk, blockedId: otherPk },
+        { blockerId: otherPk, blockedId: mePk },
       ],
     },
   });
@@ -101,9 +264,9 @@ async function assertNotBlocked(meId, otherId) {
   }
 }
 
-async function isMuted(viewerId, otherUserId) {
+async function isMuted(viewerPk, otherPk) {
   const row = await ChatMute.findOne({
-    where: { userId: viewerId, otherUserId },
+    where: { userId: viewerPk, otherUserId: otherPk },
   });
   return !!row;
 }
@@ -136,13 +299,6 @@ function adminActionAttrs() {
   return AdminAction?.rawAttributes || {};
 }
 
-function pickFirstExistingKey(obj, keys) {
-  for (const k of keys) {
-    if (Object.prototype.hasOwnProperty.call(obj, k)) return k;
-  }
-  return null;
-}
-
 function buildAdminActionPayload({ adminId, targetUserId, actionType, reason }) {
   const attrs = adminActionAttrs();
 
@@ -159,7 +315,6 @@ function buildAdminActionPayload({ adminId, targetUserId, actionType, reason }) 
   payload[adminKey] = adminId;
   payload[typeKey] = actionType;
 
-  // Only set target user if your model supports it
   if (targetKey) payload[targetKey] = targetUserId;
 
   if (reasonKey) {
@@ -211,11 +366,11 @@ export default {
         const receiverId = String(getReceiverId(msg) || "");
         if (!senderId || !receiverId) continue;
 
-        const otherId = senderId === String(me.id) ? receiverId : senderId;
-        if (!otherId) continue;
+        const otherPk = senderId === String(me.id) ? receiverId : senderId;
+        if (!otherPk) continue;
 
-        if (!byOther.has(otherId)) {
-          byOther.set(otherId, { lastMessage: msg, unreadCount: 0 });
+        if (!byOther.has(otherPk)) {
+          byOther.set(otherPk, { lastMessage: msg, unreadCount: 0 });
         }
 
         const isToMe = receiverId === String(me.id);
@@ -223,31 +378,38 @@ export default {
         const deletedByReceiver = getBool(msg, "deletedByReceiver", "deleted_by_receiver", false);
 
         if (isToMe && isUnread && !deletedByReceiver) {
-          const t = byOther.get(otherId);
+          const t = byOther.get(otherPk);
           t.unreadCount += 1;
         }
       }
 
-      const allOtherIds = Array.from(byOther.keys());
+      const allOtherPks = Array.from(byOther.keys());
       const start = (p - 1) * limit;
       const end = start + limit;
-      const pageOtherIds = allOtherIds.slice(start, end);
+      const pageOtherPks = allOtherPks.slice(start, end);
 
-      if (!pageOtherIds.length) return [];
+      if (!pageOtherPks.length) return [];
 
+      // ✅ CHANGED: include Profile so we can use profiles.avatar
       const users = await User.findAll({
-        where: { id: { [Op.in]: pageOtherIds } },
+        where: { id: { [Op.in]: pageOtherPks } },
+        include: [{ model: Profile, required: false }],
       });
+
       const userMap = new Map(users.map((u) => [String(u.id), u]));
 
       const out = [];
-      for (const otherId of pageOtherIds) {
-        const otherUser = userMap.get(String(otherId));
+      for (const otherPk of pageOtherPks) {
+        const otherUser = userMap.get(String(otherPk));
         if (!otherUser) continue;
 
-        const t = byOther.get(otherId);
+        const t = byOther.get(otherPk);
+
+        // ✅ CHANGED: normalize avatar from Profile.avatar when User.avatar is null
+        const normalizedUser = normalizeUserAvatarFromProfile(otherUser);
+
         out.push({
-          user: otherUser,
+          user: normalizedUser,
           lastMessage: t?.lastMessage || null,
           unreadCount: Number(t?.unreadCount || 0),
         });
@@ -258,10 +420,10 @@ export default {
 
     chatWithUser: async (_, { userId, page, pageSize }, ctx) => {
       const me = await enforceMessagingAccess(ctx);
-      const otherId = String(userId || "").trim();
-      if (!otherId) throw new Error("user_id_required");
 
-      await assertNotBlocked(String(me.id), otherId);
+      const otherPk = await resolveUserPkFromAnyId(userId);
+
+      await assertNotBlocked(String(me.id), String(otherPk));
 
       const p = clampPage(page);
       const limit = clampPageSize(pageSize);
@@ -270,8 +432,8 @@ export default {
       const msgs = await Message.findAll({
         where: {
           [Op.or]: [
-            { senderId: me.id, receiverId: otherId },
-            { senderId: otherId, receiverId: me.id },
+            { senderId: me.id, receiverId: otherPk },
+            { senderId: otherPk, receiverId: me.id },
           ],
         },
         order: [["createdAt", "DESC"]],
@@ -385,7 +547,7 @@ export default {
       const where = {};
       if (filter?.userId) where.userId = String(filter.userId);
       if (filter?.reporterId) where.reporterId = String(filter.reporterId);
-      if (filter?.isCleared != null) where.isCleared = !!filter.isCleared; // ✅ supports dashboard "Only open"
+      if (filter?.isCleared != null) where.isCleared = !!filter.isCleared;
 
       return ReportedUser.findAll({
         where,
@@ -400,11 +562,11 @@ export default {
     sendMessage: async (_, { receiverId, content, meta }, ctx) => {
       const me = await enforceMessagingAccess(ctx);
 
-      const otherId = String(receiverId || "").trim();
-      if (!otherId) throw new Error("receiver_id_required");
-      if (String(otherId) === String(me.id)) throw new Error("cannot_message_self");
+      const otherPk = await resolveUserPkFromAnyId(receiverId);
 
-      await assertNotBlocked(String(me.id), otherId);
+      if (String(otherPk) === String(me.id)) throw new Error("cannot_message_self");
+
+      await assertNotBlocked(String(me.id), String(otherPk));
 
       const clean = String(content || "").trim();
       if (!clean) throw new Error("message_body_required");
@@ -412,7 +574,7 @@ export default {
 
       const msg = await Message.create({
         senderId: me.id,
-        receiverId: otherId,
+        receiverId: otherPk,
         content: clean,
         meta: meta ?? null,
 
@@ -427,23 +589,33 @@ export default {
         await maybeGrantAchievement(me.id, "first_message");
       } catch {}
 
+      // ✅ CHANGED: If not muted, send BOTH in-app notification + remote push
       try {
-        const muted = await isMuted(String(otherId), String(me.id));
+        const muted = await isMuted(String(otherPk), String(me.id));
         if (!muted) {
+          // In-app notification (your existing system)
           await notifyUser({
-            userId: otherId,
+            userId: String(otherPk),
             type: "chat_message",
             title: "New Message",
             body: `New message from ${me.username || "a user"}`,
             linkUrl: "/messages",
+          });
+
+          // ✅ ADD: Remote push notification (Expo) — tap routes to /messages/[userId]
+          await sendPushToUserAsync({
+            userId: String(otherPk),
+            title: "New Message",
+            body: `${me.username || "Someone"}: ${clean.slice(0, 90)}`,
+            data: { type: "dm", userId: String(me.id) },
           });
         }
       } catch {}
 
       try {
         if (ctx?.io) {
-          ctx.io.to(String(otherId)).emit("newMessage", { from: String(me.id) });
-          ctx.io.to(`user:${String(otherId)}`).emit("newMessage", { from: String(me.id) });
+          ctx.io.to(String(otherPk)).emit("newMessage", { from: String(me.id) });
+          ctx.io.to(`user:${String(otherPk)}`).emit("newMessage", { from: String(me.id) });
         }
       } catch {}
 
@@ -452,14 +624,14 @@ export default {
 
     markChatRead: async (_, { userId }, ctx) => {
       const me = await enforceMessagingAccess(ctx);
-      const otherId = String(userId || "").trim();
-      if (!otherId) throw new Error("user_id_required");
+
+      const otherPk = await resolveUserPkFromAnyId(userId);
 
       await Message.update(
         { isRead: true },
         {
           where: {
-            senderId: otherId,
+            senderId: otherPk,
             receiverId: me.id,
             isRead: false,
             deletedByReceiver: false,
@@ -472,16 +644,16 @@ export default {
 
     deleteChat: async (_, { userId }, ctx) => {
       const me = await requireUserFromContext(ctx);
-      const otherId = String(userId || "").trim();
-      if (!otherId) throw new Error("user_id_required");
+
+      const otherPk = await resolveUserPkFromAnyId(userId);
 
       await Message.update(
         { deletedBySender: true },
-        { where: { senderId: me.id, receiverId: otherId } }
+        { where: { senderId: me.id, receiverId: otherPk } }
       );
       await Message.update(
         { deletedByReceiver: true },
-        { where: { senderId: otherId, receiverId: me.id } }
+        { where: { senderId: otherPk, receiverId: me.id } }
       );
 
       return true;
@@ -517,15 +689,15 @@ export default {
     reportUser: async (_, { userId, reason, details }, ctx) => {
       const me = await requireUserFromContext(ctx);
 
-      const otherId = String(userId || "").trim();
+      const otherPk = await resolveUserPkFromAnyId(userId);
+
       const r = String(reason || "").trim();
       const d = details != null ? String(details).trim() : "";
 
-      if (!otherId) throw new Error("user_id_required");
       if (!r) throw new Error("reason_required");
 
       await ReportedUser.create({
-        userId: otherId,
+        userId: otherPk,
         reporterId: me.id,
         reason: r.slice(0, 255),
         details: d ? d.slice(0, 4000) : null,
@@ -564,12 +736,11 @@ export default {
 
       const admin = await requireUserFromContext(ctx);
 
-      const targetId = String(userId || "").trim();
-      if (!targetId) throw new Error("user_id_required");
+      const targetPk = await resolveUserPkFromAnyId(userId);
 
       const payload = buildAdminActionPayload({
         adminId: admin.id,
-        targetUserId: targetId,
+        targetUserId: String(targetPk),
         actionType: "CHAT_BAN",
         reason: String(reason || "").trim(),
       });
@@ -581,11 +752,10 @@ export default {
     adminUnbanUserFromChat: async (_, { userId }, ctx) => {
       await requireAdmin(ctx.token);
 
-      const targetId = String(userId || "").trim();
-      if (!targetId) throw new Error("user_id_required");
+      const targetPk = await resolveUserPkFromAnyId(userId);
 
       const where = buildAdminActionWhere({
-        targetUserId: targetId,
+        targetUserId: String(targetPk),
         actionType: "CHAT_BAN",
       });
 
@@ -596,12 +766,11 @@ export default {
     adminClearUserReport: async (_, { userId }, ctx) => {
       await requireAdmin(ctx.token);
 
-      const targetId = String(userId || "").trim();
-      if (!targetId) throw new Error("user_id_required");
+      const targetPk = await resolveUserPkFromAnyId(userId);
 
       await ReportedUser.update(
         { isCleared: true },
-        { where: { userId: targetId, isCleared: false } }
+        { where: { userId: String(targetPk), isCleared: false } }
       );
 
       return true;
@@ -612,15 +781,14 @@ export default {
 
       const me = await requireUserFromContext(ctx);
 
-      const otherId = String(receiverId || "").trim();
-      if (!otherId) throw new Error("receiver_id_required");
+      const otherPk = await resolveUserPkFromAnyId(receiverId);
 
       const clean = String(content || "").trim();
       if (!clean) throw new Error("content_required");
 
       await Message.create({
         senderId: me.id,
-        receiverId: otherId,
+        receiverId: otherPk,
         content: clean,
         meta: meta ?? null,
 
@@ -631,20 +799,29 @@ export default {
         isSystemMessage: true,
       });
 
+      // ✅ CHANGED: Send in-app + remote push (system messages usually should still notify)
       try {
         await notifyUser({
-          userId: otherId,
+          userId: String(otherPk),
           type: "system_message",
           title: "System Message",
           body: clean.slice(0, 120),
           linkUrl: "/messages",
         });
+
+        // ✅ ADD: Remote push for system message
+        await sendPushToUserAsync({
+          userId: String(otherPk),
+          title: "System Message",
+          body: clean.slice(0, 140),
+          data: { type: "dm", userId: String(me.id) },
+        });
       } catch {}
 
       try {
         if (ctx?.io) {
-          ctx.io.to(String(otherId)).emit("newMessage", { from: String(me.id) });
-          ctx.io.to(`user:${String(otherId)}`).emit("newMessage", { from: String(me.id) });
+          ctx.io.to(String(otherPk)).emit("newMessage", { from: String(me.id) });
+          ctx.io.to(`user:${String(otherPk)}`).emit("newMessage", { from: String(me.id) });
         }
       } catch {}
 
@@ -653,21 +830,22 @@ export default {
 
     muteConversation: async (_, { userId, mutedUntil }, ctx) => {
       const me = await requireUserFromContext(ctx);
-      const otherId = String(userId || "").trim();
-      if (!otherId) throw new Error("user_id_required");
-      if (String(otherId) === String(me.id)) throw new Error("cannot_mute_self");
+
+      const otherPk = await resolveUserPkFromAnyId(userId);
+
+      if (String(otherPk) === String(me.id)) throw new Error("cannot_mute_self");
 
       const until = mutedUntil ? new Date(mutedUntil) : null;
 
       await ChatMute.findOrCreate({
-        where: { userId: me.id, otherUserId: otherId },
-        defaults: { userId: me.id, otherUserId: otherId, mutedUntil: until },
+        where: { userId: me.id, otherUserId: otherPk },
+        defaults: { userId: me.id, otherUserId: otherPk, mutedUntil: until },
       });
 
       if (until) {
         await ChatMute.update(
           { mutedUntil: until },
-          { where: { userId: me.id, otherUserId: otherId } }
+          { where: { userId: me.id, otherUserId: otherPk } }
         );
       }
 
@@ -676,24 +854,25 @@ export default {
 
     unmuteConversation: async (_, { userId }, ctx) => {
       const me = await requireUserFromContext(ctx);
-      const otherId = String(userId || "").trim();
-      if (!otherId) throw new Error("user_id_required");
 
-      await ChatMute.destroy({ where: { userId: me.id, otherUserId: otherId } });
+      const otherPk = await resolveUserPkFromAnyId(userId);
+
+      await ChatMute.destroy({ where: { userId: me.id, otherUserId: otherPk } });
       return true;
     },
 
     blockUserFromChat: async (_, { userId, reason }, ctx) => {
       const me = await requireUserFromContext(ctx);
-      const otherId = String(userId || "").trim();
-      if (!otherId) throw new Error("user_id_required");
-      if (String(otherId) === String(me.id)) throw new Error("cannot_block_self");
+
+      const otherPk = await resolveUserPkFromAnyId(userId);
+
+      if (String(otherPk) === String(me.id)) throw new Error("cannot_block_self");
 
       await ChatBlock.findOrCreate({
-        where: { blockerId: me.id, blockedId: otherId },
+        where: { blockerId: me.id, blockedId: otherPk },
         defaults: {
           blockerId: me.id,
-          blockedId: otherId,
+          blockedId: otherPk,
           reason: String(reason || "").trim().slice(0, 500) || null,
         },
       });
@@ -703,10 +882,10 @@ export default {
 
     unblockUserFromChat: async (_, { userId }, ctx) => {
       const me = await requireUserFromContext(ctx);
-      const otherId = String(userId || "").trim();
-      if (!otherId) throw new Error("user_id_required");
 
-      await ChatBlock.destroy({ where: { blockerId: me.id, blockedId: otherId } });
+      const otherPk = await resolveUserPkFromAnyId(userId);
+
+      await ChatBlock.destroy({ where: { blockerId: me.id, blockedId: otherPk } });
       return true;
     },
   },
@@ -714,11 +893,21 @@ export default {
   Message: {
     id: (m) => m?.id,
 
-    senderId: (m) => String(getSenderId(m) || ""),
-    receiverId: (m) => String(getReceiverId(m) || ""),
+    // Sender/receiver IDs stored in Message are PKs, return "public id" if you have one
+    senderId: async (m, _args, ctx) => {
+      const pk = getSenderId(m);
+      if (!pk) return "";
+      const u = await findUserByPkCached(ctx, pk);
+      return u ? userPkToPublicId(u) : String(pk);
+    },
+    receiverId: async (m, _args, ctx) => {
+      const pk = getReceiverId(m);
+      if (!pk) return "";
+      const u = await findUserByPkCached(ctx, pk);
+      return u ? userPkToPublicId(u) : String(pk);
+    },
 
     content: (m) => String(getContent(m) ?? ""),
-
     isRead: (m) => getBool(m, "isRead", "is_read", false),
 
     deletedBySender: (m) => getBool(m, "deletedBySender", "deleted_by_sender", false),
@@ -737,17 +926,24 @@ export default {
     updatedAt: (m) => toISO(m?.updatedAt ?? m?.updated_at),
     expiresAt: (m) => toISO(m?.expiresAt ?? m?.expires_at),
 
+    // ✅ CHANGED: include Profile + normalize avatar
     sender: async (m) => {
       const id = getSenderId(m);
-      return id ? User.findByPk(id) : null;
+      if (!id) return null;
+      const u = await User.findByPk(id, { include: [{ model: Profile, required: false }] });
+      return u ? normalizeUserAvatarFromProfile(u) : null;
     },
     receiver: async (m) => {
       const id = getReceiverId(m);
-      return id ? User.findByPk(id) : null;
+      if (!id) return null;
+      const u = await User.findByPk(id, { include: [{ model: Profile, required: false }] });
+      return u ? normalizeUserAvatarFromProfile(u) : null;
     },
     flaggedBy: async (m) => {
       const id = m?.flaggedById ?? m?.flagged_by_id;
-      return id ? User.findByPk(id) : null;
+      if (!id) return null;
+      const u = await User.findByPk(id, { include: [{ model: Profile, required: false }] });
+      return u ? normalizeUserAvatarFromProfile(u) : null;
     },
   },
 

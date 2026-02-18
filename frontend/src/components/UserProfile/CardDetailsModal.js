@@ -1,11 +1,4 @@
 // src/components/UserProfile/CardDetailsModal.js
-//
-// UPDATED (2026-01-26):
-// - REMOVED: ALL in-file Discord share modal + server/channel picker code
-// - REMOVED: Discord share helpers (fetchShareOptions/fetchGuildChannels/postDiscordShare/etc)
-// - NEW: Import ShareToDiscordDialog from its own file
-// - NEW: Pass required injected deps (postDiscordShare + safeLocalStorage helpers) into the dialog
-// - KEEP: Share button + shareOpen state + normalized share payload + viewUrl logic (these are modal-independent)
 
 "use client";
 
@@ -39,7 +32,6 @@ const GBP_SYMBOL = "\u00A3";
 /*                      Minimal Discord Share helpers (KEPT)                   */
 /* ========================================================================== */
 
-// ✅ KEEP: localStorage helpers (dialog needs them; now injected)
 function safeLocalStorageGet(key) {
   try {
     if (typeof window === "undefined") return null;
@@ -140,7 +132,6 @@ function normalizeShareEntry({ type, card, sourceEntry, selectedVar }) {
   };
 }
 
-// ✅ KEEP: actual POST to your Next API route (dialog calls this via injected prop)
 async function postDiscordShare({ token, channelId, message, payload, requestedByUsername, viewUrl }) {
   const url = "/api/discord/share-entry";
 
@@ -436,7 +427,6 @@ export default function CardDetailsModal({
   const [duplicateBusy, setDuplicateBusy] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState("overview");
 
-  // ✅ KEEP: share open state (modal component is external now)
   const [shareOpen, setShareOpen] = React.useState(false);
 
   const selectedRow = findPriceRow(priceRows, selectedVar);
@@ -893,7 +883,7 @@ export default function CardDetailsModal({
                     type="button"
                     onClick={handleWatchlistClick}
                     className={[
-                      "w-full inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-0",
+                      "w-full inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm text-white font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-0",
                       watchlistButtonStyles,
                       watchlistBusy ? "opacity-80" : "",
                     ].join(" ")}
@@ -955,7 +945,6 @@ export default function CardDetailsModal({
                   </div>
                 )}
 
-                {/* ✅ UPDATED: external share dialog component */}
                 <ShareToDiscordDialog
                   open={shareOpen}
                   onClose={() => setShareOpen(false)}
@@ -993,7 +982,7 @@ export default function CardDetailsModal({
                             "px-3 py-1.5 rounded-full text-xs font-semibold transition-transform border",
                             active
                               ? isDark
-                                ? "bg-dark-accent text-black border-dark-accent shadow-lg -translate-y-0.5"
+                                ? "bg-dark-accent text-white border-dark-accent shadow-lg -translate-y-0.5"
                                 : "bg-light-accent text-white border-light-accent shadow-sm -translate-y-0.5"
                               : isDark
                               ? "bg-dark-alt/70 text-dark-textMuted hover:text-white hover:bg-dark-border/60 border-dark-border/70"
@@ -1027,7 +1016,7 @@ export default function CardDetailsModal({
                           "px-4 py-2 text-sm font-semibold rounded-xl transition",
                           isActive
                             ? isDark
-                              ? "bg-dark-accent text-black shadow"
+                              ? "bg-dark-accent text-white shadow"
                               : "bg-light-primary text-white shadow"
                             : isDark
                             ? "text-dark-textMuted hover:text-white"

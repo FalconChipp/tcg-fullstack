@@ -1,16 +1,4 @@
 // backend/src/modules/messages/resolvers.js
-//
-// UPDATED (2026-02-16)
-//
-// CHANGES (this revision):
-// - ADD: Remote push send on new message (Expo) via push module
-// - ADD: Remote push send on admin system message (optional, mirrors in-app notify)
-// - KEEP: Existing mute logic (no push if receiver muted the sender)
-// - KEEP: Existing socket + in-app notify behavior
-//
-// NOTE:
-// - This assumes you created: src/modules/push/service.js exporting `sendPushToUserAsync(...)`
-// - This sends payload: { type: "dm", userId: "<SENDER_ID>" } so the app can route to /messages/[userId]
 
 import { Op } from "sequelize";
 import {
@@ -80,7 +68,7 @@ function toISO(v) {
 }
 
 /* =============================================================================
-   ✅ User ID resolution (public id -> PK)
+  User ID resolution (public id -> PK)
 ============================================================================= */
 
 function userAttrs() {
@@ -161,15 +149,7 @@ function userPkToPublicId(userModelOrRow) {
   return String(v ?? userModelOrRow?.id ?? "");
 }
 
-/* =============================================================================
-   ✅ Avatar normalization for chat
-============================================================================= */
-
 /**
- * ✅ NEW:
- * Your avatars are stored in profiles.avatar (e.g. "/uploads/avatars/...png")
- * but myChats returns `user { avatar }` (User.avatar).
- *
  * This helper ensures user.avatar is populated from Profile.avatar if missing.
  */
 function normalizeUserAvatarFromProfile(userInstanceOrPlain) {
@@ -198,7 +178,6 @@ function normalizeUserAvatarFromProfile(userInstanceOrPlain) {
 }
 
 /**
- * ✅ NEW:
  * Per-request cache to avoid repeated user lookups for Message fields.
  * Now includes Profile so avatar works in threads too.
  */
@@ -213,7 +192,6 @@ async function findUserByPkCached(ctx, pk) {
   const key = String(pk);
   if (cache && cache.has(key)) return cache.get(key);
 
-  // ✅ CHANGED: include Profile so we can fallback to Profile.avatar
   const u = await User.findByPk(pk, {
     include: [{ model: Profile, required: false }],
   });
@@ -277,17 +255,29 @@ function visibleToMe(meId, msg) {
   const senderId = String(getSenderId(msg) || "");
   const receiverId = String(getReceiverId(msg) || "");
 
-  const deletedBySender = getBool(msg, "deletedBySender", "deleted_by_sender", false);
-  const deletedByReceiver = getBool(msg, "deletedByReceiver", "deleted_by_receiver", false);
+  const deletedBySender = getBool(
+    msg,
+    "deletedBySender",
+    "deleted_by_sender",
+    false,
+  );
+  const deletedByReceiver = getBool(
+    msg,
+    "deletedByReceiver",
+    "deleted_by_receiver",
+    false,
+  );
 
   if (senderId && senderId === String(meId) && deletedBySender) return false;
-  if (receiverId && receiverId === String(meId) && deletedByReceiver) return false;
+  if (receiverId && receiverId === String(meId) && deletedByReceiver)
+    return false;
 
   return true;
 }
 
 function attachReportDetails(existingMeta, details, extra = {}) {
-  const base = existingMeta && typeof existingMeta === "object" ? existingMeta : {};
+  const base =
+    existingMeta && typeof existingMeta === "object" ? existingMeta : {};
   return {
     ...base,
     ...extra,
@@ -302,14 +292,23 @@ function adminActionAttrs() {
 function buildAdminActionPayload({ adminId, targetUserId, actionType, reason }) {
   const attrs = adminActionAttrs();
 
-  const adminKey = pickFirstExistingKey(attrs, ["adminId", "adminUserId", "performedById"]);
-  const targetKey = pickFirstExistingKey(attrs, ["userId", "targetUserId", "subjectUserId"]);
+  const adminKey = pickFirstExistingKey(attrs, [
+    "adminId",
+    "adminUserId",
+    "performedById",
+  ]);
+  const targetKey = pickFirstExistingKey(attrs, [
+    "userId",
+    "targetUserId",
+    "subjectUserId",
+  ]);
   const typeKey = pickFirstExistingKey(attrs, ["actionType", "type"]);
   const reasonKey = pickFirstExistingKey(attrs, ["reason", "note", "details"]);
 
   const payload = {};
 
-  if (!adminKey) throw new Error("AdminAction model missing adminId/adminUserId field");
+  if (!adminKey)
+    throw new Error("AdminAction model missing adminId/adminUserId field");
   if (!typeKey) throw new Error("AdminAction model missing actionType/type field");
 
   payload[adminKey] = adminId;
@@ -328,7 +327,11 @@ function buildAdminActionPayload({ adminId, targetUserId, actionType, reason }) 
 function buildAdminActionWhere({ targetUserId, actionType }) {
   const attrs = adminActionAttrs();
 
-  const targetKey = pickFirstExistingKey(attrs, ["userId", "targetUserId", "subjectUserId"]);
+  const targetKey = pickFirstExistingKey(attrs, [
+    "userId",
+    "targetUserId",
+    "subjectUserId",
+  ]);
   const typeKey = pickFirstExistingKey(attrs, ["actionType", "type"]);
 
   if (!typeKey) throw new Error("AdminAction model missing actionType/type field");
@@ -375,7 +378,12 @@ export default {
 
         const isToMe = receiverId === String(me.id);
         const isUnread = !getBool(msg, "isRead", "is_read", false);
-        const deletedByReceiver = getBool(msg, "deletedByReceiver", "deleted_by_receiver", false);
+        const deletedByReceiver = getBool(
+          msg,
+          "deletedByReceiver",
+          "deleted_by_receiver",
+          false,
+        );
 
         if (isToMe && isUnread && !deletedByReceiver) {
           const t = byOther.get(otherPk);
@@ -390,7 +398,6 @@ export default {
 
       if (!pageOtherPks.length) return [];
 
-      // ✅ CHANGED: include Profile so we can use profiles.avatar
       const users = await User.findAll({
         where: { id: { [Op.in]: pageOtherPks } },
         include: [{ model: Profile, required: false }],
@@ -405,7 +412,6 @@ export default {
 
         const t = byOther.get(otherPk);
 
-        // ✅ CHANGED: normalize avatar from Profile.avatar when User.avatar is null
         const normalizedUser = normalizeUserAvatarFromProfile(otherUser);
 
         out.push({
@@ -458,7 +464,9 @@ export default {
 
     hasAgreedToChatRules: async (_, __, ctx) => {
       if (!ctx?.user?.id) return false;
-      const row = await ChatAgreement.findOne({ where: { userId: ctx.user.id } });
+      const row = await ChatAgreement.findOne({
+        where: { userId: ctx.user.id },
+      });
       return !!row;
     },
 
@@ -564,7 +572,8 @@ export default {
 
       const otherPk = await resolveUserPkFromAnyId(receiverId);
 
-      if (String(otherPk) === String(me.id)) throw new Error("cannot_message_self");
+      if (String(otherPk) === String(me.id))
+        throw new Error("cannot_message_self");
 
       await assertNotBlocked(String(me.id), String(otherPk));
 
@@ -589,20 +598,21 @@ export default {
         await maybeGrantAchievement(me.id, "first_message");
       } catch {}
 
-      // ✅ CHANGED: If not muted, send BOTH in-app notification + remote push
       try {
         const muted = await isMuted(String(otherPk), String(me.id));
         if (!muted) {
-          // In-app notification (your existing system)
+          // In-app notification: keep it
+          // EMAIL: disabled for now (sendEmail: false)
           await notifyUser({
             userId: String(otherPk),
             type: "chat_message",
             title: "New Message",
             body: `New message from ${me.username || "a user"}`,
             linkUrl: "/messages",
+            sendEmail: false,
           });
 
-          // ✅ ADD: Remote push notification (Expo) — tap routes to /messages/[userId]
+          // Push: keep it (mobile UX)
           await sendPushToUserAsync({
             userId: String(otherPk),
             title: "New Message",
@@ -615,7 +625,9 @@ export default {
       try {
         if (ctx?.io) {
           ctx.io.to(String(otherPk)).emit("newMessage", { from: String(me.id) });
-          ctx.io.to(`user:${String(otherPk)}`).emit("newMessage", { from: String(me.id) });
+          ctx.io
+            .to(`user:${String(otherPk)}`)
+            .emit("newMessage", { from: String(me.id) });
         }
       } catch {}
 
@@ -636,7 +648,7 @@ export default {
             isRead: false,
             deletedByReceiver: false,
           },
-        }
+        },
       );
 
       return true;
@@ -649,11 +661,11 @@ export default {
 
       await Message.update(
         { deletedBySender: true },
-        { where: { senderId: me.id, receiverId: otherPk } }
+        { where: { senderId: me.id, receiverId: otherPk } },
       );
       await Message.update(
         { deletedByReceiver: true },
-        { where: { senderId: otherPk, receiverId: me.id } }
+        { where: { senderId: otherPk, receiverId: me.id } },
       );
 
       return true;
@@ -770,7 +782,7 @@ export default {
 
       await ReportedUser.update(
         { isCleared: true },
-        { where: { userId: String(targetPk), isCleared: false } }
+        { where: { userId: String(targetPk), isCleared: false } },
       );
 
       return true;
@@ -799,7 +811,6 @@ export default {
         isSystemMessage: true,
       });
 
-      // ✅ CHANGED: Send in-app + remote push (system messages usually should still notify)
       try {
         await notifyUser({
           userId: String(otherPk),
@@ -809,7 +820,6 @@ export default {
           linkUrl: "/messages",
         });
 
-        // ✅ ADD: Remote push for system message
         await sendPushToUserAsync({
           userId: String(otherPk),
           title: "System Message",
@@ -821,7 +831,9 @@ export default {
       try {
         if (ctx?.io) {
           ctx.io.to(String(otherPk)).emit("newMessage", { from: String(me.id) });
-          ctx.io.to(`user:${String(otherPk)}`).emit("newMessage", { from: String(me.id) });
+          ctx.io
+            .to(`user:${String(otherPk)}`)
+            .emit("newMessage", { from: String(me.id) });
         }
       } catch {}
 
@@ -845,7 +857,7 @@ export default {
       if (until) {
         await ChatMute.update(
           { mutedUntil: until },
-          { where: { userId: me.id, otherUserId: otherPk } }
+          { where: { userId: me.id, otherUserId: otherPk } },
         );
       }
 
@@ -866,14 +878,17 @@ export default {
 
       const otherPk = await resolveUserPkFromAnyId(userId);
 
-      if (String(otherPk) === String(me.id)) throw new Error("cannot_block_self");
+      if (String(otherPk) === String(me.id))
+        throw new Error("cannot_block_self");
 
       await ChatBlock.findOrCreate({
         where: { blockerId: me.id, blockedId: otherPk },
         defaults: {
           blockerId: me.id,
           blockedId: otherPk,
-          reason: String(reason || "").trim().slice(0, 500) || null,
+          reason: String(reason || "")
+            .trim()
+            .slice(0, 500) || null,
         },
       });
 
@@ -885,7 +900,9 @@ export default {
 
       const otherPk = await resolveUserPkFromAnyId(userId);
 
-      await ChatBlock.destroy({ where: { blockerId: me.id, blockedId: otherPk } });
+      await ChatBlock.destroy({
+        where: { blockerId: me.id, blockedId: otherPk },
+      });
       return true;
     },
   },
@@ -910,8 +927,10 @@ export default {
     content: (m) => String(getContent(m) ?? ""),
     isRead: (m) => getBool(m, "isRead", "is_read", false),
 
-    deletedBySender: (m) => getBool(m, "deletedBySender", "deleted_by_sender", false),
-    deletedByReceiver: (m) => getBool(m, "deletedByReceiver", "deleted_by_receiver", false),
+    deletedBySender: (m) =>
+      getBool(m, "deletedBySender", "deleted_by_sender", false),
+    deletedByReceiver: (m) =>
+      getBool(m, "deletedByReceiver", "deleted_by_receiver", false),
 
     meta: (m) => m?.meta ?? null,
 
@@ -919,41 +938,50 @@ export default {
     flagReason: (m) => getMaybeString(m, "flagReason", "flag_reason"),
     flaggedById: (m) => getMaybeString(m, "flaggedById", "flagged_by_id"),
 
-    isSystemMessage: (m) => getBool(m, "isSystemMessage", "is_system_message", false),
+    isSystemMessage: (m) =>
+      getBool(m, "isSystemMessage", "is_system_message", false),
     reminderSentAt: (m) => toISO(m?.reminderSentAt ?? m?.reminder_sent_at),
 
     createdAt: (m) => toISO(m?.createdAt ?? m?.created_at),
     updatedAt: (m) => toISO(m?.updatedAt ?? m?.updated_at),
     expiresAt: (m) => toISO(m?.expiresAt ?? m?.expires_at),
 
-    // ✅ CHANGED: include Profile + normalize avatar
     sender: async (m) => {
       const id = getSenderId(m);
       if (!id) return null;
-      const u = await User.findByPk(id, { include: [{ model: Profile, required: false }] });
+      const u = await User.findByPk(id, {
+        include: [{ model: Profile, required: false }],
+      });
       return u ? normalizeUserAvatarFromProfile(u) : null;
     },
     receiver: async (m) => {
       const id = getReceiverId(m);
       if (!id) return null;
-      const u = await User.findByPk(id, { include: [{ model: Profile, required: false }] });
+      const u = await User.findByPk(id, {
+        include: [{ model: Profile, required: false }],
+      });
       return u ? normalizeUserAvatarFromProfile(u) : null;
     },
     flaggedBy: async (m) => {
       const id = m?.flaggedById ?? m?.flagged_by_id;
       if (!id) return null;
-      const u = await User.findByPk(id, { include: [{ model: Profile, required: false }] });
+      const u = await User.findByPk(id, {
+        include: [{ model: Profile, required: false }],
+      });
       return u ? normalizeUserAvatarFromProfile(u) : null;
     },
   },
 
   ChatBlock: {
-    blocker: async (row) => (row?.blockerId ? User.findByPk(row.blockerId) : null),
-    blocked: async (row) => (row?.blockedId ? User.findByPk(row.blockedId) : null),
+    blocker: async (row) =>
+      row?.blockerId ? User.findByPk(row.blockerId) : null,
+    blocked: async (row) =>
+      row?.blockedId ? User.findByPk(row.blockedId) : null,
   },
 
   ReportedUser: {
     user: async (row) => (row?.userId ? User.findByPk(row.userId) : null),
-    reporter: async (row) => (row?.reporterId ? User.findByPk(row.reporterId) : null),
+    reporter: async (row) =>
+      row?.reporterId ? User.findByPk(row.reporterId) : null,
   },
 };

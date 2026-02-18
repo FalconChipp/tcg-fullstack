@@ -1,3 +1,5 @@
+// src/emails/unreadMessageReminder.js
+
 import emailBase from './emailBase.js';
 
 export default function buildUnreadMessageReminder({ senderUsername, content }) {

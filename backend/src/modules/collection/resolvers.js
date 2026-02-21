@@ -1,15 +1,23 @@
 // src/modules/collections/resolvers.js
+//
+// UPDATED (2026-02-21)
+//
+// CHANGES (THIS UPDATE):
+// - FIX: Remove reference to mapModelCardToCardsearchCard (it was not defined/imported and caused runtime errors)
+// - CHANGE: Collection.card resolver now returns the raw Sequelize model (m_Card) or null
+// - KEEP: Single Collection resolver block (no duplication) so it doesn't get overwritten
+// - NOTE: This matches your frontend mutation which requests card { id name image setName number rarity }
 
-import { Collection, Wishlist, m_Card, sequelize, User } from '../../models/index.js';
-import { ensureCardExists } from '../cards/ensureCardExists.service.js'; // CHANGED
-import { requireAuth } from './helpers.js';
-import { maybeGrantAchievement } from '../achievements/helpers.js';
-import { requireAdmin } from '../users/helpers.js';
-import { Op, fn, col } from 'sequelize';
+import { Collection, Wishlist, m_Card, sequelize, User } from "../../models/index.js";
+import { ensureCardExists } from "../cards/ensureCardExists.service.js";
+import { requireAuth } from "./helpers.js";
+import { maybeGrantAchievement } from "../achievements/helpers.js";
+import { requireAdmin } from "../users/helpers.js";
+import { Op, fn, col } from "sequelize";
 
 // Normalize variation to null if empty, undefined, or blank
 function normalizeVariation(v) {
-  return (!v || String(v).trim() === "") ? null : String(v).trim();
+  return !v || String(v).trim() === "" ? null : String(v).trim();
 }
 
 const resolvers = {
@@ -19,16 +27,18 @@ const resolvers = {
       const payload = requireAuth(token);
       return Collection.findAll({
         where: { userId: payload.id, wishlist: false },
-        include: [{ model: m_Card, as: 'card' }]
+        include: [{ model: m_Card, as: "card" }],
       });
     },
+
     // Fetch any user's collection (not wishlist items)
     collection: async (_, { userId }) => {
       return Collection.findAll({
         where: { userId, wishlist: false },
-        include: [{ model: m_Card, as: 'card' }]
+        include: [{ model: m_Card, as: "card" }],
       });
     },
+
     // Fetch a single collection entry (not wishlist)
     collectionEntry: async (_, { cardId, variation }, { token }) => {
       const payload = requireAuth(token);
@@ -39,7 +49,7 @@ const resolvers = {
           variation: normalizeVariation(variation),
           wishlist: false,
         },
-        include: [{ model: m_Card, as: 'card' }]
+        include: [{ model: m_Card, as: "card" }],
       });
     },
 
@@ -92,10 +102,25 @@ const resolvers = {
     },
   },
 
+  // FIXED: single Collection resolver block (do not duplicate this key)
   Collection: {
-    card: async (entry) => { // CHANGED
-      const card = entry.card || await m_Card.findByPk(entry.cardId);
-      return mapModelCardToCardsearchCard(card, { fallbackCardId: entry.cardId });
+    // UPDATED (2026-02-21)
+    //
+    // CHANGES:
+    // - REMOVED: mapModelCardToCardsearchCard(...) because it was not defined/imported
+    // - RETURN: raw m_Card Sequelize model for GraphQL to resolve fields directly
+    //
+    // Why:
+    // - Your frontend requests card { id name image setName number rarity }
+    // - Those should exist on your m_Card model (or be resolvable via model fields)
+    // - Returning the model avoids runtime mapper errors and fixes addToCollection.card
+
+    card: async (entry) => {
+      // Prefer eager-loaded association if present
+      const card = entry.card || (await m_Card.findByPk(entry.cardId));
+
+      // Safe null if card isn't in DB for any reason
+      return card || null;
     },
   },
 
@@ -104,37 +129,49 @@ const resolvers = {
     addToCollection: async (_, { cardId, quantity = 1, condition, variation }, { token }) => {
       const payload = requireAuth(token);
       const t = await sequelize.transaction();
+
       try {
-        await ensureCardExists(cardId, { transaction: t }); // CHANGED
+        await ensureCardExists(cardId, { transaction: t });
+
         let entry = await Collection.findOne({
           where: {
             userId: payload.id,
             cardId,
             variation: normalizeVariation(variation),
-            wishlist: false
+            wishlist: false,
           },
           transaction: t,
-          lock: t.LOCK.UPDATE
+          lock: t.LOCK.UPDATE,
         });
+
         if (entry) {
           entry.quantity += quantity;
           if (condition !== undefined) entry.condition = condition;
           await entry.save({ transaction: t });
         } else {
-          entry = await Collection.create({
-            userId: payload.id,
-            cardId,
-            quantity,
-            condition,
-            variation: normalizeVariation(variation),
-            wishlist: false
-          }, { transaction: t });
+          entry = await Collection.create(
+            {
+              userId: payload.id,
+              cardId,
+              quantity,
+              condition,
+              variation: normalizeVariation(variation),
+              wishlist: false,
+            },
+            { transaction: t }
+          );
         }
+
         await t.commit();
-        const count = await Collection.count({ where: { userId: payload.id, wishlist: false } });
+
+        const count = await Collection.count({
+          where: { userId: payload.id, wishlist: false },
+        });
+
         if (count === 1) {
-          await maybeGrantAchievement(payload.id, 'first_collection_entry', { cardId });
+          await maybeGrantAchievement(payload.id, "first_collection_entry", { cardId });
         }
+
         return entry;
       } catch (err) {
         await t.rollback();
@@ -145,15 +182,18 @@ const resolvers = {
     // Remove a card from collection (not wishlist)
     removeFromCollection: async (_, { cardId, variation }, { token }) => {
       const payload = requireAuth(token);
+
       const entry = await Collection.findOne({
         where: {
           userId: payload.id,
           cardId,
           variation: normalizeVariation(variation),
-          wishlist: false
-        }
+          wishlist: false,
+        },
       });
-      if (!entry) throw new Error('Entry not found');
+
+      if (!entry) throw new Error("Entry not found");
+
       await entry.destroy();
       return true;
     },
@@ -162,22 +202,27 @@ const resolvers = {
     updateCollectionEntry: async (_, { cardId, quantity, condition, variation }, { token }) => {
       const payload = requireAuth(token);
       const t = await sequelize.transaction();
+
       try {
         const entry = await Collection.findOne({
           where: {
             userId: payload.id,
             cardId,
             variation: normalizeVariation(variation),
-            wishlist: false
+            wishlist: false,
           },
           transaction: t,
-          lock: t.LOCK.UPDATE
+          lock: t.LOCK.UPDATE,
         });
-        if (!entry) throw new Error('Entry not found');
+
+        if (!entry) throw new Error("Entry not found");
+
         if (quantity !== undefined) entry.quantity = quantity;
         if (condition !== undefined) entry.condition = condition;
+
         await entry.save({ transaction: t });
         await t.commit();
+
         return entry;
       } catch (err) {
         await t.rollback();
@@ -189,20 +234,24 @@ const resolvers = {
     moveToWishlist: async (_, { cardId, variation }, { token }) => {
       const payload = requireAuth(token);
       const t = await sequelize.transaction();
+
       try {
         const entry = await Collection.findOne({
           where: {
             userId: payload.id,
             cardId,
             variation: normalizeVariation(variation),
-            wishlist: false
+            wishlist: false,
           },
           transaction: t,
-          lock: t.LOCK.UPDATE
+          lock: t.LOCK.UPDATE,
         });
-        if (!entry) throw new Error('Entry not found');
+
+        if (!entry) throw new Error("Entry not found");
+
         entry.wishlist = true;
         await entry.save({ transaction: t });
+
         await t.commit();
         return entry;
       } catch (err) {
@@ -215,18 +264,19 @@ const resolvers = {
     moveToCollection: async (_, { cardId, variation }, { token }) => {
       const payload = requireAuth(token);
       const t = await sequelize.transaction();
+
       try {
-        await ensureCardExists(cardId, { transaction: t }); // CHANGED
+        await ensureCardExists(cardId, { transaction: t });
 
         // 1. Find the wishlist entry to move
         const wishlistEntry = await Wishlist.findOne({
           where: {
             userId: payload.id,
             cardId,
-            variation: normalizeVariation(variation)
+            variation: normalizeVariation(variation),
           },
           transaction: t,
-          lock: t.LOCK.UPDATE
+          lock: t.LOCK.UPDATE,
         });
 
         if (!wishlistEntry) {
@@ -234,7 +284,6 @@ const resolvers = {
           throw new Error("Entry not found in wishlist");
         }
 
-        // Save fields from wishlist entry
         const quantity = wishlistEntry.quantity || 1;
 
         // Remove from wishlist
@@ -246,23 +295,26 @@ const resolvers = {
             userId: payload.id,
             cardId,
             variation: normalizeVariation(variation),
-            wishlist: false
+            wishlist: false,
           },
           transaction: t,
-          lock: t.LOCK.UPDATE
+          lock: t.LOCK.UPDATE,
         });
 
         if (collectionEntry) {
           collectionEntry.quantity += quantity;
           await collectionEntry.save({ transaction: t });
         } else {
-          collectionEntry = await Collection.create({
-            userId: payload.id,
-            cardId,
-            variation: normalizeVariation(variation),
-            quantity,
-            wishlist: false
-          }, { transaction: t });
+          collectionEntry = await Collection.create(
+            {
+              userId: payload.id,
+              cardId,
+              variation: normalizeVariation(variation),
+              quantity,
+              wishlist: false,
+            },
+            { transaction: t }
+          );
         }
 
         await t.commit();
@@ -273,11 +325,6 @@ const resolvers = {
       }
     },
   },
-
-  // Auto-resolve the associated card for each collection entry
-  Collection: {
-    card: async (col) => col.card || Card.findByPk(col.cardId)
-  }
 };
 
 export default resolvers;

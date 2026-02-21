@@ -963,7 +963,7 @@ export default function CardSearch() {
                                 setSelectedCardDetail(card);
                                 setPanelOpen(true);
                               }}
-                              className="rounded-lg px-4 py-2 bg-light-accent dark:bg-dark-accent text-light-surface dark:text-dark-surface font-semibold hover:bg-light-accentLight dark:hover:bg-dark-accentLight hover:text-light-surface dark:hover:text-dark-surface transition"
+                              className="rounded-lg px-4 py-2 bg-light-accent dark:bg-dark-accent !text-white dark:text-dark-surface font-semibold hover:bg-light-accentLight dark:hover:bg-dark-accentLight hover:text-light-surface dark:hover:text-white transition"
                             >
                               Add
                             </button>
@@ -972,7 +972,7 @@ export default function CardSearch() {
                                 e.stopPropagation();
                                 handleAddToWishlist(card);
                               }}
-                              className="rounded-lg px-4 py-2 border-2 border-light-accent dark:border-dark-accent text-light-accent dark:text-dark-accent font-semibold hover:bg-light-accent dark:hover:bg-dark-accent hover:text-light-surface dark:hover:text-dark-surface transition"
+                              className="rounded-lg px-4 py-2 border-2 border-light-accent dark:border-dark-accent text-light-accent dark:text-dark-accent font-semibold hover:bg-light-accent dark:hover:bg-dark-accent hover:text-light-surface dark:hover:text-white transition"
                             >
                               Wishlist
                             </button>

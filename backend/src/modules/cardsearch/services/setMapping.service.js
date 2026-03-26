@@ -4,7 +4,9 @@
 export const ALIASES = Object.freeze({
   // Mega Evolution sets:
   'MEG':   { tcgdex: 'me01',     ptcg: 'me1' },           // Mega Evolutions Base Set
-  'PFL':   { tcgdex: 'me02',       ptcg: 'me2' },            // Phantasmal Flames 
+  'PFL':   { tcgdex: 'me02',     ptcg: 'me2' },           // Phantasmal Flames 
+  'ASC':   { tcgdex: 'me2.5',    ptcg: 'me2pt5' },        // Ascended Heroes
+  'POR':   { tcgdex: 'me03',     ptcg: null },            // Perfect Order 
 
   // Scarlet & Violet sets:
   'SVP':   { tcgdex: 'svp',      ptcg: 'svp' },           // Scarlet & Violet Promos

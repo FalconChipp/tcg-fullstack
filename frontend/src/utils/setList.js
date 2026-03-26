@@ -7,6 +7,7 @@ const setList = [
   { abbr: "MEG", code : "me01", name: "Mega Evolution", logo: "/assets/set-logos/mega-evolutions-base-logo.png" },
   { abbr: "PFL", code : "me02", name: "Phantasmal Flames", logo: "/assets/set-logos/phantasmal-flames-logo.png" },
   { abbr: "ASC", code : "me02.5", name: "Ascended Heroes", logo: "/assets/set-logos/ascended-heroes-logo.png" },
+  { abbr: "POR", code : "me03", name: "Perfect Order", logo: "/assets/set-logos/perfect-order-logo.png" }, 
 
   // Scarlet & Violet era
   { abbr: "SVP", code: "svp", name: "Scarlet & Violet Promos", logo: "/assets/set-logos/promo-logo.webp" },

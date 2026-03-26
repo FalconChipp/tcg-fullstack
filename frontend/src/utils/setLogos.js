@@ -126,6 +126,7 @@ export const SET_LOGOS = {
   'Mega Evolution': 'mega-evolutions-base-logo.png', 
   'Phantasmal Flames' : 'phantasmal-flames-logo.png', 
   'Ascended Heroes' : 'ascended-heroes-logo.png',
+  'Perfect Order' : 'perfect-order-logo.png',
 
   // Trainer Kits, Vaults, Classic, Special, etc.
   'Detective Pikachu': 'detective-pikachu-logo.png',

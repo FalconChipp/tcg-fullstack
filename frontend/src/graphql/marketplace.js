@@ -1,39 +1,14 @@
-// frontend/graphql/marketplace.js
+// src/graphql/marketplace.js
+// Typed documents from the shared api-client package.
+// NOTE: CREATE_ORDER_MUTATION uses the legacy `createOrder` resolver which is
+// not yet in the api-client package, so it stays as a local gql document.
 
-import { gql } from "@apollo/client";
+import { gql } from '@apollo/client';
 
-export const LISTINGS_QUERY = gql`
-  query Listings($type: ListingType, $status: ListingStatus, $limit: Int, $offset: Int) {
-    listings(type: $type, status: $status, limit: $limit, offset: $offset) {
-      __typename
-      id
-      type
-      price
-      currency
-      quantity
-      allowOffers
-      status
-      createdAt
-      updatedAt
-
-      ... on CardListing {
-        cardId
-        condition
-        variation
-        notes
-        seller { id displayName username }
-      }
-
-      ... on ProductListing {
-        title
-        description
-        imageUrl
-        inventory { id onHand reserved sold }
-        seller { id displayName username }
-      }
-    }
-  }
-`;
+export {
+  ListingsDocument as LISTINGS_QUERY,
+  CreateOrderFromListingDocument as CREATE_ORDER_FROM_LISTING_MUTATION,
+} from '@sixbyfive/api-client';
 
 export const CREATE_ORDER_MUTATION = gql`
   mutation CreateOrder($input: OrderInput!) {
@@ -48,37 +23,6 @@ export const CREATE_ORDER_MUTATION = gql`
         paymentMethod
       }
       checkoutUrl
-    }
-  }
-`;
-
-export const CREATE_ORDER_FROM_LISTING_MUTATION = gql`
-  mutation CreateOrderFromListing($input: CreateOrderFromListingInput!) {
-    createOrderFromListing(input: $input) {
-      id
-      orderNumber
-      status
-      total
-      currency
-      guestCheckout
-      buyerEmail
-      buyerName
-
-      listing {
-        __typename
-        id
-        ... on CardListing {
-          cardId
-          condition
-          variation
-        }
-        ... on ProductListing {
-          title
-          description
-        }
-      }
-
-      createdAt
     }
   }
 `;

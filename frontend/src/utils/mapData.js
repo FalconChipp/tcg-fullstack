@@ -18,9 +18,10 @@ export function mapCardToDetail(card) {
 
     for (const p of card.prices) {
       if (!p) continue;
-      const rawKey = String(p.variation || p.variant || 'normal').toLowerCase();
-      const key = rawKey === 'reverse' || rawKey === 'reverse holo' || rawKey === 'reverse-holo' ? 'reverseHolofoil'
-        : rawKey === 'holo' || rawKey === 'holofoil' ? 'holofoil'
+      const rawKey = String(p.variation || p.variant || 'normal').toLowerCase().replace(/[\s-]+/g, '_');
+      // Normalise to catalog-service canonical names (holo, reverse, normal)
+      const key = ['reverse_holo', 'reverseholo', 'reverseholofoil', 'reverse_holofoil'].includes(rawKey) ? 'reverse'
+        : ['holofoil', 'holo_foil', 'holo_foil'].includes(rawKey) ? 'holo'
         : rawKey;
       if (!card.tcgplayerVariations[key]) card.tcgplayerVariations[key] = {};
       if (!card.cardmarketVariations[key]) card.cardmarketVariations[key] = {};
@@ -62,11 +63,13 @@ export function mapCardToDetail(card) {
   const fallbackImage = "https://cdn.pidgi.net/images/f/f6/Card_back_INTL_-_Pokemon_Trading_Card_Game.png";
   const fallbackSetLogo = "https://placehold.co/50x50/webp?text=Set";
 
-  // -- Variations (always array, always same order for frontend UI) --
-  const defaultVariations = ["normal", "reverseHolofoil", "holofoil"];
-  const variationArray = Array.isArray(card.variations) ? card.variations.map((v) => String(v).toLowerCase()) : [];
+  // -- Variations: use catalog-service canonical keys (normal, holo, reverse, …) --
+  // Accept either an array of strings or an array from the DB (e.g. CardVariants with .key)
   const availableVariations = Array.isArray(card.variations)
-    ? defaultVariations.filter((v) => variationArray.includes(v.toLowerCase()))
+    ? card.variations
+        .map((v) => (typeof v === 'string' ? v : v?.key || v?.variant || null))
+        .filter(Boolean)
+        .map((v) => String(v).toLowerCase())
     : [];
 
   // -- Build TCGDex image URL from card and set IDs --   
@@ -87,15 +90,16 @@ export function mapCardToDetail(card) {
 
 
   // Helper: get the first variant (for fallbacks)
+  const VARIATION_PREF = ["normal", "holo", "reverse"];
   function firstAvailableTCGP() {
-    for (const v of defaultVariations) {
+    for (const v of VARIATION_PREF) {
       if (card.tcgplayerVariations?.[v]?.market != null)
         return card.tcgplayerVariations[v].market;
     }
     return null;
   }
   function firstAvailableCMKT() {
-    for (const v of defaultVariations) {
+    for (const v of VARIATION_PREF) {
       if (card.cardmarketVariations?.[v]?.average_sell != null)
         return card.cardmarketVariations[v].average_sell;
     }
@@ -148,12 +152,12 @@ export function mapCardToDetail(card) {
 
     // --- Pricing (main summary, per-variation, and raw) ---
     tcgplayerMarket: tcgplayerMarket,
-    tcgplayerMarketReverse: card.tcgplayerVariations?.reverseHolofoil?.market ?? null,
-    tcgplayerMarketHolo: card.tcgplayerVariations?.holofoil?.market ?? null,
+    tcgplayerMarketReverse: card.tcgplayerVariations?.reverse?.market ?? null,
+    tcgplayerMarketHolo: card.tcgplayerVariations?.holo?.market ?? null,
 
     cardmarketAverageSell: cardmarketAverageSell,
-    cardmarketAverageSellReverse: card.cardmarketVariations?.reverseHolofoil?.average_sell ?? null,
-    cardmarketAverageSellHolo: card.cardmarketVariations?.holofoil?.average_sell ?? null,
+    cardmarketAverageSellReverse: card.cardmarketVariations?.reverse?.average_sell ?? null,
+    cardmarketAverageSellHolo: card.cardmarketVariations?.holo?.average_sell ?? null,
 
     pricing: card.pricing || {},
 

@@ -125,8 +125,6 @@ export default function ProfileHeader({
           id
           bio
           favouritePokemon
-          createdAt
-          updatedAt
           avatar
           user { id username email avatar emailVerified }
         }
@@ -157,6 +155,9 @@ export default function ProfileHeader({
     });
 
     const data = await res.json();
+    // media-service returns { ok: true, url: "/uploads/avatars/..." }
+    if (data?.ok && data?.url) return data.url;
+    // legacy shape fallback
     if (data?.success && data?.avatar) return data.avatar;
     throw new Error(data?.error || "Avatar upload failed");
   };

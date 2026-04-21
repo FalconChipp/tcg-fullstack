@@ -1,31 +1,4 @@
-import { gql } from "@apollo/client";
+// src/graphql/updateWishlistEntry.js
+// Typed documents from the shared api-client package.
 
-// Replaces updateWishlistStatus.js
-// Uses the schema-supported mutation: updateWishlistEntry
-export const UPDATE_WISHLIST_ENTRY = gql`
-  mutation UpdateWishlistEntry(
-    $cardId: String!
-    $variation: String
-    $quantity: Int
-    $condition: String
-    $notes: String
-    $status: WishlistStatus
-  ) {
-    updateWishlistEntry(
-      cardId: $cardId
-      variation: $variation
-      quantity: $quantity
-      condition: $condition
-      notes: $notes
-      status: $status
-    ) {
-      id
-      cardId
-      variation
-      quantity
-      notes
-      status
-      updatedAt
-    }
-  }
-`;
+export { UpdateWishlistEntryDocument as UPDATE_WISHLIST_ENTRY } from '@sixbyfive/api-client';

@@ -45,20 +45,37 @@ export default function ProfileBindersPanel({
     if (!userId) return;
     setLoading(true);
     setError("");
-    const GET_BINDERS = `
+
+    // Own profile: use myBinders (includes private binders, requires auth)
+    // Other profile: use browseBinders (public only)
+    const MY_BINDERS = `
+      query MyBinders {
+        myBinders {
+          id userId name description coverColor accentColor visibility slug createdAt updatedAt
+          pages { id layout pageOrder slots { id cardId position quantity notes } }
+        }
+      }
+    `;
+    const BROWSE_BINDERS = `
       query GetUserBinders($userId: ID!, $page: Int, $pageSize: Int) {
         browseBinders(userId: $userId, page: $page, pageSize: $pageSize) {
           binders {
             id userId name description coverColor accentColor visibility slug createdAt updatedAt
-            pages { id layout slots { id cardId position quantity notes } }
+            pages { id layout pageOrder slots { id cardId position quantity notes } }
           }
         }
       }
     `;
+
+    const query = isOwnProfile ? MY_BINDERS : BROWSE_BINDERS;
+    const variables = isOwnProfile ? {} : { userId: String(userId), page: 1, pageSize: 100 };
+    const headers = { "Content-Type": "application/json" };
+    if (isOwnProfile && token) headers["Authorization"] = `Bearer ${token}`;
+
     fetch(WP_GRAPHQL_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: GET_BINDERS, variables: { userId: String(userId), page: 1, pageSize: 100 } })
+      headers,
+      body: JSON.stringify({ query, variables })
     })
       .then((r) => r.json())
       .then(({ data, errors }) => {
@@ -66,9 +83,10 @@ export default function ProfileBindersPanel({
           setError(errors?.[0]?.message || "Failed to load binders.");
           setBindersWithValues([]);
         } else {
-          const userBinders = data?.browseBinders?.binders || [];
+          const userBinders = isOwnProfile
+            ? (data?.myBinders || [])
+            : (data?.browseBinders?.binders || []);
           const processed = userBinders.map((binder) => {
-            // You may want to sum card values or slot counts differently here!
             const totalValue = 0;
             const cardsCount = (binder.pages || []).reduce(
               (sum, p) => sum + (p.slots?.length || 0),
@@ -86,7 +104,7 @@ export default function ProfileBindersPanel({
         setBindersWithValues([]);
         setLoading(false);
       });
-  }, [userId]);
+  }, [userId, isOwnProfile, token]);
 
   useEffect(() => { fetchBinders(); }, [fetchBinders]);
   const refetch = () => fetchBinders();

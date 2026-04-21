@@ -284,9 +284,10 @@ export default function useProfileCardActions({
         mutation AddToWishlist($cardId: String!, $variation: String) {
           addToWishlist(cardId: $cardId, variation: $variation) {
             id
-            wishlist
             cardId
             variation
+            quantity
+            status
             card {
               id
               name
@@ -297,8 +298,6 @@ export default function useProfileCardActions({
               variants { key label default }
               latestPrices { provider currency market mid low high gbp updatedAt }
             }
-            quantity
-            condition
           }
         }
       `;

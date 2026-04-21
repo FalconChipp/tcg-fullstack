@@ -18,8 +18,6 @@ const ADD_BINDER_PAGE_MUTATION = `
       title
       layout
       pageOrder
-      createdAt
-      updatedAt
       slots {
         id
         cardId

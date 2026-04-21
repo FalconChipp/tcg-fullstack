@@ -131,11 +131,12 @@ function mapCardsearchItems(items) {
       (setCode && number ? `${setCode}-${number}` : `card-${idx}`);
     const image = it.images?.large || null;
 
-    const variants = Array.isArray(it.variants)
-      ? it.variants.map((v) =>
-          typeof v === "string" ? v : v?.key || v?.label || "normal"
-        )
-      : ["normal"];
+    const variants =
+      Array.isArray(it.variants) && it.variants.length > 0
+        ? it.variants
+            .map((v) => (typeof v === "string" ? v : v?.key || v?.label || null))
+            .filter(Boolean)
+        : null;
 
     return {
       id,
@@ -360,6 +361,7 @@ export default function CardSearch() {
   });
 
   const [panelOpen, setPanelOpen] = useState(false);
+  const [panelWishlist, setPanelWishlist] = useState(false);
   const [selectedCardDetail, setSelectedCardDetail] = useState(null);
   const [showCardDetail, setShowCardDetail] = useState(false);
   const [cardDetailData, setCardDetailData] = useState(null);
@@ -693,11 +695,16 @@ export default function CardSearch() {
   };
 
   function handleCardDetail(card) {
+    const firstVariation = Array.isArray(card.variations) && card.variations.length
+      ? card.variations[0]
+      : null;
     const detail = {
       ...mapCardToDetail(card),
       modalImage: card.tcgImageUrl || card.image,
       prices: card.prices,
       variations: card.variations,
+      // Override mapCardToDetail's "normal" default with the card's actual first variant
+      variation: card.variation || firstVariation || "normal",
       pricingRaw: null,
     };
     setCardDetailData(detail);
@@ -961,6 +968,7 @@ export default function CardSearch() {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setSelectedCardDetail(card);
+                                setPanelWishlist(false);
                                 setPanelOpen(true);
                               }}
                               className="rounded-lg px-4 py-2 bg-light-accent dark:bg-dark-accent !text-white dark:text-dark-surface font-semibold hover:bg-light-accentLight dark:hover:bg-dark-accentLight hover:text-light-surface dark:hover:text-white transition"
@@ -970,7 +978,9 @@ export default function CardSearch() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleAddToWishlist(card);
+                                setSelectedCardDetail(card);
+                                setPanelWishlist(true);
+                                setPanelOpen(true);
                               }}
                               className="rounded-lg px-4 py-2 border-2 border-light-accent dark:border-dark-accent text-light-accent dark:text-dark-accent font-semibold hover:bg-light-accent dark:hover:bg-dark-accent hover:text-light-surface dark:hover:text-white transition"
                             >
@@ -1012,7 +1022,8 @@ export default function CardSearch() {
         {panelOpen && selectedCardDetail && (
           <AddToCollectionPanel
             cardDetail={selectedCardDetail}
-            onClose={() => setPanelOpen(false)}
+            initialWishlist={panelWishlist}
+            onClose={() => { setPanelOpen(false); setPanelWishlist(false); }}
           />
         )}
 

@@ -26,7 +26,10 @@ export async function executeServerGraphql(query, variables = {}) {
     try {
       const res = await fetch(endpoint, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { 
+          "content-type": "application/json",
+          "apollo-require-preflight": "true",
+         },
         body: JSON.stringify({ query, variables }),
         cache: "no-store",
       });

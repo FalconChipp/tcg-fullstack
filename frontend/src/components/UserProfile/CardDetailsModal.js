@@ -381,7 +381,12 @@ export default function CardDetailsModal({
 
   const variationSet = new Set(priceRows.map((p) => p?.variation).filter(Boolean));
   if (card.variation) variationSet.add(card.variation);
-  if (variationSet.size === 0) variationSet.add("normal");
+  if (variationSet.size === 0) {
+    // Fall back to the card's declared variants before defaulting to "normal"
+    const declaredVars = Array.isArray(card.variations) ? card.variations.filter(Boolean) : [];
+    if (declaredVars.length) declaredVars.forEach((v) => variationSet.add(v));
+    else variationSet.add("normal");
+  }
   const variations = Array.from(variationSet);
 
   const initialVar =

@@ -62,7 +62,12 @@ const errorLink = onError(({ graphQLErrors, networkError, operation }) => {
 
 // ---- Cache with sane type policies ----
 // Configure cardsearch pagination so offset-based fetchMore calls merge predictably.
+// possibleTypes tells Apollo which concrete types implement each interface / union so
+// inline fragments (... on CardListing) are recognised correctly in the cache.
 const cache = new InMemoryCache({
+  possibleTypes: {
+    ListingBase: ['CardListing', 'ProductListing'],
+  },
   typePolicies: {
     Query: {
       fields: {

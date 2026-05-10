@@ -53,33 +53,19 @@ const LISTINGS_QUERY = gql`
       status
       createdAt
       updatedAt
-
       ... on CardListing {
         cardId
         condition
         variation
-        notes
-        seller {
-          id
-          username
-        }
+        seller { id username avatar }
       }
-
       ... on ProductListing {
         title
         description
         imageUrl
-        imagesJson        # NEW: used to derive first image for the card
-        inventory {
-          id
-          onHand
-          reserved
-          sold
-        }
-        seller {
-          id
-          username
-        }
+        imagesJson
+        inventory { id onHand reserved sold }
+        seller { id username avatar }
       }
     }
   }

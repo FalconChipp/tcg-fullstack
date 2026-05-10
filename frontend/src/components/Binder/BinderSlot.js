@@ -59,18 +59,23 @@ export default function BinderSlot({
   // --- Helper: Card image URL ---
   const getCardImage = (c) => {
     if (!c) return FALLBACK_CARD_IMAGE;
-    // Prefer collection's image field
-    const imageUrl = c.image || c.tcgImageUrl || c.imageUrl;
-    if (!imageUrl && c.cardId) {
+    // Try all known image field shapes (new API uses card.images.small/large)
+    const imageUrl =
+      c.images?.small ||          // CatalogCard shape (from API hydration)
+      c.card?.images?.small ||    // nested card object from collection entry
+      c.image ||
+      c.tcgImageUrl ||
+      c.imageUrl ||
+      c.images?.large ||
+      c.card?.images?.large;
+    if (!imageUrl) {
       return getCardImageUrl(null, {
         cardId: c.cardId,
         cardName: c.tcgName || c.name,
-        debug: true,
       });
     }
     return getCardImageUrl(imageUrl, {
       cardId: c.cardId || c.externalId,
-      debug: true,
     });
   };
 

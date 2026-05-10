@@ -1,28 +1,50 @@
 // src/graphql/marketplace.js
-// Typed documents from the shared api-client package.
-// NOTE: CREATE_ORDER_MUTATION uses the legacy `createOrder` resolver which is
-// not yet in the api-client package, so it stays as a local gql document.
 
 import { gql } from '@apollo/client';
 
-export {
-  ListingsDocument as LISTINGS_QUERY,
-  CreateOrderFromListingDocument as CREATE_ORDER_FROM_LISTING_MUTATION,
-} from '@sixbyfive/api-client';
-
-export const CREATE_ORDER_MUTATION = gql`
-  mutation CreateOrder($input: OrderInput!) {
-    createOrder(input: $input) {
-      order {
-        id
-        orderNumber
-        status
-        total
-        currency
-        listingId
-        paymentMethod
+export const LISTINGS_QUERY = gql`
+  query Listings($type: ListingType, $status: ListingStatus, $limit: Int, $offset: Int) {
+    listings(type: $type, status: $status, limit: $limit, offset: $offset) {
+      __typename
+      id
+      type
+      price
+      currency
+      quantity
+      allowOffers
+      status
+      createdAt
+      updatedAt
+      ... on CardListing {
+        cardId
+        condition
+        variation
+        seller { id username avatar }
       }
-      checkoutUrl
+      ... on ProductListing {
+        title
+        description
+        imageUrl
+        imagesJson
+        inventory { id onHand reserved sold }
+        seller { id username avatar }
+      }
+    }
+  }
+`;
+
+export const CREATE_ORDER_FROM_LISTING_MUTATION = gql`
+  mutation CreateOrderFromListing($input: CreateOrderFromListingInput!) {
+    createOrderFromListing(input: $input) {
+      id
+      orderNumber
+      status
+      total
+      currency
+      listingId
+      paymentStatus
+      clientSecret
+      createdAt
     }
   }
 `;

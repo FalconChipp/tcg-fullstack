@@ -1,7 +1,20 @@
 // src/graphql/adminOverview.js
-// Typed documents from the shared api-client package.
+import { gql } from '@apollo/client';
 
-export {
-  AllUsersDocument as ADMIN_OVERVIEW_QUERY,
-  AdminQueryReportedUsersDocument as ADMIN_REPORTED_USERS_QUERY,
-} from '@sixbyfive/api-client';
+export const ADMIN_OVERVIEW_QUERY = gql`
+  query AdminOverview($usersLimit: Int, $listingsLimit: Int) {
+    allUsers(limit: $usersLimit) {
+      id
+      isAdmin
+      isBanned
+    }
+    listings(limit: $listingsLimit) {
+      __typename
+      id
+      type
+      status
+    }
+  }
+`;
+
+export { AdminQueryReportedUsersDocument as ADMIN_REPORTED_USERS_QUERY } from '@sixbyfive/api-client';

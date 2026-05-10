@@ -299,9 +299,7 @@ export default function AccountPage() {
                 {activeTab === "marketplace" && <MarketplaceTab user={user} token={token} />}
                 {activeTab === "support" && <SupportTab />}
                 {activeTab === "notifications" && <NotificationsTab user={user} />}
-                {activeTab === "preferences" && <PreferencesTab user={user} />}
-                {activeTab === "privacy" && <PrivacyTab user={user} />}
-                {activeTab === "profile" && <ConnectedAccountsTab user={user} token={token} />}
+                {activeTab === "privacy" && <PrivacyTab user={user} token={token} />}
               </div>
             </main>
           </div>

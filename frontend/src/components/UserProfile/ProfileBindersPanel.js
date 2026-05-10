@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback, useContext } from "react";
+import React, { useState, useEffect, useCallback, useContext, useRef } from "react";
 import Image from "next/image";
 import { formatCurrency } from "@/utils/formatCurrency";
 import BinderEditorModal from "@/components/Binder/BinderEditorModal";
@@ -11,6 +11,32 @@ import { AuthContext } from "@/components/Auth/AuthProvider";
 import { executeMutation, COLLECTION_MUTATIONS } from "@/utils/graphqlUtils";
 
 const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+
+function getCardGbpPrice(card) {
+  if (!card) return 0;
+  const prices = card.prices || [];
+  for (const p of prices) {
+    if (!p) continue;
+    const gbp = parseFloat(p.gbp ?? p.market ?? p.mid ?? 0);
+    if (gbp > 0) return gbp;
+  }
+  return 0;
+}
+
+function calcBinderValue(binder, collection) {
+  if (!Array.isArray(collection) || !collection.length) return 0;
+  const priceMap = {};
+  for (const card of collection) {
+    if (card?.cardId) priceMap[card.cardId] = getCardGbpPrice(card);
+  }
+  let total = 0;
+  for (const page of binder.pages || []) {
+    for (const slot of page.slots || []) {
+      if (slot?.cardId) total += (priceMap[slot.cardId] || 0) * (slot.quantity || 1);
+    }
+  }
+  return total;
+}
 
 // Helper: Fills first row to 5 with skeletons (for grid parity)
 const fillFirstRowSkeletons = (cardCount, isOwnProfile) => {
@@ -29,6 +55,8 @@ export default function ProfileBindersPanel({
   onBinderEditorClose = () => {},
 }) {
   const { token } = useContext(AuthContext);
+  const collectionRef = useRef(userEntireCollection);
+  useEffect(() => { collectionRef.current = userEntireCollection; }, [userEntireCollection]);
 
   const [selectedBinder, setSelectedBinder] = useState(null);
   const [showBinderEditor, setShowBinderEditor] = useState(false);
@@ -87,7 +115,7 @@ export default function ProfileBindersPanel({
             ? (data?.myBinders || [])
             : (data?.browseBinders?.binders || []);
           const processed = userBinders.map((binder) => {
-            const totalValue = 0;
+            const totalValue = calcBinderValue(binder, collectionRef.current);
             const cardsCount = (binder.pages || []).reduce(
               (sum, p) => sum + (p.slots?.length || 0),
               0
@@ -108,6 +136,14 @@ export default function ProfileBindersPanel({
 
   useEffect(() => { fetchBinders(); }, [fetchBinders]);
   const refetch = () => fetchBinders();
+
+  // Recalculate values when collection data arrives (may load after binders)
+  useEffect(() => {
+    if (!userEntireCollection?.length) return;
+    setBindersWithValues(prev =>
+      prev.map(b => ({ ...b, totalValue: calcBinderValue(b, userEntireCollection) }))
+    );
+  }, [userEntireCollection]);
 
   // --- Modal handlers ---
   const handleCreateBinder = () => {

@@ -1021,8 +1021,7 @@ export default function CardSearchWorkbenchPage() {
       const res = await bulkAddToCollection({
         variables: {
           input: {
-            source: "batch-search-workbench",
-            items,
+            cards: items,
           },
         },
       });

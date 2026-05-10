@@ -62,7 +62,8 @@ export default function PrivacyTab({ user, token }) {
   const [exportPwd, setExportPwd] = useState("");
   const [deletePwd, setDeletePwd] = useState("");
   const [confirmText, setConfirmText] = useState("");
-  const [status, setStatus] = useState(null);
+  const [exportStatus, setExportStatus] = useState(null);
+  const [deleteStatus, setDeleteStatus] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -85,8 +86,8 @@ export default function PrivacyTab({ user, token }) {
   // EXPORT
   const handleExport = async (e) => {
     e.preventDefault();
-    setStatus(null);
-    if (!exportPwd) return setStatus({ type: "error", msg: "Enter your password to export your data." });
+    setExportStatus(null);
+    if (!exportPwd) return setExportStatus({ type: "error", msg: "Enter your password to export your data." });
 
     setExporting(true);
     try {
@@ -96,27 +97,25 @@ export default function PrivacyTab({ user, token }) {
       );
 
       const result = data?.exportUserData;
-      setStatus({ type: "success", msg: "Your data export is ready." });
+      setExportStatus({ type: "success", msg: "Your data export is ready." });
 
-      // Backend may return a URL or a boolean/string; open if it looks like a URL
       if (typeof result === "string" && /^https?:\/\//i.test(result)) {
         window.open(result, "_blank");
       }
       setExportPwd("");
     } catch (err) {
-      setStatus({ type: "error", msg: err.message });
+      setExportStatus({ type: "error", msg: err.message });
     } finally {
       setExporting(false);
     }
   };
 
-  // DELETE
   const handleDelete = async (e) => {
     e.preventDefault();
-    setStatus(null);
+    setDeleteStatus(null);
     if (confirmText !== "DELETE")
-      return setStatus({ type: "error", msg: 'Type DELETE in the confirmation box to continue.' });
-    if (!deletePwd) return setStatus({ type: "error", msg: "Enter your password to delete your account." });
+      return setDeleteStatus({ type: "error", msg: 'Type DELETE in the confirmation box above to continue.' });
+    if (!deletePwd) return setDeleteStatus({ type: "error", msg: "Enter your password to delete your account." });
 
     setDeleting(true);
     try {
@@ -127,14 +126,14 @@ export default function PrivacyTab({ user, token }) {
         { password: deletePwd, confirm: "DELETE" }
       );
 
-      setStatus({ type: "success", msg: "Account deleted. Redirecting…" });
+      setDeleteStatus({ type: "success", msg: "Account deleted. Redirecting…" });
       setTimeout(() => {
         if (typeof window !== "undefined") localStorage.clear();
         router.push("/");
         window.location.reload();
       }, 1200);
     } catch (err) {
-      setStatus({ type: "error", msg: err.message });
+      setDeleteStatus({ type: "error", msg: err.message });
     } finally {
       setDeleting(false);
     }
@@ -172,6 +171,13 @@ export default function PrivacyTab({ user, token }) {
             >
               {exporting ? "Preparing export…" : "Generate export"}
             </button>
+            {exportStatus && (
+              <StatusMessage
+                type={exportStatus.type}
+                message={exportStatus.msg}
+                onClose={() => setExportStatus(null)}
+              />
+            )}
           </form>
         </Card>
 
@@ -211,19 +217,16 @@ export default function PrivacyTab({ user, token }) {
                 {deleting ? "Deleting…" : "Delete my account"}
               </button>
             </div>
+            {deleteStatus && (
+              <StatusMessage
+                type={deleteStatus.type}
+                message={deleteStatus.msg}
+                onClose={() => setDeleteStatus(null)}
+              />
+            )}
           </form>
         </Card>
       </div>
-
-      {status && (
-        <div className="mt-1">
-          <StatusMessage
-            type={status.type}
-            message={status.msg}
-            onClose={() => setStatus(null)}
-          />
-        </div>
-      )}
     </div>
   );
 }

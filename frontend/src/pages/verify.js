@@ -217,16 +217,13 @@ export default function VerifyPage() {
               {status.msg}
             </div>
             {status.type === "success" && (
-              <div className="mt-7">
-                <div className="bg-light-alt dark:bg-dark-alt rounded-xl px-4 py-4 mb-2">
-                  <p className="text-base text-light-text dark:text-dark-text font-semibold">
-                    Login is currently disabled until launch.
-                  </p>
-                  <p className="text-sm text-light-textMuted dark:text-dark-textMuted mt-2">
-                    You’ll be notified as soon as the platform is live and you can log in.<br />
-                    Thank you for signing up!
-                  </p>
-                </div>
+              <div className="mt-7 text-center">
+                <a
+                  href="/"
+                  className="inline-block px-6 py-2.5 rounded-xl bg-light-accent dark:bg-dark-accent text-white font-semibold text-sm hover:opacity-90 transition"
+                >
+                  Go to Home &amp; Sign In
+                </a>
               </div>
             )}
           </div>

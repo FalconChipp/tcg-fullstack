@@ -27,35 +27,25 @@ function normalizeOriginUrl(raw) {
 }
 
 function getGraphqlEndpoint() {
-  const explicit = process.env.NEXT_PUBLIC_BACKEND_GRAPHQL_ENDPOINT;
-  if (explicit) return normalizeOriginUrl(explicit);
-
-  const legacy = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
-  if (legacy) return normalizeOriginUrl(legacy);
-
-  const backend = normalizeOriginUrl(
-    process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000"
-  );
-  return `${backend}/graphql`;
+  // Mirror apolloClient.js exactly: only trust NEXT_PUBLIC_GRAPHQL_ENDPOINT
+  // (a browser-accessible URL). Never fall back to NEXT_PUBLIC_BACKEND_URL
+  // or NEXT_PUBLIC_API_BASE_URL — those may be Docker-internal hostnames.
+  const endpoint = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+  if (endpoint) return endpoint.replace(/\/+$/, "");
+  return "http://localhost:4010/graphql";
 }
 
 function getBackendOrigin() {
+  const realtime = process.env.NEXT_PUBLIC_REALTIME_URL;
+  if (realtime) return normalizeOriginUrl(realtime);
+
   const backend = process.env.NEXT_PUBLIC_BACKEND_URL;
   if (backend) return normalizeOriginUrl(backend);
-
-  const api = process.env.NEXT_PUBLIC_API_URL;
-  if (api) return normalizeOriginUrl(api);
 
   const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
   if (apiBase) return normalizeOriginUrl(apiBase);
 
-  const gql =
-    process.env.NEXT_PUBLIC_BACKEND_GRAPHQL_ENDPOINT ||
-    process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
-
-  if (gql) return normalizeOriginUrl(gql).replace(/\/graphql\/?$/, "");
-
-  return normalizeOriginUrl("http://localhost:4000");
+  return normalizeOriginUrl("http://localhost:4018");
 }
 
 /**
@@ -67,8 +57,10 @@ async function gqlFetch({ token, query, variables }) {
 
   const res = await fetch(endpoint, {
     method: "POST",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
+      "apollo-require-preflight": "true",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify({ query, variables }),

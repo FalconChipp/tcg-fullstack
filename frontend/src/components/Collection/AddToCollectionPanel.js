@@ -13,14 +13,14 @@ import { getVariationOptionsFromCard, formatVariation } from "@/utils/formatVari
 const FALLBACK_CARD_IMAGE =
   "https://cdn.pidgi.net/images/f/f6/Card_back_INTL_-_Pokemon_Trading_Card_Game.png";
 
-export default function AddToCollectionPanel({ cardDetail, onClose }) {
+export default function AddToCollectionPanel({ cardDetail, onClose, initialWishlist = false }) {
   const { token, loading: authLoading } = useContext(AuthContext);
   const { dark } = useTheme();
 
   const [quantity, setQuantity] = useState(1);
   const [condition, setCondition] = useState("mint");
   const [variation, setVariation] = useState("");
-  const [wishlist, setWishlist] = useState(false);
+  const [wishlist, setWishlist] = useState(initialWishlist);
   const [variationOptions, setVariationOptions] = useState([]);
   const [statusMessage, setStatusMessage] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,11 +30,11 @@ export default function AddToCollectionPanel({ cardDetail, onClose }) {
 
   // Reliable image fallback with Next/Image (control the src in state)
   const [imgSrc, setImgSrc] = useState(
-    getCardImageUrl(cardDetail?.image || cardDetail?.tcgImageUrl || cardDetail?.tcgImage)
+    getCardImageUrl(cardDetail?.image_large || cardDetail?.image_small || cardDetail?.tcgImageUrl || cardDetail?.tcgImage)
   );
   useEffect(() => {
     setImgSrc(
-      getCardImageUrl(cardDetail?.image || cardDetail?.tcgImageUrl || cardDetail?.tcgImage)
+      getCardImageUrl(cardDetail?.image_large || cardDetail?.image_small || cardDetail?.tcgImageUrl || cardDetail?.tcgImage)
     );
   }, [cardDetail]);
 
@@ -101,8 +101,8 @@ export default function AddToCollectionPanel({ cardDetail, onClose }) {
           card {
             id
             name
-            image
-            setName
+            image_small
+            image_large
             number
             rarity
           }
@@ -113,30 +113,26 @@ export default function AddToCollectionPanel({ cardDetail, onClose }) {
       mutation AddToWishlist(
         $cardId: String!
         $quantity: Int
-        $condition: String
         $variation: String
       ) {
         addToWishlist(
           cardId: $cardId
           quantity: $quantity
-          condition: $condition
           variation: $variation
         ) {
           id
           cardId
           quantity
-          condition
           variation
           notes
           addedAt
-          movedToCollectionAt
           createdAt
           updatedAt
           card {
             id
             name
-            image
-            setName
+            image_small
+            image_large
             number
             rarity
           }

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback, useContext } from "react";
+import React, { useState, useEffect, useCallback, useContext, useRef } from "react";
 import Image from "next/image";
 import { formatCurrency } from "@/utils/formatCurrency";
 import BinderEditorModal from "@/components/Binder/BinderEditorModal";
@@ -11,6 +11,32 @@ import { AuthContext } from "@/components/Auth/AuthProvider";
 import { executeMutation, COLLECTION_MUTATIONS } from "@/utils/graphqlUtils";
 
 const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+
+function getCardGbpPrice(card) {
+  if (!card) return 0;
+  const prices = card.prices || [];
+  for (const p of prices) {
+    if (!p) continue;
+    const gbp = parseFloat(p.gbp ?? p.market ?? p.mid ?? 0);
+    if (gbp > 0) return gbp;
+  }
+  return 0;
+}
+
+function calcBinderValue(binder, collection) {
+  if (!Array.isArray(collection) || !collection.length) return 0;
+  const priceMap = {};
+  for (const card of collection) {
+    if (card?.cardId) priceMap[card.cardId] = getCardGbpPrice(card);
+  }
+  let total = 0;
+  for (const page of binder.pages || []) {
+    for (const slot of page.slots || []) {
+      if (slot?.cardId) total += (priceMap[slot.cardId] || 0) * (slot.quantity || 1);
+    }
+  }
+  return total;
+}
 
 // Helper: Fills first row to 5 with skeletons (for grid parity)
 const fillFirstRowSkeletons = (cardCount, isOwnProfile) => {
@@ -29,6 +55,8 @@ export default function ProfileBindersPanel({
   onBinderEditorClose = () => {},
 }) {
   const { token } = useContext(AuthContext);
+  const collectionRef = useRef(userEntireCollection);
+  useEffect(() => { collectionRef.current = userEntireCollection; }, [userEntireCollection]);
 
   const [selectedBinder, setSelectedBinder] = useState(null);
   const [showBinderEditor, setShowBinderEditor] = useState(false);
@@ -45,20 +73,37 @@ export default function ProfileBindersPanel({
     if (!userId) return;
     setLoading(true);
     setError("");
-    const GET_BINDERS = `
+
+    // Own profile: use myBinders (includes private binders, requires auth)
+    // Other profile: use browseBinders (public only)
+    const MY_BINDERS = `
+      query MyBinders {
+        myBinders {
+          id userId name description coverColor accentColor visibility slug createdAt updatedAt
+          pages { id layout pageOrder slots { id cardId position quantity notes } }
+        }
+      }
+    `;
+    const BROWSE_BINDERS = `
       query GetUserBinders($userId: ID!, $page: Int, $pageSize: Int) {
         browseBinders(userId: $userId, page: $page, pageSize: $pageSize) {
           binders {
             id userId name description coverColor accentColor visibility slug createdAt updatedAt
-            pages { id layout slots { id cardId position quantity notes } }
+            pages { id layout pageOrder slots { id cardId position quantity notes } }
           }
         }
       }
     `;
+
+    const query = isOwnProfile ? MY_BINDERS : BROWSE_BINDERS;
+    const variables = isOwnProfile ? {} : { userId: String(userId), page: 1, pageSize: 100 };
+    const headers = { "Content-Type": "application/json" };
+    if (isOwnProfile && token) headers["Authorization"] = `Bearer ${token}`;
+
     fetch(WP_GRAPHQL_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: GET_BINDERS, variables: { userId: String(userId), page: 1, pageSize: 100 } })
+      headers,
+      body: JSON.stringify({ query, variables })
     })
       .then((r) => r.json())
       .then(({ data, errors }) => {
@@ -66,10 +111,11 @@ export default function ProfileBindersPanel({
           setError(errors?.[0]?.message || "Failed to load binders.");
           setBindersWithValues([]);
         } else {
-          const userBinders = data?.browseBinders?.binders || [];
+          const userBinders = isOwnProfile
+            ? (data?.myBinders || [])
+            : (data?.browseBinders?.binders || []);
           const processed = userBinders.map((binder) => {
-            // You may want to sum card values or slot counts differently here!
-            const totalValue = 0;
+            const totalValue = calcBinderValue(binder, collectionRef.current);
             const cardsCount = (binder.pages || []).reduce(
               (sum, p) => sum + (p.slots?.length || 0),
               0
@@ -86,10 +132,18 @@ export default function ProfileBindersPanel({
         setBindersWithValues([]);
         setLoading(false);
       });
-  }, [userId]);
+  }, [userId, isOwnProfile, token]);
 
   useEffect(() => { fetchBinders(); }, [fetchBinders]);
   const refetch = () => fetchBinders();
+
+  // Recalculate values when collection data arrives (may load after binders)
+  useEffect(() => {
+    if (!userEntireCollection?.length) return;
+    setBindersWithValues(prev =>
+      prev.map(b => ({ ...b, totalValue: calcBinderValue(b, userEntireCollection) }))
+    );
+  }, [userEntireCollection]);
 
   // --- Modal handlers ---
   const handleCreateBinder = () => {

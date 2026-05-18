@@ -5,28 +5,6 @@ const FALLBACK_SYMBOL_IMAGE = "/images/set-symbol-placeholder.svg"; // Use local
 const DEFAULT_IMAGE_QUALITY = "high";
 const DEFAULT_IMAGE_EXTENSION = "webp";
 
-// Debug flag - set to true to enable detailed logging
-const DEBUG_IMAGE_UTILS = true;
-
-/**
- * Log debug information if debug flag is enabled
- * @param {string} message - Debug message
- * @param {any} data - Optional data to log
- * @param {boolean} force - Force logging regardless of debug flag
- */
-function debugLog(message, data, force = false) {
-  if (DEBUG_IMAGE_UTILS || force) {
-    if (data !== undefined) {
-      // console.log(`[ImageUtils] ${message}`, data);
-    } else {
-      // console.log(`[ImageUtils] ${message}`);
-    }
-  }
-}
-
-// Create a directory for fallback images if it doesn't exist
-// Note: This is handled server-side or during build, not in the browser
-
 /**
  * Helper function for card images.
  * Handles various URL formats and ensures proper formatting.

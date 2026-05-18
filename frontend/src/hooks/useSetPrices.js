@@ -7,21 +7,28 @@ const toNum = (v) => {
   return Number.isFinite(n) ? n : null;
 };
 
+function hasPrice(x) {
+  if (!x) return false;
+  const gbp = toNum(x.gbp);
+  const tcg = toNum(x.tcgplayer);
+  const cmk = toNum(x.cardmarket);
+  return (gbp != null && gbp > 0) || (tcg != null && tcg > 0) || (cmk != null && cmk > 0);
+}
+
 function pickVariationPriceGBP(prices = []) {
   if (!Array.isArray(prices) || prices.length === 0) return null;
 
-  // Prefer "normal" variation, else first with data
-  let p = prices.find((x) => x && String(x.variation || "").toLowerCase() === "normal");
-  if (!p) p = prices.find(Boolean);
+  // Prefer "normal" variation with actual price data, then any entry with price data
+  let p = prices.find((x) => x && String(x.variation || "").toLowerCase() === "normal" && hasPrice(x));
+  if (!p) p = prices.find(hasPrice);
   if (!p) return null;
 
   const gbp = toNum(p.gbp);
+  if (gbp != null && gbp > 0) return gbp;
+
   const tcg = toNum(p.tcgplayer);
   const cmk = toNum(p.cardmarket);
-
-  if (gbp != null) return gbp;
-
-  const nums = [tcg, cmk].filter((n) => n != null);
+  const nums = [tcg, cmk].filter((n) => n != null && n > 0);
   if (nums.length === 0) return null;
   return nums.reduce((a, b) => a + b, 0) / nums.length;
 }

@@ -1,13 +1,11 @@
-import { gql } from "@apollo/client";
+// src/graphql/updateWishlistEntry.js
+import { gql } from '@apollo/client';
 
-// Replaces updateWishlistStatus.js
-// Uses the schema-supported mutation: updateWishlistEntry
 export const UPDATE_WISHLIST_ENTRY = gql`
   mutation UpdateWishlistEntry(
     $cardId: String!
     $variation: String
     $quantity: Int
-    $condition: String
     $notes: String
     $status: WishlistStatus
   ) {
@@ -15,17 +13,28 @@ export const UPDATE_WISHLIST_ENTRY = gql`
       cardId: $cardId
       variation: $variation
       quantity: $quantity
-      condition: $condition
       notes: $notes
       status: $status
     ) {
       id
+      userId
       cardId
-      variation
       quantity
+      variation
       notes
       status
+      addedAt
+      createdAt
       updatedAt
+      card {
+        id
+        cardId
+        name
+        number
+        setCode
+        rarity
+        images { small large }
+      }
     }
   }
 `;

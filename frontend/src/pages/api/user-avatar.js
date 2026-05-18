@@ -18,9 +18,10 @@ export default async function handler(req, res) {
     // Use your backend GraphQL endpoint (adjust if yours differs)
     // Example: http://localhost:4000/graphql or https://backendtcg.sixbyfive.com/graphql
     const BACKEND_URL =
+      process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT?.replace(/\/graphql\/?$/, "") ||
       process.env.NEXT_PUBLIC_BACKEND_URL ||
       process.env.BACKEND_URL ||
-      "http://localhost:4000";
+      "http://localhost:4010";
 
     const GRAPHQL_URL =
       BACKEND_URL.endsWith("/graphql") ? BACKEND_URL : `${BACKEND_URL.replace(/\/$/, "")}/graphql`;

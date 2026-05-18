@@ -1,6 +1,6 @@
 "use client";
 import Head from "next/head";
-import React, { useContext, useState, useEffect } from "react";
+import React, { useContext, useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/router";
 import Layout from "@/components/Layout/Layout";
 import ProfileHeader from "@/components/UserProfile/ProfileHeader";
@@ -84,8 +84,9 @@ export default function ProfilePage({ user, error }) {
 
   // Always use the real account user id for GraphQL queries (not the profile id)
   const UID = String(user?.userId ?? user?.id);
-  // For hooks/components that expect `user.id`, alias it to the account id
-  const userForQueries = { ...user, id: UID };
+  // Memoised so the object reference is stable across parent re-renders —
+  // prevents ProfileHeader's useEffect from firing and resetting edit state.
+  const userForQueries = useMemo(() => ({ ...user, id: UID }), [user, UID]);
 
   // 1. Read tab from ?tab= in URL for deep linking
   const [activeTab, setActiveTab] = useState("collection");
@@ -245,7 +246,7 @@ export default function ProfilePage({ user, error }) {
           <ProfileHeader
             profileData={userForQueries}
             isOwnProfile={isOwnProfile}
-            onUpdate={refresh}
+            onEdit={refresh}
             dark={dark}
             collectionValue={collectionValue.value}
           />

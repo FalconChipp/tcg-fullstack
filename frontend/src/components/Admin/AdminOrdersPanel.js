@@ -40,17 +40,14 @@ const ADMIN_ORDERS_QUERY = gql`
       buyerEmail
       buyerName
       shippingAddressJson
-      metadataJson
 
       buyer {
         id
         username
-        email
       }
       seller {
         id
         username
-        email
       }
 
       listing {
@@ -74,7 +71,7 @@ const ADMIN_ORDERS_QUERY = gql`
 const ADMIN_UPDATE_ORDER_FULFILMENT_STATUS = gql`
   mutation AdminUpdateOrderFulfilmentStatus(
     $orderId: ID!
-    $status: OrderFulfilmentStatus!
+    $status: String!
   ) {
     adminUpdateOrderFulfilmentStatus(orderId: $orderId, status: $status) {
       id

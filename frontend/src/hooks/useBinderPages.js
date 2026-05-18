@@ -7,7 +7,7 @@ import { binderPagesTo2DArray } from '@/utils/binderPagesTo2DArray';
 import { v4 as uuidv4 } from "uuid";
 
 // ---- Debug toggle (set NEXT_PUBLIC_DEBUG=true to enable) ----
-const DEBUG = true;
+const DEBUG = process.env.NEXT_PUBLIC_DEBUG === 'true';
 const dlog = (...args) => { if (DEBUG) console.debug("[useBinderPages]", ...args); };
 
 export function useBinderPages({

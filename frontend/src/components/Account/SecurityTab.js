@@ -8,7 +8,7 @@ import { FaDiscord, FaGoogle } from "react-icons/fa";
 import { AuthContext } from "../Auth/AuthProvider";
 
 // Backend REST base (for /auth/discord/* and unlink)
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4010";
 // GraphQL API for account mutations
 const GRAPHQL_ENDPOINT = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
 
@@ -115,7 +115,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
   // =========================
   const [pwFields, setPwFields] = useState({ current: "", new: "", confirm: "" });
   const [pwStatus, setPwStatus] = useState(null);
-  const isOAuth = user?.authProvider && user.authProvider !== "local";
+  const isOAuth = user?.oauthProvider && user.oauthProvider !== "local";
   const pwRules = getPasswordRules(pwFields.new);
 
   async function handlePasswordUpdate(e) {
@@ -202,7 +202,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
   // ==============================
   const [twoFA, setTwoFA] = useState({
     loading: false,
-    enabled: !!user?.twoFactorEnabled,
+    enabled: !!(user?.mfaEnabled ?? user?.twoFactorEnabled),
     showSetup: false,
     setupUrl: "",
     qrCode: "",

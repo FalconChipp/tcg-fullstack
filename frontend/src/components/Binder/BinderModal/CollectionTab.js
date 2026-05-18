@@ -4,7 +4,7 @@ import React, { useEffect } from "react";
 import BinderCollectionView from "@/components/Binder/BinderCollectionView";
 
 // ---- Debug toggle (set NEXT_PUBLIC_DEBUG=true to enable) ----
-const DEBUG = true;
+const DEBUG = process.env.NEXT_PUBLIC_DEBUG === 'true';
 
 export default function CollectionTab({
   isOwnProfile,

@@ -4,7 +4,10 @@ const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
 export async function apiClient(query, variables = {}, token) {
   console.log("[apiClient] query:", query, "variables:", variables);
 
-  const headers = { "Content-Type": "application/json" };
+  const headers = { 
+    "Content-Type": "application/json",
+    "apollo-require-preflight": "true"
+   };
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const res = await fetch(GRAPHQL_URL, {

@@ -1,6 +1,6 @@
-// frontend/graphql/marketplace.js
+// src/graphql/marketplace.js
 
-import { gql } from "@apollo/client";
+import { gql } from '@apollo/client';
 
 export const LISTINGS_QUERY = gql`
   query Listings($type: ListingType, $status: ListingStatus, $limit: Int, $offset: Int) {
@@ -15,39 +15,20 @@ export const LISTINGS_QUERY = gql`
       status
       createdAt
       updatedAt
-
       ... on CardListing {
         cardId
         condition
         variation
-        notes
-        seller { id displayName username }
+        seller { id username avatar }
       }
-
       ... on ProductListing {
         title
         description
         imageUrl
+        imagesJson
         inventory { id onHand reserved sold }
-        seller { id displayName username }
+        seller { id username avatar }
       }
-    }
-  }
-`;
-
-export const CREATE_ORDER_MUTATION = gql`
-  mutation CreateOrder($input: OrderInput!) {
-    createOrder(input: $input) {
-      order {
-        id
-        orderNumber
-        status
-        total
-        currency
-        listingId
-        paymentMethod
-      }
-      checkoutUrl
     }
   }
 `;
@@ -60,24 +41,9 @@ export const CREATE_ORDER_FROM_LISTING_MUTATION = gql`
       status
       total
       currency
-      guestCheckout
-      buyerEmail
-      buyerName
-
-      listing {
-        __typename
-        id
-        ... on CardListing {
-          cardId
-          condition
-          variation
-        }
-        ... on ProductListing {
-          title
-          description
-        }
-      }
-
+      listingId
+      paymentStatus
+      clientSecret
       createdAt
     }
   }

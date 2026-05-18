@@ -30,16 +30,16 @@ function normalizeOriginUrl(raw) {
 }
 
 function getBackendOrigin() {
+  const realtime = process.env.NEXT_PUBLIC_REALTIME_URL;
+  if (realtime) return normalizeOriginUrl(realtime);
+
   const backend = process.env.NEXT_PUBLIC_BACKEND_URL;
   if (backend) return normalizeOriginUrl(backend);
-
-  const api = process.env.NEXT_PUBLIC_API_URL;
-  if (api) return normalizeOriginUrl(api);
 
   const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
   if (apiBase) return normalizeOriginUrl(apiBase);
 
-  return normalizeOriginUrl("http://localhost:4000");
+  return normalizeOriginUrl("http://localhost:4018");
 }
 
 export function useNotifications({ token, pageSize = 10, pollMs = 30000 } = {}) {

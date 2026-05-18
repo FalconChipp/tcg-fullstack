@@ -11,7 +11,7 @@ const FALLBACK_CARD_IMAGE = "/images/card-placeholder.svg";
 const PAGE_SIZE = 120;
 
 // ---- Debug toggle (set NEXT_PUBLIC_DEBUG=true to enable) ----
-const DEBUG = true;
+const DEBUG = process.env.NEXT_PUBLIC_DEBUG === 'true';
 const dlog = (...args) => { if (DEBUG) console.debug("[BinderCollectionView]", ...args); };
 
 function safeKey(card) {
@@ -113,15 +113,26 @@ const BinderCollectionView = ({
         return;
       }
       const dragId = `drag-${Date.now()}`;
+      // Resolve fields from nested card object (new API shape) with legacy fallbacks
+      const resolvedImageUrl =
+        card.card?.images?.small ||
+        card.images?.small ||
+        card.card?.images?.large ||
+        card.images?.large ||
+        card.tcgImageUrl ||
+        card.imageUrl;
+      const resolvedName = card.card?.name || card.tcgName || card.name;
+      const resolvedSetName = card.card?.set?.name || card.tcgSetName || card.setName;
+
       const dragData = {
         ...card,
         id: dragId,
         cardId: card.cardId || card.externalId,
-        name: card.tcgName || card.name,
-        tcgName: card.tcgName || card.name,
-        imageUrl: card.tcgImageUrl || card.imageUrl,
-        tcgImageUrl: card.tcgImageUrl || card.imageUrl,
-        setName: card.tcgSetName || card.setName,
+        name: resolvedName,
+        tcgName: resolvedName,
+        imageUrl: resolvedImageUrl,
+        tcgImageUrl: resolvedImageUrl,
+        setName: resolvedSetName,
         isCollectionDrag: true,
         _cardKey: key,
         _originalQuantity: currentViewQuantity,
@@ -136,26 +147,21 @@ const BinderCollectionView = ({
     [isOwnProfile]
   );
 
-  // Helper: Card image
+  // Helper: Card image — handles both new API shape (card.images.small) and legacy fields
   const getCardImage = (card) => {
     if (!card) return FALLBACK_CARD_IMAGE;
-    const imageUrl = card.tcgImageUrl || card.imageUrl || card.image;
+    const imageUrl =
+      card.card?.images?.small ||   // new API: collection entry has nested card object
+      card.images?.small ||         // CatalogCard shape
+      card.card?.images?.large ||
+      card.images?.large ||
+      card.tcgImageUrl ||
+      card.imageUrl ||
+      card.image;
     if (!imageUrl && card.cardId) {
-      return getCardImageUrl(null, {
-        cardId: card.cardId,
-        cardName: card.tcgName || card.name,
-        debug: true,
-        quality: DEFAULT_IMAGE_QUALITY,
-        format: DEFAULT_IMAGE_EXTENSION,
-      });
+      return getCardImageUrl(null, { cardId: card.cardId, cardName: card.card?.name || card.tcgName || card.name });
     }
-    return getCardImageUrl(imageUrl, {
-      cardName: card.tcgName || card.name,
-      cardId: card.cardId || card.externalId,
-      debug: true,
-      quality: DEFAULT_IMAGE_QUALITY,
-      format: DEFAULT_IMAGE_EXTENSION,
-    });
+    return getCardImageUrl(imageUrl, { cardId: card.cardId || card.externalId });
   };
 
   // --- Loading state (tokens only) ---

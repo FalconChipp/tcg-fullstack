@@ -18,7 +18,7 @@ import { binderPagesTo2DArray } from "@/utils/binderPagesTo2DArray";
 import { filterCollectionByBinderSlots } from "@/utils/filterCollectionByBinderSlots";
 
 // ---- Debug toggle (set NEXT_PUBLIC_DEBUG=true to enable) ----
-const DEBUG = true;
+const DEBUG = process.env.NEXT_PUBLIC_DEBUG === 'true';
 const dlog = (...args) => { if (DEBUG) console.debug("[BinderEditorModal]", ...args); };
 
 export default function BinderEditorModal(props) {

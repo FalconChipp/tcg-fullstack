@@ -4,7 +4,12 @@
   publish = ".next"  # or "out" for next export
 
 [build.environment]
-  NEXT_PUBLIC_BASE_URL = "https://sbftest.netlify.app"
+  NEXT_PUBLIC_BASE_URL = "https://tcg.sixbyfive.com"
+  NEXT_PUBLIC_GRAPHQL_ENDPOINT = "https://backendtcg.sixbyfive.com/graphql"
+  NEXT_PUBLIC_API_BASE_URL = "https://backendtcg.sixbyfive.com"
+  NEXT_PUBLIC_BACKEND_URL = "https://backendtcg.sixbyfive.com"
+  NEXT_PUBLIC_GATEWAY_URL = "https://backendtcg.sixbyfive.com"
+  NEXT_PUBLIC_REALTIME_URL = "https://backendtcg.sixbyfive.com"
   NPM_CONFIG_USERCONFIG = "./.npmrc"
   NODE_VERSION = "18"
 

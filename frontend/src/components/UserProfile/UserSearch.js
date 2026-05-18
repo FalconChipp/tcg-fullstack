@@ -27,19 +27,15 @@ export default function UserSearchDropdown() {
         setLoading(true);
         setError(null);
         const query = `
-          query SearchUsers($query: String!) {
-            searchUsers(query: $query) {
+          query SearchUsers($q: String!) {
+            searchUsers(q: $q) {
               id
+              username
               avatar
-              user {
-                id
-                username
-                avatar
-              }
             }
           }
         `;
-        const variables = { query: searchTerm };
+        const variables = { q: searchTerm };
         try {
           const response = await fetch(WP_GRAPHQL_URL, {
             method: "POST",
@@ -109,7 +105,7 @@ export default function UserSearchDropdown() {
           {results.map((profile) => (
             <li key={profile.id}>
               <Link
-                href={`/profile/${profile.user?.username || profile.user?.id || ""}`}
+                href={`/profile/${profile.username || profile.id || ""}`}
                 className="
                   flex items-center p-2 gap-2
                   hover:bg-light-alt dark:hover:bg-dark-alt
@@ -117,19 +113,14 @@ export default function UserSearchDropdown() {
                 "
               >
                 <Image
-                  src={
-                    // Prefer profile.avatar, then user.avatar, then placeholder
-                    profile.avatar ||
-                    profile.user?.avatar ||
-                    "https://placehold.co/40/webp?text=No+Avatar"
-                  }
-                  alt={profile.user?.username || "User"}
+                  src={profile.avatar || "https://placehold.co/40/webp?text=No+Avatar"}
+                  alt={profile.username || "User"}
                   width={40}
                   height={40}
                   className="rounded-full object-cover border border-light-border dark:border-dark-border"
                 />
                 <span className="text-light-text dark:text-dark-text font-semibold">
-                  {profile.user?.username || "(unknown)"}
+                  {profile.username || "(unknown)"}
                 </span>
               </Link>
             </li>

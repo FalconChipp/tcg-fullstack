@@ -19,15 +19,15 @@ export default function MyApp({ Component, pageProps }) {
       <ThemeProvider>
         <AuthProvider>
           <ApolloProvider client={apolloClient}>
-            {/* <MessengerProvider> */}
+            <MessengerProvider>
               {/* Global favicon */}
               <Head>
                 <link rel="icon" href="/assets/favicon.png" sizes="any" />
               </Head>
               <Component {...pageProps} />
               {/* MessengerLayout includes sidebar, toggle, and popups */}
-              {/* <MessengerLayout />
-            </MessengerProvider> */}
+              <MessengerLayout />
+            </MessengerProvider>
           </ApolloProvider>
         </AuthProvider>
       </ThemeProvider>

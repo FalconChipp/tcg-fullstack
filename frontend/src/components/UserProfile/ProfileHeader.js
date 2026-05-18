@@ -7,11 +7,12 @@
 // - FIX: Button does something: opens messenger + loads chat/messages
 // - KEEP: all your existing profile editing logic unchanged
 
-import React, { useState, useRef, useEffect, useContext } from "react";
+import React, { useState, useRef, useEffect, useContext, useMemo } from "react";
 import Image from "next/image";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 import ProfileSocialLinks from "@/components/UserProfile/ProfileSocialLinks";
 import { FaEyeSlash } from "react-icons/fa";
+import pokemonList, { getPokemonDisplaySprite } from "@/utils/pokemonListShiny";
 
 import { useMessenger } from "@/components/Messenger/MessengerContext";
 
@@ -56,7 +57,7 @@ export default function ProfileHeader({
   // Messenger API
   const { openChat } = useMessenger();
 
-  const rawBackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+  const rawBackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4010";
   const NEXT_PUBLIC_BACKEND_URL = rawBackendUrl.startsWith("http")
     ? rawBackendUrl
     : `https://${rawBackendUrl}`;
@@ -91,14 +92,27 @@ export default function ProfileHeader({
 
   const profileUserId = profileData?.user?.id || profileData?.userId || profileData?.id || null;
 
+  // Depend on scalar values, not the object reference — avoids resetting state
+  // every time the parent re-renders and recreates the profileData object.
+  // While the user is actively editing we skip the bio/favouritePokemon reset
+  // so mid-edit text isn't clobbered by a parent re-render.
+  const _pdId       = profileData?.id;
+  const _pdUsername = profileData?.username;
+  const _pdBio      = profileData?.bio;
+  const _pdFav      = profileData?.favouritePokemon;
+  const _pdAvatar   = profileData?.avatar;
+
   useEffect(() => {
-    setUsername(profileData?.username || "Username");
-    setBio(profileData?.bio || "");
-    setFavouritePokemon(profileData?.favouritePokemon || "");
-    setProfileImagePreview(resolveavatar(profileData?.avatar));
-    setCurrentAvatar(profileData?.avatar || null);
+    setUsername(_pdUsername || "Username");
+    if (!isEditing) {
+      setBio(_pdBio || "");
+      setFavouritePokemon(_pdFav || "");
+    }
+    setProfileImagePreview(resolveavatar(_pdAvatar));
+    setCurrentAvatar(_pdAvatar || null);
     setNewProfileImage(null);
-  }, [profileData]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [_pdId, _pdUsername, _pdBio, _pdFav, _pdAvatar]);
 
   const handleChooseImage = () => isEditing && fileInputRef.current?.click();
 
@@ -125,8 +139,6 @@ export default function ProfileHeader({
           id
           bio
           favouritePokemon
-          createdAt
-          updatedAt
           avatar
           user { id username email avatar emailVerified }
         }
@@ -157,6 +169,9 @@ export default function ProfileHeader({
     });
 
     const data = await res.json();
+    // media-service returns { ok: true, url: "/uploads/avatars/..." }
+    if (data?.ok && data?.url) return data.url;
+    // legacy shape fallback
     if (data?.success && data?.avatar) return data.avatar;
     throw new Error(data?.error || "Avatar upload failed");
   };
@@ -218,220 +233,213 @@ export default function ProfileHeader({
 
   const updatedAgoLabel = formatUpdatedAgo(collectionValueUpdatedAt);
 
+  // Resolve sprite for the saved favourite Pokémon (5% shiny chance, stable per name)
+  const shinyRollRef = useRef(null);
+  const favSprite = useMemo(() => {
+    if (!favouritePokemon) return null;
+    const match = pokemonList.find(
+      (p) => p.name.toLowerCase() === favouritePokemon.toLowerCase()
+    );
+    if (!match) return null;
+    // Keep the shiny roll stable across re-renders for this profile view
+    if (shinyRollRef.current === null) {
+      shinyRollRef.current = Math.random() < 0.05;
+    }
+    const result = getPokemonDisplaySprite(match, {
+      shinyChance: shinyRollRef.current ? 1 : 0,
+    });
+    return result.displaySprite ?? null;
+  }, [favouritePokemon]);
+
   return (
-    <div
-      className="
-        w-full shadow-lg rounded-t-2xl p-6 sm:p-8
-        bg-light-surface dark:bg-dark-surface
-        border-t border-x border-light-border dark:border-dark-border
-        grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch
-      "
-    >
-      {/* Left: Avatar */}
-      <div className="lg:col-span-2 flex flex-col items-center lg:items-start justify-center">
-        <div
-          className={`
-            relative w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden
-            bg-light-alt dark:bg-dark-alt
-            border-4 ${dark ? "border-dark-accent" : "border-light-accent"}
-            ${isEditing ? "cursor-pointer hover:opacity-80" : ""}
-            shadow-xl mx-auto
-          `}
-          onClick={handleChooseImage}
-        >
-          <Image src={profileImagePreview} alt={`${username}'s avatar`} fill className="object-cover w-full h-full" priority />
-          {isEditing && (
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-semibold">
-              Change Image
-            </div>
-          )}
-          <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleImageChange} />
-        </div>
-      </div>
+    <div className="w-full rounded-t-2xl overflow-hidden border-t border-x border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface shadow-lg">
 
-      {/* Center: Main Info */}
-      <div className="lg:col-span-6 flex flex-col min-w-0 justify-center">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-          <span className="text-2xl sm:text-3xl font-extrabold text-light-accent dark:text-dark-accent">
-            {username}
-          </span>
+      {/* Accent banner strip */}
+      <div className="h-1.5 w-full bg-gradient-to-r from-light-accent via-light-accentLight to-light-accent dark:from-dark-accent dark:via-dark-accentLight dark:to-dark-accent" />
 
-          {tceBadge && (
-            <span className="ml-2 px-2 py-1 rounded-md text-xs font-bold bg-light-accent dark:bg-dark-accent text-white">
-              ✨ TCE
-            </span>
-          )}
+      <div className="px-6 sm:px-8 py-6 flex flex-col sm:flex-row gap-5 items-start">
 
-          {badges.length > 0 && (
-            <span className="flex gap-1 ml-2">
-              {badges.map((badge, i) => (
-                <span
-                  key={i}
-                  className="bg-light-accentLight dark:bg-dark-accentLight text-white px-1.5 py-0.5 rounded text-xs font-semibold"
-                >
-                  {badge}
+        {/* ── Avatar ── */}
+        <div className="flex-shrink-0">
+          <div
+            className={`
+              relative w-20 h-20 sm:w-24 sm:h-24 rounded-full
+              ring-2 ring-light-accent/60 dark:ring-dark-accent/60
+              ring-offset-2 ring-offset-light-surface dark:ring-offset-dark-surface
+              shadow-lg overflow-hidden bg-light-alt dark:bg-dark-alt
+              ${isEditing ? "cursor-pointer" : ""}
+            `}
+            onClick={handleChooseImage}
+          >
+            <Image
+              src={profileImagePreview}
+              alt={`${username}'s avatar`}
+              fill
+              className="object-cover"
+              priority
+            />
+            {isEditing && (
+              <div className="absolute inset-0 bg-black/55 flex items-center justify-center">
+                <span className="text-white text-[11px] font-bold tracking-wide text-center leading-tight px-1">
+                  Change
                 </span>
-              ))}
-            </span>
-          )}
-
-          {/* Buttons (right aligned) */}
-          <div className="ml-auto flex items-center gap-2">
-            {!isOwnProfile && !!profileUserId && (
-              <button
-                type="button"
-                onClick={handleMessageUser}
-                disabled={!token}
-                className="
-                  ml-2 inline-flex items-center gap-1.5
-                  px-2.5 py-1 rounded-full
-                  text-[12px] font-semibold leading-none
-                  border border-light-border/70 dark:border-dark-border/70
-                  bg-light-alt/60 dark:bg-dark-alt/60
-                  text-light-textSecondary dark:text-dark-textMuted
-                  hover:bg-light-accent/10 hover:text-light-accent
-                  dark:hover:bg-dark-accent/20 dark:hover:text-dark-accent
-                  disabled:opacity-60 disabled:cursor-not-allowed
-                  transition
-                "
-                title={!token ? "Log in to message" : "Message this user"}
-              >
-                Message
-              </button>
+              </div>
             )}
-
-            {isOwnProfile && !isEditing && (
-              <button
-                type="button"
-                className="bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white font-bold px-4 py-2 rounded-xl shadow text-sm transition"
-                onClick={() => setIsEditing(true)}
-                disabled={isSaving}
-              >
-                Edit Profile
-              </button>
-            )}
+            <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleImageChange} />
           </div>
         </div>
 
-        {/* Value row */}
-        <div className="flex flex-wrap items-center gap-3 mt-3 mb-2">
-          {collectionValue > 0 && !hideCollectionValue && (
-            <div className="flex items-center gap-2 bg-light-alt dark:bg-dark-alt px-3 py-1.5 rounded-xl border border-light-border/70 dark:border-dark-border/70">
-              <div className="flex flex-col">
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-light-textMuted dark:text-dark-textMuted">
-                  Estimated collection value
-                  <span className="ml-1 rounded-full bg-light-accent/10 dark:bg-dark-accent/20 px-1.5 py-[1px] text-[9px] font-bold text-light-accent dark:text-dark-accent">
-                    beta
+        {/* ── Centre: name + bio + collection value ── */}
+        <div className="flex-1 min-w-0 flex flex-col gap-2.5">
+
+          {/* Name + badges */}
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-extrabold text-light-accent dark:text-dark-accent leading-none">
+              {username}
+            </h1>
+            {tceBadge && (
+              <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-light-accent dark:bg-dark-accent text-white">
+                ✨ TCE
+              </span>
+            )}
+            {badges.map((badge, i) => (
+              <span
+                key={i}
+                className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-light-accentLight/20 dark:bg-dark-accentLight/20 text-light-accent dark:text-dark-accent border border-light-accent/20 dark:border-dark-accent/30"
+              >
+                {badge}
+              </span>
+            ))}
+          </div>
+
+          {/* Bio + favourite */}
+          {!isEditing ? (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <p className="text-sm text-light-text dark:text-dark-text leading-relaxed">
+                {bio || <span className="text-light-textMuted dark:text-dark-textMuted italic">No bio yet.</span>}
+              </p>
+              {favouritePokemon && (
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <span className="text-light-textMuted dark:text-dark-textMuted">·</span>
+                  {favSprite && (
+                    <img
+                      src={favSprite}
+                      alt={favouritePokemon}
+                      className="w-7 h-7 object-contain drop-shadow-sm"
+                      style={{ imageRendering: "pixelated" }}
+                    />
+                  )}
+                  <span className="text-sm text-light-textSecondary dark:text-dark-textMuted">
+                    {favouritePokemon}
                   </span>
-                </span>
-                <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400">
-                  {formatCurrency(collectionValue)}
-                </span>
-              </div>
-              {updatedAgoLabel && (
-                <span className="text-[10px] text-light-textMuted dark:text-dark-textMuted ml-2">
-                  Updated {updatedAgoLabel}
-                </span>
+                </div>
               )}
             </div>
-          )}
-
-          {isOwnProfile && hideCollectionValue && (
-            <div className="flex items-center gap-1 text-xs text-light-textMuted dark:text-dark-textMuted">
-              <FaEyeSlash className="opacity-70" />
-              <span>Collection value hidden</span>
-            </div>
-          )}
-        </div>
-
-        {/* Bio + Favourite */}
-        <div className="flex flex-col sm:flex-row gap-4 mt-2">
-          <div className="flex-1">
-            <h3 className="font-semibold text-light-accent dark:text-dark-accent text-xs mb-1 uppercase tracking-wide">
-              Bio
-            </h3>
-            {isEditing ? (
+          ) : (
+            <div className="flex flex-col sm:flex-row gap-3">
               <textarea
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg border bg-light-surface dark:bg-dark-surface border-light-border dark:border-dark-border text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent transition"
-                rows="2"
-                placeholder="Write something about yourself..."
+                rows={2}
+                placeholder="Write something about yourself…"
                 disabled={isSaving}
+                className="flex-1 px-3 py-2 rounded-lg text-sm border bg-light-alt dark:bg-dark-alt border-light-border dark:border-dark-border text-light-text dark:text-dark-text placeholder:text-light-textMuted dark:placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent transition resize-none"
               />
-            ) : (
-              <p className="text-light-textSecondary dark:text-dark-textMuted text-base">
-                {bio || "No bio provided."}
-              </p>
-            )}
-          </div>
-
-          <div className="flex-1">
-            <h3 className="font-semibold text-light-accent dark:text-dark-accent text-xs mb-1 uppercase tracking-wide">
-              Favourite Pokémon
-            </h3>
-            {isEditing ? (
               <input
                 type="text"
                 value={favouritePokemon}
                 onChange={(e) => setFavouritePokemon(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg border bg-light-surface dark:bg-dark-surface border-light-border dark:border-dark-border text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent transition"
-                placeholder="e.g. Umbreon"
+                placeholder="Favourite Pokémon…"
                 disabled={isSaving}
+                className="sm:w-48 px-3 py-2 rounded-lg text-sm border bg-light-alt dark:bg-dark-alt border-light-border dark:border-dark-border text-light-text dark:text-dark-text placeholder:text-light-textMuted dark:placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent transition"
               />
-            ) : (
-              <p className="text-light-textSecondary dark:text-dark-textMuted text-base">
-                {favouritePokemon || "Not specified."}
-              </p>
+            </div>
+          )}
+
+          {/* Collection value */}
+          <div className="flex flex-wrap items-center gap-3 mt-0.5">
+            {collectionValue > 0 && !hideCollectionValue && (
+              <div className="flex items-center gap-2.5 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg">
+                <div className="flex flex-col leading-none">
+                  <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide">
+                    Est. collection value
+                    <span className="ml-1 text-[9px] opacity-70">beta</span>
+                  </span>
+                  <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400 mt-0.5">
+                    {formatCurrency(collectionValue)}
+                  </span>
+                </div>
+                {updatedAgoLabel && (
+                  <span className="text-[10px] text-emerald-600/60 dark:text-emerald-400/50 self-end pb-0.5">
+                    {updatedAgoLabel}
+                  </span>
+                )}
+              </div>
+            )}
+            {isOwnProfile && hideCollectionValue && (
+              <div className="flex items-center gap-1.5 text-xs text-light-textMuted dark:text-dark-textMuted">
+                <FaEyeSlash className="opacity-60" />
+                <span>Value hidden</span>
+              </div>
             )}
           </div>
+
+          {/* Save / cancel when editing */}
+          {isEditing && (
+            <div className="flex gap-2 mt-1">
+              <button
+                type="button"
+                onClick={handleSaveAllChanges}
+                disabled={isSaving}
+                className={`px-4 py-1.5 rounded-lg text-sm font-bold bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white transition ${isSaving ? "opacity-60 cursor-not-allowed" : ""}`}
+              >
+                {isSaving ? "Saving…" : "Save Changes"}
+              </button>
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={() => {
+                  setBio(profileData.bio || "");
+                  setFavouritePokemon(profileData.favouritePokemon || "");
+                  setNewProfileImage(null);
+                  setProfileImagePreview(resolveavatar(profileData.avatar));
+                  setCurrentAvatar(profileData.avatar || null);
+                  setIsEditing(false);
+                }}
+                className={`px-4 py-1.5 rounded-lg text-sm font-semibold border border-light-border dark:border-dark-border bg-transparent text-light-textSecondary dark:text-dark-textMuted hover:bg-light-alt dark:hover:bg-dark-alt transition ${isSaving ? "opacity-60 cursor-not-allowed" : ""}`}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
 
-        {isEditing && (
-          <div className="flex mt-6 gap-3">
+        {/* ── Right: actions + social — tight column, no dead space ── */}
+        <div className="flex-shrink-0 flex flex-col items-end gap-2">
+          {!isOwnProfile && !!profileUserId && (
             <button
-              onClick={handleSaveAllChanges}
-              className={`px-6 py-2 rounded-lg font-bold transition-colors
-                bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white
-                ${isSaving ? "opacity-60 cursor-not-allowed" : ""}
-              `}
-              disabled={isSaving}
               type="button"
+              onClick={handleMessageUser}
+              disabled={!token}
+              title={!token ? "Log in to message" : "Message this user"}
+              className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text hover:border-light-accent/50 dark:hover:border-dark-accent/50 hover:text-light-accent dark:hover:text-dark-accent disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
-              {isSaving ? "Saving..." : "Save Changes"}
+              Message
             </button>
-
+          )}
+          {isOwnProfile && !isEditing && (
             <button
-              onClick={() => {
-                setBio(profileData.bio || "");
-                setFavouritePokemon(profileData.favouritePokemon || "");
-                setNewProfileImage(null);
-                setProfileImagePreview(resolveavatar(profileData.avatar));
-                setCurrentAvatar(profileData.avatar || null);
-                setIsEditing(false);
-              }}
-              className={`px-6 py-2 rounded-lg font-bold transition-colors
-                border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface text-light-accent dark:text-dark-accent
-                hover:bg-light-accent/10 dark:hover:bg-dark-accent/20
-                ${isSaving ? "opacity-60 cursor-not-allowed" : ""}
-              `}
-              disabled={isSaving}
               type="button"
+              onClick={() => setIsEditing(true)}
+              disabled={isSaving}
+              className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white shadow-sm transition"
             >
-              Cancel
+              Edit Profile
             </button>
-          </div>
-        )}
-      </div>
-
-      {/* Right: social */}
-      <div className="lg:col-span-4 flex flex-col gap-4 justify-center h-full">
-        <div className="mt-4 flex flex-col gap-2 w-full">
-          <h3 className="font-semibold text-light-accent dark:text-dark-accent text-xs mb-1 uppercase tracking-wide">
-            Social Links
-          </h3>
+          )}
           <ProfileSocialLinks profileUrl={profileUrl} editable={false} />
         </div>
+
       </div>
     </div>
   );

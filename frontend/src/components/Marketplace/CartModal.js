@@ -73,16 +73,12 @@ function writeCartToStorage(items) {
 
 /* ----------------- API base (backend) ----------------- */
 
-// explicit backend base URL so we don't hit the Next.js server by accident
 var API_BASE =
-  (typeof process !== "undefined" &&
-    process.env &&
-    process.env.NEXT_PUBLIC_API_URL) ||
-  "";
+  (typeof process !== "undefined" && process.env &&
+    (process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_BACKEND_URL)) ||
+  "http://localhost:4010";
 
-// Normalise to no trailing slash
 function getApiBase() {
-  if (!API_BASE) return "";
   return API_BASE.replace(/\/+$/, "");
 }
 
@@ -348,35 +344,30 @@ export default function CartModal(props) {
     var ok = validateForm();
     if (!ok) return;
 
-    var base = getApiBase();
-    console.log("[CartModal] API_BASE =", base);
-    if (!base) {
-      setError("Checkout API is not configured (missing NEXT_PUBLIC_API_URL).");
-      return;
-    }
-
     setBusy(true);
 
     try {
+      var lineItems = items.map(function (i) {
+        return {
+          name: i.name || i.title || "Item",
+          amount: Math.round((Number(i.price) || 0) * 100), // pence
+          quantity: Number(i.qty) || 1,
+        };
+      });
+
       var payload = {
-        items: items,
-        customer: Object.assign({}, form),
+        items: lineItems,
+        email: form.email,
+        description: "SixByFive store purchase",
       };
 
       // eslint-disable-next-line no-console
       console.log("[CartModal] starting checkout with payload", payload);
 
-      var headers = {
-        "Content-Type": "application/json",
-      };
+      var headers = { "Content-Type": "application/json" };
+      if (accessToken) headers.Authorization = "Bearer " + accessToken;
 
-      if (accessToken) {
-        // Backend CORS allows both Authorization and X-Access-Token, so send both
-        headers.Authorization = "Bearer " + accessToken;
-        headers["X-Access-Token"] = accessToken;
-      }
-
-      var res = await fetch(base + "/checkout/create-stripe-session", {
+      var res = await fetch(getApiBase() + "/checkout", {
         method: "POST",
         headers: headers,
         // keep cookies in case you also use cookie-based auth anywhere
@@ -426,7 +417,7 @@ export default function CartModal(props) {
       // eslint-disable-next-line no-console
       console.log("[CartModal] checkout response", data);
 
-      if (!data.ok || !data.url) {
+      if (!data.url) {
         setError(
           "Checkout API response was invalid. Please try again in a moment."
         );

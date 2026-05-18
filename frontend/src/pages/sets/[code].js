@@ -16,7 +16,7 @@ import path from "path";
 function SetCardTile({ card, owned = false, price, eager = false }) {
   const hasImg = Boolean(card?.imageUrl);
   const priceStr =
-    price && typeof price.gbp === "number"
+    price && typeof price.gbp === "number" && price.gbp > 0
       ? `${price.currency || "£"}${price.gbp.toFixed(2)}`
       : null;
 

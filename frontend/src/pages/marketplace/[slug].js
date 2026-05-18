@@ -210,37 +210,23 @@ var LISTING_QUERY = gql`
       status
       createdAt
       updatedAt
-
       ... on CardListing {
         cardId
         condition
         variation
-        notes
-        seller {
-          id
-          username
-        }
+        seller { id username avatar }
       }
-
       ... on ProductListing {
         title
         description
         imageUrl
         imagesJson
         colourVariantsJson
-        inventory {
-          id
-          onHand
-          reserved
-          sold
-        }
+        inventory { id onHand reserved sold }
         fulfilmentType
         fulfilmentProvider
         fulfilmentExternalId
-        seller {
-          id
-          username
-        }
+        seller { id username avatar }
       }
     }
   }
@@ -613,11 +599,6 @@ function ListingDetailInner() {
       if (listing.variation) parts.push(listing.variation);
       title = parts.length ? parts.join(" • ") : "Card listing";
       if (listing.condition) subtitleMain = listing.condition;
-      if (listing.notes) {
-        subtitleMain = subtitleMain
-          ? subtitleMain + " • " + listing.notes
-          : listing.notes;
-      }
     }
 
     var uiListingBase = Object.assign({}, listing);

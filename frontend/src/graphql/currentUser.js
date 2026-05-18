@@ -1,19 +1,4 @@
-// frontend/src/graphql/queries/currentUser.js
+// src/graphql/currentUser.js
+// Typed documents from the shared api-client package.
 
-import { gql } from "@apollo/client";
-
-export const CURRENT_USER_QUERY = gql`
-  query CurrentUser {
-    me {
-      id
-      username
-      email
-      avatar
-      isAdmin
-      isBanned
-      createdAt
-      updatedAt
-      lastLogin
-    }
-  }
-`;
+export { MeDocument as CURRENT_USER_QUERY } from '@sixbyfive/api-client';

@@ -1,45 +1,20 @@
-// frontend/src/graphql/adminOverview.js
-
-import { gql } from "@apollo/client";
+// src/graphql/adminOverview.js
+import { gql } from '@apollo/client';
 
 export const ADMIN_OVERVIEW_QUERY = gql`
-  query AdminOverview($usersLimit: Int!) {
+  query AdminOverview($usersLimit: Int, $listingsLimit: Int) {
     allUsers(limit: $usersLimit) {
       id
-      username
-      email
       isAdmin
       isBanned
-      createdAt
-      lastLogin
-      profile {
-        country
-        status
-        favouritePokemon
-      }
+    }
+    listings(limit: $listingsLimit) {
+      __typename
+      id
+      type
+      status
     }
   }
 `;
 
-export const ADMIN_REPORTED_USERS_QUERY = gql`
-  query AdminReportedUsers($page: Int, $pageSize: Int, $filter: JSON) {
-    adminQueryReportedUsers(page: $page, pageSize: $pageSize, filter: $filter) {
-      id
-      reason
-      details
-      isCleared
-      createdAt
-      updatedAt
-      user {
-        id
-        username
-        email
-      }
-      reporter {
-        id
-        username
-        email
-      }
-    }
-  }
-`;
+export { AdminQueryReportedUsersDocument as ADMIN_REPORTED_USERS_QUERY } from '@sixbyfive/api-client';

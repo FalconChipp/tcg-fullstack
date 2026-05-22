@@ -145,11 +145,11 @@ export async function POST(req) {
     }
 
     const text = await upstream.text();
-    let upstreamBody = null;
+    let upstreamResponse = null;
     try {
-      upstreamBody = text ? JSON.parse(text) : null;
+      upstreamResponse = text ? JSON.parse(text) : null;
     } catch {
-      upstreamBody = text || null;
+      upstreamResponse = text || null;
     }
 
     if (!upstream.ok) {
@@ -157,11 +157,11 @@ export async function POST(req) {
         {
           ok: false,
           error:
-            (upstreamBody && upstreamBody.error) ||
-            (upstreamBody && upstreamBody.message) ||
+            (upstreamResponse && upstreamResponse.error) ||
+            (upstreamResponse && upstreamResponse.message) ||
             `Upstream error ${upstream.status}`,
           upstreamStatus: upstream.status,
-          upstreamBody,
+          upstreamBody: upstreamResponse,
           target,
           reqId,
         },
@@ -169,7 +169,7 @@ export async function POST(req) {
       );
     }
 
-    return NextResponse.json(upstreamBody || { ok: true });
+    return NextResponse.json(upstreamResponse || { ok: true });
   } catch (err) {
     return NextResponse.json(
       { ok: false, error: err?.message || "Server error", reqId },

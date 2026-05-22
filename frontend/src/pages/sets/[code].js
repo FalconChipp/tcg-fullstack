@@ -520,24 +520,7 @@ async function loadSetFromFiles(code) {
 }
 
 export async function getStaticPaths() {
-  try {
-    const codes = await loadAllCodesFromBackend();
-    if (codes.length) {
-      return {
-        paths: codes.map((code) => ({ params: { code } })),
-        fallback: 'blocking',
-      };
-    }
-    devWarn("GraphQL returned no set codes; falling back to local data files.");
-  } catch (err) {
-    devWarn("Unable to load set codes from GraphQL, falling back to local data files:", err);
-  }
-
-  const fallbackCodes = await loadAllCodesFromFiles();
-  return {
-    paths: fallbackCodes.map((code) => ({ params: { code } })),
-    fallback: 'blocking',
-  };
+  return { paths: [], fallback: 'blocking' };
 }
 
 export async function getStaticProps({ params }) {

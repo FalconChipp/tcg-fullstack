@@ -3,6 +3,7 @@
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
+import { devLog } from "@/utils/devLog";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/router";
 import { useQuery, gql } from "@apollo/client";
@@ -275,7 +276,7 @@ function ListingDetailInner() {
 
   if (listing) {
     // eslint-disable-next-line no-console
-    console.log("[ListingDetail] listing", listing);
+    devLog("[ListingDetail] listing", listing);
   }
 
   /* ---------- Colour + size options (using parsed metadata) ---------- */

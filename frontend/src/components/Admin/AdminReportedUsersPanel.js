@@ -1,730 +1,319 @@
-// frontend/src/components/Admin/AdminReportedUsersPanel.js
-// -----------------------------------------------------------------------------
-// Admin panel: reported users (moderation inbox)
-//
-// UPDATED (2026-02-09):
-// - ADD: Action mutations:
-//   - adminClearUserReport(userId)  -> marks reports as cleared (backend now updates isCleared=true)
-//   - adminBanUserFromChat(userId, reason) + adminUnbanUserFromChat(userId)
-//   - adminSendSystemMessage(receiverId, content, meta)
-// - ADD: Confirm modals (lightweight inline) for Ban / Warn / System message.
-// - ADD: Clear Report button per-row (only shown when not cleared).
-// - ADD: "Copy emails" + "Copy IDs" convenience buttons.
-// - ADD: Filter respects onlyOpen -> sends filter.isCleared to backend (your resolver supports it now).
-// - KEEP: existing table + expandable details.
-// -----------------------------------------------------------------------------
-//
-// NOTE: This relies on these existing backend operations (per your typeDefs):
-// - adminClearUserReport(userId: ID!): Boolean!
-// - adminBanUserFromChat(userId: ID!, reason: String): Boolean!
-// - adminUnbanUserFromChat(userId: ID!): Boolean!
-// - adminSendSystemMessage(receiverId: ID!, content: String!, meta: JSON): Boolean!
-// - Query adminQueryReportedUsers(page,pageSize,filter)
-//
-// NOTE 2: We don't currently have a "isChatBanned" field on User in this panel,
-// so Unban is shown as a secondary action (manual use).
-// If you add a field like `user.isChatBanned`, we can conditionally show Ban/Unban properly.
-//
-
 "use client";
 
-import React, { useMemo, useState } from "react";
-import { useQuery, useMutation, gql } from "@apollo/client";
+import React, { useState } from "react";
+import { gql, useQuery, useMutation } from "@apollo/client";
 import { ADMIN_REPORTED_USERS_QUERY } from "@/graphql/adminOverview";
 
-// -----------------------------------------------------------------------------
-// Mutations (local to panel)
-// -----------------------------------------------------------------------------
-const ADMIN_CLEAR_USER_REPORT = gql`
-  mutation AdminClearUserReport($userId: ID!) {
-    adminClearUserReport(userId: $userId)
-  }
-`;
+const CLEAR_REPORT  = gql`mutation AdminClearUserReport($userId: ID!) { adminClearUserReport(userId: $userId) }`;
+const BAN_FROM_CHAT = gql`mutation AdminBanUserFromChat($userId: ID!, $reason: String) { adminBanUserFromChat(userId: $userId, reason: $reason) }`;
+const UNBAN_CHAT    = gql`mutation AdminUnbanUserFromChat($userId: ID!) { adminUnbanUserFromChat(userId: $userId) }`;
+const SEND_MSG      = gql`mutation AdminSendSystemMessage($receiverId: ID!, $content: String!, $meta: JSON) { adminSendSystemMessage(receiverId: $receiverId, content: $content, meta: $meta) }`;
 
-const ADMIN_BAN_USER_FROM_CHAT = gql`
-  mutation AdminBanUserFromChat($userId: ID!, $reason: String) {
-    adminBanUserFromChat(userId: $userId, reason: $reason)
-  }
-`;
-
-const ADMIN_UNBAN_USER_FROM_CHAT = gql`
-  mutation AdminUnbanUserFromChat($userId: ID!) {
-    adminUnbanUserFromChat(userId: $userId)
-  }
-`;
-
-const ADMIN_SEND_SYSTEM_MESSAGE = gql`
-  mutation AdminSendSystemMessage($receiverId: ID!, $content: String!, $meta: JSON) {
-    adminSendSystemMessage(receiverId: $receiverId, content: $content, meta: $meta)
-  }
-`;
-
-// -----------------------------------------------------------------------------
-// Helpers
-// -----------------------------------------------------------------------------
-function formatDateTime(value) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString();
+function fmt(v) {
+  if (!v) return "—";
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 function shortId(id) {
   if (!id) return "—";
   const s = String(id);
-  return s.length > 10 ? `${s.slice(0, 6)}…${s.slice(-4)}` : s;
+  return s.length > 12 ? `${s.slice(0, 6)}…${s.slice(-4)}` : s;
 }
 
-function cleanText(value, maxLen = 4000) {
-  const s = value == null ? "" : String(value);
-  const t = s.trim();
-  if (!t) return "";
-  return t.length > maxLen ? t.slice(0, maxLen) : t;
-}
+// ─── Modal ────────────────────────────────────────────────────────────────────
 
-function Modal({ title, children, onClose }) {
+function Modal({ title, onClose, children }) {
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/70"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-      <div className="relative w-full max-w-xl border border-white/10 rounded-2xl bg-black/90 shadow-xl">
-        <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75">
+      <div className="bg-[#0d0f17] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
           <h3 className="text-sm font-semibold text-neutral-50">{title}</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-2 py-1 rounded-md border border-white/15 text-[11px] text-neutral-100 hover:bg-white/10"
-          >
-            Close
-          </button>
+          <button type="button" onClick={onClose} className="text-neutral-500 hover:text-neutral-200 transition text-lg leading-none">×</button>
         </div>
-        <div className="p-4">{children}</div>
+        <div className="p-5">{children}</div>
       </div>
     </div>
   );
 }
 
-function Notice({ kind = "info", children }) {
-  const cls =
-    kind === "error"
-      ? "border-red-500/40 bg-red-950/40 text-red-200"
-      : kind === "success"
-      ? "border-emerald-500/40 bg-emerald-950/25 text-emerald-200"
-      : "border-white/10 bg-white/5 text-neutral-200";
+// ─── Ban modal ────────────────────────────────────────────────────────────────
 
+function BanModal({ user, onClose, onConfirm, loading }) {
+  const [reason, setReason] = useState("");
   return (
-    <div className={`border rounded-xl p-3 text-xs ${cls}`}>
-      {children}
-    </div>
+    <Modal title={`Ban from chat: ${user.username || shortId(user.id)}`} onClose={onClose}>
+      <div className="space-y-4">
+        <p className="text-xs text-neutral-400">Creates an <span className="text-neutral-200">CHAT_BAN</span> admin action. The user will not be able to send chat messages.</p>
+        <div className="space-y-1">
+          <label className="text-[11px] text-neutral-400 font-medium">Reason (optional)</label>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={3}
+            placeholder="e.g. Harassment reported in chat"
+            className="w-full px-3 py-2 rounded-lg bg-black/50 border border-white/10 text-xs text-neutral-100 focus:outline-none focus:ring-1 focus:ring-white/20"
+          />
+        </div>
+        <div className="flex gap-2">
+          <button type="button" onClick={onClose} className="flex-1 py-2 rounded-lg text-xs font-medium border border-white/15 text-neutral-300 hover:bg-white/5 transition">Cancel</button>
+          <button type="button" disabled={loading} onClick={() => onConfirm(reason)} className="flex-1 py-2 rounded-lg text-xs font-medium bg-red-600/70 border border-red-500/50 text-white hover:bg-red-600 disabled:opacity-50 transition">
+            {loading ? "Banning…" : "Confirm ban"}
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
-// -----------------------------------------------------------------------------
-// Component
-// -----------------------------------------------------------------------------
+// ─── Message modal ────────────────────────────────────────────────────────────
+
+function MessageModal({ user, defaultContent, meta, title, confirmLabel, onClose, onConfirm, loading }) {
+  const [content, setContent] = useState(defaultContent ?? "");
+  return (
+    <Modal title={`${title}: ${user.username || shortId(user.id)}`} onClose={onClose}>
+      <div className="space-y-4">
+        <p className="text-xs text-neutral-400">Sends a system message into the user's inbox via <span className="text-neutral-200">adminSendSystemMessage</span>.</p>
+        <div className="space-y-1">
+          <label className="text-[11px] text-neutral-400 font-medium">Message</label>
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            rows={7}
+            className="w-full px-3 py-2 rounded-lg bg-black/50 border border-white/10 text-xs text-neutral-100 focus:outline-none focus:ring-1 focus:ring-white/20"
+          />
+          <p className="text-[10px] text-neutral-600">Max 2000 chars.</p>
+        </div>
+        <div className="flex gap-2">
+          <button type="button" onClick={onClose} className="flex-1 py-2 rounded-lg text-xs font-medium border border-white/15 text-neutral-300 hover:bg-white/5 transition">Cancel</button>
+          <button type="button" disabled={loading || !content.trim()} onClick={() => onConfirm(content.trim(), meta)} className="flex-1 py-2 rounded-lg text-xs font-medium bg-white/10 border border-white/20 text-neutral-100 hover:bg-white/15 disabled:opacity-50 transition">
+            {loading ? "Sending…" : confirmLabel}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ─── Main panel ───────────────────────────────────────────────────────────────
+
 export default function AdminReportedUsersPanel() {
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(50);
-
+  const [page, setPage]         = useState(1);
   const [onlyOpen, setOnlyOpen] = useState(true);
-  const [search, setSearch] = useState("");
-
-  // Modals / actions state
-  const [activeUser, setActiveUser] = useState(null); // { id, username, email }
-  const [activeReport, setActiveReport] = useState(null); // report row
-  const [banReason, setBanReason] = useState("");
-  const [warnMessage, setWarnMessage] = useState("");
-  const [localNotice, setLocalNotice] = useState(null); // { kind, text }
-
-  const filter = useMemo(() => {
-    const f = {};
-    // ✅ Now supported by backend resolver (we added filter.isCleared support)
-    if (onlyOpen) f.isCleared = false;
-
-    // Convenience: if you paste a UUID, treat as userId. (Same as your previous behavior.)
-    if (search.trim()) f.userId = search.trim();
-
-    return f;
-  }, [onlyOpen, search]);
+  const [search, setSearch]     = useState("");
+  const [notice, setNotice]     = useState(null); // { kind: 'success'|'error', text }
+  const [modal, setModal]       = useState(null); // { type: 'ban'|'warn'|'system', report }
 
   const { data, loading, error, refetch } = useQuery(ADMIN_REPORTED_USERS_QUERY, {
-    variables: { page, pageSize, filter },
-    fetchPolicy: "cache-first",
+    variables: { page, pageSize: 50, isCleared: onlyOpen ? false : undefined },
+    fetchPolicy: "network-only",
   });
+
+  const [clearReport,  { loading: clearing }]  = useMutation(CLEAR_REPORT);
+  const [banFromChat,  { loading: banning }]   = useMutation(BAN_FROM_CHAT);
+  const [unbanChat,    { loading: unbanning }] = useMutation(UNBAN_CHAT);
+  const [sendMsg,      { loading: sending }]   = useMutation(SEND_MSG);
 
   const reports = data?.adminQueryReportedUsers ?? [];
 
-  const [clearUserReport, { loading: clearing }] = useMutation(ADMIN_CLEAR_USER_REPORT);
-  const [banUserFromChat, { loading: banning }] = useMutation(ADMIN_BAN_USER_FROM_CHAT);
-  const [unbanUserFromChat, { loading: unbanning }] = useMutation(ADMIN_UNBAN_USER_FROM_CHAT);
-  const [sendSystemMessage, { loading: sending }] = useMutation(ADMIN_SEND_SYSTEM_MESSAGE);
+  const flash = (kind, text) => {
+    setNotice({ kind, text });
+    setTimeout(() => setNotice(null), 3000);
+  };
 
-  const handleCopy = async (label, value) => {
-    try {
-      await navigator.clipboard.writeText(String(value ?? ""));
-      console.log(`[AdminReportedUsersPanel] Copied ${label}:`, value);
-      setLocalNotice({ kind: "success", text: `Copied ${label}.` });
-      setTimeout(() => setLocalNotice(null), 1500);
-    } catch (err) {
-      console.warn(`[AdminReportedUsersPanel] Failed to copy ${label}`, err);
-      setLocalNotice({ kind: "error", text: `Failed to copy ${label}.` });
-      setTimeout(() => setLocalNotice(null), 2500);
-    }
+  const copy = async (label, value) => {
+    try { await navigator.clipboard.writeText(String(value ?? "")); flash("success", `Copied ${label}.`); }
+    catch { flash("error", `Failed to copy ${label}.`); }
   };
 
   const doClear = async (userId) => {
     try {
-      setLocalNotice(null);
-      await clearUserReport({ variables: { userId } });
-      setLocalNotice({ kind: "success", text: "Report(s) cleared (marked as cleared)." });
-      await refetch();
-    } catch (e) {
-      setLocalNotice({ kind: "error", text: e?.message || "Failed to clear report(s)." });
-    }
-  };
-
-  const openBanModal = (reportRow) => {
-    setActiveReport(reportRow);
-    setActiveUser(reportRow?.user || null);
-    setBanReason("");
-  };
-
-  const openWarnModal = (reportRow) => {
-    setActiveReport(reportRow);
-    setActiveUser(reportRow?.user || null);
-
-    const reported = reportRow?.user;
-    const base = `Hi${reported?.username ? ` ${reported.username}` : ""},\n\nWe’ve received a report regarding your behaviour on SixByFive TCG.\n\nPlease keep messages respectful and follow the chat rules. Continued reports may result in chat restrictions.\n\nThanks,\nSixByFive Moderation`;
-    setWarnMessage(base);
-  };
-
-  const openSystemMessageModal = (reportRow) => {
-    setActiveReport(reportRow);
-    setActiveUser(reportRow?.user || null);
-    setWarnMessage("");
-  };
-
-  const closeModal = () => {
-    setActiveUser(null);
-    setActiveReport(null);
-    setBanReason("");
-    setWarnMessage("");
-  };
-
-  const doBan = async () => {
-    const userId = activeUser?.id;
-    if (!userId) return;
-
-    try {
-      setLocalNotice(null);
-      const reason = cleanText(banReason, 500);
-
-      await banUserFromChat({
-        variables: {
-          userId,
-          reason: reason || "Moderation action: chat ban (reported users inbox).",
-        },
-      });
-
-      setLocalNotice({ kind: "success", text: "User banned from chat." });
-      closeModal();
-      await refetch();
-    } catch (e) {
-      setLocalNotice({ kind: "error", text: e?.message || "Failed to ban user." });
-    }
+      await clearReport({ variables: { userId } });
+      flash("success", "Report cleared.");
+      refetch();
+    } catch (e) { flash("error", e?.message || "Failed to clear."); }
   };
 
   const doUnban = async (userId) => {
     try {
-      setLocalNotice(null);
-      await unbanUserFromChat({ variables: { userId } });
-      setLocalNotice({ kind: "success", text: "User unbanned from chat." });
-      await refetch();
-    } catch (e) {
-      setLocalNotice({ kind: "error", text: e?.message || "Failed to unban user." });
-    }
+      await unbanChat({ variables: { userId } });
+      flash("success", "User unbanned from chat.");
+      refetch();
+    } catch (e) { flash("error", e?.message || "Failed to unban."); }
   };
 
-  const doWarn = async () => {
-    const receiverId = activeUser?.id;
-    if (!receiverId) return;
-
-    const content = cleanText(warnMessage, 2000);
-    if (!content) {
-      setLocalNotice({ kind: "error", text: "Message content is required." });
-      return;
-    }
-
+  const doBan = async (reason) => {
+    const userId = modal?.report?.user?.id;
+    if (!userId) return;
     try {
-      setLocalNotice(null);
-      await sendSystemMessage({
-        variables: {
-          receiverId,
-          content,
-          meta: {
-            kind: "MOD_WARNING",
-            source: "AdminReportedUsersPanel",
-            reportId: activeReport?.id || null,
-          },
-        },
-      });
-
-      setLocalNotice({ kind: "success", text: "Warning message sent." });
-      closeModal();
-      await refetch();
-    } catch (e) {
-      setLocalNotice({ kind: "error", text: e?.message || "Failed to send warning." });
-    }
+      await banFromChat({ variables: { userId, reason: reason || "Moderation: chat ban." } });
+      flash("success", "User banned from chat.");
+      setModal(null);
+      refetch();
+    } catch (e) { flash("error", e?.message || "Failed to ban."); }
   };
 
-  const doSystemMessage = async () => {
-    const receiverId = activeUser?.id;
+  const doSendMsg = async (content, meta) => {
+    const receiverId = modal?.report?.user?.id;
     if (!receiverId) return;
-
-    const content = cleanText(warnMessage, 2000);
-    if (!content) {
-      setLocalNotice({ kind: "error", text: "Message content is required." });
-      return;
-    }
-
     try {
-      setLocalNotice(null);
-      await sendSystemMessage({
-        variables: {
-          receiverId,
-          content,
-          meta: {
-            kind: "SYSTEM_MESSAGE",
-            source: "AdminReportedUsersPanel",
-            reportId: activeReport?.id || null,
-          },
-        },
-      });
-
-      setLocalNotice({ kind: "success", text: "System message sent." });
-      closeModal();
-      await refetch();
-    } catch (e) {
-      setLocalNotice({ kind: "error", text: e?.message || "Failed to send system message." });
-    }
+      await sendMsg({ variables: { receiverId, content, meta } });
+      flash("success", "Message sent.");
+      setModal(null);
+      refetch();
+    } catch (e) { flash("error", e?.message || "Failed to send."); }
   };
 
-  if (loading) {
-    return (
-      <div className="border border-white/5 rounded-xl p-4 bg-black/40">
-        <p className="text-sm text-neutral-300 mb-2">Loading reported users…</p>
-        <p className="text-xs text-neutral-500">Fetching moderation reports from the server.</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="border border-red-500/40 rounded-xl p-4 bg-red-950/40">
-        <p className="text-sm text-red-300 font-semibold mb-1">Failed to load reports</p>
-        <p className="text-xs text-red-200 mb-3">{error.message}</p>
-        <button
-          type="button"
-          onClick={() => refetch()}
-          className="inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium border border-red-400/60 text-red-50 hover:bg-red-500/10"
-        >
-          Try again
-        </button>
-      </div>
-    );
-  }
+  const warnDefault = (u) =>
+    `Hi${u?.username ? ` ${u.username}` : ""},\n\nWe've received a report regarding your behaviour on SixByFive TCG.\n\nPlease keep messages respectful and follow the chat rules. Continued reports may result in chat restrictions.\n\nThanks,\nSixByFive Moderation`;
 
   return (
-    <div className="space-y-3">
-      {/* Header row */}
-      <div className="flex items-start sm:items-center justify-between gap-3">
+    <div className="space-y-4">
+      {/* Modals */}
+      {modal?.type === "ban" && (
+        <BanModal user={modal.report.user} loading={banning} onClose={() => setModal(null)} onConfirm={doBan} />
+      )}
+      {modal?.type === "warn" && (
+        <MessageModal
+          user={modal.report.user}
+          title="Send warning"
+          confirmLabel="Send warning"
+          defaultContent={warnDefault(modal.report.user)}
+          meta={{ kind: "MOD_WARNING", source: "AdminReportedUsersPanel", reportId: modal.report.id }}
+          loading={sending}
+          onClose={() => setModal(null)}
+          onConfirm={doSendMsg}
+        />
+      )}
+      {modal?.type === "system" && (
+        <MessageModal
+          user={modal.report.user}
+          title="System message"
+          confirmLabel="Send message"
+          defaultContent=""
+          meta={{ kind: "SYSTEM_MESSAGE", source: "AdminReportedUsersPanel", reportId: modal.report.id }}
+          loading={sending}
+          onClose={() => setModal(null)}
+          onConfirm={doSendMsg}
+        />
+      )}
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-neutral-50">Reported Users</h2>
-          <p className="text-xs text-neutral-500">
-            Showing {reports.length} report{reports.length === 1 ? "" : "s"} (page {page}).
+          <h2 className="text-base font-semibold text-neutral-50">Reported Users</h2>
+          <p className="text-xs text-neutral-500 mt-0.5">
+            {loading ? "Loading…" : `${reports.length} report${reports.length !== 1 ? "s" : ""} — page ${page}.`}
           </p>
         </div>
-
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-          <label className="inline-flex items-center gap-2 text-xs text-neutral-300">
-            <input
-              type="checkbox"
-              checked={onlyOpen}
-              onChange={(e) => {
-                setPage(1);
-                setOnlyOpen(e.target.checked);
-              }}
-              className="accent-white"
-            />
-            Only open
+        <div className="flex items-center gap-2 flex-wrap">
+          <label className="inline-flex items-center gap-2 text-xs text-neutral-400 cursor-pointer select-none">
+            <input type="checkbox" checked={onlyOpen} onChange={(e) => { setPage(1); setOnlyOpen(e.target.checked); }} className="rounded" />
+            Open only
           </label>
-
           <input
             value={search}
-            onChange={(e) => {
-              setPage(1);
-              setSearch(e.target.value);
-            }}
-            placeholder="Filter by Reported User ID (UUID)…"
-            className="w-[260px] max-w-full px-3 py-1.5 rounded-md bg-black/30 border border-white/10 text-xs text-neutral-100 outline-none focus:border-white/25"
+            onChange={(e) => { setPage(1); setSearch(e.target.value); }}
+            placeholder="Filter by user ID…"
+            className="w-52 px-3 py-1.5 rounded-lg bg-black/50 border border-white/10 text-xs text-neutral-100 placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-white/20"
           />
-
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium border border-white/20 text-neutral-50 hover:bg-white/10"
-          >
-            Refresh
-          </button>
+          <button type="button" onClick={() => refetch()} disabled={loading} className="px-3 py-1.5 rounded-lg text-xs font-medium border border-white/15 text-neutral-300 hover:bg-white/5 disabled:opacity-50 transition">Refresh</button>
         </div>
       </div>
 
-      {localNotice?.text ? <Notice kind={localNotice.kind}>{localNotice.text}</Notice> : null}
-
-      {!reports.length ? (
-        <div className="border border-white/5 rounded-xl p-4 bg-black/40">
-          <p className="text-sm text-neutral-300">No reports found.</p>
-          <p className="text-xs text-neutral-500 mt-1">
-            If you expect to see results, try clearing the filter or clicking refresh.
-          </p>
+      {notice && (
+        <div className={`border rounded-lg px-3 py-2 text-xs ${notice.kind === "success" ? "border-emerald-500/30 bg-emerald-500/[0.04] text-emerald-300" : "border-red-500/30 bg-red-950/20 text-red-300"}`}>
+          {notice.text}
         </div>
+      )}
+
+      {error && (
+        <div className="border border-red-500/30 rounded-xl p-3 bg-red-950/20 text-xs text-red-300">{error.message}</div>
+      )}
+
+      {loading && !data ? (
+        <div className="border border-white/[0.08] rounded-2xl overflow-hidden bg-black/30 animate-pulse">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="px-4 py-4 border-b border-white/[0.04] flex gap-4">
+              <div className="flex-1 space-y-2"><div className="h-3 w-32 rounded bg-white/10" /><div className="h-3 w-20 rounded bg-white/[0.06]" /></div>
+            </div>
+          ))}
+        </div>
+      ) : reports.length === 0 ? (
+        <div className="border border-white/[0.06] rounded-2xl p-8 text-center text-sm text-neutral-500">No reports found.</div>
       ) : (
-        <div className="overflow-x-auto border border-white/5 rounded-xl bg-black/40">
-          <table className="min-w-full text-xs">
-            <thead className="bg-white/5 text-neutral-300">
-              <tr>
-                <th className="px-3 py-2 text-left font-semibold">Reported user</th>
-                <th className="px-3 py-2 text-left font-semibold">Reporter</th>
-                <th className="px-3 py-2 text-left font-semibold">Reason</th>
-                <th className="px-3 py-2 text-left font-semibold">Details</th>
-                <th className="px-3 py-2 text-left font-semibold">Created</th>
-                <th className="px-3 py-2 text-left font-semibold">Actions</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {reports.map((r) => {
-                const reported = r.user;
-                const reporter = r.reporter;
-                const hasDetails = !!(r.details && String(r.details).trim().length);
-
-                return (
-                  <tr key={r.id} className="border-t border-white/5 hover:bg-white/5 transition">
-                    {/* Reported user */}
-                    <td className="px-3 py-2 align-top">
-                      <div className="flex flex-col">
-                        <span className="font-medium text-neutral-50">
-                          {reported?.username || "—"}
+        <>
+          <div className="overflow-x-auto border border-white/[0.08] rounded-2xl bg-black/30">
+            <table className="min-w-full text-xs">
+              <thead>
+                <tr className="border-b border-white/[0.06]">
+                  {["Reported user", "Reporter", "Reason / Status", "Details", "Date", "Actions"].map((h) => (
+                    <th key={h} className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-neutral-500">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.04]">
+                {reports.map((r) => {
+                  const reported = r.user;
+                  const reporter = r.reporter;
+                  return (
+                    <tr key={r.id} className="hover:bg-white/[0.03] transition align-top">
+                      <td className="px-3 py-3">
+                        <p className="font-medium text-neutral-100">{reported?.username || "—"}</p>
+                        <p className="text-[11px] text-neutral-500">{reported?.email || "—"}</p>
+                        <p className="font-mono text-[10px] text-neutral-700">{shortId(reported?.id)}</p>
+                      </td>
+                      <td className="px-3 py-3">
+                        <p className="text-neutral-200">{reporter?.username || "—"}</p>
+                        <p className="text-[11px] text-neutral-500">{reporter?.email || "—"}</p>
+                      </td>
+                      <td className="px-3 py-3">
+                        <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-white/[0.04] text-neutral-300 border border-white/10">
+                          {r.reason || "—"}
                         </span>
-                        <span className="text-[11px] text-neutral-500">
-                          {reported?.email || "—"}
-                        </span>
-                        <span className="text-[11px] text-neutral-600">
-                          {reported?.id || "—"}
-                        </span>
-                      </div>
-                    </td>
+                        <p className={`text-[11px] mt-1 ${r.isCleared ? "text-emerald-400" : "text-amber-400"}`}>
+                          {r.isCleared ? "Cleared" : "Open"}
+                        </p>
+                      </td>
+                      <td className="px-3 py-3">
+                        {r.details?.trim() ? (
+                          <details>
+                            <summary className="cursor-pointer text-[11px] text-neutral-400 hover:text-neutral-200 select-none">View</summary>
+                            <p className="mt-2 text-[11px] text-neutral-300 whitespace-pre-wrap break-words max-w-xs">{r.details}</p>
+                          </details>
+                        ) : (
+                          <span className="text-[11px] text-neutral-600">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <p className="text-[11px] text-neutral-400">{fmt(r.createdAt)}</p>
+                        <p className="font-mono text-[10px] text-neutral-700">{shortId(r.id)}</p>
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {!r.isCleared && (
+                            <button type="button" disabled={clearing} onClick={() => doClear(reported?.id)} className="px-2 py-1 rounded text-[10px] border border-emerald-400/40 text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-40 transition">Clear</button>
+                          )}
+                          <button type="button" onClick={() => setModal({ type: "warn", report: r })} className="px-2 py-1 rounded text-[10px] border border-white/10 text-neutral-400 hover:bg-white/5 transition">Warn</button>
+                          <button type="button" onClick={() => setModal({ type: "system", report: r })} className="px-2 py-1 rounded text-[10px] border border-white/10 text-neutral-400 hover:bg-white/5 transition">Message</button>
+                          <button type="button" onClick={() => setModal({ type: "ban", report: r })} className="px-2 py-1 rounded text-[10px] border border-red-400/40 text-red-300 hover:bg-red-500/10 transition">Ban chat</button>
+                          <button type="button" disabled={unbanning} onClick={() => doUnban(reported?.id)} className="px-2 py-1 rounded text-[10px] border border-white/10 text-neutral-400 hover:bg-white/5 disabled:opacity-40 transition">Unban chat</button>
+                          <button type="button" onClick={() => copy("report ID", r.id)} className="px-2 py-1 rounded text-[10px] border border-white/10 text-neutral-600 hover:bg-white/5 transition">Copy ID</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
 
-                    {/* Reporter */}
-                    <td className="px-3 py-2 align-top">
-                      <div className="flex flex-col">
-                        <span className="font-medium text-neutral-50">
-                          {reporter?.username || "—"}
-                        </span>
-                        <span className="text-[11px] text-neutral-500">
-                          {reporter?.email || "—"}
-                        </span>
-                        <span className="text-[11px] text-neutral-600">
-                          {reporter?.id || "—"}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Reason */}
-                    <td className="px-3 py-2 align-top">
-                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-white/5 text-neutral-100">
-                        {r.reason || "—"}
-                      </span>
-                      {r.isCleared ? (
-                        <div className="mt-1 text-[11px] text-emerald-300">Cleared</div>
-                      ) : (
-                        <div className="mt-1 text-[11px] text-amber-300">Open</div>
-                      )}
-                    </td>
-
-                    {/* Details */}
-                    <td className="px-3 py-2 align-top">
-                      {hasDetails ? (
-                        <details className="group">
-                          <summary className="cursor-pointer text-[11px] text-neutral-200 hover:text-white select-none">
-                            View details
-                          </summary>
-                          <div className="mt-2 text-[11px] text-neutral-300 whitespace-pre-wrap break-words max-w-[520px]">
-                            {r.details}
-                          </div>
-                        </details>
-                      ) : (
-                        <span className="text-[11px] text-neutral-500">No details</span>
-                      )}
-                    </td>
-
-                    {/* Created */}
-                    <td className="px-3 py-2 align-top">
-                      <span className="text-[11px] text-neutral-400">
-                        {formatDateTime(r.createdAt)}
-                      </span>
-                      <div className="text-[11px] text-neutral-600">ID: {shortId(r.id)}</div>
-                    </td>
-
-                    {/* Actions */}
-                    <td className="px-3 py-2 align-top">
-                      <div className="flex flex-wrap gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleCopy("report id", r.id)}
-                          className="px-2 py-1 rounded-md border border-white/15 text-[10px] text-neutral-100 hover:bg-white/10"
-                        >
-                          Copy report ID
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleCopy("reported user id", reported?.id)}
-                          className="px-2 py-1 rounded-md border border-white/15 text-[10px] text-neutral-100 hover:bg-white/10"
-                        >
-                          Copy user ID
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleCopy("reported user email", reported?.email)}
-                          className="px-2 py-1 rounded-md border border-white/15 text-[10px] text-neutral-100 hover:bg-white/10"
-                        >
-                          Copy user email
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleCopy("reporter id", reporter?.id)}
-                          className="px-2 py-1 rounded-md border border-white/15 text-[10px] text-neutral-100 hover:bg-white/10"
-                        >
-                          Copy reporter ID
-                        </button>
-
-                        {!r.isCleared ? (
-                          <button
-                            type="button"
-                            disabled={clearing}
-                            onClick={() => doClear(reported?.id)}
-                            className="px-2 py-1 rounded-md border border-emerald-400/40 text-[10px] text-emerald-100 hover:bg-emerald-500/10 disabled:opacity-40"
-                          >
-                            Clear report
-                          </button>
-                        ) : null}
-
-                        <button
-                          type="button"
-                          onClick={() => openWarnModal(r)}
-                          className="px-2 py-1 rounded-md border border-white/15 text-[10px] text-neutral-100 hover:bg-white/10"
-                        >
-                          Warn (message)
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => openSystemMessageModal(r)}
-                          className="px-2 py-1 rounded-md border border-white/15 text-[10px] text-neutral-100 hover:bg-white/10"
-                        >
-                          System msg
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => openBanModal(r)}
-                          className="px-2 py-1 rounded-md border border-red-400/40 text-[10px] text-red-100 hover:bg-red-500/10"
-                        >
-                          Ban from chat
-                        </button>
-
-                        <button
-                          type="button"
-                          disabled={unbanning}
-                          onClick={() => doUnban(reported?.id)}
-                          className="px-2 py-1 rounded-md border border-white/15 text-[10px] text-neutral-100 hover:bg-white/10 disabled:opacity-40"
-                        >
-                          Unban chat
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-
-          {/* Pagination footer */}
-          <div className="flex items-center justify-between px-3 py-2 border-t border-white/5">
-            <button
-              type="button"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="px-2 py-1 rounded-md border border-white/15 text-[10px] text-neutral-100 hover:bg-white/10 disabled:opacity-40 disabled:hover:bg-transparent"
-            >
-              Prev
-            </button>
-
-            <span className="text-[11px] text-neutral-500">Page {page}</span>
-
-            <button
-              type="button"
-              onClick={() => setPage((p) => p + 1)}
-              className="px-2 py-1 rounded-md border border-white/15 text-[10px] text-neutral-100 hover:bg-white/10"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* BAN MODAL */}
-      {activeUser && banReason !== null && activeReport && (
-        activeReport && banReason !== null && activeUser && (
-          activeReport && (
-            banReason !== null && activeUser && activeReport && activeReport.user
-          )
-        )
-      ) ? null : null}
-
-      {activeUser && activeReport && banReason !== null && activeReport?.user && false ? null : null}
-
-      {activeUser && activeReport && banReason !== null && activeReport?.user && activeUser?.id && false ? null : null}
-
-      {activeUser && activeReport && banReason !== null && activeUser?.id && activeReport && activeReport.user && false ? null : null}
-
-      {activeUser && activeReport && banReason !== null && activeUser?.id && activeReport?.user && false ? null : null}
-
-      {activeUser && activeReport && banReason !== null && activeUser?.id && activeReport?.user && false ? null : null}
-
-      {activeUser && activeReport && banReason !== null && activeUser?.id && activeReport?.user && false ? null : null}
-
-      {activeUser && activeReport && banReason !== null && activeUser?.id && activeReport?.user && false ? null : null}
-
-      {activeUser && activeReport && banReason !== null && activeUser?.id && activeReport?.user && false ? null : null}
-
-      {/* Real modals */}
-      {activeUser && activeReport && activeUser?.id && (
-        // Show the correct modal based on which state is set:
-        // - If banReason state was last opened via openBanModal, we show ban modal when banReason is defined AND warnMessage is empty.
-        // We'll use a simple heuristic: if warnMessage is set and includes "We’ve received a report", it's warn/system modal.
-        // Otherwise, ban modal.
-        null
-      )}
-
-      {/* BAN MODAL */}
-      {activeUser && activeReport && activeUser?.id && warnMessage === "" && (
-        <Modal
-          title={`Ban from chat: ${activeUser?.username || shortId(activeUser?.id)}`}
-          onClose={closeModal}
-        >
-          <div className="space-y-3">
-            <p className="text-xs text-neutral-400">
-              This creates an <span className="text-neutral-200">AdminAction</span> of type{" "}
-              <span className="text-neutral-200">CHAT_BAN</span>.
-            </p>
-
-            <div className="space-y-1">
-              <label className="text-xs text-neutral-300">Reason (optional)</label>
-              <textarea
-                value={banReason}
-                onChange={(e) => setBanReason(e.target.value)}
-                placeholder="e.g. Harassment reported in chat"
-                rows={4}
-                className="w-full px-3 py-2 rounded-md bg-black/30 border border-white/10 text-xs text-neutral-100 outline-none focus:border-white/25"
-              />
-              <p className="text-[11px] text-neutral-500">
-                Keep this short. It will be stored in admin actions.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={banning}
-                onClick={doBan}
-                className="inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium border border-red-400/50 text-red-50 hover:bg-red-500/10 disabled:opacity-40"
-              >
-                {banning ? "Banning…" : "Confirm ban"}
-              </button>
-
-              <button
-                type="button"
-                onClick={closeModal}
-                className="inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium border border-white/20 text-neutral-50 hover:bg-white/10"
-              >
-                Cancel
-              </button>
+            <div className="flex items-center justify-between px-4 py-2.5 border-t border-white/[0.06]">
+              <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="px-3 py-1.5 rounded-lg text-xs font-medium border border-white/15 text-neutral-300 hover:bg-white/5 disabled:opacity-40 transition">← Prev</button>
+              <span className="text-[11px] text-neutral-500">Page {page}</span>
+              <button type="button" disabled={reports.length < 50} onClick={() => setPage((p) => p + 1)} className="px-3 py-1.5 rounded-lg text-xs font-medium border border-white/15 text-neutral-300 hover:bg-white/5 disabled:opacity-40 transition">Next →</button>
             </div>
           </div>
-        </Modal>
-      )}
-
-      {/* WARN / SYSTEM MODAL */}
-      {activeUser && activeReport && activeUser?.id && warnMessage !== "" && (
-        <Modal
-          title={`Message user: ${activeUser?.username || shortId(activeUser?.id)}`}
-          onClose={closeModal}
-        >
-          <div className="space-y-3">
-            <p className="text-xs text-neutral-400">
-              Sends a system message into their inbox using{" "}
-              <span className="text-neutral-200">adminSendSystemMessage</span>.
-            </p>
-
-            <div className="space-y-1">
-              <label className="text-xs text-neutral-300">Message</label>
-              <textarea
-                value={warnMessage}
-                onChange={(e) => setWarnMessage(e.target.value)}
-                rows={8}
-                className="w-full px-3 py-2 rounded-md bg-black/30 border border-white/10 text-xs text-neutral-100 outline-none focus:border-white/25"
-              />
-              <p className="text-[11px] text-neutral-500">
-                Max 2000 chars. This will appear as a system message in chat.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={sending}
-                onClick={doWarn}
-                className="inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium border border-white/20 text-neutral-50 hover:bg-white/10 disabled:opacity-40"
-              >
-                {sending ? "Sending…" : "Send warning"}
-              </button>
-
-              <button
-                type="button"
-                disabled={sending}
-                onClick={doSystemMessage}
-                className="inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium border border-white/20 text-neutral-50 hover:bg-white/10 disabled:opacity-40"
-              >
-                {sending ? "Sending…" : "Send system msg"}
-              </button>
-
-              <button
-                type="button"
-                onClick={closeModal}
-                className="inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium border border-white/20 text-neutral-50 hover:bg-white/10"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </Modal>
+        </>
       )}
     </div>
   );

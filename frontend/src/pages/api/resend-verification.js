@@ -1,4 +1,4 @@
-const AUTH_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4010";
+import { getApiBase } from "@/utils/apiClient";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -7,7 +7,7 @@ export default async function handler(req, res) {
   if (!authHeader) return res.status(401).json({ error: "Unauthorized" });
 
   try {
-    const upstream = await fetch(`${AUTH_URL}/auth/email/resend`, {
+    const upstream = await fetch(`${getApiBase()}/auth/email/resend`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

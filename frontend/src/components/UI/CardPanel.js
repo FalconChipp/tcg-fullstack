@@ -6,8 +6,7 @@ import BinderSettingsModal from "@/components/Binder/BinderSettingsModal";
 import Portal from "@/components/UI/Portal";
 
 // --- CHANGES: Remove hardcoded colors, use only palette tokens everywhere ---
-
-const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+import { getGraphqlUrl } from "@/utils/apiClient";
 
 export default function ProfileBindersPanel({
   userId,
@@ -69,7 +68,7 @@ export default function ProfileBindersPanel({
         }
       }
     `;
-    fetch(WP_GRAPHQL_URL, {
+    fetch(getGraphqlUrl(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query: GET_BINDERS, variables: { userId: String(userId) } })
@@ -172,7 +171,7 @@ export default function ProfileBindersPanel({
         ? { id: data.id, input: { name: data.name, description: data.description, accentColor: data.accentColor, visibility: data.visibility || "public" } }
         : { input: { name: data.name, description: data.description, accentColor: data.accentColor, visibility: data.visibility || "public" } };
 
-      const res = await fetch(WP_GRAPHQL_URL, {
+      const res = await fetch(getGraphqlUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: mutation, variables }),

@@ -4,6 +4,8 @@
 // - Returns a normalized absolute URL (or empty string)
 // - Uses Cache-Control: no-store to prevent stale 304/caching issues during export
 
+import { getApiBase, getGraphqlUrl } from "@/utils/apiClient";
+
 export default async function handler(req, res) {
   try {
     res.setHeader("Cache-Control", "no-store");
@@ -14,17 +16,8 @@ export default async function handler(req, res) {
       return;
     }
 
-    // IMPORTANT:
-    // Use your backend GraphQL endpoint (adjust if yours differs)
-    // Example: http://localhost:4000/graphql or https://backendtcg.sixbyfive.com/graphql
-    const BACKEND_URL =
-      process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT?.replace(/\/graphql\/?$/, "") ||
-      process.env.NEXT_PUBLIC_BACKEND_URL ||
-      process.env.BACKEND_URL ||
-      "http://localhost:4010";
-
-    const GRAPHQL_URL =
-      BACKEND_URL.endsWith("/graphql") ? BACKEND_URL : `${BACKEND_URL.replace(/\/$/, "")}/graphql`;
+    const BACKEND_URL = getApiBase();
+    const GRAPHQL_URL = getGraphqlUrl();
 
     const userQuery = `
       query GetUser($username: String!) {

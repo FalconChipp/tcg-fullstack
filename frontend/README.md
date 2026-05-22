@@ -32,7 +32,7 @@ The frontend is the customer-facing Next.js 14 application for the SixByFive TCG
 
 | Concern             | Technology                        |
 |---------------------|-----------------------------------|
-| Framework           | Next.js 14 (pages router primary) |
+| Framework           | Next.js 15 (pages router primary) |
 | Language            | React 18 + modern JSX             |
 | Data Layer          | Apollo Client 3                   |
 | State Management    | Component-local + hooks           |

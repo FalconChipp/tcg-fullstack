@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
+import { devLog, devWarn, devError } from "@/utils/devLog";
 import {
   fetchNotifications,
   fetchUnreadCount,
@@ -107,7 +108,7 @@ export function useNotifications({ token, pageSize = 10, pollMs = 30000 } = {}) 
       socketRef.current = null;
     }
 
-    console.log("[Notifications] creating socket", {
+    devLog("[Notifications] creating socket", {
       origin,
       path: SOCKET_PATH,
       transports: ["polling"],
@@ -130,10 +131,10 @@ export function useNotifications({ token, pageSize = 10, pollMs = 30000 } = {}) 
 
     socketRef.current = socket;
 
-    socket.on("connect", () => console.log("[Notifications] socket connected", { id: socket.id }));
-    socket.on("disconnect", (reason) => console.warn("[Notifications] socket disconnected", reason));
+    socket.on("connect", () => devLog("[Notifications] socket connected", { id: socket.id }));
+    socket.on("disconnect", (reason) => devWarn("[Notifications] socket disconnected", reason));
     socket.on("connect_error", (err) =>
-      console.error("[Notifications] socket connect_error", err?.message || err)
+      devError("[Notifications] socket connect_error", err?.message || err)
     );
 
     // Your server-side event name must match this:
@@ -155,7 +156,7 @@ export function useNotifications({ token, pageSize = 10, pollMs = 30000 } = {}) 
       setItems((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnread(0);
     } catch (e) {
-      console.error("markAllRead failed", e);
+      devError("markAllRead failed", e);
     }
   }, [token]);
 
@@ -177,7 +178,7 @@ export function useNotifications({ token, pageSize = 10, pollMs = 30000 } = {}) 
           return next;
         });
       } catch (e) {
-        console.error("markOneRead failed", e);
+        devError("markOneRead failed", e);
       }
     },
     [token]
@@ -195,7 +196,7 @@ export function useNotifications({ token, pageSize = 10, pollMs = 30000 } = {}) 
         });
         setTotal((prev) => Math.max(0, prev - 1));
       } catch (e) {
-        console.error("dismissOne failed", e);
+        devError("dismissOne failed", e);
       }
     },
     [token]
@@ -219,7 +220,7 @@ export function useNotifications({ token, pageSize = 10, pollMs = 30000 } = {}) 
       setTotal(totalCount || total);
       setPage(nextPage);
     } catch (e) {
-      console.error("loadMore failed", e);
+      devError("loadMore failed", e);
     } finally {
       setLoadingMore(false);
     }

@@ -4,8 +4,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/router";
 import StatusMessage from "@/components/UI/StatusMessage";
-
-const GRAPHQL_ENDPOINT = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+import { getGraphqlUrl } from "@/utils/apiClient";
 
 /* Small UI primitives */
 function Card({ title, children, className = "" }) {
@@ -68,7 +67,7 @@ export default function PrivacyTab({ user, token }) {
   const [deleting, setDeleting] = useState(false);
 
   async function callGraphQL(query, variables) {
-    const res = await fetch(GRAPHQL_ENDPOINT, {
+    const res = await fetch(getGraphqlUrl(), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

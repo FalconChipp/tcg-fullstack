@@ -14,8 +14,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 import { useSearchParams } from "next/navigation";
-
-const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+import { getGraphqlUrl } from "@/utils/apiClient";
 
 export default function ResetPasswordPage() {
   const searchParams = useSearchParams();
@@ -140,7 +139,7 @@ export default function ResetPasswordPage() {
     };
 
     try {
-      const res = await fetch(WP_GRAPHQL_URL, {
+      const res = await fetch(getGraphqlUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query, variables }),

@@ -73,14 +73,8 @@ function writeCartToStorage(items) {
 
 /* ----------------- API base (backend) ----------------- */
 
-var API_BASE =
-  (typeof process !== "undefined" && process.env &&
-    (process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_BACKEND_URL)) ||
-  "http://localhost:4010";
-
-function getApiBase() {
-  return API_BASE.replace(/\/+$/, "");
-}
+import { getApiBase } from "@/utils/apiClient";
+import { devLog, devError } from "@/utils/devLog";
 
 /* ----------------- Shipping helper ----------------- */
 /**
@@ -361,8 +355,7 @@ export default function CartModal(props) {
         description: "SixByFive store purchase",
       };
 
-      // eslint-disable-next-line no-console
-      console.log("[CartModal] starting checkout with payload", payload);
+      devLog("[CartModal] starting checkout with payload", payload);
 
       var headers = { "Content-Type": "application/json" };
       if (accessToken) headers.Authorization = "Bearer " + accessToken;
@@ -392,8 +385,7 @@ export default function CartModal(props) {
           if (text) msg = text;
         }
 
-        // eslint-disable-next-line no-console
-        console.error(
+        devError(
           "[CartModal] checkout failed (" + res.status + "):",
           msg
         );
@@ -414,8 +406,7 @@ export default function CartModal(props) {
         data = {};
       }
 
-      // eslint-disable-next-line no-console
-      console.log("[CartModal] checkout response", data);
+      devLog("[CartModal] checkout response", data);
 
       if (!data.url) {
         setError(
@@ -443,8 +434,7 @@ export default function CartModal(props) {
         window.location.href = data.url;
       }
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error("[CartModal] checkout error", err);
+      devError("[CartModal] checkout error", err);
       setError(
         (err && err.message) ||
           "Something went wrong starting checkout. Please try again."

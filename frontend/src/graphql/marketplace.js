@@ -19,7 +19,18 @@ export const LISTINGS_QUERY = gql`
         cardId
         condition
         variation
+        allowOffers
+        willTrade
         seller { id username avatar }
+        cardInfo {
+          id
+          name
+          number
+          rarity
+          setName
+          imageSmall
+          imageLarge
+        }
       }
       ... on ProductListing {
         title

@@ -10,6 +10,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { devError } from "@/utils/devLog";
 
 /* ----------------- Cart helpers ----------------- */
 
@@ -298,8 +299,7 @@ export default function BuyButton(props) {
       onAdded({ items: items, addedItem: item });
     } catch (e) {
       setErr((e && e.message) || "Failed to add to cart");
-      // eslint-disable-next-line no-console
-      console.error("[BuyButton/AddToCart] error:", e);
+      devError("[BuyButton/AddToCart] error:", e);
     } finally {
       setAdding(false);
       if (!err) {

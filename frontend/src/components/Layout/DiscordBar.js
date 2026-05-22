@@ -1,179 +1,117 @@
+// src/components/Layout/DiscordBar.js
 "use client";
-import React, { useState, useEffect } from "react"; // CHANGED: add useEffect for persisted dismiss
-import { FaDiscord, FaTimes } from "react-icons/fa";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion"; // CHANGED: useReducedMotion for a11y
 
-// CHANGED: keep your default invite but allow tracking params to be appended
+import React, { useMemo } from "react";
+import { FaDiscord } from "react-icons/fa";
+
 const DISCORD_INVITE = "https://discord.gg/PRMbMbRE2H";
+
+const communityPoints = [
+  "Share binder builds",
+  "Suggest features",
+  "Report card data issues",
+  "Follow marketplace updates",
+];
 
 export default function DiscordJoinBar({
   invite = DISCORD_INVITE,
-  hideable = true,
   className = "",
-  members, // NEW: optional member count like "1,243 members"
-  trackParams, // NEW: optional {utm_source, utm_medium, utm_campaign}
-  persistDismiss = true, // NEW: remember close across sessions
-  storageKey = "sbf_discord_bar_dismissed", // NEW
-  onJoin, // NEW: optional analytics callback on CTA click
-  onDismiss, // NEW: optional analytics callback on dismiss
+  members,
+  trackParams,
+  onJoin,
 }) {
-  const prefersReducedMotion = useReducedMotion(); // NEW
-  const [visible, setVisible] = useState(true);
-
-  // NEW: respect persisted dismissal
-  useEffect(() => {
-    if (hideable && persistDismiss) {
-      try {
-        const dismissed = localStorage.getItem(storageKey);
-        if (dismissed === "1") setVisible(false);
-      } catch (_) {
-        /* no-op */
-      }
-    }
-  }, [hideable, persistDismiss, storageKey]);
-
-  // NEW: build invite with optional tracking params (safe fallback)
-  const finalInvite = React.useMemo(() => {
+  const finalInvite = useMemo(() => {
     try {
       const url = new URL(invite);
+
       if (trackParams && typeof trackParams === "object") {
-        Object.entries(trackParams).forEach(([k, v]) => {
-          if (v != null) url.searchParams.set(k, String(v));
+        Object.entries(trackParams).forEach(([key, value]) => {
+          if (value != null) {
+            url.searchParams.set(key, String(value));
+          }
         });
       }
+
       return url.toString();
     } catch {
-      return invite; // if relative/invalid, just return original
+      return invite;
     }
   }, [invite, trackParams]);
 
-  const dismiss = () => {
-    setVisible(false);
-    // NEW: persist & analytics hooks
-    if (hideable && persistDismiss) {
-      try {
-        localStorage.setItem(storageKey, "1");
-      } catch (_) {
-        /* no-op */
-      }
-    }
-    onDismiss?.();
-  };
-
-  const handleJoinClick = () => {
+  function handleJoinClick() {
     onJoin?.();
-  };
-
-  // NEW: motion variants respect reduced motion
-  const motionProps = prefersReducedMotion
-    ? {
-        initial: { opacity: 0 },
-        animate: { opacity: 1 },
-        exit: { opacity: 0 },
-        transition: { duration: 0.2 },
-      }
-    : {
-        initial: { y: 30, opacity: 0 },
-        animate: { y: 0, opacity: 1 },
-        exit: { y: 30, opacity: 0 },
-        transition: { type: "spring", stiffness: 300, damping: 32 },
-      };
+  }
 
   return (
-    <AnimatePresence>
-      {visible && (
-        <motion.div
-          {...motionProps}
-          role="complementary" // NEW: a11y landmark
-          aria-label="Join our Discord community"
-          className={`
-            relative flex flex-col md:flex-row items-center justify-between gap-4
-            w-full max-w-2xl mx-auto my-10
-            bg-light-surface dark:bg-dark-surface
-            rounded-2xl shadow-xl
-            px-6 py-5 border border-light-border dark:border-dark-border
-            ring-1 ring-black/5 dark:ring-black/20
-            ${className}
-          `}
-          style={{
-            // Subtle lift
-            boxShadow: "0 8px 32px 0 rgba(16,22,42,0.18)",
-          }}
-        >
-          {/* Discord logo in a surface circle */}
-          <div className="flex-shrink-0 flex items-center justify-center w-14 h-14 rounded-full bg-light-alt dark:bg-dark-alt border-2 border-light-border dark:border-dark-border shadow-inner mr-0 md:mr-5" aria-hidden="true">
-            <FaDiscord className="text-3xl text-[#7289da]" />
-          </div>
+    <section
+      aria-label="Join the SixByFive collector community"
+      className={`relative overflow-hidden bg-dark-background px-5 py-20 sm:px-7 ${className}`}
+    >
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute left-1/2 top-10 h-[460px] w-[460px] -translate-x-1/2 rounded-full bg-[#5865F2]/10 blur-3xl" />
+      </div>
 
-          {/* Text block — CHANGED: tighter, benefit-first copy + optional members */}
-          <div className="flex-1 text-center md:text-left">
-            <div className="font-extrabold text-xl md:text-2xl text-light-text dark:text-dark-text">
-              {/* CHANGED: stronger headline */}
-              Join the community
+      <div className="relative mx-auto max-w-7xl">
+        <div className="overflow-hidden rounded-[2rem] border border-dark-border bg-dark-surface shadow-2xl shadow-black/25">
+          <div className="grid grid-cols-1 gap-0 lg:grid-cols-[380px_1fr]">
+            <div className="flex items-center justify-center border-b border-dark-border bg-dark-alt p-10 lg:border-b-0 lg:border-r">
+              <div className="relative">
+                <div className="absolute -inset-8 rounded-full bg-[#5865F2]/20 blur-3xl" />
+
+                <div className="relative flex h-32 w-32 items-center justify-center rounded-[2rem] border border-dark-border bg-dark-background shadow-2xl shadow-black/30">
+                  <FaDiscord className="text-6xl text-[#5865F2]" />
+                </div>
+              </div>
             </div>
-            <div className="mt-1 text-base text-light-textSecondary dark:text-dark-textSecondary">
-              {/* CHANGED: concise, benefit-first */}
-              Trade tips, get help, and see new features first.{" "}
-              <span className="whitespace-nowrap">Built for UK collectors.</span>
-              {members ? (
-                <>
-                  {" "}
-                  <span className="text-light-text/80 dark:text-dark-text/80">
-                    • {members}
-                  </span>
-                </>
-              ) : null}
+
+            <div className="p-6 sm:p-8 lg:p-10">
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-dark-border bg-dark-alt px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-dark-textMuted">
+                Community
+                {members ? <span>· {members}</span> : null}
+              </div>
+
+              <h2 className="max-w-3xl text-3xl font-black tracking-tight text-dark-strong sm:text-4xl">
+                Join the SixByFive collector community.
+              </h2>
+
+              <p className="mt-4 max-w-2xl text-base leading-7 text-dark-textMuted">
+                Get help, share feedback, follow what is being built, and talk
+                with other collectors as SixByFive TCG grows.
+              </p>
+
+              <div className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {communityPoints.map((point) => (
+                  <div
+                    key={point}
+                    className="rounded-2xl border border-dark-border bg-dark-alt px-4 py-3 text-sm font-bold text-dark-text"
+                  >
+                    <span className="mr-2 text-[#8EA1FF]">#</span>
+                    {point}
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <a
+                  href={finalInvite}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={handleJoinClick}
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#5865F2] px-6 text-sm font-black text-white shadow-xl shadow-[#5865F2]/20 transition hover:bg-[#6D78FF]"
+                  aria-label="Join the SixByFive Discord"
+                >
+                  <FaDiscord className="text-xl" />
+                  Join Discord
+                </a>
+
+                <p className="text-sm text-dark-textMuted">
+                  Roadmap previews, early testing, support, and community chat.
+                </p>
+              </div>
             </div>
           </div>
-
-          {/* CTA Button — CHANGED: cleaner text/contrast; analytics hook */}
-          <a
-            href={finalInvite}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={handleJoinClick}
-            className={`
-              flex items-center gap-2
-              px-6 py-3
-              bg-light-accent dark:bg-dark-accent
-              hover:bg-light-accentLight dark:hover:bg-dark-accentLight
-              text-light-surface dark:text-dark-text
-              hover:text-light-surface dark:hover:text-dark-text
-              text-lg font-semibold rounded-full
-              shadow-lg
-              transition-all duration-150
-              whitespace-nowrap
-              ml-0 md:ml-5
-              mt-3 md:mt-0
-              focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent
-              border-2 border-light-accent dark:border-dark-accent
-              hover:border-light-accentLight dark:hover:border-dark-accentLight
-            `}
-            aria-label="Join our Discord"
-          >
-            <FaDiscord className="text-2xl mr-1 -ml-1 text-light-surface dark:text-dark-text" aria-hidden="true" />
-            <span>Join&nbsp;Discord</span>
-          </a>
-
-          {/* Dismiss button */}
-          {hideable && (
-            <button
-              aria-label="Dismiss"
-              className="
-                absolute top-2 right-3 text-light-textMuted dark:text-dark-textMuted
-                hover:text-light-accent dark:hover:text-dark-accent
-                p-2 rounded-full
-                bg-light-alt/60 dark:bg-dark-alt/60 hover:bg-light-surface/80 dark:hover:bg-dark-surface/80
-                transition shadow
-              "
-              onClick={dismiss}
-              style={{ boxShadow: "0 2px 8px 0 #21224c30" }}
-            >
-              <FaTimes className="text-lg" aria-hidden="true" />
-            </button>
-          )}
-        </motion.div>
-      )}
-    </AnimatePresence>
+        </div>
+      </div>
+    </section>
   );
 }

@@ -12,8 +12,8 @@ export const dynamic = "force-dynamic";
 export async function GET(req) {
   const reqId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-  const backend = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
-  const target = `${backend.replace(/\/+$/, "")}/api/discord/share/guilds`;
+  const backend = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4010";
+  const target = `${backend.replace(/\/+$/, "")}/discord/share/guilds`;
 
   const auth = req.headers.get("authorization") || "";
 

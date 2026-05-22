@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import BinderCover from "@/components/Binder/BinderCover";
+import { devLog } from "@/utils/devLog";
 
 /**
  * BinderNav
@@ -39,7 +40,7 @@ export default function BinderNav({
       return;
     }
     setSaving(true);
-    console.log("Save & Close button clicked - attempting to call handleSaveBinder");
+    devLog("Save & Close button clicked - attempting to call handleSaveBinder");
     const result = await handlers.handleSaveBinder();
     setSaving(false);
     if (result) onClose();
@@ -52,7 +53,7 @@ export default function BinderNav({
       return;
     }
     setSaving(true);
-    console.log("Save button clicked - attempting to call handleSaveBinder");
+    devLog("Save button clicked - attempting to call handleSaveBinder");
     await handlers.handleSaveBinder();
     setSaving(false);
   };

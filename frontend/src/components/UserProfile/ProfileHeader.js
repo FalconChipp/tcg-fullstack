@@ -15,8 +15,8 @@ import { FaEyeSlash } from "react-icons/fa";
 import pokemonList, { getPokemonDisplaySprite } from "@/utils/pokemonListShiny";
 
 import { useMessenger } from "@/components/Messenger/MessengerContext";
-
-const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+import { getApiBase, getGraphqlUrl } from "@/utils/apiClient";
+import { devError } from "@/utils/devLog";
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat("en-GB", {
@@ -57,7 +57,7 @@ export default function ProfileHeader({
   // Messenger API
   const { openChat } = useMessenger();
 
-  const rawBackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4010";
+  const rawBackendUrl = getApiBase();
   const NEXT_PUBLIC_BACKEND_URL = rawBackendUrl.startsWith("http")
     ? rawBackendUrl
     : `https://${rawBackendUrl}`;
@@ -147,7 +147,7 @@ export default function ProfileHeader({
 
     const variables = { bio, favouritePokemon, avatar: avatarForUpdate || null };
 
-    const res = await fetch(WP_GRAPHQL_URL, {
+    const res = await fetch(getGraphqlUrl(), {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ query: updateProfileMutation, variables }),
@@ -192,7 +192,7 @@ export default function ProfileHeader({
           setNewProfileImage(null);
         }
       } catch (err) {
-        console.error("Avatar upload failed", err);
+        devError("Avatar upload failed", err);
       }
     }
 
@@ -207,11 +207,11 @@ export default function ProfileHeader({
         setIsEditing(false);
         onEdit?.(serverProfile);
       } else {
-        console.error("Failed to update profile", json);
+        devError("Failed to update profile", json);
         setIsEditing(false);
       }
     } catch (e) {
-      console.error("Profile update failed", e);
+      devError("Profile update failed", e);
       setIsEditing(false);
     } finally {
       setIsSaving(false);
@@ -227,7 +227,7 @@ export default function ProfileHeader({
     try {
       await openChat(String(profileUserId));
     } catch (e) {
-      console.error("openChat failed:", e);
+      devError("openChat failed:", e);
     }
   };
 

@@ -3,8 +3,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { getCookie } from "@/utils/cookieUtils";
 import { formatVariation } from "@/utils/formatVariation";
+import { getGraphqlUrl } from "@/utils/apiClient";
 
-const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
 const TCG_GRAPHQL_URL = "https://tcg.sixbyfive.com/tcgdex/graphql";
 
 // -------- helpers --------
@@ -231,7 +231,7 @@ export default function EditCollectionCardModal({ card, onClose, onUpdated, onRe
       // Try rename if the variation changed
       if (desiredVariation !== currentVariation) {
         let json = await gqlFetch(
-          WP_GRAPHQL_URL,
+          getGraphqlUrl(),
           UPDATE_RENAME_A,
           {
             cardId,
@@ -245,7 +245,7 @@ export default function EditCollectionCardModal({ card, onClose, onUpdated, onRe
 
         if (hasUnknownArgError(json)) {
           json = await gqlFetch(
-            WP_GRAPHQL_URL,
+            getGraphqlUrl(),
             UPDATE_RENAME_B,
             {
               cardId,
@@ -266,7 +266,7 @@ export default function EditCollectionCardModal({ card, onClose, onUpdated, onRe
 
         // Fall back to base update (no rename) using the ORIGINAL variation for lookup
         const base = await gqlFetch(
-          WP_GRAPHQL_URL,
+          getGraphqlUrl(),
           UPDATE_BASE,
           {
             cardId,
@@ -297,7 +297,7 @@ export default function EditCollectionCardModal({ card, onClose, onUpdated, onRe
 
       // Simple update when variation is unchanged
       const json = await gqlFetch(
-        WP_GRAPHQL_URL,
+        getGraphqlUrl(),
         UPDATE_BASE,
         {
           cardId,
@@ -334,7 +334,7 @@ export default function EditCollectionCardModal({ card, onClose, onUpdated, onRe
     }
     try {
       const json = await gqlFetch(
-        WP_GRAPHQL_URL,
+        getGraphqlUrl(),
         REMOVE_MUTATION,
         { cardId: card.cardId || card.id, variation: originalVariationRef.current },
         token

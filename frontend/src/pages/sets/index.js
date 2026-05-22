@@ -2,6 +2,7 @@
 // Era ordering, search, and set listing for the Sets index page.
 
 import React, { useMemo, useState } from "react";
+import { devWarn } from "@/utils/devLog";
 import Link from "next/link";
 import Image from "next/image";
 import Layout from "@/components/Layout/Layout";
@@ -374,7 +375,7 @@ async function loadSetsFromBackend() {
 
     if (!fallbackTotals.size) fallbackTotals = null;
   } catch (err) {
-    console.warn("Unable to pre-load fallback totals:", err);
+    devWarn("Unable to pre-load fallback totals:", err);
     fallbackTotals = null;
   }
 
@@ -428,11 +429,11 @@ async function loadSetsFromCacheFiles() {
         const summary = mapCacheSetSummary(json);
         if (summary) sets.push(summary);
       } catch (err) {
-        console.warn(`Failed to parse cache set '${code}':`, err);
+        devWarn(`Failed to parse cache set '${code}':`, err);
       }
     }
   } catch (err) {
-    console.warn("Unable to read backend cache sets:", err);
+    devWarn("Unable to read backend cache sets:", err);
   }
 
   return sets;
@@ -461,11 +462,11 @@ async function loadSetsFromLegacyFiles() {
           series: json.series || null,
         });
       } catch (err) {
-        console.warn(`Failed to parse legacy set '${file}':`, err);
+        devWarn(`Failed to parse legacy set '${file}':`, err);
       }
     }
   } catch (err) {
-    console.warn("Unable to read legacy sets from /public/data:", err);
+    devWarn("Unable to read legacy sets from /public/data:", err);
   }
 
   return sets;
@@ -504,9 +505,9 @@ export async function getStaticProps() {
     if (sets.length) {
       return { props: { sets } };
     }
-    console.warn("GraphQL returned no sets; falling back to local data files.");
+    devWarn("GraphQL returned no sets; falling back to local data files.");
   } catch (err) {
-    console.warn("Unable to load sets from GraphQL, falling back to local data files:", err);
+    devWarn("Unable to load sets from GraphQL, falling back to local data files:", err);
   }
 
   const fallbackSets = await loadSetsFromFiles();

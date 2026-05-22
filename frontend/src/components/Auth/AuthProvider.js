@@ -2,6 +2,8 @@
 
 import React, { createContext, useState, useEffect, useCallback, useRef } from "react";
 import { getCookie, setCookie } from "@/utils/cookieUtils";
+import { getApiBase, getGraphqlUrl } from "@/utils/apiClient";
+import { devError } from "@/utils/devLog";
 
 // How long (ms) to wait before proactively refreshing — 13 min, giving 2 min
 // buffer before the 15-minute JWT expiry.
@@ -14,11 +16,6 @@ function deleteCookie(name) {
   document.cookie = `${name}=; Max-Age=-99999999; path=/;`;
 }
 
-const API_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  process.env.NEXT_PUBLIC_BACKEND_URL ||
-  "http://localhost:4010";
 
 export const AuthContext = createContext();
 
@@ -41,7 +38,7 @@ export function AuthProvider({ children }) {
   // Returns the new access token string, or null on failure.
   const silentRefresh = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      const res = await fetch(`${getApiBase()}/auth/refresh`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -52,7 +49,7 @@ export function AuthProvider({ children }) {
     } catch {
       return null;
     }
-  }, [API_BASE_URL]);
+  }, []);
 
   // Schedule the next proactive refresh 13 minutes from now.
   const scheduleRefresh = useCallback(() => {
@@ -79,7 +76,7 @@ export function AuthProvider({ children }) {
         return;
       }
       try {
-        const res = await fetch(API_GRAPHQL_URL, {
+        const res = await fetch(getGraphqlUrl(), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -127,7 +124,7 @@ export function AuthProvider({ children }) {
           setUser(null);
         }
       } catch (error) {
-        console.error("AuthProvider: Error fetching user:", error);
+        devError("AuthProvider: Error fetching user:", error);
       }
       setLoading(false);
     },
@@ -172,7 +169,7 @@ export function AuthProvider({ children }) {
   // Unified login/register handler
   const authMutation = async (mutation, variables) => {
     try {
-      const res = await fetch(API_GRAPHQL_URL, {
+      const res = await fetch(getGraphqlUrl(), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -204,7 +201,7 @@ export function AuthProvider({ children }) {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     storeToken(null);
     setUser(null);
-    fetch(`${API_BASE_URL}/auth/logout`, {
+    fetch(`${getApiBase()}/auth/logout`, {
       method: "POST",
       credentials: "include",
       headers: t ? { Authorization: `Bearer ${t}` } : {},
@@ -213,15 +210,15 @@ export function AuthProvider({ children }) {
 
   const connectDiscord = async (returnPath = "/account?tab=security") => {
     try {
-      const r = await fetch(`${API_BASE_URL}/auth/discord/start-url?return=${encodeURIComponent(returnPath)}`, {
+      const r = await fetch(`${getApiBase()}/auth/discord/start-url?return=${encodeURIComponent(returnPath)}`, {
         method: "GET",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const { url } = await r.json();
       if (url) window.location.href = url;
     } catch (e) {
-      console.error("Failed to get Discord start URL:", e);
-      window.location.href = `${API_BASE_URL}/auth/discord/start?return=${encodeURIComponent(returnPath)}`;
+      devError("Failed to get Discord start URL:", e);
+      window.location.href = `${getApiBase()}/auth/discord/start?return=${encodeURIComponent(returnPath)}`;
     }
   };
 

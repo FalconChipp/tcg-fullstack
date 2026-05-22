@@ -8,8 +8,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-
-const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+import { getGraphqlUrl } from "@/utils/apiClient";
 
 const STATUS_CHIPS = ["ACTIVE", "GRAIL", "EVENTUAL", "UPGRADE"];
 
@@ -92,7 +91,7 @@ export default function useWishlistData({
       `;
 
       try {
-        const resp = await fetch(WP_GRAPHQL_URL, {
+        const resp = await fetch(getGraphqlUrl(), {
           method: "POST",
           headers,
           cache: "no-store",

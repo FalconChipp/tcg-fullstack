@@ -1,3 +1,5 @@
+import { devWarn, devError } from "@/utils/devLog";
+
 /**
  * Formats a date string into a more readable format
  * 
@@ -14,7 +16,7 @@ export function formatDate(dateString, options = {}) {
     
     // Check if date is valid
     if (isNaN(date.getTime())) {
-      console.warn(`Invalid date: ${dateString}`);
+      devWarn(`Invalid date: ${dateString}`);
       return "Invalid Date";
     }
     
@@ -33,7 +35,7 @@ export function formatDate(dateString, options = {}) {
     
     return date.toLocaleDateString(undefined, dateOptions);
   } catch (error) {
-    console.error(`Error formatting date: ${dateString}`, error);
+    devError(`Error formatting date: ${dateString}`, error);
     return "Date Error";
   }
 }
@@ -52,7 +54,7 @@ export function formatRelativeTime(dateString) {
     
     // Check if date is valid
     if (isNaN(date.getTime())) {
-      console.warn(`Invalid date for relative time: ${dateString}`);
+      devWarn(`Invalid date for relative time: ${dateString}`);
       return "Invalid Date";
     }
     
@@ -98,7 +100,7 @@ export function formatRelativeTime(dateString) {
     const years = Math.floor(diffInSeconds / 31536000);
     return `${years} ${years === 1 ? 'year' : 'years'} ago`;
   } catch (error) {
-    console.error(`Error formatting relative time: ${dateString}`, error);
+    devError(`Error formatting relative time: ${dateString}`, error);
     return "Date Error";
   }
 }

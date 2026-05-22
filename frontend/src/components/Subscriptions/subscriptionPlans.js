@@ -71,33 +71,26 @@ function FeatureItem({ label, state }) {
 /**
  * Props:
  * - currentPlanId?: string
- * - token?: string
  * - plansData: Array<{
- *     id, name, priceText, badge?, comingSoon?: boolean,
+ *     id, name, priceText, badge?, hasStripe?: boolean,
  *     highlight, cta, features:[{label,state:'live'|'beta'|'soon'}]
  *   }>
- * - onSelect?: (planId) => void   // optional; falls back to a simple redirect stub
+ * - onSelect?: (planId: string) => void
+ * - checkoutLoading?: string | null   // planId currently being processed
  */
 export default function SubscriptionPlans({
   currentPlanId,
-  token,
   plansData = [],
   onSelect,
+  checkoutLoading = null,
 }) {
-  const handleSelect = (planId) => {
-    if (onSelect) return onSelect(planId);
-    // TODO: wire to your Stripe/checkout when live
-    const target = `/checkout?plan=${encodeURIComponent(planId)}${
-      token ? `&token=${encodeURIComponent(token)}` : ""
-    }`;
-    if (typeof window !== "undefined") window.location.href = target;
-  };
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
       {plansData.map((plan) => {
         const isCurrent = plan.id === currentPlanId;
-        const disabled = plan.comingSoon && !isCurrent;
+        // A plan is unavailable if Stripe isn't configured for it yet (except Free)
+        const unavailable = !isCurrent && !plan.hasStripe && plan.name.toLowerCase() !== "free";
+        const isLoading = checkoutLoading === plan.id;
 
         return (
           <div
@@ -115,7 +108,7 @@ export default function SubscriptionPlans({
               <h3 className="text-xl font-bold text-light-primary dark:text-dark-primary leading-tight">
                 {plan.name}
               </h3>
-              <PlanBadge text={plan.badge || (plan.comingSoon ? "Coming soon" : null)} />
+              <PlanBadge text={plan.badge || (unavailable ? "Coming soon" : null)} />
             </div>
 
             {/* Price */}
@@ -151,7 +144,7 @@ export default function SubscriptionPlans({
                 >
                   Current plan
                 </button>
-              ) : disabled ? (
+              ) : unavailable ? (
                 <button
                   disabled
                   aria-disabled="true"
@@ -168,16 +161,17 @@ export default function SubscriptionPlans({
                 </button>
               ) : (
                 <button
-                  onClick={() => handleSelect(plan.id)}
+                  onClick={() => onSelect?.(plan.id)}
+                  disabled={isLoading || !!checkoutLoading}
                   className="
                     w-full px-4 py-2 rounded-xl text-base font-semibold
                     bg-light-accent hover:bg-light-accentLight text-white
                     dark:bg-dark-accent dark:hover:bg-dark-accentLight dark:text-white
                     border-2 border-light-accent dark:border-dark-accent
-                    transition
+                    transition disabled:opacity-60 disabled:cursor-wait
                   "
                 >
-                  {plan.cta}
+                  {isLoading ? "Redirecting…" : plan.cta}
                 </button>
               )}
             </div>

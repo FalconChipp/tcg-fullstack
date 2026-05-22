@@ -5,9 +5,9 @@ const TABS = [
   { key: "collection", label: "Collection" },
   { key: "wishlist", label: "Wishlist" },
   { key: "binders", label: "Binders" },
-  { key: "achievements", label: "Achievements" },
+  // { key: "achievements", label: "Achievements" },
   // { key: "trades", label: "Trades" },
-  // { key: "listings", label: "Listings" },
+  { key: "listings", label: "Listings" },
   // { key: "stats", label: "Stats" },
   // { key: "customisation", label: "Customisation" }
 ];

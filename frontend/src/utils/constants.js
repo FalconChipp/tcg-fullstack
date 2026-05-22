@@ -27,4 +27,3 @@ export const CARD_RARITIES = {
   SECRET_RARE: 'Secret Rare'
 }; 
 
-export const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;

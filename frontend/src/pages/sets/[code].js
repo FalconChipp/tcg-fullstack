@@ -1,5 +1,6 @@
 // src/pages/sets/[code].js
 import React, { useMemo, useState } from "react";
+import { devWarn, devError } from "@/utils/devLog";
 import Image from "next/image";
 import Head from "next/head";
 import Layout from "@/components/Layout/Layout";
@@ -340,7 +341,7 @@ async function loadAllCodesFromFiles() {
       }
     }
   } catch (err) {
-    console.warn("Unable to read cache set codes:", err);
+    devWarn("Unable to read cache set codes:", err);
   }
 
   const DATA_DIR = path.join(process.cwd(), "public", "data");
@@ -352,7 +353,7 @@ async function loadAllCodesFromFiles() {
       }
     }
   } catch (err) {
-    console.warn("Unable to read legacy set codes:", err);
+    devWarn("Unable to read legacy set codes:", err);
   }
 
   return Array.from(codes);
@@ -472,7 +473,7 @@ async function loadSetFromFiles(code) {
       if (mapped) return mapped;
     }
   } catch (err) {
-    console.warn(`Failed to parse cache set '${normalized}':`, err);
+    devWarn(`Failed to parse cache set '${normalized}':`, err);
   }
 
   const DATA_DIR = path.join(process.cwd(), "public", "data");
@@ -513,7 +514,7 @@ async function loadSetFromFiles(code) {
       cards,
     };
   } catch (err) {
-    console.error(`Failed to read legacy set file '${normalized}.json':`, err);
+    devError(`Failed to read legacy set file '${normalized}.json':`, err);
     return null;
   }
 }
@@ -527,9 +528,9 @@ export async function getStaticPaths() {
         fallback: false,
       };
     }
-    console.warn("GraphQL returned no set codes; falling back to local data files.");
+    devWarn("GraphQL returned no set codes; falling back to local data files.");
   } catch (err) {
-    console.warn("Unable to load set codes from GraphQL, falling back to local data files:", err);
+    devWarn("Unable to load set codes from GraphQL, falling back to local data files:", err);
   }
 
   const fallbackCodes = await loadAllCodesFromFiles();
@@ -548,9 +549,9 @@ export async function getStaticProps({ params }) {
     if (set) {
       return { props: { set } };
     }
-    console.warn(`Set '${code}' not found via GraphQL; attempting local fallback.`);
+    devWarn(`Set '${code}' not found via GraphQL; attempting local fallback.`);
   } catch (err) {
-    console.warn(`Unable to load set '${code}' from GraphQL, falling back to local data:`, err);
+    devWarn(`Unable to load set '${code}' from GraphQL, falling back to local data:`, err);
   }
 
   const fallbackSet = await loadSetFromFiles(code);

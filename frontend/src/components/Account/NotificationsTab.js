@@ -3,6 +3,7 @@
 "use client";
 
 import React, { useContext, useEffect, useMemo, useState } from "react";
+import { devError } from "@/utils/devLog";
 import StatusMessage from "@/components/UI/StatusMessage";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 import { fetchPrefs, setPrefs } from "@/graphql/notifications";
@@ -43,7 +44,7 @@ export default function NotificationsTab() {
           setInitial(merged);
         }
       } catch (e) {
-        console.error('Load prefs failed', e);
+        devError('Load prefs failed', e);
         setStatus({ type: 'error', message: e.message || 'Failed to load notification preferences' });
       } finally {
         if (!cancelled) setLoading(false);

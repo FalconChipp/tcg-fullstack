@@ -1,28 +1,17 @@
 // pages/index.js
-// NOTE: "use client" is App Router only. Not harmful here, but unnecessary in /pages.
-// "use client";
 
 import React, { useState } from "react";
 import Layout from "@/components/Layout/Layout";
 import HeroSection from "@/components/Layout/Hero";
 import CardSearch from "@/components/Collection/CardSearch";
-import KeyFeatures from "@/components/Layout/KeyFeatures";
-import FAQ /* , { FAQ_ITEMS } */ from "@/components/Layout/FAQ";
+import FAQ from "@/components/Layout/FAQ";
 import DiscordJoinBar from "@/components/Layout/DiscordBar";
 import AuthModal from "@/components/Auth/AuthModal";
 
-// Homepage modules
-import IntroFeatureCards from "@/components/Home/IntroFeatureCards";
-import OnboardingQuickStart from "@/components/Home/OnboardingQuickStart";
 import MobileAppPromo from "@/components/Home/AppBanner";
-import LiveStats from "@/components/Home/LiveStats"; // ✅ NEW: real/fake stats section
-import EvolvedProtectionSpotlight from "@/components/Partners/EvolvedSpotlight";
-
-// ❌ REMOVED UNUSED IMPORTS:
-// import ProofStrip from "@/components/Home/ProofStrip";
-// import SearchIntro from "@/components/Home/SearchIntro";
-import Landing from "@/components/Layout/Landing";
-// import EvolvedProtectionSpotlight from "@/components/Partners/EvolvedSpotlight";
+import ProductPillars from "@/components/Home/ProductPillars";
+import BinderShowcaseSection from "@/components/Home/BinderShowcaseSection";
+import MarketplaceTeaser from "@/components/Home/MarketplaceTeaser";
 
 export default function Home() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -32,38 +21,30 @@ export default function Home() {
       <Layout
         noTopPadding
         seo={{
-          // ✅ Tweaked to match the newer positioning we discussed
           title: "SixByFive TCG — Track, value, and own your Pokémon collection",
           description:
             "All your Pokémon cards in one place — organised, valued, and ready to grow. Track your collection, build shareable binders, and see real pricing insights. Free to start — built for UK collectors.",
-          canonical: "/", // resolved to full URL by SEO component
-          // faqItems: FAQ_ITEMS, // OPTIONAL: enable FAQ rich results if you export FAQ_ITEMS
-          // ogImage: "https://tcg.sixbyfive.com/og-image.png", // OPTIONAL override
+          canonical: "/",
         }}
       >
-        <div className="pt-20 bg-transparent">
+        <div className="pt-20 bg-dark-background">
           <HeroSection onOpenAuthModal={() => setAuthModalOpen(true)} />
+
+          <section id="card-search" className="scroll-mt-28 bg-dark-background">
+            <CardSearch variant="home" />
+          </section>
+
+          <ProductPillars />
+
+          <BinderShowcaseSection />
+
+          <MarketplaceTeaser />
 
           <MobileAppPromo />
 
-          <section
-            id="card-search"
-            className="scroll-mt-28 border-b border-light-border/40 dark:border-dark-border/40 bg-light-surfaceAlt dark:bg-dark-surfaceAlt"
-          >
-            <div className="mx-auto max-w-6xl px-4 py-10 sm:py-12 lg:py-14">
-              <CardSearch />
-            </div>
-          </section>
-
-          <IntroFeatureCards />
-
-
-          <OnboardingQuickStart />
-
-          <KeyFeatures />
           <DiscordJoinBar />
-          <FAQ />
 
+          <FAQ />
         </div>
 
         <AuthModal
@@ -72,9 +53,6 @@ export default function Home() {
           onAuthSuccess={() => setAuthModalOpen(false)}
         />
       </Layout>
-
-      {/* Maintenance landing page (for special cases) */}
-      {/* <Landing /> */}
     </>
   );
 }

@@ -6,11 +6,8 @@ import React, { useState, useEffect, useContext, useCallback } from "react";
 import StatusMessage from "@/components/UI/StatusMessage";
 import { FaDiscord, FaGoogle } from "react-icons/fa";
 import { AuthContext } from "../Auth/AuthProvider";
-
-// Backend REST base (for /auth/discord/* and unlink)
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4010";
-// GraphQL API for account mutations
-const GRAPHQL_ENDPOINT = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+import { getApiBase, getGraphqlUrl } from "@/utils/apiClient";
+import { devError } from "@/utils/devLog";
 
 function getPasswordRules(pw) {
   return {
@@ -86,9 +83,7 @@ function computeFrontendRestriction({ dob, backendLevel }) {
 }
 
 async function gqlRequest({ token, query, variables }) {
-  if (!GRAPHQL_ENDPOINT) throw new Error("GRAPHQL endpoint is not configured (NEXT_PUBLIC_GRAPHQL_ENDPOINT).");
-
-  const res = await fetch(GRAPHQL_ENDPOINT, {
+  const res = await fetch(getGraphqlUrl(), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -129,7 +124,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
 
     setPwStatus({ type: "loading", msg: "Updating..." });
     try {
-      const res = await fetch(GRAPHQL_ENDPOINT, {
+      const res = await fetch(getGraphqlUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : undefined },
         body: JSON.stringify({
@@ -170,7 +165,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
 
     setEmailStatus({ type: "loading", msg: "Updating email..." });
     try {
-      const res = await fetch(GRAPHQL_ENDPOINT, {
+      const res = await fetch(getGraphqlUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : undefined },
         body: JSON.stringify({
@@ -214,7 +209,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
   async function handleStart2FA() {
     setTwoFA((s) => ({ ...s, loading: true, generalStatus: null }));
     try {
-      const res = await fetch(GRAPHQL_ENDPOINT, {
+      const res = await fetch(getGraphqlUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : undefined },
         body: JSON.stringify({ query: "mutation { enableTwoFactor { otpauthUrl qrCodeDataURL } }" }),
@@ -240,7 +235,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
     e.preventDefault();
     setTwoFA((s) => ({ ...s, verifyStatus: null, loading: true }));
     try {
-      const res = await fetch(GRAPHQL_ENDPOINT, {
+      const res = await fetch(getGraphqlUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : undefined },
         body: JSON.stringify({
@@ -269,7 +264,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
   async function handleDisable2FA() {
     setTwoFA((s) => ({ ...s, loading: true, generalStatus: null }));
     try {
-      const res = await fetch(GRAPHQL_ENDPOINT, {
+      const res = await fetch(getGraphqlUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : undefined },
         body: JSON.stringify({ query: "mutation { disableTwoFactor }" }),
@@ -491,7 +486,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
       setConnStatus({ type: "loading", msg: "Opening Discord…" });
 
       const returnPath = encodeURIComponent("/account?tab=security");
-      const r = await fetch(`${API_BASE_URL}/auth/discord/start-url?return=${returnPath}`, {
+      const r = await fetch(`${getApiBase()}/auth/discord/start-url?return=${returnPath}`, {
         method: "GET",
         credentials: "include",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -504,9 +499,9 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
           return;
         }
       }
-      window.location.href = `${API_BASE_URL}/auth/discord/start?return=${returnPath}`;
+      window.location.href = `${getApiBase()}/auth/discord/start?return=${returnPath}`;
     } catch (e) {
-      console.error(e);
+      devError(e);
       setConnStatus({ type: "error", msg: "Failed to start Discord linking." });
     } finally {
       setConnLoading(null);
@@ -517,7 +512,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
     try {
       setConnLoading("discord");
       setConnStatus({ type: "loading", msg: "Unlinking…" });
-      const r = await fetch(`${API_BASE_URL}/auth/discord/unlink`, {
+      const r = await fetch(`${getApiBase()}/auth/discord/unlink`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

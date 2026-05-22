@@ -15,17 +15,17 @@ import SubscriptionTab from "@/components/Account/SubscriptionTab";
 import MarketplaceTab from "@/components/Account/MarketplaceTab";
 import PrivacyTab from "@/components/Account/PrivacyTab";
 import SupportTab from "@/components/Account/SupportTab";
+import WalletTab from "@/components/Account/WalletTab";
 
 // Icons
 import {
   KeyRound,
   Bell,
-  UserCog,
   CreditCard,
   Store,
-  Shield,
   HelpCircle,
   Lock,
+  Wallet,
 } from "lucide-react";
 import { FaDiscord } from "react-icons/fa";
 
@@ -34,10 +34,11 @@ import { FaDiscord } from "react-icons/fa";
    ========================= */
 const NAV = [
   { key: "security",      label: "Security",        icon: KeyRound },
-  { key: "subscriptions", label: "Subscription",    icon: CreditCard, soon: true},
-  { key: "marketplace",   label: "Marketplace",     icon: Store,      soon: true },
+  { key: "wallet",        label: "Wallet",           icon: Wallet },
+  { key: "subscriptions", label: "Subscription",    icon: CreditCard, soon: true },
+  { key: "marketplace",   label: "Marketplace",     icon: Store },
   { key: "support",       label: "Support/Help",    icon: HelpCircle },
-  { key: "notifications", label: "Notifications",   icon: Bell,       soon: true },             
+  { key: "notifications", label: "Notifications",   icon: Bell },
   { key: "privacy",       label: "Privacy & Data",  icon: Lock },
 ];
 
@@ -295,6 +296,7 @@ export default function AccountPage() {
             <main className="min-w-0">
               <div className="rounded-2xl bg-light-surface/60 dark:bg-dark-surface/60">
                 {activeTab === "security" && <SecurityTab user={user} token={token} />}
+                {activeTab === "wallet" && <WalletTab token={token} />}
                 {activeTab === "subscriptions" && <SubscriptionTab user={user} token={token} />}
                 {activeTab === "marketplace" && <MarketplaceTab user={user} token={token} />}
                 {activeTab === "support" && <SupportTab />}

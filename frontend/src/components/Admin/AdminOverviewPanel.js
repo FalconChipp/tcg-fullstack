@@ -1,158 +1,186 @@
-// frontend/src/components/Admin/AdminOverviewPanel.js
-// -----------------------------------------------------------------------------
-// Admin overview panel.
-// Shows high-level counts for users + listings using ADMIN_OVERVIEW_QUERY.
-// -----------------------------------------------------------------------------
-
 "use client";
 
 import React from "react";
 import { useQuery } from "@apollo/client";
 import { ADMIN_OVERVIEW_QUERY } from "@/graphql/adminOverview";
 
+function StatCard({ label, value, sub, accent }) {
+  const accentMap = {
+    green:  "border-emerald-500/20 bg-emerald-500/[0.04]",
+    red:    "border-red-500/20 bg-red-500/[0.04]",
+    amber:  "border-amber-500/20 bg-amber-500/[0.04]",
+    blue:   "border-sky-500/20 bg-sky-500/[0.04]",
+    purple: "border-violet-500/20 bg-violet-500/[0.04]",
+    default:"border-white/[0.08] bg-white/[0.02]",
+  };
+
+  const valueColor = {
+    green:  "text-emerald-300",
+    red:    "text-red-300",
+    amber:  "text-amber-300",
+    blue:   "text-sky-300",
+    purple: "text-violet-300",
+    default:"text-neutral-50",
+  };
+
+  const cls = accentMap[accent] ?? accentMap.default;
+  const vcls = valueColor[accent] ?? valueColor.default;
+
+  return (
+    <div className={`border rounded-xl p-4 ${cls}`}>
+      <p className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider mb-2">
+        {label}
+      </p>
+      <p className={`text-2xl font-bold tabular-nums ${vcls}`}>
+        {value ?? 0}
+      </p>
+      {sub && (
+        <p className="text-[11px] text-neutral-500 mt-1.5">{sub}</p>
+      )}
+    </div>
+  );
+}
+
+function Skeleton() {
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div
+          key={i}
+          className="border border-white/[0.06] rounded-xl p-4 bg-white/[0.02] animate-pulse"
+        >
+          <div className="h-3 w-20 rounded bg-white/10 mb-3" />
+          <div className="h-7 w-12 rounded bg-white/10 mb-2" />
+          <div className="h-2.5 w-24 rounded bg-white/[0.06]" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AdminOverviewPanel() {
   const { data, loading, error, refetch } = useQuery(ADMIN_OVERVIEW_QUERY, {
-    variables: {
-      usersLimit: 500,
-      listingsLimit: 500,
-    },
+    variables: { usersLimit: 500, listingsLimit: 500 },
     fetchPolicy: "cache-first",
   });
 
-  const users = data?.allUsers ?? [];
-  const listings = data?.listings ?? [];
+  const users    = data?.allUsers    ?? [];
+  const listings = data?.listings    ?? [];
 
-  const totalUsers = users.length;
-  const adminUsers = users.filter((u) => u.isAdmin).length;
-  const bannedUsers = users.filter((u) => u.isBanned).length;
+  const totalUsers    = users.length;
+  const adminUsers    = users.filter((u) => u.isAdmin).length;
+  const bannedUsers   = users.filter((u) => u.isBanned).length;
+  const verifiedUsers = users.filter((u) => u.emailVerified).length;
 
-  const totalListings = listings.length;
-  const activeListings = listings.filter((l) => l.status === "active").length;
-  const soldListings = listings.filter((l) => l.status === "sold").length;
-  const cardListings = listings.filter((l) => l.type === "CARD").length;
+  const totalListings   = listings.length;
+  const activeListings  = listings.filter((l) => l.status === "ACTIVE" || l.status === "active").length;
+  const soldListings    = listings.filter((l) => l.status === "SOLD"   || l.status === "sold").length;
+  const pendingListings = listings.filter((l) => String(l.status).toLowerCase().includes("pending")).length;
+  const cardListings    = listings.filter((l) => l.type === "CARD").length;
   const productListings = listings.filter((l) => l.type === "PRODUCT").length;
 
-  if (loading) {
-    return (
-      <div className="border border-white/5 rounded-xl p-4 md:p-6 bg-black/40">
-        <p className="text-sm text-neutral-300 mb-1">
-          Loading admin overview…
-        </p>
-        <p className="text-xs text-neutral-500">
-          Fetching users and listings data from the server.
-        </p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="border border-red-500/40 rounded-xl p-4 md:p-6 bg-red-950/40">
-        <p className="text-sm text-red-300 font-semibold mb-1">
-          Failed to load admin overview
-        </p>
-        <p className="text-xs text-red-200 mb-3">{error.message}</p>
-        <button
-          type="button"
-          onClick={() => refetch()}
-          className="inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium border border-red-400/60 text-red-50 hover:bg-red-500/10"
-        >
-          Try again
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-4">
-      {/* Top intro + refresh */}
-      <div className="flex items-center justify-between gap-2">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-sm font-semibold text-neutral-50">
-            Admin overview
-          </h2>
-          <p className="text-xs text-neutral-500">
-            High-level stats pulled live from your backend.
+          <h2 className="text-base font-semibold text-neutral-50">Overview</h2>
+          <p className="text-xs text-neutral-500 mt-0.5">
+            Platform-wide metrics at a glance.
           </p>
         </div>
         <button
           type="button"
           onClick={() => refetch()}
-          className="inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium border border-white/20 text-neutral-50 hover:bg-white/10"
+          disabled={loading}
+          className="inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium border border-white/15 text-neutral-300 hover:bg-white/5 disabled:opacity-50 transition"
         >
           Refresh
         </button>
       </div>
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {/* Total users */}
-        <StatCard
-          label="Total users"
-          value={totalUsers}
-          sub={`${adminUsers} admin${adminUsers === 1 ? "" : "s"}`}
-        />
-        {/* Admin users */}
-        <StatCard
-          label="Admin users"
-          value={adminUsers}
-          sub={`${bannedUsers} banned`}
-        />
-        {/* Banned users */}
-        <StatCard
-          label="Banned users"
-          value={bannedUsers}
-          sub={`${totalUsers - bannedUsers} active`}
-        />
-        {/* Total listings */}
-        <StatCard
-          label="Total listings"
-          value={totalListings}
-          sub={`${activeListings} active • ${soldListings} sold`}
-        />
-        {/* Card listings */}
-        <StatCard
-          label="Card listings"
-          value={cardListings}
-          sub={`${productListings} product listings`}
-        />
-      </div>
+      {error && (
+        <div className="border border-red-500/30 rounded-xl p-4 bg-red-950/30">
+          <p className="text-sm text-red-300 font-medium mb-1">Failed to load overview</p>
+          <p className="text-xs text-red-400">{error.message}</p>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="mt-3 inline-flex items-center rounded-lg px-3 py-1.5 text-xs border border-red-400/50 text-red-200 hover:bg-red-500/10"
+          >
+            Try again
+          </button>
+        </div>
+      )}
 
-      {/* Raw info block */}
-      <div className="border border-white/5 rounded-xl p-4 md:p-5 bg-black/40">
-        <p className="text-xs text-neutral-400 mb-1">
-          This panel currently uses:
-        </p>
-        <ul className="text-[11px] text-neutral-500 space-y-0.5 list-disc list-inside">
-          <li>
-            <code className="px-1 py-0.5 rounded bg-black/60 border border-white/10">
-              allUsers(limit: 500)
-            </code>{" "}
-            to count total/admin/banned users.
-          </li>
-          <li>
-            <code className="px-1 py-0.5 rounded bg-black/60 border border-white/10">
-              listings(limit: 500)
-            </code>{" "}
-            to count card vs product and active vs sold listings.
-          </li>
-        </ul>
-      </div>
-    </div>
-  );
-}
+      {loading && !data ? (
+        <Skeleton />
+      ) : (
+        <>
+          {/* Users */}
+          <section className="space-y-2">
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-neutral-600">
+              Users
+            </h3>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <StatCard
+                label="Total users"
+                value={totalUsers}
+                sub={`${verifiedUsers} verified emails`}
+              />
+              <StatCard
+                label="Admins"
+                value={adminUsers}
+                sub={`${((adminUsers / totalUsers) * 100 || 0).toFixed(1)}% of users`}
+                accent="purple"
+              />
+              <StatCard
+                label="Banned"
+                value={bannedUsers}
+                sub={bannedUsers > 0 ? "Review ban list" : "All clear"}
+                accent={bannedUsers > 0 ? "red" : "default"}
+              />
+              <StatCard
+                label="Unverified"
+                value={totalUsers - verifiedUsers}
+                sub="Awaiting email confirmation"
+                accent={totalUsers - verifiedUsers > 0 ? "amber" : "default"}
+              />
+            </div>
+          </section>
 
-function StatCard({ label, value, sub }) {
-  return (
-    <div className="border border-white/10 rounded-xl p-3.5 bg-black/40">
-      <p className="text-[11px] text-neutral-400 mb-1">{label}</p>
-      <p className="text-xl font-semibold text-neutral-50">
-        {value ?? 0}
-      </p>
-      {sub && (
-        <p className="text-[11px] text-neutral-500 mt-0.5">
-          {sub}
-        </p>
+          {/* Listings */}
+          <section className="space-y-2">
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-neutral-600">
+              Marketplace
+            </h3>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <StatCard
+                label="Total listings"
+                value={totalListings}
+                sub={`${cardListings} cards · ${productListings} products`}
+              />
+              <StatCard
+                label="Active"
+                value={activeListings}
+                sub={`${((activeListings / totalListings) * 100 || 0).toFixed(1)}% of all`}
+                accent="green"
+              />
+              <StatCard
+                label="Sold"
+                value={soldListings}
+                sub="Completed sales"
+                accent="blue"
+              />
+              <StatCard
+                label="Pending / proof"
+                value={pendingListings}
+                sub="Awaiting moderation or payment"
+                accent={pendingListings > 0 ? "amber" : "default"}
+              />
+            </div>
+          </section>
+        </>
       )}
     </div>
   );

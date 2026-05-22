@@ -9,6 +9,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { devWarn } from "@/utils/devLog";
 import Image from "next/image";
 import { useRouter } from "next/router";
 import { useTheme } from "@/hooks/ThemeProvider";
@@ -437,7 +438,7 @@ export default function ProfileWishlistPanel({
         setToastStatus({ type: "success", msg: `Wishlist status: ${prettyStatus(savedStatus)}` });
       }
     } catch (err) {
-      console.warn("[Wishlist] update status failed", err);
+      devWarn("[Wishlist] update status failed", err);
 
       // rollback local
       setDisplayWishlist((prev) =>

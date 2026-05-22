@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { getCardImageUrl } from '@/utils/imageUtils';
+import { getGraphqlUrl } from '@/utils/apiClient';
 
 // TCG Pocket cards filter (unchanged)
 const TCG_POCKET_CODES = [
@@ -83,11 +84,10 @@ export default function BinderCardSearch({
     }
 
     try {
-      const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
       const PAGE_SIZE = 28;
       const offset = (currentPage - 1) * PAGE_SIZE;
 
-      const res = await fetch(GRAPHQL_URL, {
+      const res = await fetch(getGraphqlUrl(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

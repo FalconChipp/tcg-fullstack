@@ -1169,15 +1169,17 @@ export default function CardDetailsModal({
                                 ) : null}
                               </div>
                             ) : (
-                              <div className={`text-xs ${textMuted}`}>No recent pricing samples yet.</div>
+                              <>
+                                <div className={`text-xs ${textMuted}`}>No recent pricing samples yet.</div>
+                                <div
+                                  className={`text-xs px-3 py-2 inline-flex items-center gap-2 rounded-lg border border-dashed ${
+                                    isDark ? "border-dark-border/70 bg-dark-alt/50" : "border-light-border/80 bg-light-alt/70"
+                                  } ${textMuted}`}
+                                >
+                                  Still gathering price data; check back soon.
+                                </div>
+                              </>
                             )}
-                            <div
-                              className={`text-xs px-3 py-2 inline-flex items-center gap-2 rounded-lg border border-dashed ${
-                                isDark ? "border-dark-border/70 bg-dark-alt/50" : "border-light-border/80 bg-light-alt/70"
-                              } ${textMuted}`}
-                            >
-                              Still gathering price data; check back soon.
-                            </div>
                           </div>
                           <div className="flex items-center gap-2">
                             {HISTORY_RANGE_OPTIONS.map((opt) => {

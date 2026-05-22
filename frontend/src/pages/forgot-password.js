@@ -1,8 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import Head from "next/head";
-
-const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+import { getGraphqlUrl } from "@/utils/apiClient";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -22,7 +21,7 @@ export default function ForgotPasswordPage() {
     const variables = { email };
 
     try {
-      const res = await fetch(WP_GRAPHQL_URL, {
+      const res = await fetch(getGraphqlUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query, variables }),

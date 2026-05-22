@@ -9,8 +9,7 @@ import CardSkeleton from "@/components/UI/CardSkeleton";
 import BinderCover from "../Binder/BinderCover";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 import { executeMutation, COLLECTION_MUTATIONS } from "@/utils/graphqlUtils";
-
-const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+import { getGraphqlUrl } from "@/utils/apiClient";
 
 function getCardGbpPrice(card) {
   if (!card) return 0;
@@ -100,7 +99,7 @@ export default function ProfileBindersPanel({
     const headers = { "Content-Type": "application/json" };
     if (isOwnProfile && token) headers["Authorization"] = `Bearer ${token}`;
 
-    fetch(WP_GRAPHQL_URL, {
+    fetch(getGraphqlUrl(), {
       method: "POST",
       headers,
       body: JSON.stringify({ query, variables })

@@ -160,7 +160,8 @@ export const COLLECTION_MUTATIONS = {
  * @param {string} token - Authentication token
  * @returns {Promise<Object>} The response data or error
  */
-const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+import { getGraphqlUrl } from "@/utils/apiClient";
+import { devError } from "@/utils/devLog";
 
 // CHANGED: canonical Cardsearch fragments for shared queries
 export const CARDSEARCH_FRAGMENTS = {
@@ -209,7 +210,7 @@ export const CARDSEARCH_QUERIES = {
 
 export async function executeMutation(mutation, variables, token) {
   try {
-    const response = await fetch(GRAPHQL_URL, {
+    const response = await fetch(getGraphqlUrl(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -242,18 +243,18 @@ export async function executeMutation(mutation, variables, token) {
 
     if (!response.ok) {
       const message = extractErrorMessage();
-      console.error('GraphQL Error Response:', resultJson ?? resultText);
+      devError('GraphQL Error Response:', resultJson ?? resultText);
       throw new Error(message || `HTTP error! status: ${response.status}`);
     }
 
     if (resultJson?.errors) {
-      console.error('GraphQL Errors:', resultJson.errors);
+      devError('GraphQL Errors:', resultJson.errors);
       throw new Error(extractErrorMessage() || 'Failed to execute mutation');
     }
 
     return resultJson?.data || resultJson;
   } catch (error) {
-    console.error('Mutation error:', error);
+    devError('Mutation error:', error);
     if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
       throw new Error('Unable to connect to the server. Please check your internet connection.');
     }

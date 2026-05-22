@@ -3,8 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-
-const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+import { getGraphqlUrl } from "@/utils/apiClient";
 
 export default function UserSearchDropdown() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -37,7 +36,7 @@ export default function UserSearchDropdown() {
         `;
         const variables = { q: searchTerm };
         try {
-          const response = await fetch(WP_GRAPHQL_URL, {
+          const response = await fetch(getGraphqlUrl(), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ query, variables }),

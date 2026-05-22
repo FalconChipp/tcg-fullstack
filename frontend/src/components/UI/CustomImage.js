@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { getCardImageUrl } from '@/utils/imageUtils';
+import { devError } from '@/utils/devLog';
 
 const CustomImage = ({
   card,
@@ -47,7 +48,7 @@ const CustomImage = ({
       });
       setImageSrc(imageUrl);
     } catch (error) {
-      console.error('Error getting image URL:', error);
+      devError('Error getting image URL:', error);
       setImageError(true);
     }
   }, [card, src]);
@@ -85,7 +86,7 @@ const CustomImage = ({
 
   // Handle image error
   const handleError = (e) => {
-    console.error('Failed to load image:', {
+    devError('Failed to load image:', {
       src: imageSrc,
       cardId: card?.cardId,
       error: e

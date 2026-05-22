@@ -12,6 +12,7 @@ import {
   CREATE_SUBSCRIPTION,
   CANCEL_SUBSCRIPTION,
   RESUME_SUBSCRIPTION,
+  UPDATE_SUBSCRIPTION,
 } from '../graphql/subscriptions';
 
 // ─── Queries ──────────────────────────────────────────────────────────────────
@@ -93,6 +94,27 @@ export async function reactivateUserSubscription() {
     refetchQueries: [{ query: MY_SUBSCRIPTION }],
   });
   return data?.resumeSubscription ?? null;
+}
+
+/**
+ * Fetch the user's subscription invoices (mapped from payment transactions).
+ */
+export async function fetchUserInvoices({ page = 1, pageSize = 20 } = {}) {
+  const txns = await fetchUserTransactions({ page, pageSize });
+  return txns.map((t) => ({ ...t, date: t.createdAt }));
+}
+
+/**
+ * Switch the user's active subscription to a different plan (inline Stripe update).
+ * Returns the updated subscription.
+ */
+export async function updateUserSubscription(planId) {
+  const { data } = await apolloClient.mutate({
+    mutation: UPDATE_SUBSCRIPTION,
+    variables: { planId },
+    refetchQueries: [{ query: MY_SUBSCRIPTION }],
+  });
+  return data?.updateSubscription ?? null;
 }
 
 /**

@@ -105,3 +105,22 @@ export const RESUME_SUBSCRIPTION = gql`
     }
   }
 `;
+
+export const UPDATE_SUBSCRIPTION = gql`
+  mutation UpdateSubscription($planId: ID!) {
+    updateSubscription(planId: $planId) {
+      id
+      status
+      cancelAtPeriodEnd
+      currentPeriodStart
+      currentPeriodEnd
+      plan {
+        id
+        name
+        price
+        currency
+        interval
+      }
+    }
+  }
+`;

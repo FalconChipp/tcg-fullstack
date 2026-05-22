@@ -525,7 +525,7 @@ export async function getStaticPaths() {
     if (codes.length) {
       return {
         paths: codes.map((code) => ({ params: { code } })),
-        fallback: false,
+        fallback: 'blocking',
       };
     }
     devWarn("GraphQL returned no set codes; falling back to local data files.");
@@ -536,7 +536,7 @@ export async function getStaticPaths() {
   const fallbackCodes = await loadAllCodesFromFiles();
   return {
     paths: fallbackCodes.map((code) => ({ params: { code } })),
-    fallback: false,
+    fallback: 'blocking',
   };
 }
 

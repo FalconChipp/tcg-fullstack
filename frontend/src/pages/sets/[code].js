@@ -1,5 +1,6 @@
 // src/pages/sets/[code].js
 import React, { useMemo, useState, useEffect } from "react";
+import { useRouter } from "next/router";
 import { devWarn } from "@/utils/devLog";
 import Image from "next/image";
 import Head from "next/head";
@@ -84,7 +85,10 @@ function parseIntSafe(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
-export default function SetPage({ code }) {
+export default function SetPage() {
+  const { query } = useRouter();
+  const code = typeof query.code === "string" ? query.code.toLowerCase() : null;
+
   const [set, setSet] = useState(null);
   const [loadingSet, setLoadingSet] = useState(true);
   const [filter, setFilter] = useState("");
@@ -277,8 +281,10 @@ export default function SetPage({ code }) {
 }
 
 /* -------------------- Data fetching (client-side) -------------------- */
-const CARDSEARCH_SET_QUERY = /* GraphQL */ `
-  query CardsearchSetStatic($code: String!) {
+
+// Combined query — fetches set metadata + first page of cards in ONE round trip.
+const CARDSEARCH_SET_COMBINED_QUERY = /* GraphQL */ `
+  query CardsearchSetPage($code: String!, $input: CardSearchInput!) {
     cardsearchSetByCode(code: $code) {
       code
       name
@@ -286,9 +292,36 @@ const CARDSEARCH_SET_QUERY = /* GraphQL */ `
       series
       total
     }
+    cardsearchSearchCards(input: $input) {
+      total
+      items {
+        cardId
+        number
+        name
+        rarity
+        images {
+          large
+        }
+        latestPrices {
+          variation
+          gbp
+          market
+          mid
+          low
+          high
+          currency
+        }
+        variants {
+          key
+          label
+          default
+        }
+      }
+    }
   }
 `;
 
+// Used only for subsequent pages when a set has >250 cards.
 const CARDSEARCH_SET_CARDS_QUERY = /* GraphQL */ `
   query CardsearchSetCards($input: CardSearchInput!) {
     cardsearchSearchCards(input: $input) {
@@ -344,16 +377,49 @@ async function loadSetFromBackend(code) {
   const codeParam = String(code || "").trim();
   if (!codeParam) return null;
 
-  const data = await executeServerGraphql(CARDSEARCH_SET_QUERY, { code: codeParam });
-  const setData = data?.cardsearchSetByCode;
+  // First request: set metadata + page 1 of cards in a single round trip.
+  const firstData = await executeServerGraphql(CARDSEARCH_SET_COMBINED_QUERY, {
+    code: codeParam,
+    input: { set: codeParam, limit: CARDSEARCH_SET_PAGE_SIZE, offset: 0 },
+  });
+
+  const setData = firstData?.cardsearchSetByCode;
   if (!setData) return null;
+
+  const firstPayload = firstData?.cardsearchSearchCards;
+  const firstItems = Array.isArray(firstPayload?.items) ? firstPayload.items : [];
+  let reportedTotal = typeof firstPayload?.total === "number" ? firstPayload.total : null;
 
   const cards = [];
   const seenCards = new Set();
-  let offset = 0;
-  let reportedTotal = typeof setData.total === "number" ? setData.total : null;
 
-  for (let page = 0; page < CARDSEARCH_SET_MAX_PAGES; page += 1) {
+  // Process first page
+  for (const item of firstItems) {
+    if (!item) continue;
+    const cardId = item.cardId || (item.number && `${codeParam}-${item.number}`);
+    if (cardId && seenCards.has(cardId)) continue;
+    if (cardId) seenCards.add(cardId);
+    cards.push({
+      id: cardId,
+      number: item.number || "",
+      name: item.name || "",
+      rarity: item.rarity || null,
+      imageUrl: item.images?.large || item.images?.small || null,
+      prices: mapLatestPrices(item.latestPrices),
+    });
+  }
+
+  // If all cards fit on page 1, we're done — no further requests needed.
+  if (
+    (typeof reportedTotal === "number" && cards.length >= reportedTotal) ||
+    (firstItems.length < CARDSEARCH_SET_PAGE_SIZE && reportedTotal == null)
+  ) {
+    return buildSetResult(codeParam, setData, cards, reportedTotal);
+  }
+
+  // Rare case: set has >250 cards — fetch remaining pages.
+  let offset = firstItems.length;
+  for (let page = 1; page < CARDSEARCH_SET_MAX_PAGES; page += 1) {
     const res = await executeServerGraphql(CARDSEARCH_SET_CARDS_QUERY, {
       input: {
         set: codeParam,
@@ -364,73 +430,49 @@ async function loadSetFromBackend(code) {
 
     const payload = res?.cardsearchSearchCards;
     const items = Array.isArray(payload?.items) ? payload.items : [];
-    if (typeof payload?.total === "number") {
-      reportedTotal = payload.total;
-    }
-
+    if (typeof payload?.total === "number") reportedTotal = payload.total;
     if (items.length === 0) break;
 
     for (const item of items) {
       if (!item) continue;
       const cardId = item.cardId || (item.number && `${codeParam}-${item.number}`);
-      const mappedPrices = mapLatestPrices(item.latestPrices);
-      if (cardId && seenCards.has(cardId)) {
-        continue;
-      }
-      if (cardId) {
-        seenCards.add(cardId);
-      }
-      const entry = {
+      if (cardId && seenCards.has(cardId)) continue;
+      if (cardId) seenCards.add(cardId);
+      cards.push({
         id: cardId,
         number: item.number || "",
         name: item.name || "",
         rarity: item.rarity || null,
         imageUrl: item.images?.large || item.images?.small || null,
-        prices: mappedPrices,
-      };
-      cards.push(entry);
+        prices: mapLatestPrices(item.latestPrices),
+      });
     }
 
     offset += items.length;
-
-    if (typeof reportedTotal === "number" && cards.length >= reportedTotal) {
-      break;
-    }
-
-    if (items.length < CARDSEARCH_SET_PAGE_SIZE && reportedTotal == null) {
-      break;
-    }
+    if (typeof reportedTotal === "number" && cards.length >= reportedTotal) break;
+    if (items.length < CARDSEARCH_SET_PAGE_SIZE && reportedTotal == null) break;
   }
 
-  const normalized = {
-    code: codeParam.toLowerCase(),
-    name: setData.name || codeParam.toUpperCase(),
+  return buildSetResult(codeParam, setData, cards, reportedTotal);
+}
+
+function buildSetResult(code, setData, cards, reportedTotal) {
+  const totalCards =
+    typeof setData.total === "number"
+      ? setData.total
+      : typeof reportedTotal === "number"
+        ? reportedTotal
+        : cards.length || null;
+  return {
+    code: code.toLowerCase(),
+    name: setData.name || code.toUpperCase(),
     abbr: setData.abbr ?? null,
     series: setData.series ?? null,
     era: inferSetEra(setData),
-    totalCards:
-      typeof setData.total === "number"
-        ? setData.total
-        : typeof reportedTotal === "number"
-          ? reportedTotal
-          : cards.length || null,
+    totalCards: totalCards || cards.length || null,
     cards,
   };
-
-  if (!normalized.totalCards && cards.length) {
-    normalized.totalCards = cards.length;
-  }
-
-  return normalized;
 }
 
-export async function getStaticPaths() {
-  return { paths: [], fallback: 'blocking' };
-}
-
-export async function getStaticProps({ params }) {
-  const code = String(params?.code || "").toLowerCase();
-  if (!code) return { notFound: true };
-  // Data is fetched client-side — just pass the code through.
-  return { props: { code } };
-}
+// No getServerSideProps / getStaticProps needed — code comes from useRouter(),
+// and set data is fetched client-side directly from the backend catalog.

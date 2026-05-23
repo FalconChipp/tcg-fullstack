@@ -181,7 +181,7 @@ export default function SetPage({ code }) {
     });
 
     return list;
-  }, [set.cards, filter, selectedRarities, sort, ownedSet]);
+  }, [set?.cards, filter, selectedRarities, sort, ownedSet]);
 
   // Preload first row images (top ~10)
   const preloadImages = useMemo(() => {

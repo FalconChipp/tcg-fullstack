@@ -9,7 +9,6 @@ import useSetPrices from "@/hooks/useSetPrices";
 import useSetOwned from "@/hooks/useSetOwned";
 import inferSetEra from "@/utils/setEra";
 import executeServerGraphql from "@/utils/serverGraphql";
-import { mapCacheSetDetail } from "@/utils/setDataTransforms";
 
 /* -------------------- UI: Card Tile -------------------- */
 function SetCardTile({ card, owned = false, price, eager = false }) {
@@ -324,39 +323,6 @@ async function loadAllCodesFromBackend() {
   return codes;
 }
 
-async function loadAllCodesFromFiles() {
-  const fs = (await import("fs")).default || (await import("fs"));
-  const path = require("path");
-  const codes = new Set();
-
-  const CACHE_DIR = path.join(process.cwd(), "backend", ".cache", "cardsearch", "sets");
-  try {
-    if (fs.existsSync(CACHE_DIR)) {
-      const entries = fs.readdirSync(CACHE_DIR, { withFileTypes: true });
-      for (const entry of entries) {
-        if (entry.isDirectory()) {
-          codes.add(entry.name.toLowerCase());
-        }
-      }
-    }
-  } catch (err) {
-    console.warn("Unable to read cache set codes:", err);
-  }
-
-  const DATA_DIR = path.join(process.cwd(), "public", "data");
-  try {
-    if (fs.existsSync(DATA_DIR)) {
-      const files = fs.readdirSync(DATA_DIR).filter((f) => f.endsWith(".json"));
-      for (const file of files) {
-        codes.add(file.replace(/\.json$/i, "").toLowerCase());
-      }
-    }
-  } catch (err) {
-    console.warn("Unable to read legacy set codes:", err);
-  }
-
-  return Array.from(codes);
-}
 
 function mapLatestPrices(prices) {
   if (!Array.isArray(prices) || prices.length === 0) return null;
@@ -459,65 +425,6 @@ async function loadSetFromBackend(code) {
   return normalized;
 }
 
-async function loadSetFromFiles(code) {
-  const fs = (await import("fs")).default || (await import("fs"));
-  const path = require("path");
-  const normalized = String(code || "").toLowerCase();
-  const CACHE_DIR = path.join(process.cwd(), "backend", ".cache", "cardsearch", "sets");
-  const cachePath = path.join(CACHE_DIR, normalized, `${normalized}.json`);
-
-  try {
-    if (fs.existsSync(cachePath)) {
-      const json = JSON.parse(fs.readFileSync(cachePath, "utf8"));
-      const mapped = mapCacheSetDetail(json);
-      if (mapped) return mapped;
-    }
-  } catch (err) {
-    console.warn(`Failed to parse cache set '${normalized}':`, err);
-  }
-
-  const DATA_DIR = path.join(process.cwd(), "public", "data");
-  const legacyPath = path.join(DATA_DIR, `${normalized}.json`);
-  if (!fs.existsSync(legacyPath)) return null;
-
-  try {
-    const json = JSON.parse(fs.readFileSync(legacyPath, "utf8"));
-    const seen = new Set();
-    const cards = Array.isArray(json.cards)
-      ? json.cards
-          .map((card) => {
-            if (!card) return null;
-            const number = card.number || card.localId || "";
-            const id = card.id || (number ? `${normalized}-${number}` : null);
-            if (id && seen.has(id)) return null;
-            if (id) seen.add(id);
-            const prices = Array.isArray(card.prices) ? card.prices : null;
-            return {
-              id,
-              number,
-              name: card.name || "",
-              rarity: card.rarity || null,
-              imageUrl: card.imageUrl || card.image || null,
-              prices,
-            };
-          })
-          .filter(Boolean)
-      : [];
-
-    return {
-      code: normalized,
-      name: json.name || normalized.toUpperCase(),
-      totalCards: json.totalCards ?? (Array.isArray(json.cards) ? json.cards.length : null),
-      era: json.era || inferSetEra({ code: normalized, abbr: json.abbreviation }),
-      abbr: json.abbreviation || null,
-      series: json.series || null,
-      cards,
-    };
-  } catch (err) {
-    console.error(`Failed to read legacy set file '${normalized}.json':`, err);
-    return null;
-  }
-}
 
 export async function getStaticPaths() {
   return { paths: [], fallback: 'blocking' };
@@ -532,14 +439,8 @@ export async function getStaticProps({ params }) {
     if (set) {
       return { props: { set }, revalidate: 3600 };
     }
-    console.warn(`Set '${code}' not found via GraphQL; attempting local fallback.`);
   } catch (err) {
-    console.warn(`Unable to load set '${code}' from GraphQL, falling back to local data:`, err);
-  }
-
-  const fallbackSet = await loadSetFromFiles(code);
-  if (fallbackSet) {
-    return { props: { set: fallbackSet }, revalidate: 3600 };
+    console.warn(`Unable to load set '${code}' from GraphQL:`, err);
   }
 
   return { notFound: true };

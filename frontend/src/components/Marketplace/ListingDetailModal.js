@@ -252,12 +252,13 @@ export default function ListingDetailModal({ listing, onClose }) {
 
   if (!listing) return null;
 
-  const info     = listing.cardInfo || {};
-  const price    = Number(listing.price) || 0;
-  const currency = listing.currency || "GBP";
-  const seller   = listing.seller || {};
-  const cond     = COND[listing.condition] || null;
-  const imageUrl = info.imageLarge || info.imageSmall || null;
+  const info        = listing.cardInfo || {};
+  const isTradeOnly = listing.willTrade && (listing.price == null || listing.price === 0);
+  const price       = Number(listing.price) || 0;
+  const currency    = listing.currency || "GBP";
+  const seller      = listing.seller || {};
+  const cond        = COND[listing.condition] || null;
+  const imageUrl    = info.imageLarge || info.imageSmall || null;
 
   async function handleBuy() {
     if (!isLoggedIn) { setErr("Please sign in to purchase."); return; }
@@ -379,7 +380,7 @@ export default function ListingDetailModal({ listing, onClose }) {
                 )}
                 {listing.willTrade && (
                   <span className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold bg-violet-600 text-white">
-                    ⇄ Will Trade
+                    {isTradeOnly ? "⇄ Trade Only" : "⇄ Will Trade"}
                   </span>
                 )}
               </div>
@@ -387,10 +388,16 @@ export default function ListingDetailModal({ listing, onClose }) {
               {/* Price + seller */}
               <div className="rounded-2xl bg-light-elevated dark:bg-dark-elevated border border-light-border dark:border-dark-border p-4 flex items-center justify-between gap-4">
                 <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-widest text-light-muted dark:text-dark-muted mb-1">Listed price</div>
-                  <div className="text-3xl font-extrabold text-light-strong dark:text-dark-strong tracking-tight">
-                    {fmt(price, currency)}
+                  <div className="text-[10px] font-semibold uppercase tracking-widest text-light-muted dark:text-dark-muted mb-1">
+                    {isTradeOnly ? "Listing type" : "Listed price"}
                   </div>
+                  {isTradeOnly ? (
+                    <div className="text-2xl font-extrabold text-violet-400 tracking-tight">Trade Only</div>
+                  ) : (
+                    <div className="text-3xl font-extrabold text-light-strong dark:text-dark-strong tracking-tight">
+                      {fmt(price, currency)}
+                    </div>
+                  )}
                 </div>
                 {seller.username && (
                   <div className="flex items-center gap-2.5">
@@ -414,39 +421,58 @@ export default function ListingDetailModal({ listing, onClose }) {
               {/* ── Action buttons ── */}
               {phase === "detail" && (
                 <div className="flex flex-col gap-2 mt-auto">
-                  {/* Primary: buy now */}
-                  <button type="button" onClick={handleBuy} disabled={busy || !isLoggedIn}
-                    className="w-full rounded-xl py-3.5 text-sm font-bold text-white bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight disabled:opacity-50 transition-colors shadow-lg shadow-light-accent/20 dark:shadow-dark-accent/20">
-                    {busy ? "Preparing checkout…" : !isLoggedIn ? "Sign in to buy" : `Buy now · ${fmt(price, currency)}`}
-                  </button>
-
-                  {/* Secondary row: Add to cart + Make an offer */}
-                  <div className="grid gap-2" style={{ gridTemplateColumns: listing.allowOffers ? "1fr 1fr" : "1fr" }}>
-                    <button type="button" onClick={handleAddToCart} disabled={!isLoggedIn}
-                      className="rounded-xl py-2.5 text-sm font-semibold border-2 border-light-border dark:border-dark-border text-light-strong dark:text-dark-strong hover:border-light-accent dark:hover:border-dark-accent hover:text-light-accent dark:hover:text-dark-accent disabled:opacity-50 transition-colors">
-                      🛒 Add to cart
-                    </button>
-                    {listing.allowOffers && (
-                      <button type="button" onClick={() => setPhase("offer")} disabled={!isLoggedIn}
-                        className="rounded-xl py-2.5 text-sm font-semibold border-2 border-light-border dark:border-dark-border text-light-strong dark:text-dark-strong hover:border-amber-500 hover:text-amber-500 disabled:opacity-50 transition-colors">
-                        💬 Make an offer
+                  {isTradeOnly ? (
+                    /* Trade-only: no buy/cart/offer, just trade */
+                    <>
+                      {isLoggedIn ? (
+                        <button type="button"
+                          onClick={() => setShowTrade(true)}
+                          className="w-full rounded-xl py-3.5 text-sm font-bold border-2 border-violet-600 text-violet-400 hover:bg-violet-600 hover:text-white transition-colors">
+                          ⇄ Propose a trade
+                        </button>
+                      ) : (
+                        <p className="text-xs text-center text-light-muted dark:text-dark-muted">
+                          Sign in to propose a trade.
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {/* Primary: buy now */}
+                      <button type="button" onClick={handleBuy} disabled={busy || !isLoggedIn}
+                        className="w-full rounded-xl py-3.5 text-sm font-bold text-white bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight disabled:opacity-50 transition-colors shadow-lg shadow-light-accent/20 dark:shadow-dark-accent/20">
+                        {busy ? "Preparing checkout…" : !isLoggedIn ? "Sign in to buy" : `Buy now · ${fmt(price, currency)}`}
                       </button>
-                    )}
-                  </div>
 
-                  {/* Trade button */}
-                  {listing.willTrade && isLoggedIn && (
-                    <button type="button"
-                      onClick={() => setShowTrade(true)}
-                      className="w-full rounded-xl py-2.5 text-sm font-semibold border-2 border-violet-600 text-violet-600 dark:text-violet-400 dark:border-violet-500 hover:bg-violet-600 hover:text-white dark:hover:bg-violet-600 dark:hover:text-white transition-colors">
-                      ⇄ Propose a trade
-                    </button>
-                  )}
+                      {/* Secondary row: Add to cart + Make an offer */}
+                      <div className="grid gap-2" style={{ gridTemplateColumns: listing.allowOffers ? "1fr 1fr" : "1fr" }}>
+                        <button type="button" onClick={handleAddToCart} disabled={!isLoggedIn}
+                          className="rounded-xl py-2.5 text-sm font-semibold border-2 border-light-border dark:border-dark-border text-light-strong dark:text-dark-strong hover:border-light-accent dark:hover:border-dark-accent hover:text-light-accent dark:hover:text-dark-accent disabled:opacity-50 transition-colors">
+                          🛒 Add to cart
+                        </button>
+                        {listing.allowOffers && (
+                          <button type="button" onClick={() => setPhase("offer")} disabled={!isLoggedIn}
+                            className="rounded-xl py-2.5 text-sm font-semibold border-2 border-light-border dark:border-dark-border text-light-strong dark:text-dark-strong hover:border-amber-500 hover:text-amber-500 disabled:opacity-50 transition-colors">
+                            💬 Make an offer
+                          </button>
+                        )}
+                      </div>
 
-                  {!isLoggedIn && (
-                    <p className="text-xs text-center text-light-muted dark:text-dark-muted">
-                      Sign in to buy, add to cart, or make an offer.
-                    </p>
+                      {/* Trade button */}
+                      {listing.willTrade && isLoggedIn && (
+                        <button type="button"
+                          onClick={() => setShowTrade(true)}
+                          className="w-full rounded-xl py-2.5 text-sm font-semibold border-2 border-violet-600 text-violet-600 dark:text-violet-400 dark:border-violet-500 hover:bg-violet-600 hover:text-white dark:hover:bg-violet-600 dark:hover:text-white transition-colors">
+                          ⇄ Propose a trade
+                        </button>
+                      )}
+
+                      {!isLoggedIn && (
+                        <p className="text-xs text-center text-light-muted dark:text-dark-muted">
+                          Sign in to buy, add to cart, or make an offer.
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
               )}

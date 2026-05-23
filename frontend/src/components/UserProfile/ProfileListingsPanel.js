@@ -3,22 +3,13 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { getGraphqlUrl } from "@/utils/apiClient";
+import { gqlFetch } from "@/utils/apiClient";
 
-/* ─── GraphQL ────────────────────────────────────────────────────────────────── */
+/* ─── GraphQL helper (token, query, vars) — wraps gqlFetch ──────────────────── */
 
-async function gql(token, query, variables = {}) {
-  const res = await fetch(getGraphqlUrl(), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify({ query, variables }),
-  });
-  const json = await res.json();
-  if (json.errors?.length) throw new Error(json.errors[0].message);
-  return json.data;
+// gqlFetch signature is (query, variables, token) — wrapper keeps local call sites unchanged
+function gql(token, query, variables = {}) {
+  return gqlFetch(query, variables, token);
 }
 
 // Own profile — all statuses
@@ -326,9 +317,13 @@ function ListingRow({ listing: initial, token, isOwnProfile, onDelisted }) {
             {[setName, cond, listing.variant].filter(Boolean).join(" • ")}
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <span className="font-extrabold text-base text-light-primary dark:text-dark-primary">
-              £{Number(listing.price || 0).toFixed(2)}
-            </span>
+            {listing.willTrade && !listing.price ? (
+              <span className="font-extrabold text-base text-violet-500 dark:text-violet-400">Trade only</span>
+            ) : (
+              <span className="font-extrabold text-base text-light-primary dark:text-dark-primary">
+                £{Number(listing.price || 0).toFixed(2)}
+              </span>
+            )}
             <span className="text-xs text-light-textMuted dark:text-dark-textMuted">Qty: {listing.quantity}</span>
             {listing.allowOffers && (
               <span className="text-xs px-2 py-0.5 rounded-full border border-light-border dark:border-dark-border text-light-textMuted dark:text-dark-textMuted">

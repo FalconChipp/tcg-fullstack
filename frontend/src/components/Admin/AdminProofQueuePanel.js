@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { gql, useQuery, useMutation } from "@apollo/client";
+import { getApiBase } from "@/utils/apiClient";
 
 const PROOF_QUEUE_QUERY = gql`
   query AdminProofQueue {
@@ -70,9 +71,12 @@ function ProofImage({ path, title }) {
     );
   }
 
-  // Strip any absolute filesystem prefix from legacy records (e.g. /var/uploads/marketplace_proofs/x.jpg → marketplace_proofs/x.jpg)
+  // Strip any absolute filesystem prefix (e.g. /var/uploads/marketplace_proofs/x.jpg → marketplace_proofs/x.jpg)
+  // then prepend the backend base URL so the browser fetches from the gateway, not Netlify.
   const relativePath = path.replace(/^\/var\/uploads\//, '').replace(/^\/uploads\//, '');
-  const src = relativePath.startsWith("http") ? relativePath : `/uploads/${relativePath}`;
+  const src = relativePath.startsWith("http")
+    ? relativePath
+    : `${getApiBase()}/uploads/${relativePath}`;
 
   return (
     <a

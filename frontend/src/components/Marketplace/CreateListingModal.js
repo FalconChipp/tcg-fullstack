@@ -86,10 +86,55 @@ function median(nums) {
     : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
+// ─── TCGDex API ───────────────────────────────────────────────────────────────
+
+const TCG_API_URL = "https://tcg.sixbyfive.com/tcgdex/graphql";
+
+const TCG_CARD_QUERY = `
+  query GetCardData($id: String!) {
+    pokemonCards(externalId: $id, language: "en", perPage: 1) {
+      variations
+      pricing {
+        cardmarket { averageSell average_sell }
+        tcgplayer { market }
+      }
+    }
+  }
+`;
+
+async function fetchTcgCardData(cardId) {
+  try {
+    const res = await fetch(TCG_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: TCG_CARD_QUERY, variables: { id: cardId } }),
+    });
+    const json = await res.json();
+    return json?.data?.pokemonCards?.[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function parseTcgVariations(v) {
+  try {
+    const obj = typeof v === "string" ? JSON.parse(v) : v;
+    if (!obj || typeof obj !== "object") return null;
+    return {
+      normal:       !!(obj.normal        ?? obj.Normal        ?? true),
+      reverse:      !!(obj.reverse       || obj.reverseHolofoil || obj.Reverse),
+      holo:         !!(obj.holo          || obj.holofoil      || obj.Holo),
+      firstEdition: !!(obj.firstEdition  || obj["1st Edition"]),
+    };
+  } catch {
+    return null;
+  }
+}
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const CONDITIONS   = ["NM", "LP", "MP", "PL"];
-const VARIATIONS   = ["Standard", "Reverse Holo", "Holo", "Full Art", "Secret Rare", "Other"];
+const CONDITIONS = ["NM", "LP", "MP", "PL"];
+const VARIATIONS = ["Standard", "Reverse Holo", "Holo", "Full Art", "Secret Rare", "1st Edition", "Other"];
 const PARCEL_SIZES = [
   { value: "LARGE_LETTER", label: "Large Letter", hint: "Up to 500g — most singles" },
   { value: "SMALL_PARCEL",  label: "Small Parcel",  hint: "Up to 1kg — playsets, decks" },
@@ -155,7 +200,7 @@ function Chip({ active, onClick, children }) {
   );
 }
 
-function CardPreviewPanel({ entry, priceSuggestion, priceLoading }) {
+function CardPreviewPanel({ entry, priceSuggestion, priceLoading, apiPrices, apiLoading }) {
   const card = entry?.card;
   if (!entry || !card) {
     return (
@@ -173,6 +218,7 @@ function CardPreviewPanel({ entry, priceSuggestion, priceLoading }) {
   const prices = priceSuggestion?.map((l) => l.price).filter(Boolean) ?? [];
   const low = prices.length ? Math.min(...prices) : null;
   const med = median(prices);
+  const hasApiPrices = apiPrices && (apiPrices.cardmarket || apiPrices.tcgplayer);
 
   return (
     <div className="flex flex-col gap-4">
@@ -202,8 +248,10 @@ function CardPreviewPanel({ entry, priceSuggestion, priceLoading }) {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-        <p className="text-[10px] uppercase tracking-wider text-neutral-600 font-semibold mb-2">Market price</p>
+      {/* ── Marketplace price data ── */}
+      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 space-y-3">
+        <p className="text-[10px] uppercase tracking-wider text-neutral-600 font-semibold">Market price</p>
+
         {priceLoading ? (
           <div className="space-y-1.5">
             <div className="h-3 w-24 rounded bg-white/[0.06] animate-pulse" />
@@ -211,6 +259,7 @@ function CardPreviewPanel({ entry, priceSuggestion, priceLoading }) {
           </div>
         ) : prices.length > 0 ? (
           <div className="space-y-1">
+            <p className="text-[10px] text-neutral-500 font-medium">On this marketplace</p>
             {low != null && (
               <div className="flex justify-between text-xs">
                 <span className="text-neutral-500">Lowest</span>
@@ -223,12 +272,37 @@ function CardPreviewPanel({ entry, priceSuggestion, priceLoading }) {
                 <span className="text-neutral-100 font-medium">£{med.toFixed(2)}</span>
               </div>
             )}
-            <p className="text-[10px] text-neutral-600 mt-1">
+            <p className="text-[10px] text-neutral-600 mt-0.5">
               {prices.length} active listing{prices.length !== 1 ? "s" : ""}
             </p>
           </div>
         ) : (
-          <p className="text-xs text-neutral-600">No active listings found.</p>
+          <p className="text-xs text-neutral-600">No active listings on this marketplace.</p>
+        )}
+
+        {/* External API prices */}
+        {(apiLoading || hasApiPrices) && (
+          <div className="border-t border-white/[0.06] pt-3 space-y-1">
+            <p className="text-[10px] text-neutral-500 font-medium">External reference</p>
+            {apiLoading ? (
+              <div className="h-3 w-28 rounded bg-white/[0.06] animate-pulse" />
+            ) : (
+              <>
+                {apiPrices?.cardmarket != null && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-neutral-500">Cardmarket avg</span>
+                    <span className="text-neutral-300 font-medium">€{Number(apiPrices.cardmarket).toFixed(2)}</span>
+                  </div>
+                )}
+                {apiPrices?.tcgplayer != null && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-neutral-500">TCGPlayer market</span>
+                    <span className="text-neutral-300 font-medium">${Number(apiPrices.tcgplayer).toFixed(2)}</span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         )}
       </div>
     </div>
@@ -237,7 +311,7 @@ function CardPreviewPanel({ entry, priceSuggestion, priceLoading }) {
 
 // ─── Main modal ───────────────────────────────────────────────────────────────
 
-export default function CreateListingModal({ onClose, onCreated }) {
+export default function CreateListingModal({ onClose, onCreated, onViewListings }) {
   const auth = useContext(AuthContext) || {};
   const token = auth.accessToken || auth.token || null;
   const isLoggedIn = !!(auth.isAuthenticated || token);
@@ -254,13 +328,18 @@ export default function CreateListingModal({ onClose, onCreated }) {
   const [selectedEntry, setSelectedEntry]     = useState(null);
   const [variationAutoFilled, setVariationAutoFilled] = useState(false);
 
-  // Price suggestion
+  // Price suggestion (marketplace listings)
   const [priceSuggestion, setPriceSuggestion] = useState(null);
   const [priceLoading, setPriceLoading]       = useState(false);
+
+  // TCGDex card data (variations + external prices)
+  const [tcgData, setTcgData]       = useState(null);
+  const [tcgLoading, setTcgLoading] = useState(false);
 
   // Listing fields
   const [condition, setCondition]     = useState("NM");
   const [variation, setVariation]     = useState("Standard");
+  const [tradeOnly, setTradeOnly]     = useState(false);
   const [price, setPrice]             = useState("");
   const [quantity, setQuantity]       = useState("1");
   const [parcelSize, setParcelSize]   = useState("LARGE_LETTER");
@@ -320,13 +399,20 @@ export default function CreateListingModal({ onClose, onCreated }) {
       setVariationAutoFilled(suggested !== "Standard");
     }
 
-    // Fetch market price
+    // Fetch marketplace price suggestions
     setPriceLoading(true);
     setPriceSuggestion(null);
     gqlFetch(PRICE_SUGGESTION_QUERY, { cardId: selectedEntry.cardId }, token)
       .then((data) => setPriceSuggestion(data?.listings ?? null))
       .catch(() => setPriceSuggestion(null))
       .finally(() => setPriceLoading(false));
+
+    // Fetch TCGDex data (external prices + variations)
+    setTcgLoading(true);
+    setTcgData(null);
+    fetchTcgCardData(selectedEntry.cardId)
+      .then((d) => setTcgData(d))
+      .finally(() => setTcgLoading(false));
   }, [selectedEntry?.cardId, selectedEntry?.variation]);
 
   function handleSelectEntry(entry) {
@@ -340,13 +426,14 @@ export default function CreateListingModal({ onClose, onCreated }) {
     setVariation("Standard");
     setVariationAutoFilled(false);
     setPriceSuggestion(null);
+    setTcgData(null);
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (!selectedEntry) { setErr("Please select a card from your collection."); return; }
-    const priceNum = parseFloat(price);
-    if (!priceNum || priceNum <= 0) { setErr("Please enter a valid price."); return; }
+    const priceNum = tradeOnly ? null : parseFloat(price);
+    if (!tradeOnly && (!priceNum || priceNum <= 0)) { setErr("Please enter a valid price."); return; }
     setBusy(true);
     setErr("");
     try {
@@ -358,13 +445,12 @@ export default function CreateListingModal({ onClose, onCreated }) {
             title:      selectedEntry.card?.name ?? selectedEntry.cardId,
             condition,
             variant:    variation !== "Standard" ? variation : undefined,
-            price:      priceNum,
-            currency:   "GBP",
+            ...(priceNum != null ? { price: priceNum, currency: "GBP" } : {}),
             quantity:   parseInt(quantity, 10) || 1,
             parcelSize,
             labelPaidBy,
-            allowOffers,
-            willTrade,
+            allowOffers: tradeOnly ? false : allowOffers,
+            willTrade:   tradeOnly ? true : willTrade,
           },
         },
         token,
@@ -377,6 +463,41 @@ export default function CreateListingModal({ onClose, onCreated }) {
       setBusy(false);
     }
   }
+
+  // Variations available for this specific card based on TCGDex data
+  const availableVariations = useMemo(() => {
+    const vars = parseTcgVariations(tcgData?.variations);
+    if (!vars) return VARIATIONS;
+    return VARIATIONS.filter((v) => {
+      if (v === "Standard")     return vars.normal !== false;
+      if (v === "Reverse Holo") return !!vars.reverse;
+      if (v === "Holo")         return !!vars.holo;
+      if (v === "1st Edition")  return !!vars.firstEdition;
+      return true; // Full Art, Secret Rare, Other — can't determine from TCGDex
+    });
+  }, [tcgData]);
+
+  // External API prices from TCGDex
+  const apiPrices = useMemo(() => {
+    if (!tcgData?.pricing) return null;
+    const cm = tcgData.pricing.cardmarket || {};
+    const tp = tcgData.pricing.tcgplayer  || {};
+    const cardmarket = Number(cm.averageSell || cm.average_sell) || null;
+    const tcgplayer  = Number(tp.market)    || null;
+    return (cardmarket || tcgplayer) ? { cardmarket, tcgplayer } : null;
+  }, [tcgData]);
+
+  // Reference price for deviation warning — median of marketplace listings
+  const referencePrice = useMemo(() => {
+    const prices = priceSuggestion?.map((l) => l.price).filter(Boolean) ?? [];
+    return prices.length ? median(prices) : null;
+  }, [priceSuggestion]);
+
+  // Price deviation from marketplace median
+  const priceNum = tradeOnly ? null : parseFloat(price);
+  const deviationPct = (referencePrice && priceNum && priceNum > 0)
+    ? ((priceNum - referencePrice) / referencePrice) * 100
+    : null;
 
   const inputCls =
     "w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-neutral-100 " +
@@ -405,23 +526,57 @@ export default function CreateListingModal({ onClose, onCreated }) {
 
         {/* ── Success ── */}
         {done && (
-          <div className="flex flex-col items-center gap-4 py-16 px-6">
-            <div className="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-              <svg className="w-7 h-7 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          <div className="flex flex-col items-center gap-5 py-12 px-6">
+            {/* Icon */}
+            <div className="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+              <svg className="w-7 h-7 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
+
+            {/* Title */}
             <div className="text-center">
-              <p className="text-base font-semibold text-neutral-100">Listing created!</p>
-              <p className="text-sm text-neutral-500 mt-1">Your card is now live on the marketplace.</p>
+              <p className="text-base font-semibold text-neutral-100">Listing submitted!</p>
+              <p className="text-sm text-neutral-400 mt-1">One step left — photo proof required.</p>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="mt-2 rounded-xl px-6 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 transition"
-            >
-              Done
-            </button>
+
+            {/* Proof explanation */}
+            <div className="w-full max-w-sm rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] px-5 py-4 space-y-3">
+              <p className="text-xs font-semibold text-amber-300 uppercase tracking-wide">What happens next?</p>
+              <ol className="space-y-2 text-xs text-neutral-300 list-none">
+                <li className="flex gap-2.5 items-start">
+                  <span className="shrink-0 w-4 h-4 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold flex items-center justify-center mt-0.5">1</span>
+                  <span>Go to <strong className="text-neutral-100">My Listings</strong> and find your new listing.</span>
+                </li>
+                <li className="flex gap-2.5 items-start">
+                  <span className="shrink-0 w-4 h-4 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold flex items-center justify-center mt-0.5">2</span>
+                  <span>Take a photo of your card with the <strong className="text-neutral-100">proof code</strong> written on a piece of paper next to it.</span>
+                </li>
+                <li className="flex gap-2.5 items-start">
+                  <span className="shrink-0 w-4 h-4 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold flex items-center justify-center mt-0.5">3</span>
+                  <span>Upload the photo. Our team will verify it and activate your listing.</span>
+                </li>
+              </ol>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row gap-2 w-full max-w-sm">
+              <button
+                type="button"
+                onClick={() => onViewListings ? onViewListings() : onClose()}
+                className="flex-1 rounded-xl py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 transition"
+              >
+                View my listings
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 rounded-xl py-2.5 text-sm font-medium text-neutral-400 border border-white/10 hover:bg-white/[0.04] transition"
+              >
+                Close
+              </button>
+            </div>
           </div>
         )}
 
@@ -553,7 +708,7 @@ export default function CreateListingModal({ onClose, onCreated }) {
                       )}
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {VARIATIONS.map((v) => (
+                      {availableVariations.map((v) => (
                         <Chip
                           key={v}
                           active={variation === v}
@@ -565,24 +720,69 @@ export default function CreateListingModal({ onClose, onCreated }) {
                     </div>
                   </div>
 
-                  {/* 4. Price + Quantity */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelCls}>Price (£)</label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500 pointer-events-none">£</span>
-                        <input
-                          type="number"
-                          min="0.01"
-                          step="0.01"
-                          value={price}
-                          onChange={(e) => setPrice(e.target.value)}
-                          placeholder="0.00"
-                          className={inputCls + " pl-7"}
-                        />
-                      </div>
+                  {/* 4. Listing type */}
+                  <div>
+                    <label className={labelCls}>Listing type</label>
+                    <div className="flex gap-2">
+                      {[
+                        { value: false, label: "For sale", hint: "Set a price" },
+                        { value: true,  label: "Trade only", hint: "No price — trade offers only" },
+                      ].map((opt) => (
+                        <button
+                          key={String(opt.value)}
+                          type="button"
+                          onClick={() => setTradeOnly(opt.value)}
+                          className={[
+                            "flex-1 flex flex-col items-start rounded-xl border px-3 py-2.5 text-left text-xs transition",
+                            tradeOnly === opt.value
+                              ? "border-indigo-500/60 bg-indigo-600/[0.08]"
+                              : "border-white/[0.06] hover:bg-white/[0.04]",
+                          ].join(" ")}
+                        >
+                          <span className="flex items-center gap-2">
+                            <span className={[
+                              "w-3 h-3 rounded-full border-2 shrink-0 transition",
+                              tradeOnly === opt.value ? "border-indigo-400 bg-indigo-500" : "border-neutral-600",
+                            ].join(" ")} />
+                            <span className="font-semibold text-neutral-100">{opt.label}</span>
+                          </span>
+                          <span className="text-neutral-500 mt-0.5 ml-5">{opt.hint}</span>
+                        </button>
+                      ))}
                     </div>
-                    <div>
+                  </div>
+
+                  {/* 5. Price + Quantity */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {!tradeOnly && (
+                      <div>
+                        <label className={labelCls}>Price (£)</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500 pointer-events-none">£</span>
+                          <input
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            value={price}
+                            onChange={(e) => setPrice(e.target.value)}
+                            placeholder="0.00"
+                            className={inputCls + " pl-7"}
+                          />
+                        </div>
+                        {deviationPct != null && Math.abs(deviationPct) > 15 && (
+                          <p className={[
+                            "text-[11px] mt-1.5 flex items-center gap-1",
+                            deviationPct > 0 ? "text-amber-400" : "text-sky-400",
+                          ].join(" ")}>
+                            {deviationPct > 0 ? "↑" : "↓"}
+                            {" "}{Math.abs(Math.round(deviationPct))}%{" "}
+                            {deviationPct > 0 ? "above" : "below"} marketplace median
+                            {" "}(£{referencePrice.toFixed(2)})
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    <div className={tradeOnly ? "col-span-2" : ""}>
                       <label className={labelCls}>Quantity</label>
                       <input
                         type="number"
@@ -649,10 +849,10 @@ export default function CreateListingModal({ onClose, onCreated }) {
 
                   {/* 7. Offers + trade */}
                   <div className="flex flex-col gap-2.5">
-                    {[
+                    {(tradeOnly ? [] : [
                       { state: allowOffers, set: setAllowOffers, label: "Accept price offers from buyers" },
                       { state: willTrade,   set: setWillTrade,   label: "Open to trading this card" },
-                    ].map(({ state, set, label }) => (
+                    ]).map(({ state, set, label }) => (
                       <label key={label} className="flex items-center gap-3 cursor-pointer group">
                         <div
                           onClick={() => set((v) => !v)}
@@ -689,6 +889,8 @@ export default function CreateListingModal({ onClose, onCreated }) {
                     entry={selectedEntry}
                     priceSuggestion={priceSuggestion}
                     priceLoading={priceLoading}
+                    apiPrices={apiPrices}
+                    apiLoading={tcgLoading}
                   />
                 </div>
               </div>

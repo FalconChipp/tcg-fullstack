@@ -15,7 +15,7 @@ const AGREE_MUTATION = gql`
   }
 `;
 
-export default function MarketplaceRulesModal({ onAgreed }) {
+export default function MarketplaceRulesModal({ onAgreed, isLoggedIn = false }) {
   const [confirmed, setConfirmed] = useState(false);
 
   const { data, loading: rulesLoading } = useQuery(RULES_QUERY, { fetchPolicy: "cache-first" });
@@ -24,6 +24,14 @@ export default function MarketplaceRulesModal({ onAgreed }) {
   const [agree, { loading: agreeing, error }] = useMutation(AGREE_MUTATION, {
     onCompleted: () => onAgreed?.(),
   });
+
+  function handleAgree() {
+    if (isLoggedIn) {
+      agree();
+    } else {
+      onAgreed?.();
+    }
+  }
 
   return (
     <div
@@ -94,7 +102,7 @@ export default function MarketplaceRulesModal({ onAgreed }) {
           )}
 
           <button
-            onClick={() => agree()}
+            onClick={handleAgree}
             disabled={!confirmed || agreeing || rulesLoading}
             className="w-full rounded-xl py-3 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >

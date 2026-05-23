@@ -46,6 +46,7 @@ function CardListingCard({ listing, onClick }) {
   const condition = listing.condition || "";
   const variation = listing.variation || "";
   const seller = listing.seller || {};
+  const isTradeOnly = listing.willTrade && (listing.price == null || listing.price === 0);
   const price = Number(listing.price) || 0;
   const currency = listing.currency || "GBP";
   const imageUrl = info.imageSmall || info.imageLarge || null;
@@ -122,7 +123,10 @@ function CardListingCard({ listing, onClick }) {
             )}
           </div>
           <span className="flex-shrink-0 text-sm font-bold text-light-strong dark:text-dark-strong">
-            {fmt(price, currency)}
+            {isTradeOnly
+              ? <span className="text-violet-400 font-semibold text-xs">Trade only</span>
+              : fmt(price, currency)
+            }
           </span>
         </div>
 

@@ -14,6 +14,7 @@ import ListingGrid from "@/components/Marketplace/ListingGrid";
 import ListingDetailModal from "@/components/Marketplace/ListingDetailModal";
 import CreateListingModal from "@/components/Marketplace/CreateListingModal";
 import MarketplaceRulesModal from "@/components/Marketplace/MarketplaceRulesModal";
+import MyListingsDrawer from "@/components/Marketplace/MyListingsDrawer";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 
 const HAS_AGREED_QUERY = gql`
@@ -25,13 +26,22 @@ const HAS_AGREED_QUERY = gql`
 function MarketplacePage() {
   const auth = useContext(AuthContext) || {};
   const isLoggedIn = !!(auth.isAuthenticated || auth.accessToken || auth.token);
+  const token = auth.accessToken || auth.token || null;
 
   const { data: agreedData, loading: agreedLoading, refetch: refetchAgreed } = useQuery(
     HAS_AGREED_QUERY,
     { skip: !isLoggedIn, fetchPolicy: "network-only" }
   );
-  const hasAgreed = !isLoggedIn || agreedData?.hasAgreedToMarketplaceRules === true;
-  const showRulesModal = isLoggedIn && !agreedLoading && !hasAgreed;
+
+  // For logged-out users, check localStorage; for logged-in, check the DB.
+  const [localAgreed, setLocalAgreed] = useState(() => {
+    try { return localStorage.getItem("sbf_marketplace_rules_agreed") === "1"; } catch { return false; }
+  });
+
+  const hasAgreed = isLoggedIn
+    ? agreedData?.hasAgreedToMarketplaceRules === true
+    : localAgreed;
+  const showRulesModal = !agreedLoading && !hasAgreed;
 
   const [filters, setFilters] = useState({
     type: "CARD",
@@ -42,6 +52,7 @@ function MarketplacePage() {
 
   const [detailListing, setDetailListing] = useState(null);
   const [showCreateListing, setShowCreateListing] = useState(false);
+  const [showMyListings, setShowMyListings] = useState(false);
 
   function handleFiltersChange(next) {
     const nextStatus = (next && next.status) || "ACTIVE";
@@ -81,14 +92,25 @@ function MarketplacePage() {
             </p>
           </div>
 
-          {isLoggedIn && hasAgreed && (
-            <button
-              type="button"
-              onClick={() => setShowCreateListing(true)}
-              className="rounded-full px-5 py-2 text-sm font-semibold text-white bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight transition-colors"
-            >
-              + List a card
-            </button>
+          {isLoggedIn && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowMyListings(true)}
+                className="rounded-full px-4 py-2 text-sm font-medium text-light-muted dark:text-dark-muted border border-light-border dark:border-dark-border hover:bg-light-surface dark:hover:bg-dark-surface transition-colors"
+              >
+                My listings
+              </button>
+              {hasAgreed && (
+                <button
+                  type="button"
+                  onClick={() => setShowCreateListing(true)}
+                  className="rounded-full px-5 py-2 text-sm font-semibold text-white bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight transition-colors"
+                >
+                  + List a card
+                </button>
+              )}
+            </div>
           )}
         </div>
 
@@ -122,11 +144,31 @@ function MarketplacePage() {
         <CreateListingModal
           onClose={() => setShowCreateListing(false)}
           onCreated={() => setShowCreateListing(false)}
+          onViewListings={() => {
+            setShowCreateListing(false);
+            setShowMyListings(true);
+          }}
         />
       )}
 
+      <MyListingsDrawer
+        open={showMyListings}
+        onClose={() => setShowMyListings(false)}
+        token={token}
+      />
+
       {showRulesModal && (
-        <MarketplaceRulesModal onAgreed={() => refetchAgreed()} />
+        <MarketplaceRulesModal
+          isLoggedIn={isLoggedIn}
+          onAgreed={() => {
+            if (isLoggedIn) {
+              refetchAgreed();
+            } else {
+              try { localStorage.setItem("sbf_marketplace_rules_agreed", "1"); } catch {}
+              setLocalAgreed(true);
+            }
+          }}
+        />
       )}
     </Layout>
   );

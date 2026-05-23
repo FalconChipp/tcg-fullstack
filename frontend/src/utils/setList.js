@@ -8,6 +8,7 @@ const setList = [
   { abbr: "PFL", code : "me02", name: "Phantasmal Flames", logo: "/assets/set-logos/phantasmal-flames-logo.png" },
   { abbr: "ASC", code : "me02.5", name: "Ascended Heroes", logo: "/assets/set-logos/ascended-heroes-logo.png" },
   { abbr: "POR", code : "me03", name: "Perfect Order", logo: "/assets/set-logos/perfect-order-logo.png" }, 
+  { abbr: "CRI", code : "me04", name: "Chaos Rising", logo: "/assets/set-logos/chaos-rising-logo.png" },
 
   // Scarlet & Violet era
   { abbr: "SVP", code: "svp", name: "Scarlet & Violet Promos", logo: "/assets/set-logos/promo-logo.webp" },

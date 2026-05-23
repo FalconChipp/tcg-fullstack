@@ -126,6 +126,7 @@ const LISTINGS_QUERY = gql`
         variation
         allowOffers
         willTrade
+        moderationResult
         seller {
           id
           username

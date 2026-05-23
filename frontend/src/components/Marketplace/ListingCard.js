@@ -86,12 +86,20 @@ function CardListingCard({ listing, onClick }) {
           </span>
         )}
 
-        {/* Will Trade — top right only (Offers shown in detail modal) */}
-        {listing.willTrade && (
-          <span className="absolute top-2 right-2 rounded-full bg-violet-600 text-white px-2 py-0.5 text-[10px] font-semibold shadow">
-            Will Trade
-          </span>
-        )}
+        {/* Top-right badges — stacked vertically */}
+        <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
+          {listing.moderationResult === "approved" && (
+            <span className="rounded-full bg-emerald-600/90 text-white px-2 py-0.5 text-[10px] font-semibold shadow flex items-center gap-0.5">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+              Verified
+            </span>
+          )}
+          {listing.willTrade && (
+            <span className="rounded-full bg-violet-600 text-white px-2 py-0.5 text-[10px] font-semibold shadow">
+              Will Trade
+            </span>
+          )}
+        </div>
       </div>
 
       {/* ── Info row */}

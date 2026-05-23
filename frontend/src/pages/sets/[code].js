@@ -101,9 +101,10 @@ export default function SetPage({ code }) {
       .finally(() => setLoadingSet(false));
   }, [code]);
 
-  // Hooks: prices + owned/completion
-  const { pricesById, totalSetPriceGbp } = useSetPrices(set);
-  const { ownedSet, completedCount } = useSetOwned(set);
+  // Hooks: prices + owned/completion — pass empty stub while set is loading
+  const setOrEmpty = set ?? { cards: [] };
+  const { pricesById, totalSetPriceGbp } = useSetPrices(setOrEmpty);
+  const { ownedSet, completedCount } = useSetOwned(setOrEmpty);
 
   // Rarity options (order: first-seen by card number)
   const rarityOptions = useMemo(() => {
@@ -111,7 +112,7 @@ export default function SetPage({ code }) {
       const m = String(c?.number ?? "").match(/\d+/);
       return m ? parseInt(m[0], 10) : Number.MAX_SAFE_INTEGER;
     };
-    const cards = Array.isArray(set.cards) ? [...set.cards].sort((a, b) => getNum(a) - getNum(b)) : [];
+    const cards = Array.isArray(set?.cards) ? [...set.cards].sort((a, b) => getNum(a) - getNum(b)) : [];
     const seen = new Set();
     const ordered = [];
     for (const c of cards) {
@@ -122,7 +123,7 @@ export default function SetPage({ code }) {
       }
     }
     return ordered;
-  }, [set.cards]);
+  }, [set?.cards]);
 
   // Selected rarities
   const [selectedRarities, setSelectedRarities] = useState(() => new Set());
@@ -138,7 +139,7 @@ export default function SetPage({ code }) {
   // Build filtered/sorted list (text + rarity + sort)
   const view = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    let list = Array.isArray(set.cards) ? set.cards.slice() : [];
+    let list = Array.isArray(set?.cards) ? set.cards.slice() : [];
 
     if (q) {
       list = list.filter((c) => {

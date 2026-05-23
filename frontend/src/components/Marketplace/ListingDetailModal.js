@@ -371,6 +371,12 @@ export default function ListingDetailModal({ listing, onClose }) {
                     {listing.variation}
                   </span>
                 )}
+                {listing.moderationResult === "approved" && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold bg-emerald-600/20 border border-emerald-500/40 text-emerald-400">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                    Photo verified
+                  </span>
+                )}
                 {listing.willTrade && (
                   <span className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold bg-violet-600 text-white">
                     ⇄ Will Trade

@@ -70,7 +70,9 @@ function ProofImage({ path, title }) {
     );
   }
 
-  const src = path.startsWith("http") ? path : `/uploads/${path}`;
+  // Strip any absolute filesystem prefix from legacy records (e.g. /var/uploads/marketplace_proofs/x.jpg → marketplace_proofs/x.jpg)
+  const relativePath = path.replace(/^\/var\/uploads\//, '').replace(/^\/uploads\//, '');
+  const src = relativePath.startsWith("http") ? relativePath : `/uploads/${relativePath}`;
 
   return (
     <a

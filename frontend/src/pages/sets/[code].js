@@ -10,7 +10,6 @@ import useSetOwned from "@/hooks/useSetOwned";
 import inferSetEra from "@/utils/setEra";
 import executeServerGraphql from "@/utils/serverGraphql";
 import { mapCacheSetDetail } from "@/utils/setDataTransforms";
-import path from "path";
 
 /* -------------------- UI: Card Tile -------------------- */
 function SetCardTile({ card, owned = false, price, eager = false }) {
@@ -327,6 +326,7 @@ async function loadAllCodesFromBackend() {
 
 async function loadAllCodesFromFiles() {
   const fs = (await import("fs")).default || (await import("fs"));
+  const path = require("path");
   const codes = new Set();
 
   const CACHE_DIR = path.join(process.cwd(), "backend", ".cache", "cardsearch", "sets");
@@ -461,6 +461,7 @@ async function loadSetFromBackend(code) {
 
 async function loadSetFromFiles(code) {
   const fs = (await import("fs")).default || (await import("fs"));
+  const path = require("path");
   const normalized = String(code || "").toLowerCase();
   const CACHE_DIR = path.join(process.cwd(), "backend", ".cache", "cardsearch", "sets");
   const cachePath = path.join(CACHE_DIR, normalized, `${normalized}.json`);

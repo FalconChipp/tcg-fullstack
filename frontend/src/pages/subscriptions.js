@@ -105,7 +105,7 @@ function formatPrice(plan) {
 
 /** Merge API plan data with local feature/marketing content. */
 function buildDisplayPlans(apiPlans) {
-  return apiPlans
+  return [...apiPlans]
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
     .map((plan) => {
       const key = plan.name.toLowerCase();

@@ -176,8 +176,11 @@ function getCardGBP(cardLike) {
 
 /* --------------------------------------------- */
 
-const getDate = (date) =>
-  date ? new Date(typeof date === "string" ? parseInt(date, 10) : date) : null;
+const getDate = (date) => {
+  if (!date) return null;
+  if (typeof date === "string" && /^\d+$/.test(date.trim())) return new Date(parseInt(date, 10));
+  return new Date(date);
+};
 
 function CollectionSkeletonGrid({ count = 10 }) {
   return (
@@ -333,9 +336,7 @@ export default function ProfileCollectionPanel({
         return arr.sort((a, b) => mult * ((a.quantity || 0) - (b.quantity || 0)));
       case "date": {
         const getTime = (c) =>
-          c.createdAt
-            ? new Date(typeof c.createdAt === "string" ? parseInt(c.createdAt, 10) : c.createdAt).getTime()
-            : 0;
+          c.createdAt ? getDate(c.createdAt)?.getTime() ?? 0 : 0;
         return arr.sort((a, b) => mult * (getTime(a) - getTime(b)));
       }
       default:

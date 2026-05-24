@@ -183,7 +183,7 @@ function CardPreviewPanel({ entry, priceSuggestion, priceLoading, apiPrices, api
   const prices = priceSuggestion?.map((l) => l.price).filter(Boolean) ?? [];
   const low = prices.length ? Math.min(...prices) : null;
   const med = median(prices);
-  const hasApiPrices = apiPrices && (apiPrices.cardmarket || apiPrices.tcgplayer);
+  const hasApiPrices = apiPrices && (apiPrices.gbp != null || apiPrices.market != null);
 
   return (
     <div className="flex flex-col gap-4">

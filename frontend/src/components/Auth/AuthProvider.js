@@ -9,8 +9,9 @@ import { devError } from "@/utils/devLog";
 // buffer before the 15-minute JWT expiry.
 const REFRESH_INTERVAL_MS = 13 * 60 * 1000;
 
-// Cookie lifetime for the JS-readable authToken (1 day in the setCookie "days" API).
-const AUTH_COOKIE_DAYS = 1;
+// Cookie lifetime for the JS-readable authToken — match the refresh token window
+// so the cookie never expires while the session is still valid.
+const AUTH_COOKIE_DAYS = 30;
 
 function deleteCookie(name) {
   document.cookie = `${name}=; Max-Age=-99999999; path=/;`;
@@ -154,17 +155,28 @@ export function AuthProvider({ children }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Poll for cookie token changes across tabs (e.g. login in another tab)
+  // Poll for cookie token changes across tabs (e.g. login in another tab).
+  // If the cookie disappears while we have an active session, try a silent
+  // refresh before giving up — avoids spurious logouts from cookie expiry.
   useEffect(() => {
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       const currentToken = getCookie("authToken");
       if (currentToken !== token) {
+        if (!currentToken && token) {
+          // Cookie gone but we think we're logged in — try refresh first
+          const refreshed = await silentRefresh();
+          if (refreshed) {
+            storeToken(refreshed);
+            scheduleRefresh();
+            return;
+          }
+        }
         storeToken(currentToken || null);
         fetchUser(currentToken || null);
       }
     }, 5000);
     return () => clearInterval(interval);
-  }, [token, fetchUser, storeToken]);
+  }, [token, fetchUser, storeToken, silentRefresh, scheduleRefresh]);
 
   // Unified login/register handler
   const authMutation = async (mutation, variables) => {

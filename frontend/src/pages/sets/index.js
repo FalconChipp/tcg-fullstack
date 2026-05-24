@@ -276,7 +276,7 @@ export default function SetsPage({ sets }) {
               <h2 className="text-xl font-bold mb-4">{label}</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
                 {items.map((set) => (
-                  <Link key={set.code} href={`/sets/${set.code}`} className="group">
+                  <Link key={set.code} href={`/sets/${set.code}`} prefetch={false} className="group">
                     <div
                       className={[
                         "bg-light-surface dark:bg-dark-surface",

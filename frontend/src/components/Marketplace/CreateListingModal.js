@@ -36,6 +36,15 @@ const PRICE_SUGGESTION_QUERY = gql`
   }
 `;
 
+const CARD_DETAIL_QUERY = gql`
+  query CardDetail($id: ID!) {
+    cardsearchCard(id: $id) {
+      variants { key label default }
+      latestPrices { variation currency gbp market }
+    }
+  }
+`;
+
 const CREATE_LISTING_MUTATION = gql`
   mutation CreateListing($input: CreateListingInput!) {
     createListing(input: $input) {
@@ -86,50 +95,6 @@ function median(nums) {
     : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-// ─── TCGDex API ───────────────────────────────────────────────────────────────
-
-const TCG_API_URL = "https://tcg.sixbyfive.com/tcgdex/graphql";
-
-const TCG_CARD_QUERY = `
-  query GetCardData($id: String!) {
-    pokemonCards(externalId: $id, language: "en", perPage: 1) {
-      variations
-      pricing {
-        cardmarket { averageSell average_sell }
-        tcgplayer { market }
-      }
-    }
-  }
-`;
-
-async function fetchTcgCardData(cardId) {
-  try {
-    const res = await fetch(TCG_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: TCG_CARD_QUERY, variables: { id: cardId } }),
-    });
-    const json = await res.json();
-    return json?.data?.pokemonCards?.[0] ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function parseTcgVariations(v) {
-  try {
-    const obj = typeof v === "string" ? JSON.parse(v) : v;
-    if (!obj || typeof obj !== "object") return null;
-    return {
-      normal:       !!(obj.normal        ?? obj.Normal        ?? true),
-      reverse:      !!(obj.reverse       || obj.reverseHolofoil || obj.Reverse),
-      holo:         !!(obj.holo          || obj.holofoil      || obj.Holo),
-      firstEdition: !!(obj.firstEdition  || obj["1st Edition"]),
-    };
-  } catch {
-    return null;
-  }
-}
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -280,24 +245,24 @@ function CardPreviewPanel({ entry, priceSuggestion, priceLoading, apiPrices, api
           <p className="text-xs text-neutral-600">No active listings on this marketplace.</p>
         )}
 
-        {/* External API prices */}
+        {/* Catalog reference prices */}
         {(apiLoading || hasApiPrices) && (
           <div className="border-t border-white/[0.06] pt-3 space-y-1">
-            <p className="text-[10px] text-neutral-500 font-medium">External reference</p>
+            <p className="text-[10px] text-neutral-500 font-medium">Catalog reference</p>
             {apiLoading ? (
               <div className="h-3 w-28 rounded bg-white/[0.06] animate-pulse" />
             ) : (
               <>
-                {apiPrices?.cardmarket != null && (
+                {apiPrices?.gbp != null && (
                   <div className="flex justify-between text-xs">
-                    <span className="text-neutral-500">Cardmarket avg</span>
-                    <span className="text-neutral-300 font-medium">€{Number(apiPrices.cardmarket).toFixed(2)}</span>
+                    <span className="text-neutral-500">Latest (GBP)</span>
+                    <span className="text-neutral-300 font-medium">£{Number(apiPrices.gbp).toFixed(2)}</span>
                   </div>
                 )}
-                {apiPrices?.tcgplayer != null && (
+                {apiPrices?.market != null && (
                   <div className="flex justify-between text-xs">
-                    <span className="text-neutral-500">TCGPlayer market</span>
-                    <span className="text-neutral-300 font-medium">${Number(apiPrices.tcgplayer).toFixed(2)}</span>
+                    <span className="text-neutral-500">Market</span>
+                    <span className="text-neutral-300 font-medium">£{Number(apiPrices.market).toFixed(2)}</span>
                   </div>
                 )}
               </>
@@ -407,11 +372,12 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
       .catch(() => setPriceSuggestion(null))
       .finally(() => setPriceLoading(false));
 
-    // Fetch TCGDex data (external prices + variations)
+    // Fetch card detail from catalog (variants + latest prices)
     setTcgLoading(true);
     setTcgData(null);
-    fetchTcgCardData(selectedEntry.cardId)
-      .then((d) => setTcgData(d))
+    gqlFetch(CARD_DETAIL_QUERY, { id: selectedEntry.cardId }, token)
+      .then((d) => setTcgData(d?.cardsearchCard ?? null))
+      .catch(() => setTcgData(null))
       .finally(() => setTcgLoading(false));
   }, [selectedEntry?.cardId, selectedEntry?.variation]);
 
@@ -464,28 +430,29 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
     }
   }
 
-  // Variations available for this specific card based on TCGDex data
+  // Variations available for this card based on catalog variants
   const availableVariations = useMemo(() => {
-    const vars = parseTcgVariations(tcgData?.variations);
-    if (!vars) return VARIATIONS;
+    const variants = tcgData?.variants;
+    if (!variants?.length) return VARIATIONS;
+    const keys = new Set(variants.map((v) => (v.label || v.key || "").toLowerCase()));
     return VARIATIONS.filter((v) => {
-      if (v === "Standard")     return vars.normal !== false;
-      if (v === "Reverse Holo") return !!vars.reverse;
-      if (v === "Holo")         return !!vars.holo;
-      if (v === "1st Edition")  return !!vars.firstEdition;
-      return true; // Full Art, Secret Rare, Other — can't determine from TCGDex
+      if (v === "Standard")     return keys.has("standard") || !keys.size;
+      if (v === "Reverse Holo") return keys.has("reverse holo") || keys.has("reverse");
+      if (v === "Holo")         return keys.has("holo") || keys.has("holofoil");
+      if (v === "1st Edition")  return keys.has("1st edition") || keys.has("firstedition");
+      return true; // Full Art, Secret Rare, Other
     });
   }, [tcgData]);
 
-  // External API prices from TCGDex
+  // Latest prices from catalog (already ingested from TCGDex)
   const apiPrices = useMemo(() => {
-    if (!tcgData?.pricing) return null;
-    const cm = tcgData.pricing.cardmarket || {};
-    const tp = tcgData.pricing.tcgplayer  || {};
-    const cardmarket = Number(cm.averageSell || cm.average_sell) || null;
-    const tcgplayer  = Number(tp.market)    || null;
-    return (cardmarket || tcgplayer) ? { cardmarket, tcgplayer } : null;
-  }, [tcgData]);
+    const prices = tcgData?.latestPrices;
+    if (!prices?.length) return null;
+    const match = prices.find((p) => !p.variation || p.variation === variation) ?? prices[0];
+    const gbp    = Number(match?.gbp)    || null;
+    const market = Number(match?.market) || null;
+    return (gbp || market) ? { gbp, market } : null;
+  }, [tcgData, variation]);
 
   // Reference price for deviation warning — median of marketplace listings
   const referencePrice = useMemo(() => {

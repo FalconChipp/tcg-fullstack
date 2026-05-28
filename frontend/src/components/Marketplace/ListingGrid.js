@@ -127,6 +127,7 @@ const LISTINGS_QUERY = gql`
         allowOffers
         willTrade
         moderationResult
+        pendingOfferCount
         seller {
           id
           username

@@ -157,7 +157,7 @@ function CollectionRow({ entry, selected, onToggle }) {
 
 export default function ProposeTradeModal({ listing, onClose }) {
   const auth = useContext(AuthContext) || {};
-  const token = auth.accessToken || auth.token || null;
+  const token = auth.token || null;
 
   const info    = listing?.cardInfo || {};
   const seller  = listing?.seller  || {};

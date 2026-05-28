@@ -21,23 +21,29 @@ const PRESET_AMOUNTS = [
 ];
 
 const TX_LABELS = {
-  topup:        "Top-up",
-  trade_hold:   "Trade hold",
-  trade_refund: "Trade refund",
-  trade_credit: "Trade received",
-  trade_debit:  "Trade payment",
-  withdrawal:   "Withdrawal",
-  adjustment:   "Adjustment",
+  topup:           "Top-up",
+  trade_hold:      "Trade hold",
+  trade_refund:    "Trade refund",
+  trade_credit:    "Trade received",
+  trade_debit:     "Trade payment",
+  purchase_spend:  "Purchase",
+  purchase_refund: "Purchase refund",
+  sale_credit:     "Sale received",
+  withdrawal:      "Withdrawal",
+  adjustment:      "Adjustment",
 };
 
 const TX_COLOUR = {
-  topup:        "text-emerald-500",
-  trade_credit: "text-emerald-500",
-  trade_refund: "text-emerald-500",
-  trade_hold:   "text-amber-500",
-  trade_debit:  "text-rose-500",
-  withdrawal:   "text-rose-500",
-  adjustment:   "text-sky-500",
+  topup:           "text-emerald-500",
+  trade_credit:    "text-emerald-500",
+  trade_refund:    "text-emerald-500",
+  purchase_refund: "text-emerald-500",
+  sale_credit:     "text-emerald-500",
+  trade_hold:      "text-amber-500",
+  trade_debit:     "text-rose-500",
+  purchase_spend:  "text-rose-500",
+  withdrawal:      "text-rose-500",
+  adjustment:      "text-sky-500",
 };
 
 /* ─── GQL helpers ────────────────────────────────────────────────────────── */
@@ -102,8 +108,8 @@ async function confirmTopup(paymentIntentId, token) {
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
 const fmt  = (n) => (n == null ? "—" : `${GBP}${Number(n).toFixed(2)}`);
 const sign = (type) =>
-  ["topup","trade_credit","trade_refund","adjustment"].includes(type) ? "+" :
-  ["trade_hold","trade_debit","withdrawal"].includes(type) ? "-" : "";
+  ["topup","trade_credit","trade_refund","purchase_refund","sale_credit","adjustment"].includes(type) ? "+" :
+  ["trade_hold","trade_debit","purchase_spend","withdrawal"].includes(type) ? "-" : "";
 
 function fmtDate(iso) {
   if (!iso) return "—";
@@ -560,16 +566,11 @@ export default function WalletTab({ token }) {
 
       {/* ── Withdraw section ── */}
       <div className={`${card} p-5 space-y-4`}>
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className={`text-sm font-bold ${main}`}>Withdraw funds</h3>
-            <p className={`text-xs mt-0.5 ${muted}`}>
-              Bank withdrawals coming soon.
-            </p>
-          </div>
-          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-light-border dark:bg-dark-border text-light-textMuted dark:text-dark-textMuted">
-            Soon
-          </span>
+        <div>
+          <h3 className={`text-sm font-bold ${main}`}>Withdraw funds</h3>
+          <p className={`text-xs mt-0.5 ${muted}`}>
+            Funds arrive within 1–3 business days via UK bank transfer.
+          </p>
         </div>
 
         {withdrawSuccess ? (
@@ -594,14 +595,12 @@ export default function WalletTab({ token }) {
                 placeholder="10.00"
                 value={withdrawPence}
                 onChange={(e) => { setWithdrawPence(e.target.value); setWithdrawError(null); }}
-                disabled
                 className={[
                   "flex-1 h-10 px-3 rounded-xl border text-sm transition",
                   "bg-light-background dark:bg-dark-background",
                   "border-light-border dark:border-dark-border",
                   `${main} placeholder:text-light-textMuted dark:placeholder:text-dark-textMuted`,
                   "focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent",
-                  "disabled:opacity-50",
                 ].join(" ")}
               />
             </div>
@@ -620,7 +619,6 @@ export default function WalletTab({ token }) {
                   placeholder="12-34-56"
                   value={sortCode}
                   onChange={(e) => { setSortCode(e.target.value); setWithdrawError(null); }}
-                  disabled
                   maxLength={8}
                   className={[
                     "w-full h-10 px-3 rounded-xl border text-sm transition",
@@ -628,7 +626,6 @@ export default function WalletTab({ token }) {
                     "border-light-border dark:border-dark-border",
                     `${main} placeholder:text-light-textMuted dark:placeholder:text-dark-textMuted`,
                     "focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent",
-                    "disabled:opacity-50",
                   ].join(" ")}
                 />
               </div>
@@ -639,7 +636,6 @@ export default function WalletTab({ token }) {
                   placeholder="12345678"
                   value={accountNumber}
                   onChange={(e) => { setAccountNumber(e.target.value); setWithdrawError(null); }}
-                  disabled
                   maxLength={8}
                   className={[
                     "w-full h-10 px-3 rounded-xl border text-sm transition",
@@ -647,7 +643,23 @@ export default function WalletTab({ token }) {
                     "border-light-border dark:border-dark-border",
                     `${main} placeholder:text-light-textMuted dark:placeholder:text-dark-textMuted`,
                     "focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent",
-                    "disabled:opacity-50",
+                  ].join(" ")}
+                />
+              </div>
+              <div className="col-span-2">
+                <label className={`block text-xs font-medium ${muted} mb-1`}>Account name <span className="opacity-60">(optional)</span></label>
+                <input
+                  type="text"
+                  placeholder="J Smith"
+                  value={accountName}
+                  onChange={(e) => { setAccountName(e.target.value); setWithdrawError(null); }}
+                  maxLength={80}
+                  className={[
+                    "w-full h-10 px-3 rounded-xl border text-sm transition",
+                    "bg-light-background dark:bg-dark-background",
+                    "border-light-border dark:border-dark-border",
+                    `${main} placeholder:text-light-textMuted dark:placeholder:text-dark-textMuted`,
+                    "focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent",
                   ].join(" ")}
                 />
               </div>
@@ -660,7 +672,7 @@ export default function WalletTab({ token }) {
             <button
               type="button"
               onClick={handleWithdraw}
-              disabled
+              disabled={withdrawBusy}
               className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {withdrawBusy ? "Requesting…" : "Request withdrawal"}

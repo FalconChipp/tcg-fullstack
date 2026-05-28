@@ -189,8 +189,8 @@ export default function SecondaryHeader(props) {
   var onCartClick = (props && props.onCartClick) || null;
 
   var auth = useContext(AuthContext) || {};
-  var token = auth.accessToken || auth.token || null;
-  var isLoggedIn = !!(auth.isAuthenticated || token);
+  var token = auth.token || null;
+  var isLoggedIn = !!(auth.user || token);
 
   var _cartState = useState(readCartSnapshot);
   var snap = _cartState[0];

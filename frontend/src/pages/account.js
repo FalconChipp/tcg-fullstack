@@ -35,7 +35,7 @@ import { FaDiscord } from "react-icons/fa";
 const NAV = [
   { key: "security",      label: "Security",        icon: KeyRound },
   { key: "wallet",        label: "Wallet",           icon: Wallet },
-  { key: "subscriptions", label: "Subscription",    icon: CreditCard, soon: true },
+  { key: "subscriptions", label: "Subscription",    icon: CreditCard },
   { key: "marketplace",   label: "Marketplace",     icon: Store },
   { key: "support",       label: "Support/Help",    icon: HelpCircle },
   { key: "notifications", label: "Notifications",   icon: Bell },

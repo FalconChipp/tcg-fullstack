@@ -278,8 +278,8 @@ function CardPreviewPanel({ entry, priceSuggestion, priceLoading, apiPrices, api
 
 export default function CreateListingModal({ onClose, onCreated, onViewListings }) {
   const auth = useContext(AuthContext) || {};
-  const token = auth.accessToken || auth.token || null;
-  const isLoggedIn = !!(auth.isAuthenticated || token);
+  const token = auth.token || null;
+  const isLoggedIn = !!(auth.user || token);
 
   // Collection
   const [collection, setCollection]     = useState([]);
@@ -552,26 +552,22 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
             {!isLoggedIn ? (
               <p className="text-sm text-center text-neutral-500 py-8">Please sign in to list cards.</p>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_200px] gap-6">
 
                 {/* ── Left: form ── */}
-                <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
                   {/* 1. Collection search */}
                   <div>
                     <div className="flex items-baseline justify-between mb-1.5">
-                      <label className={labelCls + " mb-0"}>Your collection</label>
-                      {collectionLoading && (
-                        <span className="text-[10px] text-neutral-600">Loading…</span>
-                      )}
+                      <label className={labelCls + " mb-0"}>Card</label>
+                      {collectionLoading && <span className="text-[10px] text-neutral-600">Loading…</span>}
                       {!collectionLoading && collection.length > 0 && !selectedEntry && (
-                        <span className="text-[10px] text-neutral-600">{collection.length} cards</span>
+                        <span className="text-[10px] text-neutral-600">{collection.length} in collection</span>
                       )}
                     </div>
 
-                    {collectionErr && (
-                      <p className="text-xs text-red-400 mb-2">{collectionErr}</p>
-                    )}
+                    {collectionErr && <p className="text-xs text-red-400 mb-2">{collectionErr}</p>}
 
                     {!collectionLoading && collection.length === 0 && !collectionErr && (
                       <p className="text-xs text-neutral-500 py-3 text-center border border-white/[0.06] rounded-xl">
@@ -579,26 +575,20 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
                       </p>
                     )}
 
-                    {collection.length > 0 && (
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={query}
-                          onChange={(e) => {
-                            setQuery(e.target.value);
-                            if (selectedEntry) setSelectedEntry(null);
-                          }}
-                          placeholder="Search your collection…"
-                          className={inputCls}
-                          autoComplete="off"
-                          disabled={collectionLoading}
-                        />
-                      </div>
+                    {collection.length > 0 && !selectedEntry && (
+                      <input
+                        type="text"
+                        value={query}
+                        onChange={(e) => { setQuery(e.target.value); if (selectedEntry) setSelectedEntry(null); }}
+                        placeholder="Search your collection…"
+                        className={inputCls}
+                        autoComplete="off"
+                        disabled={collectionLoading}
+                      />
                     )}
 
-                    {/* Dropdown results */}
                     {showDropdown && (
-                      <div className="mt-1.5 flex flex-col gap-0.5 max-h-52 overflow-y-auto rounded-2xl border border-white/[0.06] p-1.5 bg-[#080a12]">
+                      <div className="mt-1.5 flex flex-col gap-0.5 max-h-48 overflow-y-auto rounded-2xl border border-white/[0.06] p-1.5 bg-[#080a12]">
                         {filteredEntries.map((entry, i) => (
                           <CollectionRow
                             key={`${entry.cardId}-${entry.variation ?? ""}-${i}`}
@@ -611,30 +601,21 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
                     )}
 
                     {query.trim().length > 0 && filteredEntries.length === 0 && !selectedEntry && (
-                      <p className="text-xs text-neutral-600 mt-2">No cards matching "{query}" in your collection.</p>
+                      <p className="text-xs text-neutral-600 mt-2">No cards matching "{query}".</p>
                     )}
 
-                    {/* Selected card summary */}
                     {selectedEntry && (
-                      <div className="mt-2 flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2">
+                      <div className="flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2">
                         {selectedEntry.card?.images?.small && (
-                          <img
-                            src={selectedEntry.card.images.small}
-                            alt={selectedEntry.card.name}
-                            className="w-7 h-9 object-contain rounded shrink-0"
-                          />
+                          <img src={selectedEntry.card.images.small} alt={selectedEntry.card.name} className="w-7 h-9 object-contain rounded shrink-0" />
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium text-neutral-100 truncate">
-                            {selectedEntry.card?.name ?? selectedEntry.cardId}
-                          </p>
+                          <p className="text-xs font-medium text-neutral-100 truncate">{selectedEntry.card?.name ?? selectedEntry.cardId}</p>
                           <p className="text-[11px] text-neutral-500 truncate">
-                            {[selectedEntry.card?.set?.name, selectedEntry.card?.number ? `#${selectedEntry.card.number}` : null]
-                              .filter(Boolean)
-                              .join(" · ")}
+                            {[selectedEntry.card?.set?.name, selectedEntry.card?.number ? `#${selectedEntry.card.number}` : null].filter(Boolean).join(" · ")}
                           </p>
                         </div>
-                        <button type="button" onClick={handleClearEntry} className="text-xs text-neutral-600 hover:text-red-400 transition shrink-0">✕</button>
+                        <button type="button" onClick={handleClearEntry} className="text-xs text-neutral-600 hover:text-red-400 transition shrink-0 px-1">✕</button>
                       </div>
                     )}
                   </div>
@@ -648,203 +629,148 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
                       <div>
                         <p className="text-xs font-semibold text-amber-300">New set — listings locked</p>
                         <p className="text-[11px] text-amber-400/80 mt-0.5">
-                          This set was released recently. Listings open in{" "}
-                          <span className="font-medium">{embargoInfo.daysLeft} day{embargoInfo.daysLeft !== 1 ? "s" : ""}</span>
-                          {" "}({embargoInfo.endsAt}).
+                          Opens in <span className="font-medium">{embargoInfo.daysLeft} day{embargoInfo.daysLeft !== 1 ? "s" : ""}</span> ({embargoInfo.endsAt}).
                         </p>
                       </div>
                     </div>
                   )}
 
-                  {/* 2. Condition */}
-                  <div>
-                    <label className={labelCls}>Condition</label>
-                    <div className="flex flex-wrap gap-2">
-                      {CONDITIONS.map((c) => (
-                        <Chip key={c} active={condition === c} onClick={() => setCondition(c)}>{c}</Chip>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 3. Variation */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className={labelCls + " mb-0"}>Variation</label>
-                      {variationAutoFilled && (
-                        <span className="text-[10px] text-indigo-400 font-medium">Auto-filled</span>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {availableVariations.map((v) => (
-                        <Chip
-                          key={v}
-                          active={variation === v}
-                          onClick={() => { setVariation(v); setVariationAutoFilled(false); }}
-                        >
-                          {v}
-                        </Chip>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 4. Listing type */}
-                  <div>
-                    <label className={labelCls}>Listing type</label>
-                    <div className="flex gap-2">
-                      {[
-                        { value: false, label: "For sale", hint: "Set a price" },
-                        { value: true,  label: "Trade only", hint: "No price — trade offers only" },
-                      ].map((opt) => (
-                        <button
-                          key={String(opt.value)}
-                          type="button"
-                          onClick={() => setTradeOnly(opt.value)}
-                          className={[
-                            "flex-1 flex flex-col items-start rounded-xl border px-3 py-2.5 text-left text-xs transition",
-                            tradeOnly === opt.value
-                              ? "border-indigo-500/60 bg-indigo-600/[0.08]"
-                              : "border-white/[0.06] hover:bg-white/[0.04]",
-                          ].join(" ")}
-                        >
-                          <span className="flex items-center gap-2">
-                            <span className={[
-                              "w-3 h-3 rounded-full border-2 shrink-0 transition",
-                              tradeOnly === opt.value ? "border-indigo-400 bg-indigo-500" : "border-neutral-600",
-                            ].join(" ")} />
-                            <span className="font-semibold text-neutral-100">{opt.label}</span>
-                          </span>
-                          <span className="text-neutral-500 mt-0.5 ml-5">{opt.hint}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 5. Price + Quantity */}
-                  <div className="grid grid-cols-2 gap-3">
-                    {!tradeOnly && (
-                      <div>
-                        <label className={labelCls}>Price (£)</label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500 pointer-events-none">£</span>
-                          <input
-                            type="number"
-                            min="0.01"
-                            step="0.01"
-                            value={price}
-                            onChange={(e) => setPrice(e.target.value)}
-                            placeholder="0.00"
-                            className={inputCls + " pl-7"}
-                          />
+                  {/* ── Rest of form — only shown once a card is selected ── */}
+                  {selectedEntry && (
+                    <>
+                      {/* 2. Condition + Variation side by side */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className={labelCls}>Condition</label>
+                          <div className="flex flex-wrap gap-1.5">
+                            {CONDITIONS.map((c) => (
+                              <Chip key={c} active={condition === c} onClick={() => setCondition(c)}>{c}</Chip>
+                            ))}
+                          </div>
                         </div>
-                        {deviationPct != null && Math.abs(deviationPct) > 15 && (
-                          <p className={[
-                            "text-[11px] mt-1.5 flex items-center gap-1",
-                            deviationPct > 0 ? "text-amber-400" : "text-sky-400",
-                          ].join(" ")}>
-                            {deviationPct > 0 ? "↑" : "↓"}
-                            {" "}{Math.abs(Math.round(deviationPct))}%{" "}
-                            {deviationPct > 0 ? "above" : "below"} marketplace median
-                            {" "}(£{referencePrice.toFixed(2)})
-                          </p>
-                        )}
+                        <div>
+                          <div className="flex items-baseline justify-between mb-1.5">
+                            <label className={labelCls + " mb-0"}>Variation</label>
+                            {variationAutoFilled && <span className="text-[10px] text-indigo-400">Auto-filled</span>}
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {availableVariations.map((v) => (
+                              <Chip key={v} active={variation === v} onClick={() => { setVariation(v); setVariationAutoFilled(false); }}>{v}</Chip>
+                            ))}
+                          </div>
+                        </div>
                       </div>
-                    )}
-                    <div className={tradeOnly ? "col-span-2" : ""}>
-                      <label className={labelCls}>Quantity</label>
-                      <input
-                        type="number"
-                        min="1"
-                        max={selectedEntry?.quantity ?? 99}
-                        value={quantity}
-                        onChange={(e) => setQuantity(e.target.value)}
-                        className={inputCls}
-                      />
-                      {selectedEntry && (
-                        <p className="text-[10px] text-neutral-600 mt-1">You own ×{selectedEntry.quantity}</p>
-                      )}
-                    </div>
-                  </div>
 
-                  {/* 5. Parcel size */}
-                  <div>
-                    <label className={labelCls}>Parcel size</label>
-                    <div className="flex flex-col gap-2">
-                      {PARCEL_SIZES.map((ps) => (
-                        <button
-                          key={ps.value}
-                          type="button"
-                          onClick={() => setParcelSize(ps.value)}
-                          className={[
-                            "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-xs transition",
-                            parcelSize === ps.value
-                              ? "border-indigo-500/60 bg-indigo-600/[0.08]"
-                              : "border-white/[0.06] hover:bg-white/[0.04]",
-                          ].join(" ")}
-                        >
-                          <span className={[
-                            "w-3 h-3 rounded-full border-2 shrink-0 transition",
-                            parcelSize === ps.value ? "border-indigo-400 bg-indigo-500" : "border-neutral-600",
-                          ].join(" ")} />
-                          <span>
-                            <span className="font-semibold text-neutral-100">{ps.label}</span>
-                            <span className="ml-2 text-neutral-500">{ps.hint}</span>
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 6. Label paid by */}
-                  <div>
-                    <label className={labelCls}>Shipping label paid by</label>
-                    <div className="flex gap-2">
-                      {[
-                        { value: "seller", label: "Seller pays" },
-                        { value: "buyer",  label: "Buyer pays" },
-                      ].map((opt) => (
-                        <Chip key={opt.value} active={labelPaidBy === opt.value} onClick={() => setLabelPaidBy(opt.value)}>
-                          {opt.label}
-                        </Chip>
-                      ))}
-                    </div>
-                    <p className="text-[11px] text-neutral-600 mt-1.5">
-                      {labelPaidBy === "buyer"
-                        ? "Shipping cost added to buyer's total at checkout."
-                        : "Label cost deducted from your sale proceeds."}
-                    </p>
-                  </div>
-
-                  {/* 7. Offers + trade */}
-                  <div className="flex flex-col gap-2.5">
-                    {(tradeOnly ? [] : [
-                      { state: allowOffers, set: setAllowOffers, label: "Accept price offers from buyers" },
-                      { state: willTrade,   set: setWillTrade,   label: "Open to trading this card" },
-                    ]).map(({ state, set, label }) => (
-                      <label key={label} className="flex items-center gap-3 cursor-pointer group">
-                        <div
-                          onClick={() => set((v) => !v)}
-                          className={[
-                            "w-4 h-4 rounded border-2 flex items-center justify-center transition shrink-0",
-                            state ? "bg-indigo-600 border-indigo-500" : "border-white/20 group-hover:border-white/40",
-                          ].join(" ")}
-                        >
-                          {state && (
-                            <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
+                      {/* 3. Listing type + price + qty */}
+                      <div>
+                        <label className={labelCls}>Pricing</label>
+                        <div className="flex gap-2 items-start">
+                          {/* type toggle */}
+                          <div className="flex rounded-xl overflow-hidden border border-white/10 shrink-0">
+                            {[{ v: false, l: "For sale" }, { v: true, l: "Trade only" }].map(({ v: val, l: lbl }) => (
+                              <button
+                                key={String(val)}
+                                type="button"
+                                onClick={() => setTradeOnly(val)}
+                                className={[
+                                  "px-3 py-2 text-xs font-medium transition whitespace-nowrap",
+                                  tradeOnly === val ? "bg-indigo-600 text-white" : "text-neutral-400 hover:bg-white/[0.04]",
+                                ].join(" ")}
+                              >
+                                {lbl}
+                              </button>
+                            ))}
+                          </div>
+                          {!tradeOnly && (
+                            <div className="relative flex-1 min-w-0">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500 pointer-events-none">£</span>
+                              <input
+                                type="number" min="0.01" step="0.01" value={price}
+                                onChange={(e) => setPrice(e.target.value)}
+                                placeholder="0.00"
+                                className={inputCls + " pl-7"}
+                              />
+                            </div>
+                          )}
+                          <div className="w-20 shrink-0">
+                            <input
+                              type="number" min="1" max={selectedEntry?.quantity ?? 99} value={quantity}
+                              onChange={(e) => setQuantity(e.target.value)}
+                              className={inputCls}
+                              placeholder="Qty"
+                            />
+                          </div>
+                        </div>
+                        {/* price hints */}
+                        <div className="flex items-baseline justify-between mt-1.5 px-0.5">
+                          {deviationPct != null && Math.abs(deviationPct) > 15 ? (
+                            <p className={["text-[11px] flex items-center gap-1", deviationPct > 0 ? "text-amber-400" : "text-sky-400"].join(" ")}>
+                              {deviationPct > 0 ? "↑" : "↓"} {Math.abs(Math.round(deviationPct))}% {deviationPct > 0 ? "above" : "below"} median (£{referencePrice.toFixed(2)})
+                            </p>
+                          ) : <span />}
+                          {selectedEntry && (
+                            <p className="text-[10px] text-neutral-600">You own ×{selectedEntry.quantity}</p>
                           )}
                         </div>
-                        <span className="text-xs text-neutral-300">{label}</span>
-                      </label>
-                    ))}
-                  </div>
+                      </div>
+
+                      {/* 4. Shipping — parcel size + who pays on one row */}
+                      <div>
+                        <label className={labelCls}>Shipping</label>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {PARCEL_SIZES.map((ps) => (
+                            <Chip key={ps.value} active={parcelSize === ps.value} onClick={() => setParcelSize(ps.value)}>
+                              {ps.label}
+                            </Chip>
+                          ))}
+                          <span className="text-neutral-700 text-xs select-none">·</span>
+                          {[{ value: "seller", label: "Seller pays" }, { value: "buyer", label: "Buyer pays" }].map((opt) => (
+                            <Chip key={opt.value} active={labelPaidBy === opt.value} onClick={() => setLabelPaidBy(opt.value)}>
+                              {opt.label}
+                            </Chip>
+                          ))}
+                        </div>
+                        <p className="text-[11px] text-neutral-600 mt-1.5">
+                          {PARCEL_SIZES.find((p) => p.value === parcelSize)?.hint}
+                          {labelPaidBy === "buyer" ? " · Cost added to buyer's total." : " · Label cost deducted from proceeds."}
+                        </p>
+                      </div>
+
+                      {/* 5. Options — compact inline checkboxes */}
+                      {!tradeOnly && (
+                        <div className="flex items-center gap-5">
+                          {[
+                            { state: allowOffers, set: setAllowOffers, label: "Accept offers" },
+                            { state: willTrade,   set: setWillTrade,   label: "Open to trades" },
+                          ].map(({ state, set, label }) => (
+                            <label key={label} className="flex items-center gap-2 cursor-pointer group">
+                              <div
+                                onClick={() => set((v) => !v)}
+                                className={[
+                                  "w-4 h-4 rounded border-2 flex items-center justify-center transition shrink-0",
+                                  state ? "bg-indigo-600 border-indigo-500" : "border-white/20 group-hover:border-white/40",
+                                ].join(" ")}
+                              >
+                                {state && (
+                                  <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                              </div>
+                              <span className="text-xs text-neutral-400">{label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
 
                   {err && <p className="text-xs text-red-400">{err}</p>}
 
                   <button
                     type="submit"
                     disabled={busy || !selectedEntry || !!embargoInfo}
-                    className="w-full rounded-xl py-3 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="w-full rounded-xl py-3 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-auto"
                   >
                     {busy ? "Creating listing…" : embargoInfo ? `Listings open ${embargoInfo.endsAt}` : "List for sale"}
                   </button>

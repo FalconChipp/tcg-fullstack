@@ -154,8 +154,8 @@ export default function CartModal(props) {
   var onClose = (props && props.onClose) || function () {};
 
   var auth = useContext(AuthContext) || {};
-  var accessToken = auth.accessToken || auth.token || null;
-  var isAuthenticated = !!auth.isAuthenticated || !!accessToken;
+  var accessToken = auth.token || null;
+  var isAuthenticated = !!(auth.user || accessToken);
 
   var _useStateItems = useState([]);
   var items = _useStateItems[0];

@@ -13,6 +13,10 @@ import AdminReportedUsersPanel from "./AdminReportedUsersPanel";
 import AdminProofQueuePanel from "./AdminProofQueuePanel";
 import AdminSubscriptionsPanel from "./AdminSubscriptionsPanel";
 import AdminRevenuePanel from "./AdminRevenuePanel";
+import AdminReviewsPanel from "./AdminReviewsPanel";
+import AdminWithdrawalsPanel from "./AdminWithdrawalsPanel";
+import AdminTradesPanel from "./AdminTradesPanel";
+import AdminAuditLogsPanel from "./AdminAuditLogsPanel";
 
 // ─── Icon helpers (inline SVG, no dep) ───────────────────────────────────────
 
@@ -37,11 +41,15 @@ function Icon({ d, size = 16 }) {
 const icons = {
   revenue:       "M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",
   subscriptions: "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 0 0 3-3V8a3 3 0 0 0-3-3H6a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3z",
+  withdrawals:   "M3 10h10a8 8 0 0 1 8 8v2M3 10l6 6m-6-6 6-6",
+  trades:        "M7 16V4m0 0L3 8m4-4 4 4m6 0v12m0 0 4-4m-4 4-4-4",
+  auditLogs:     "M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2",
   overview:      "M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 7-3.5-7H21z",
   users:         "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm7 0a3 3 0 1 0 0-6M21 21v-2a3 3 0 0 0-2.25-2.9",
   reports:       "M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4m0 4h.01",
   orders:        "M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0",
   proofQueue:    "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
+  reviews:       "M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 0 0 .95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 0 0-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 0 0-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 0 0-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 0 0 .951-.69l1.519-4.674z",
   listings:      "M4 6h16M4 12h16M4 18h7",
   products:      "M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z",
   collections:   "M19 11H5m14 0a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2m14 0V9a2 2 0 0 0-2-2M5 11V9a2 2 0 0 1 2-2m0 0V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2M7 7h10",
@@ -61,24 +69,33 @@ const NAV_GROUPS = [
   {
     label: "Users",
     items: [
-      { id: "users",         label: "Users",         icon: "users" },
-      { id: "reports",       label: "Reports",       icon: "reports" },
+      { id: "users",         label: "Users",         icon: "users"     },
+      { id: "reports",       label: "Reports",       icon: "reports"   },
+      { id: "audit-logs",    label: "Audit Logs",    icon: "auditLogs" },
     ],
   },
   {
     label: "Revenue",
     items: [
-      { id: "revenue",       label: "Revenue",       icon: "revenue" },
+      { id: "revenue",       label: "Revenue",       icon: "revenue"       },
       { id: "subscriptions", label: "Subscriptions", icon: "subscriptions" },
+      { id: "withdrawals",   label: "Withdrawals",   icon: "withdrawals"   },
     ],
   },
   {
     label: "Marketplace",
     items: [
-      { id: "orders",        label: "Orders",        icon: "orders" },
+      { id: "orders",        label: "Orders",        icon: "orders"     },
       { id: "proof-queue",   label: "Proof Queue",   icon: "proofQueue" },
-      { id: "listings",      label: "Listings",      icon: "listings" },
-      { id: "products",      label: "Products",      icon: "products" },
+      { id: "reviews",       label: "Review Queue",  icon: "reviews"    },
+      { id: "listings",      label: "Listings",      icon: "listings"   },
+      { id: "products",      label: "Products",      icon: "products"   },
+    ],
+  },
+  {
+    label: "Trading",
+    items: [
+      { id: "trades",        label: "Trades",        icon: "trades"     },
     ],
   },
   {
@@ -113,6 +130,10 @@ const PANELS = {
   notifications: <AdminNotificationsPanel />,
   reports:       <AdminReportedUsersPanel />,
   "proof-queue": <AdminProofQueuePanel />,
+  reviews:       <AdminReviewsPanel />,
+  withdrawals:   <AdminWithdrawalsPanel />,
+  trades:        <AdminTradesPanel />,
+  "audit-logs":  <AdminAuditLogsPanel />,
 };
 
 // ─── NavItem ─────────────────────────────────────────────────────────────────

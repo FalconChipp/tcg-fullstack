@@ -65,9 +65,23 @@ function PillarCard({ pillar, index }) {
 export default function ProductPillars() {
   return (
     <section className="relative overflow-hidden bg-dark-background px-5 py-20 sm:px-7">
+      {/* 
+        Background effects
+
+        Changed:
+        - Moved the purple glow higher so it no longer clips hard at the bottom.
+        - Reduced opacity slightly.
+        - Added a bottom fade overlay so the section blends into the next area.
+        - Added a subtle right-side gradient instead of relying on a huge clipped blur.
+      */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-[-160px] top-20 h-[360px] w-[360px] rounded-full bg-dark-accent/10 blur-3xl" />
-        <div className="absolute bottom-[-180px] right-[-120px] h-[420px] w-[420px] rounded-full bg-purple-500/10 blur-3xl" />
+
+        <div className="absolute right-[-140px] top-[170px] h-[420px] w-[420px] rounded-full bg-purple-500/[0.07] blur-3xl" />
+
+        <div className="absolute bottom-0 right-0 h-[260px] w-[420px] bg-gradient-to-t from-dark-background via-dark-background/70 to-transparent" />
+
+        <div className="absolute bottom-0 left-0 h-28 w-full bg-gradient-to-b from-transparent to-dark-background" />
       </div>
 
       <div className="relative mx-auto max-w-7xl">

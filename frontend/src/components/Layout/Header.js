@@ -10,6 +10,7 @@ import { setCookie } from "@/utils/cookieUtils";
 import { AuthContext } from "../Auth/AuthProvider";
 import NotificationBell from "@/components/Notifications/NotificationBell";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useMessenger } from "@/components/Messenger/MessengerContext";
 
 /* ----------------------------- Icons ----------------------------- */
 
@@ -165,6 +166,8 @@ export default function Header({ onStartTour }) {
     loadingMore,
   } = useNotifications({ token, pollMs: 45000 });
 
+  const { openSidebar: openMessenger } = useMessenger();
+
   useEffect(() => {
     if (router.query.verify === "1") {
       setAuthModalOpen(true);
@@ -213,7 +216,9 @@ export default function Header({ onStartTour }) {
     }
 
     if (notification.linkUrl) {
-      if (isExternalUrl(notification.linkUrl)) {
+      if (notification.linkUrl === '#messenger') {
+        openMessenger();
+      } else if (isExternalUrl(notification.linkUrl)) {
         window.open(notification.linkUrl, "_blank", "noopener,noreferrer");
       } else {
         router.push(notification.linkUrl);

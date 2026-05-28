@@ -1,115 +1,85 @@
 "use client";
-
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   fetchSubscriptionPlans,
   fetchUserSubscription,
+  fetchUserCapabilities,
+  startSubscriptionCheckout,
   updateUserSubscription,
   cancelUserSubscription,
   reactivateUserSubscription,
-  fetchUserInvoices,
+  fetchUserTransactions,
+  openBillingPortal,
 } from "@/utils/subscriptionsApi";
 import StatusMessage from "@/components/UI/StatusMessage";
 
-/* =========================
-   Helpers
-   ========================= */
-function formatGBP(valueInPence) {
-  if (typeof valueInPence !== "number") return valueInPence || "";
-  return `£${(valueInPence / 100).toFixed(2)}`;
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function fmtPrice(price) {
+  if (!price || Number(price) === 0) return "Free";
+  return `£${Number(price).toFixed(2)}`;
 }
-function intervalLabel(interval) {
+
+function fmtInterval(interval) {
   if (!interval) return "";
-  if (interval.toLowerCase() === "month" || interval.toLowerCase() === "mo") return "/mo";
-  if (interval.toLowerCase() === "year" || interval.toLowerCase() === "yr") return "/yr";
-  return `/${interval}`;
+  return interval === "year" ? "/yr" : "/mo";
 }
-const toArray = (v) => (Array.isArray(v) ? v : v ? [v] : []);
 
-/* =========================
-   Modal (accessible)
-   ========================= */
-function SubscriptionModal({ open, type, plan, onConfirm, onClose, loading }) {
+function fmtDate(d) {
+  if (!d) return null;
+  return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function yearlySavingPct(monthlyPrice, yearlyPrice) {
+  const annual = Number(monthlyPrice) * 12;
+  return Math.round(((annual - Number(yearlyPrice)) / annual) * 100);
+}
+
+// ─── Fee pill ─────────────────────────────────────────────────────────────────
+
+function FeeDot({ pct }) {
+  const color =
+    pct <= 2 ? "bg-emerald-500" :
+    pct <= 3 ? "bg-green-500"   :
+    pct <= 5 ? "bg-yellow-500"  : "bg-orange-500";
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-light-alt dark:bg-dark-alt border border-light-border dark:border-dark-border">
+      <span className={`w-2 h-2 rounded-full ${color} shrink-0`} />
+      {pct}% marketplace fee
+    </span>
+  );
+}
+
+// ─── Confirmation modal ───────────────────────────────────────────────────────
+
+function Modal({ open, type, plan, onConfirm, onClose, loading }) {
   if (!open) return null;
-
-  const titleId = "sub-modal-title";
-
   return (
     <div
       className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center px-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={titleId}
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl shadow-xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface p-6"
+        className="w-full max-w-sm rounded-2xl shadow-xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface p-6"
         onClick={(e) => e.stopPropagation()}
       >
-        {type === "subscribe" && plan && (
-          <>
-            <h3 id={titleId} className="text-xl font-extrabold mb-2">
-              {plan.price === 0 ? "Switch to" : "Subscribe to"} {plan.name}
-            </h3>
-
-            <div className="mb-4 text-sm text-light-textSecondary dark:text-dark-textSecondary">
-              <div className="text-2xl font-extrabold text-light-primary dark:text-dark-primary mb-1">
-                {plan.price === 0 ? (
-                  "Free"
-                ) : (
-                  <>
-                    {formatGBP(plan.price)}
-                    <span className="text-base font-medium text-light-textMuted dark:text-dark-textMuted">
-                      {" "}{intervalLabel(plan.interval)}
-                    </span>
-                  </>
-                )}
-              </div>
-              {plan.description && <div className="mb-3">{plan.description}</div>}
-              {toArray(plan.features).length > 0 && (
-                <ul className="list-disc ml-5 space-y-1">
-                  {toArray(plan.features).map((f, i) => (
-                    <li key={i}>{f}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            <div className="flex flex-wrap gap-2 pt-2">
-              <button
-                onClick={onConfirm}
-                disabled={loading}
-                className="inline-flex items-center justify-center px-5 py-2 rounded-lg bg-light-accent hover:bg-light-accentLight text-white dark:bg-dark-accent dark:hover:bg-dark-accentLight font-semibold transition"
-              >
-                {loading ? "Processing…" : plan.price === 0 ? "Confirm" : "Confirm & Checkout"}
-              </button>
-              <button
-                onClick={onClose}
-                className="inline-flex items-center justify-center px-5 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt hover:bg-light-surface dark:hover:bg-dark-surface transition"
-              >
-                Cancel
-              </button>
-            </div>
-          </>
-        )}
-
         {type === "cancel" && (
           <>
-            <h3 id={titleId} className="text-xl font-extrabold mb-2">Cancel subscription?</h3>
-            <p className="mb-4 text-sm text-light-textSecondary dark:text-dark-textSecondary">
-              You’ll keep access until the end of your current billing period.
+            <h3 className="text-lg font-bold mb-2 text-light-primary dark:text-dark-primary">Cancel subscription?</h3>
+            <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary mb-5">
+              You'll keep access until the end of your current billing period, then move to the free tier automatically.
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2">
               <button
                 onClick={onConfirm}
                 disabled={loading}
-                className="inline-flex items-center justify-center px-5 py-2 rounded-lg bg-light-error hover:bg-light-error/90 text-white font-semibold transition"
+                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold transition disabled:opacity-60"
               >
                 {loading ? "Cancelling…" : "Yes, cancel"}
               </button>
               <button
                 onClick={onClose}
-                className="inline-flex items-center justify-center px-5 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt hover:bg-light-surface dark:hover:bg-dark-surface transition"
+                className="px-4 py-2 rounded-lg border border-light-border dark:border-dark-border text-sm font-semibold hover:bg-light-alt dark:hover:bg-dark-alt transition"
               >
                 Go back
               </button>
@@ -119,21 +89,50 @@ function SubscriptionModal({ open, type, plan, onConfirm, onClose, loading }) {
 
         {type === "reactivate" && (
           <>
-            <h3 id={titleId} className="text-xl font-extrabold mb-2">Reactivate subscription?</h3>
-            <p className="mb-4 text-sm text-light-textSecondary dark:text-dark-textSecondary">
-              Your subscription will continue with no interruption.
+            <h3 className="text-lg font-bold mb-2 text-light-primary dark:text-dark-primary">Reactivate subscription?</h3>
+            <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary mb-5">
+              Your subscription will continue as normal with no interruption.
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2">
               <button
                 onClick={onConfirm}
                 disabled={loading}
-                className="inline-flex items-center justify-center px-5 py-2 rounded-lg bg-light-accent hover:bg-light-accentLight text-white dark:bg-dark-accent dark:hover:bg-dark-accentLight font-semibold transition"
+                className="px-4 py-2 rounded-lg bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white text-sm font-semibold transition disabled:opacity-60"
               >
                 {loading ? "Reactivating…" : "Reactivate"}
               </button>
               <button
                 onClick={onClose}
-                className="inline-flex items-center justify-center px-5 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt hover:bg-light-surface dark:hover:bg-dark-surface transition"
+                className="px-4 py-2 rounded-lg border border-light-border dark:border-dark-border text-sm font-semibold hover:bg-light-alt dark:hover:bg-dark-alt transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </>
+        )}
+
+        {type === "changePlan" && plan && (
+          <>
+            <h3 className="text-lg font-bold mb-1 text-light-primary dark:text-dark-primary">
+              Switch to {plan.name}?
+            </h3>
+            <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary mb-1">
+              {fmtPrice(plan.price)}{fmtInterval(plan.interval)} · {plan.platformFeePercent}% marketplace fee
+            </p>
+            <p className="text-xs text-light-textMuted dark:text-dark-textMuted mb-5">
+              Your plan updates immediately. Any billing difference will be prorated on your next invoice.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={onConfirm}
+                disabled={loading}
+                className="px-4 py-2 rounded-lg bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white text-sm font-semibold transition disabled:opacity-60"
+              >
+                {loading ? "Switching…" : "Confirm switch"}
+              </button>
+              <button
+                onClick={onClose}
+                className="px-4 py-2 rounded-lg border border-light-border dark:border-dark-border text-sm font-semibold hover:bg-light-alt dark:hover:bg-dark-alt transition"
               >
                 Cancel
               </button>
@@ -145,158 +144,273 @@ function SubscriptionModal({ open, type, plan, onConfirm, onClose, loading }) {
   );
 }
 
-/* =========================
-   Presentational bits
-   ========================= */
-function Chip({ children, tone = "neutral" }) {
-  const tones = {
-    neutral: "bg-light-alt dark:bg-dark-alt text-light-textMuted dark:text-dark-textMuted border-light-border dark:border-dark-border",
-    green: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200 border-green-200/60 dark:border-green-900",
-    amber: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200 border-amber-200/60 dark:border-amber-900",
-  };
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 text-[11px] rounded-full border ${tones[tone]}`}>
-      {children}
-    </span>
-  );
-}
+// ─── Current plan card ────────────────────────────────────────────────────────
 
-// NEW: current plan overview
-function CurrentPlanCard({ current, onCancel, onReactivate }) {
-  const isActive = current?.status === "active";
-  const isCanceled = current?.status === "canceled";
-  const renews = current?.renewsAt ? new Date(current.renewsAt) : null;
+function CurrentPlanCard({ subscription, capabilities, onCancel, onReactivate, onManageBilling }) {
+  const planName    = subscription?.plan?.name ?? "Free";
+  const isActive    = subscription?.status === "active";
+  const isCancelling = Boolean(subscription?.cancelAtPeriodEnd);
+  const renewsAt    = subscription?.currentPeriodEnd;
+  const fee         = capabilities?.platformFeePercent;
 
   return (
-    <section className="p-6 rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface shadow">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <div className="text-lg font-semibold">
-            Current plan:{" "}
-            <span className="text-light-accent dark:text-dark-accent">
-              {current?.plan?.name || "—"}
-            </span>
-          </div>
-          <div className="mt-1 flex items-center gap-2 text-sm text-light-textMuted dark:text-dark-textMuted">
-            Status:
-            {isActive && <Chip tone="green">Active</Chip>}
-            {isCanceled && <Chip tone="amber">Cancelling at period end</Chip>}
-            {!isActive && !isCanceled && <Chip> {current?.status || "Unknown"} </Chip>}
-            {renews && (
-              <span className="ml-2">
-                | Renews: {renews.toLocaleDateString("en-GB")}
+    <div className={`rounded-2xl border p-5 ${
+      isCancelling
+        ? "border-amber-500/30 bg-amber-500/[0.04]"
+        : "border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface"
+    }`}>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div className="space-y-2">
+          {/* Plan name + status badge */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-lg font-bold text-light-primary dark:text-dark-primary">{planName}</span>
+            {isActive && !isCancelling && (
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                Active
+              </span>
+            )}
+            {isCancelling && (
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                Cancelling
               </span>
             )}
           </div>
+
+          {/* Fee */}
+          {fee != null && <FeeDot pct={fee} />}
+
+          {/* Renewal / access info */}
+          <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary">
+            {isCancelling && renewsAt
+              ? <span className="text-amber-400">Access until {fmtDate(renewsAt)}</span>
+              : isActive && renewsAt
+              ? `Renews ${fmtDate(renewsAt)}`
+              : !subscription
+              ? "You're on the free plan — no charge, ever."
+              : null}
+          </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {isActive && current?.plan?.id !== "free" && (
+        {/* Actions */}
+        <div className="flex flex-wrap gap-2 shrink-0">
+          {subscription && planName !== "Free" && (
             <button
-              onClick={onCancel}
-              className="px-4 py-2 rounded-lg bg-light-error hover:bg-light-error/90 text-white font-semibold transition"
+              onClick={onManageBilling}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-light-border dark:border-dark-border hover:bg-light-alt dark:hover:bg-dark-alt transition"
             >
-              Cancel subscription
+              Manage billing
             </button>
           )}
-          {isCanceled && (
+          {isActive && !isCancelling && planName !== "Free" && (
+            <button
+              onClick={onCancel}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 transition"
+            >
+              Cancel
+            </button>
+          )}
+          {isCancelling && (
             <button
               onClick={onReactivate}
-              className="px-4 py-2 rounded-lg bg-light-accent hover:bg-light-accentLight text-white font-semibold transition dark:bg-dark-accent dark:hover:bg-dark-accentLight"
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white transition"
             >
               Reactivate
             </button>
           )}
         </div>
       </div>
-    </section>
-  );
-}
-
-function PlanCard({ plan, isCurrent, onChoose }) {
-  return (
-    <div
-      className={`p-6 rounded-2xl border shadow transition
-        ${isCurrent
-          ? "border-light-accent dark:border-dark-accent bg-light-accent/5 dark:bg-dark-accent/10"
-          : "border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface hover:shadow-md"}
-      `}
-    >
-      <div className="flex items-center gap-2 mb-1">
-        <span className="text-lg font-bold">{plan.name}</span>
-        {isCurrent && <Chip tone="green">Current</Chip>}
-      </div>
-
-      {plan.description && (
-        <div className="text-sm text-light-textMuted dark:text-dark-textMuted mb-2">
-          {plan.description}
-        </div>
-      )}
-
-      <div className="text-2xl font-extrabold mb-4">
-        {plan.price === 0 ? (
-          "Free"
-        ) : (
-          <>
-            {typeof plan.price === "number" ? formatGBP(plan.price) : plan.price}
-            <span className="text-base font-medium text-light-textMuted dark:text-dark-textMuted">
-              {" "}{intervalLabel(plan.interval)}
-            </span>
-          </>
-        )}
-      </div>
-
-      {toArray(plan.features).length > 0 && (
-        <ul className="mb-4 text-sm space-y-1">
-          {toArray(plan.features).map((f, i) => (
-            <li key={i}>• {f}</li>
-          ))}
-        </ul>
-      )}
-
-      {!isCurrent ? (
-        <button
-          onClick={() => onChoose(plan)}
-          className="mt-auto px-4 py-2 rounded-lg bg-light-accent hover:bg-light-accentLight text-white font-semibold transition dark:bg-dark-accent dark:hover:bg-dark-accentLight"
-        >
-          {plan.price === 0 ? "Switch to Free" : `Choose ${plan.name}`}
-        </button>
-      ) : (
-        <button
-          disabled
-          className="mt-auto px-4 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-textMuted dark:text-dark-textMuted cursor-not-allowed"
-        >
-          Selected
-        </button>
-      )}
     </div>
   );
 }
 
-function InvoiceList({ invoices = [] }) {
-  if (!invoices.length) {
-    return <div className="text-sm text-light-textMuted dark:text-dark-textMuted">No invoices found.</div>;
+// ─── Plan picker ──────────────────────────────────────────────────────────────
+
+const TIER_ORDER = ["Free", "Collector", "Elite Collector", "Vendor"];
+
+function PlanPicker({ plans, currentPlanId, hasActiveSub, billing, onBillingChange, onSelect, selectLoading }) {
+  // Group plans by tier name (Free only has monthly)
+  const byTier = plans.reduce((acc, p) => {
+    if (!acc[p.name]) acc[p.name] = {};
+    if (Number(p.price) === 0) { acc[p.name].monthly = p; return acc; }
+    if (p.interval === "month") acc[p.name].monthly = p;
+    if (p.interval === "year")  acc[p.name].yearly  = p;
+    return acc;
+  }, {});
+
+  const tiers = TIER_ORDER.map((n) => byTier[n]).filter(Boolean);
+
+  const collectorTier = byTier["Collector"];
+  const saving = collectorTier?.monthly && collectorTier?.yearly
+    ? yearlySavingPct(collectorTier.monthly.price, collectorTier.yearly.price)
+    : null;
+
+  return (
+    <div>
+      {/* Billing toggle */}
+      <div className="flex items-center gap-3 mb-4">
+        <span className="text-sm font-semibold text-light-text dark:text-dark-text">Billing</span>
+        <div className="inline-flex items-center rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt p-0.5 gap-0.5">
+          <button
+            onClick={() => onBillingChange("monthly")}
+            className={`px-3 py-1 rounded-md text-xs font-semibold transition ${
+              billing === "monthly"
+                ? "bg-light-surface dark:bg-dark-surface text-light-primary dark:text-dark-primary shadow-sm"
+                : "text-light-textMuted dark:text-dark-textMuted hover:text-light-text dark:hover:text-dark-text"
+            }`}
+          >
+            Monthly
+          </button>
+          <button
+            onClick={() => onBillingChange("yearly")}
+            className={`px-3 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1.5 ${
+              billing === "yearly"
+                ? "bg-light-surface dark:bg-dark-surface text-light-primary dark:text-dark-primary shadow-sm"
+                : "text-light-textMuted dark:text-dark-textMuted hover:text-light-text dark:hover:text-dark-text"
+            }`}
+          >
+            Yearly
+            {saving && (
+              <span className="text-[10px] font-bold px-1 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500">
+                -{saving}%
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Plan cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        {tiers.map((tier) => {
+          const plan    = (billing === "yearly" && tier.yearly) ? tier.yearly : tier.monthly;
+          if (!plan) return null;
+
+          const isCurrent = tier.monthly?.id === currentPlanId || tier.yearly?.id === currentPlanId;
+          const isFree    = Number(plan.price) === 0;
+          const isLoading = selectLoading === plan.id;
+          const features  = Array.isArray(plan.featuresJson) ? plan.featuresJson.slice(0, 4) : [];
+
+          return (
+            <div
+              key={plan.name}
+              className={`rounded-xl border p-4 flex flex-col transition ${
+                isCurrent
+                  ? "border-light-accent/50 dark:border-dark-accent/50 bg-light-accent/[0.04] dark:bg-dark-accent/[0.06]"
+                  : "border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface"
+              }`}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="font-bold text-sm text-light-primary dark:text-dark-primary">{plan.name}</span>
+                {isCurrent && (
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 whitespace-nowrap">
+                    Current
+                  </span>
+                )}
+              </div>
+
+              {/* Price */}
+              <div className="mb-2">
+                <span className="text-xl font-extrabold text-light-primary dark:text-dark-primary">
+                  {isFree ? "Free" : fmtPrice(plan.price)}
+                </span>
+                {!isFree && (
+                  <span className="text-xs text-light-textMuted dark:text-dark-textMuted ml-1">
+                    {fmtInterval(plan.interval)}
+                  </span>
+                )}
+              </div>
+
+              {/* Fee */}
+              <div className="mb-3">
+                <FeeDot pct={plan.platformFeePercent} />
+              </div>
+
+              {/* Top features */}
+              {features.length > 0 && (
+                <ul className="flex-1 mb-3 space-y-1">
+                  {features.map((f, i) => (
+                    <li key={i} className="text-xs text-light-textSecondary dark:text-dark-textSecondary flex gap-1.5">
+                      <span className="text-emerald-500 shrink-0 mt-px">✓</span>
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* CTA */}
+              {isCurrent ? (
+                <button
+                  disabled
+                  className="mt-auto w-full py-1.5 rounded-lg text-xs font-semibold border border-light-border dark:border-dark-border text-light-textMuted dark:text-dark-textMuted bg-light-alt dark:bg-dark-alt cursor-default"
+                >
+                  Current plan
+                </button>
+              ) : isFree ? (
+                <button
+                  disabled
+                  className="mt-auto w-full py-1.5 rounded-lg text-xs font-semibold border border-light-border dark:border-dark-border text-light-textMuted dark:text-dark-textMuted bg-light-alt dark:bg-dark-alt cursor-default"
+                >
+                  Free forever
+                </button>
+              ) : (
+                <button
+                  onClick={() => onSelect(plan, !hasActiveSub)}
+                  disabled={!!selectLoading}
+                  className="mt-auto w-full py-1.5 rounded-lg text-xs font-semibold bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white transition disabled:opacity-60 disabled:cursor-wait"
+                >
+                  {isLoading ? "…" : hasActiveSub ? `Switch to ${plan.name}` : `Choose ${plan.name}`}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Transaction history ──────────────────────────────────────────────────────
+
+function TransactionHistory({ transactions }) {
+  if (!transactions.length) {
+    return (
+      <p className="text-sm text-light-textMuted dark:text-dark-textMuted">No billing history yet.</p>
+    );
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface">
-      <div className="hidden md:grid grid-cols-[1fr_auto_auto_auto] gap-4 px-5 py-3 border-b border-light-border dark:border-dark-border text-sm font-semibold">
+    <div className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface overflow-hidden">
+      <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto] gap-4 px-5 py-3 border-b border-light-border dark:border-dark-border text-xs font-semibold text-light-textMuted dark:text-dark-textMuted uppercase tracking-wide">
         <div>Description</div>
         <div>Date</div>
         <div>Amount</div>
         <div>Status</div>
       </div>
-
       <ul className="divide-y divide-light-border dark:divide-dark-border">
-        {invoices.map((inv) => (
-          <li key={inv.id} className="px-5 py-3 grid grid-cols-1 md:grid-cols-[1fr_auto_auto_auto] gap-2 items-center text-sm">
-            <div className="font-medium">{inv.description}</div>
-            <div className="text-light-textMuted dark:text-dark-textMuted">
-              {new Date(inv.date).toLocaleDateString("en-GB")}
+        {transactions.map((t) => (
+          <li
+            key={t.id}
+            className="px-5 py-3 grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-1 sm:gap-4 items-center text-sm"
+          >
+            <div className="font-medium text-light-text dark:text-dark-text">
+              {t.description || t.type}
             </div>
-            <div>{formatGBP(inv.amount)} <span className="uppercase">{inv.currency}</span></div>
+            <div className="text-xs text-light-textMuted dark:text-dark-textMuted">
+              {fmtDate(t.createdAt)}
+            </div>
+            <div className="text-light-text dark:text-dark-text">
+              £{Number(t.amount).toFixed(2)}
+            </div>
             <div>
-              <Chip tone={inv.status === "paid" ? "green" : "amber"}>{inv.status}</Chip>
+              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
+                t.status === "completed"
+                  ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                  : t.status === "pending"
+                  ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                  : "bg-light-alt dark:bg-dark-alt text-light-textMuted dark:text-dark-textMuted border-light-border dark:border-dark-border"
+              }`}>
+                {t.status}
+              </span>
             </div>
           </li>
         ))}
@@ -305,155 +419,173 @@ function InvoiceList({ invoices = [] }) {
   );
 }
 
-/* =========================
-   Main component
-   ========================= */
-export default function SubscriptionTab({ user, token }) {
-  const [plans, setPlans] = useState([]);
-  const [current, setCurrent] = useState(null);
-  const [status, setStatus] = useState(null);
-  const [invoices, setInvoices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState({ type: null, plan: null });
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function SubscriptionTab() {
+  const [plans,        setPlans]        = useState([]);
+  const [subscription, setSubscription] = useState(null);
+  const [capabilities, setCapabilities] = useState(null);
+  const [transactions, setTransactions] = useState([]);
+  const [billing,      setBilling]      = useState("monthly");
+  const [loading,      setLoading]      = useState(true);
+  const [status,       setStatus]       = useState(null);
+  const [modal,        setModal]        = useState({ type: null, plan: null });
   const [actionLoading, setActionLoading] = useState(false);
+  const [selectLoading, setSelectLoading] = useState(null);
 
   useEffect(() => {
-    let mounted = true;
-    (async () => {
+    Promise.all([
+      fetchSubscriptionPlans(),
+      fetchUserSubscription(),
+      fetchUserCapabilities(),
+      fetchUserTransactions(),
+    ])
+      .then(([p, s, c, t]) => {
+        setPlans(p || []);
+        setSubscription(s || null);
+        setCapabilities(c || null);
+        setTransactions(t || []);
+      })
+      .catch((err) => setStatus({ type: "error", msg: err?.message || "Failed to load subscription data." }))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setModal({ type: null, plan: null });
+    setActionLoading(false);
+  }, []);
+
+  // New subscriber → Stripe checkout; existing → inline switch with modal
+  const handleSelectPlan = useCallback(async (plan, isNew) => {
+    if (isNew) {
+      setSelectLoading(plan.id);
       try {
-        setLoading(true);
-        const [plansRes, currentRes, invoicesRes] = await Promise.all([
-          fetchSubscriptionPlans(),
-          fetchUserSubscription(token),
-          fetchUserInvoices(),
-        ]);
-        if (!mounted) return;
-        setPlans(plansRes || []);
-        setCurrent(currentRes || null);
-        setInvoices(invoicesRes || []);
+        const url = await startSubscriptionCheckout(plan.id);
+        window.location.href = url;
       } catch (err) {
-        setStatus({ type: "error", msg: err?.message || "Failed to load subscription data." });
-      } finally {
-        if (mounted) setLoading(false);
+        setStatus({ type: "error", msg: err?.message || "Could not start checkout." });
+        setSelectLoading(null);
       }
-    })();
-    return () => { mounted = false; };
-  }, [token]);
+    } else {
+      setModal({ type: "changePlan", plan });
+    }
+  }, []);
 
-  // Modal handlers
-  const openSubscribeModal = (plan) => setModal({ type: "subscribe", plan });
-  const openCancelModal = () => setModal({ type: "cancel", plan: null });
-  const openReactivateModal = () => setModal({ type: "reactivate", plan: null });
-  const closeModal = () => { setModal({ type: null, plan: null }); setActionLoading(false); };
-
-  // Actions
-  async function handleSubscribeConfirm() {
+  const handleChangePlanConfirm = useCallback(async () => {
     setActionLoading(true);
     setStatus(null);
     try {
-      const newSub = await updateUserSubscription(modal.plan.id);
-      setCurrent(newSub);
-      setStatus({ type: "success", msg: `Switched to ${modal.plan.name} plan!` });
+      const updated = await updateUserSubscription(modal.plan.id);
+      setSubscription(updated);
+      setStatus({ type: "success", msg: `Switched to ${modal.plan.name}!` });
       closeModal();
     } catch (err) {
-      setStatus({ type: "error", msg: err?.message || "Could not update plan." });
+      setStatus({ type: "error", msg: err?.message || "Could not switch plan." });
       setActionLoading(false);
     }
-  }
+  }, [modal.plan, closeModal]);
 
-  async function handleCancelConfirm() {
+  const handleCancelConfirm = useCallback(async () => {
     setActionLoading(true);
     setStatus(null);
     try {
       await cancelUserSubscription();
-      setCurrent((old) => ({ ...(old || {}), status: "canceled" }));
-      setStatus({ type: "success", msg: "Subscription cancelled. You’ll keep access until your renewal date." });
+      setSubscription((s) => s ? { ...s, cancelAtPeriodEnd: true } : s);
+      setStatus({ type: "success", msg: "Subscription cancelled. You'll keep access until your renewal date." });
       closeModal();
     } catch (err) {
       setStatus({ type: "error", msg: err?.message || "Could not cancel subscription." });
       setActionLoading(false);
     }
-  }
+  }, [closeModal]);
 
-  async function handleReactivateConfirm() {
+  const handleReactivateConfirm = useCallback(async () => {
     setActionLoading(true);
     setStatus(null);
     try {
-      const sub = await reactivateUserSubscription();
-      setCurrent(sub);
+      const updated = await reactivateUserSubscription();
+      setSubscription(updated);
       setStatus({ type: "success", msg: "Subscription reactivated!" });
       closeModal();
     } catch (err) {
-      setStatus({ type: "error", msg: err?.message || "Could not reactivate subscription." });
+      setStatus({ type: "error", msg: err?.message || "Could not reactivate." });
       setActionLoading(false);
     }
-  }
+  }, [closeModal]);
 
-  /* =========================
-     Render
-     ========================= */
+  const handleManageBilling = useCallback(async () => {
+    try {
+      await openBillingPortal();
+    } catch (err) {
+      setStatus({ type: "error", msg: err?.message || "Billing portal unavailable." });
+    }
+  }, []);
+
   if (loading) {
     return (
-      <div className="py-12">
-        <div className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface p-8 shadow">
-          <div className="animate-pulse space-y-4">
-            <div className="h-6 w-64 bg-light-border/50 dark:bg-dark-border/50 rounded" />
-            <div className="h-36 w-full bg-light-border/30 dark:bg-dark-border/30 rounded" />
-          </div>
-        </div>
+      <div className="animate-pulse space-y-4 py-4">
+        <div className="h-24 rounded-2xl bg-light-border/30 dark:bg-dark-border/30" />
+        <div className="h-52 rounded-2xl bg-light-border/30 dark:bg-dark-border/30" />
       </div>
     );
   }
 
+  const hasActiveSub  = Boolean(subscription?.status === "active" && !subscription?.cancelAtPeriodEnd);
+  const currentPlanId = subscription?.plan?.id;
+
   return (
     <div className="space-y-8">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-xl font-extrabold text-light-primary dark:text-dark-primary">Subscription & Billing</h2>
-      </div>
+      <h2 className="text-xl font-extrabold text-light-primary dark:text-dark-primary">
+        Subscription & Billing
+      </h2>
 
       {status && (
         <StatusMessage type={status.type} message={status.msg} onClose={() => setStatus(null)} />
       )}
 
-      {/* Current Plan */}
+      {/* Current plan */}
       <CurrentPlanCard
-        current={current}
-        onCancel={openCancelModal}
-        onReactivate={openReactivateModal}
+        subscription={subscription}
+        capabilities={capabilities}
+        onCancel={() => setModal({ type: "cancel", plan: null })}
+        onReactivate={() => setModal({ type: "reactivate", plan: null })}
+        onManageBilling={handleManageBilling}
       />
 
-      {/* Plans */}
+      {/* Plan picker */}
       <section>
-        <h3 className="text-lg font-bold mb-3">Plans & Upgrades</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {plans.map((plan) => (
-            <PlanCard
-              key={plan.id}
-              plan={plan}
-              isCurrent={plan.id === current?.plan?.id}
-              onChoose={openSubscribeModal}
-            />
-          ))}
-        </div>
+        <h3 className="text-base font-bold mb-3 text-light-primary dark:text-dark-primary">Plans</h3>
+        <PlanPicker
+          plans={plans}
+          currentPlanId={currentPlanId}
+          hasActiveSub={hasActiveSub}
+          billing={billing}
+          onBillingChange={setBilling}
+          onSelect={handleSelectPlan}
+          selectLoading={selectLoading}
+        />
+        <p className="mt-3 text-xs text-light-textMuted dark:text-dark-textMuted">
+          All prices in GBP.{" "}
+          <a href="/subscriptions" className="underline underline-offset-2 hover:text-light-text dark:hover:text-dark-text transition">
+            View full plan comparison →
+          </a>
+        </p>
       </section>
 
-      {/* Billing History */}
+      {/* Billing history */}
       <section>
-        <h3 className="text-lg font-bold mb-3">Billing History</h3>
-        <InvoiceList invoices={invoices} />
+        <h3 className="text-base font-bold mb-3 text-light-primary dark:text-dark-primary">Billing History</h3>
+        <TransactionHistory transactions={transactions} />
       </section>
 
-      {/* Modal */}
-      <SubscriptionModal
+      <Modal
         open={modal.type !== null}
         type={modal.type}
         plan={modal.plan}
         onConfirm={
-          modal.type === "subscribe"
-            ? handleSubscribeConfirm
-            : modal.type === "cancel"
-            ? handleCancelConfirm
-            : handleReactivateConfirm
+          modal.type === "cancel"      ? handleCancelConfirm     :
+          modal.type === "reactivate"  ? handleReactivateConfirm :
+          handleChangePlanConfirm
         }
         onClose={closeModal}
         loading={actionLoading}

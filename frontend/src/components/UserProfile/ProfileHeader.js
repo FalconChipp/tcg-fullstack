@@ -1,22 +1,290 @@
-// src/components/UserProfile/ProfileHeader.js
 "use client";
-
-// UPDATED (2026-01-29):
-// - FIX: Messenger import casing + use openChat(userId) that now exists
-// - FIX: Message button size (small, secondary style)
-// - FIX: Button does something: opens messenger + loads chat/messages
-// - KEEP: all your existing profile editing logic unchanged
 
 import React, { useState, useRef, useEffect, useContext, useMemo } from "react";
 import Image from "next/image";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 import ProfileSocialLinks from "@/components/UserProfile/ProfileSocialLinks";
-import { FaEyeSlash } from "react-icons/fa";
+import {
+  FaCheckCircle,
+  FaCrown,
+  FaEyeSlash,
+  FaGem,
+  FaShieldAlt,
+  FaStar,
+  FaStore,
+} from "react-icons/fa";
 import pokemonList, { getPokemonDisplaySprite } from "@/utils/pokemonListShiny";
 
 import { useMessenger } from "@/components/Messenger/MessengerContext";
-import { getApiBase, getGraphqlUrl } from "@/utils/apiClient";
+import { getApiBase, getGraphqlUrl, gqlFetch } from "@/utils/apiClient";
 import { devError } from "@/utils/devLog";
+import SellerReviewsDrawer from "@/components/Marketplace/SellerReviewsDrawer";
+
+/* ─── Header status badges ──────────────────────────────────────────────────
+   Changed:
+   - Removed the old circular/medal subscription badge.
+   - Removed dependency on SellerTierBadge inside the header.
+   - Seller and subscription tier are now rendered as clean profile header
+     status badges directly under the username.
+   - Both badges share the same size, shape, spacing, and visual language.
+──────────────────────────────────────────────────────────────────────────── */
+
+const SELLER_TIERS = {
+  seller: {
+    label: "Seller",
+    icon: FaStore,
+    minCompleted: 1,
+    minScore: 0,
+    wrapper:
+      "border-slate-600/70 bg-slate-800/70 text-slate-200 dark:border-slate-600/70 dark:bg-slate-800/70 dark:text-slate-200",
+    iconBox: "bg-slate-600 text-white",
+  },
+
+  silver: {
+    label: "Silver Seller",
+    shortLabel: "Silver",
+    icon: FaShieldAlt,
+    minCompleted: 5,
+    minScore: 80,
+    wrapper:
+      "border-zinc-400/40 bg-zinc-500/10 text-zinc-200 dark:border-zinc-400/40 dark:bg-zinc-500/10 dark:text-zinc-200",
+    iconBox: "bg-zinc-300 text-zinc-950",
+  },
+
+  gold: {
+    label: "Gold Seller",
+    shortLabel: "Gold",
+    icon: FaCheckCircle,
+    minCompleted: 20,
+    minScore: 90,
+    wrapper:
+      "border-amber-400/45 bg-amber-500/10 text-amber-200 dark:border-amber-400/45 dark:bg-amber-500/10 dark:text-amber-200",
+    iconBox: "bg-amber-400 text-amber-950",
+  },
+
+  platinum: {
+    label: "Platinum Seller",
+    shortLabel: "Platinum",
+    icon: FaStar,
+    minCompleted: 75,
+    minScore: 95,
+    wrapper:
+      "border-cyan-300/45 bg-cyan-400/10 text-cyan-100 dark:border-cyan-300/45 dark:bg-cyan-400/10 dark:text-cyan-100",
+    iconBox: "bg-cyan-300 text-cyan-950",
+  },
+};
+
+const SUBSCRIPTION_TIERS = {
+  collector: {
+    label: "Collector",
+    icon: FaGem,
+    wrapper:
+      "border-sky-400/40 bg-sky-500/10 text-sky-200 dark:border-sky-400/40 dark:bg-sky-500/10 dark:text-sky-200",
+    iconBox: "bg-sky-400 text-sky-950",
+  },
+
+  pro: {
+    label: "Pro",
+    icon: FaGem,
+    wrapper:
+      "border-violet-400/45 bg-violet-500/10 text-violet-200 dark:border-violet-400/45 dark:bg-violet-500/10 dark:text-violet-200",
+    iconBox: "bg-violet-400 text-violet-950",
+  },
+
+  vendor: {
+    label: "Vendor",
+    icon: FaStore,
+    wrapper:
+      "border-amber-400/45 bg-amber-500/10 text-amber-200 dark:border-amber-400/45 dark:bg-amber-500/10 dark:text-amber-200",
+    iconBox: "bg-amber-400 text-amber-950",
+  },
+
+  premium: {
+    label: "Premium",
+    icon: FaCrown,
+    wrapper:
+      "border-amber-400/45 bg-amber-500/10 text-amber-200 dark:border-amber-400/45 dark:bg-amber-500/10 dark:text-amber-200",
+    iconBox: "bg-amber-400 text-amber-950",
+  },
+
+  gold: {
+    label: "Gold",
+    icon: FaCrown,
+    wrapper:
+      "border-amber-400/45 bg-amber-500/10 text-amber-200 dark:border-amber-400/45 dark:bg-amber-500/10 dark:text-amber-200",
+    iconBox: "bg-amber-400 text-amber-950",
+  },
+
+  elite: {
+    label: "Elite",
+    icon: FaStar,
+    wrapper:
+      "border-rose-400/45 bg-rose-500/10 text-rose-200 dark:border-rose-400/45 dark:bg-rose-500/10 dark:text-rose-200",
+    iconBox: "bg-rose-400 text-rose-950",
+  },
+
+  default: {
+    label: "Member",
+    icon: FaGem,
+    wrapper:
+      "border-light-accent/35 bg-light-accent/10 text-light-accent dark:border-dark-accent/40 dark:bg-dark-accent/10 dark:text-dark-accent",
+    iconBox:
+      "bg-light-accent text-white dark:bg-dark-accent dark:text-dark-bg",
+  },
+};
+
+/**
+ * Tier is driven by completedMarketplace count alone.
+ * Positive rate (from review counts) only acts as a downgrade guard:
+ * if a seller has ≥5 reviews AND a positive rate below 50 % they drop
+ * one tier — avoiding promoting someone with genuinely terrible feedback.
+ */
+function positiveRate(reputation) {
+  const positive = reputation?.positive ?? 0;
+  const negative = reputation?.negative ?? 0;
+  const neutral  = reputation?.neutral  ?? 0;
+  const total    = positive + negative + neutral;
+  if (total < 5) return 100; // too few reviews to penalise
+  return (positive / total) * 100;
+}
+
+function getSellerTier(reputation) {
+  const completed = reputation?.completedMarketplace ?? 0;
+  const rate      = positiveRate(reputation);
+  const penalise  = rate < 50; // genuinely bad feedback → drop one tier
+
+  // Determine tier by completed count
+  let tier;
+  if (completed >= SELLER_TIERS.platinum.minCompleted) tier = 'platinum';
+  else if (completed >= SELLER_TIERS.gold.minCompleted)    tier = 'gold';
+  else if (completed >= SELLER_TIERS.silver.minCompleted)  tier = 'silver';
+  else                                                      tier = 'seller';
+
+  // Downgrade one step if feedback is poor
+  if (penalise) {
+    const order = ['seller', 'silver', 'gold', 'platinum'];
+    const idx = order.indexOf(tier);
+    tier = order[Math.max(0, idx - 1)];
+  }
+
+  return SELLER_TIERS[tier];
+}
+
+function formatScore(reputation) {
+  const positive = reputation?.positive ?? 0;
+  const negative = reputation?.negative ?? 0;
+  const neutral  = reputation?.neutral  ?? 0;
+  const total    = positive + negative + neutral;
+  if (total === 0) return null;
+  return `${Math.round((positive / total) * 100)}%`;
+}
+
+function HeaderStatusBadge({
+  icon: Icon,
+  label,
+  eyebrow,
+  wrapper,
+  iconBox,
+  title,
+  onClick,
+}) {
+  const Component = onClick ? "button" : "span";
+
+  return (
+    <Component
+      type={onClick ? "button" : undefined}
+      onClick={onClick}
+      title={title || label}
+      aria-label={title || label}
+      className={`
+        inline-flex h-7 items-center gap-1.5 rounded-md border
+        px-1.5 pr-2 text-[11px] font-black leading-none
+        shadow-sm transition
+        hover:-translate-y-0.5 hover:shadow-md
+        ${onClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-light-accent/40 dark:focus:ring-dark-accent/40" : ""}
+        ${wrapper}
+      `}
+    >
+      <span
+        className={`
+          flex h-[18px] w-[18px] shrink-0 items-center justify-center
+          rounded-[5px] text-[9px] shadow-sm
+          ${iconBox}
+        `}
+      >
+        <Icon />
+      </span>
+
+      <span className="flex items-center gap-1 uppercase tracking-wide">
+        {eyebrow && (
+          <span className="text-[9px] font-extrabold opacity-60">
+            {eyebrow}
+          </span>
+        )}
+        <span>{label}</span>
+      </span>
+    </Component>
+  );
+}
+
+function SellerHeaderBadge({ reputation, onClick }) {
+  if (!reputation) return null;
+
+  const tier = getSellerTier(reputation);
+  const Icon = tier.icon;
+
+  const completed = reputation?.completedMarketplace ?? 0;
+  const score = formatScore(reputation);
+
+  const title = `${tier.label} · ${completed} completed sale${
+    completed === 1 ? "" : "s"
+  }${score ? ` · ${score} positive` : ""}`;
+
+  return (
+    <HeaderStatusBadge
+      icon={Icon}
+      label={tier.shortLabel || tier.label}
+      eyebrow={tier.shortLabel ? "Seller" : undefined}
+      wrapper={tier.wrapper}
+      iconBox={tier.iconBox}
+      title={title}
+      onClick={onClick}
+    />
+  );
+}
+
+function SubscriptionHeaderBadge({ name }) {
+  if (!name) return null;
+
+  const key = String(name).toLowerCase().trim();
+
+  const tier =
+    SUBSCRIPTION_TIERS[key] ?? {
+      ...SUBSCRIPTION_TIERS.default,
+      label: name,
+    };
+
+  const Icon = tier.icon;
+
+  return (
+    <HeaderStatusBadge
+      icon={Icon}
+      label={tier.label}
+      eyebrow="Tier"
+      wrapper={tier.wrapper}
+      iconBox={tier.iconBox}
+      title={`${tier.label} subscription`}
+    />
+  );
+}
+
+const REPUTATION_QUERY = `
+  query ProfileReputation($userId: ID!) {
+    sellerReputation(userId: $userId) {
+      score positive negative neutral completedMarketplace flagged
+    }
+  }
+`;
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat("en-GB", {
@@ -28,14 +296,18 @@ const formatCurrency = (value) =>
 
 function formatUpdatedAgo(iso) {
   if (!iso) return null;
+
   try {
     const updated = new Date(iso);
     const diffMs = Date.now() - updated.getTime();
     const diffMinutes = Math.floor(diffMs / 60000);
+
     if (diffMinutes < 1) return "just now";
     if (diffMinutes < 60) return `${diffMinutes} min ago`;
+
     const diffHours = Math.floor(diffMinutes / 60);
     if (diffHours < 24) return `${diffHours}h ago`;
+
     const diffDays = Math.floor(diffHours / 24);
     return `${diffDays}d ago`;
   } catch {
@@ -54,7 +326,6 @@ export default function ProfileHeader({
 }) {
   const { token } = useContext(AuthContext);
 
-  // Messenger API
   const { openChat } = useMessenger();
 
   const rawBackendUrl = getApiBase();
@@ -65,61 +336,66 @@ export default function ProfileHeader({
   const resolveavatar = (avatar) => {
     if (!avatar) return "https://placehold.co/100/webp";
     if (avatar.startsWith("http")) return avatar;
+
     const p = avatar.startsWith("/") ? avatar : `/${avatar}`;
     return `${NEXT_PUBLIC_BACKEND_URL}${p}`;
   };
 
   const [username, setUsername] = useState(profileData?.username || "Username");
   const [bio, setBio] = useState(profileData?.bio || "");
-  const [favouritePokemon, setFavouritePokemon] = useState(profileData?.favouritePokemon || "");
+  const [favouritePokemon, setFavouritePokemon] = useState(
+    profileData?.favouritePokemon || ""
+  );
   const [newProfileImage, setNewProfileImage] = useState(null);
 
-  const [currentAvatar, setCurrentAvatar] = useState(profileData?.avatar || null);
+  const [currentAvatar, setCurrentAvatar] = useState(
+    profileData?.avatar || null
+  );
 
-  const [profileImagePreview, setProfileImagePreview] = useState(resolveavatar(profileData?.avatar));
+  const [profileImagePreview, setProfileImagePreview] = useState(
+    resolveavatar(profileData?.avatar)
+  );
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef(null);
 
-  const xp = profileData?.xp ?? 0;
-  const xpMax = profileData?.xpMax ?? 100;
-  const level = profileData?.level ?? 1;
   const badges = profileData?.badges ?? [];
   const tceBadge = profileData?.tceBadge ?? false;
+  const planName = profileData?.planName ?? null;
 
-  const xpPercent = Math.min(Math.round((xp / xpMax) * 100), 100);
+  const profileUserId =
+    profileData?.user?.id || profileData?.userId || profileData?.id || null;
 
-  const profileUserId = profileData?.user?.id || profileData?.userId || profileData?.id || null;
-
-  // Depend on scalar values, not the object reference — avoids resetting state
-  // every time the parent re-renders and recreates the profileData object.
-  // While the user is actively editing we skip the bio/favouritePokemon reset
-  // so mid-edit text isn't clobbered by a parent re-render.
-  const _pdId       = profileData?.id;
+  const _pdId = profileData?.id;
   const _pdUsername = profileData?.username;
-  const _pdBio      = profileData?.bio;
-  const _pdFav      = profileData?.favouritePokemon;
-  const _pdAvatar   = profileData?.avatar;
+  const _pdBio = profileData?.bio;
+  const _pdFav = profileData?.favouritePokemon;
+  const _pdAvatar = profileData?.avatar;
 
   useEffect(() => {
     setUsername(_pdUsername || "Username");
+
     if (!isEditing) {
       setBio(_pdBio || "");
       setFavouritePokemon(_pdFav || "");
     }
+
     setProfileImagePreview(resolveavatar(_pdAvatar));
     setCurrentAvatar(_pdAvatar || null);
     setNewProfileImage(null);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [_pdId, _pdUsername, _pdBio, _pdFav, _pdAvatar]);
 
   const handleChooseImage = () => isEditing && fileInputRef.current?.click();
 
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
+
     if (file) {
       setNewProfileImage(file);
+
       const reader = new FileReader();
       reader.onloadend = () => setProfileImagePreview(reader.result);
       reader.readAsDataURL(file);
@@ -145,12 +421,22 @@ export default function ProfileHeader({
       }
     `;
 
-    const variables = { bio, favouritePokemon, avatar: avatarForUpdate || null };
+    const variables = {
+      bio,
+      favouritePokemon,
+      avatar: avatarForUpdate || null,
+    };
 
     const res = await fetch(getGraphqlUrl(), {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ query: updateProfileMutation, variables }),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        query: updateProfileMutation,
+        variables,
+      }),
     });
 
     return res.json();
@@ -164,20 +450,23 @@ export default function ProfileHeader({
 
     const res = await fetch(`${NEXT_PUBLIC_BACKEND_URL}/upload/avatar`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
       body: formData,
     });
 
     const data = await res.json();
-    // media-service returns { ok: true, url: "/uploads/avatars/..." }
+
     if (data?.ok && data?.url) return data.url;
-    // legacy shape fallback
     if (data?.success && data?.avatar) return data.avatar;
+
     throw new Error(data?.error || "Avatar upload failed");
   };
 
   const handleSaveAllChanges = async () => {
     if (!isOwnProfile || !token) return;
+
     setIsSaving(true);
 
     let avatarToSend = currentAvatar;
@@ -185,6 +474,7 @@ export default function ProfileHeader({
     if (newProfileImage) {
       try {
         const uploadedPath = await performAvatarUpload();
+
         if (uploadedPath) {
           avatarToSend = uploadedPath;
           setProfileImagePreview(resolveavatar(uploadedPath));
@@ -198,13 +488,16 @@ export default function ProfileHeader({
 
     try {
       const json = await updateProfileTextAndFinalAvatar(avatarToSend);
+
       if (json?.data?.updateProfile) {
         const serverProfile = json.data.updateProfile;
+
         setBio(serverProfile.bio || "");
         setFavouritePokemon(serverProfile.favouritePokemon || "");
         setProfileImagePreview(resolveavatar(serverProfile.avatar));
         setCurrentAvatar(serverProfile.avatar);
         setIsEditing(false);
+
         onEdit?.(serverProfile);
       } else {
         devError("Failed to update profile", json);
@@ -218,7 +511,6 @@ export default function ProfileHeader({
     }
   };
 
-  // NEW: message click
   const handleMessageUser = async () => {
     if (!token) return;
     if (!profileUserId) return;
@@ -233,33 +525,50 @@ export default function ProfileHeader({
 
   const updatedAgoLabel = formatUpdatedAgo(collectionValueUpdatedAt);
 
-  // Resolve sprite for the saved favourite Pokémon (5% shiny chance, stable per name)
+  const [reputation, setReputation] = useState(null);
+  const [showReviews, setShowReviews] = useState(false);
+
+  useEffect(() => {
+    if (!profileUserId) return;
+
+    gqlFetch(REPUTATION_QUERY, { userId: profileUserId })
+      .then((d) => {
+        const rep = d?.sellerReputation;
+
+        if (rep && rep.completedMarketplace > 0) {
+          setReputation(rep);
+        }
+      })
+      .catch(() => {});
+  }, [profileUserId]);
+
   const shinyRollRef = useRef(null);
+
   const favSprite = useMemo(() => {
     if (!favouritePokemon) return null;
+
     const match = pokemonList.find(
       (p) => p.name.toLowerCase() === favouritePokemon.toLowerCase()
     );
+
     if (!match) return null;
-    // Keep the shiny roll stable across re-renders for this profile view
+
     if (shinyRollRef.current === null) {
       shinyRollRef.current = Math.random() < 0.05;
     }
+
     const result = getPokemonDisplaySprite(match, {
       shinyChance: shinyRollRef.current ? 1 : 0,
     });
+
     return result.displaySprite ?? null;
   }, [favouritePokemon]);
 
   return (
     <div className="w-full rounded-t-2xl overflow-hidden border-t border-x border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface shadow-lg">
-
-      {/* Accent banner strip */}
       <div className="h-1.5 w-full bg-gradient-to-r from-light-accent via-light-accentLight to-light-accent dark:from-dark-accent dark:via-dark-accentLight dark:to-dark-accent" />
 
       <div className="px-6 sm:px-8 py-6 flex flex-col sm:flex-row gap-5 items-start">
-
-        {/* ── Avatar ── */}
         <div className="flex-shrink-0">
           <div
             className={`
@@ -278,6 +587,7 @@ export default function ProfileHeader({
               className="object-cover"
               priority
             />
+
             {isEditing && (
               <div className="absolute inset-0 bg-black/55 flex items-center justify-center">
                 <span className="text-white text-[11px] font-bold tracking-wide text-center leading-tight px-1">
@@ -285,42 +595,68 @@ export default function ProfileHeader({
                 </span>
               </div>
             )}
-            <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleImageChange} />
+
+            <input
+              type="file"
+              accept="image/*"
+              ref={fileInputRef}
+              className="hidden"
+              onChange={handleImageChange}
+            />
           </div>
         </div>
 
-        {/* ── Centre: name + bio + collection value ── */}
         <div className="flex-1 min-w-0 flex flex-col gap-2.5">
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-light-accent dark:text-dark-accent leading-none">
+                {username}
+              </h1>
+            </div>
 
-          {/* Name + badges */}
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-extrabold text-light-accent dark:text-dark-accent leading-none">
-              {username}
-            </h1>
-            {tceBadge && (
-              <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-light-accent dark:bg-dark-accent text-white">
-                ✨ TCE
-              </span>
-            )}
-            {badges.map((badge, i) => (
-              <span
-                key={i}
-                className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-light-accentLight/20 dark:bg-dark-accentLight/20 text-light-accent dark:text-dark-accent border border-light-accent/20 dark:border-dark-accent/30"
-              >
-                {badge}
-              </span>
-            ))}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {reputation && (
+                <SellerHeaderBadge
+                  reputation={reputation}
+                  onClick={() => setShowReviews(true)}
+                />
+              )}
+
+              {planName && <SubscriptionHeaderBadge name={planName} />}
+
+              {tceBadge && (
+                <span className="inline-flex h-7 items-center rounded-md border border-light-accent/30 bg-light-accent/10 px-2 text-[11px] font-black uppercase tracking-wide text-light-accent dark:border-dark-accent/30 dark:bg-dark-accent/10 dark:text-dark-accent">
+                  TCE
+                </span>
+              )}
+
+              {badges.map((badge, i) => (
+                <span
+                  key={i}
+                  className="inline-flex h-7 items-center rounded-md border border-light-accent/20 bg-light-accentLight/10 px-2 text-[11px] font-black uppercase tracking-wide text-light-accent dark:border-dark-accent/30 dark:bg-dark-accentLight/10 dark:text-dark-accent"
+                >
+                  {badge}
+                </span>
+              ))}
+            </div>
           </div>
 
-          {/* Bio + favourite */}
           {!isEditing ? (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <p className="text-sm text-light-text dark:text-dark-text leading-relaxed">
-                {bio || <span className="text-light-textMuted dark:text-dark-textMuted italic">No bio yet.</span>}
+                {bio || (
+                  <span className="text-light-textMuted dark:text-dark-textMuted italic">
+                    No bio yet.
+                  </span>
+                )}
               </p>
+
               {favouritePokemon && (
                 <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <span className="text-light-textMuted dark:text-dark-textMuted">·</span>
+                  <span className="text-light-textMuted dark:text-dark-textMuted">
+                    ·
+                  </span>
+
                   {favSprite && (
                     <img
                       src={favSprite}
@@ -329,6 +665,7 @@ export default function ProfileHeader({
                       style={{ imageRendering: "pixelated" }}
                     />
                   )}
+
                   <span className="text-sm text-light-textSecondary dark:text-dark-textMuted">
                     {favouritePokemon}
                   </span>
@@ -345,6 +682,7 @@ export default function ProfileHeader({
                 disabled={isSaving}
                 className="flex-1 px-3 py-2 rounded-lg text-sm border bg-light-alt dark:bg-dark-alt border-light-border dark:border-dark-border text-light-text dark:text-dark-text placeholder:text-light-textMuted dark:placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent transition resize-none"
               />
+
               <input
                 type="text"
                 value={favouritePokemon}
@@ -356,7 +694,6 @@ export default function ProfileHeader({
             </div>
           )}
 
-          {/* Collection value */}
           <div className="flex flex-wrap items-center gap-3 mt-0.5">
             {collectionValue > 0 && !hideCollectionValue && (
               <div className="flex items-center gap-2.5 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg">
@@ -365,10 +702,12 @@ export default function ProfileHeader({
                     Est. collection value
                     <span className="ml-1 text-[9px] opacity-70">beta</span>
                   </span>
+
                   <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400 mt-0.5">
                     {formatCurrency(collectionValue)}
                   </span>
                 </div>
+
                 {updatedAgoLabel && (
                   <span className="text-[10px] text-emerald-600/60 dark:text-emerald-400/50 self-end pb-0.5">
                     {updatedAgoLabel}
@@ -376,6 +715,7 @@ export default function ProfileHeader({
                 )}
               </div>
             )}
+
             {isOwnProfile && hideCollectionValue && (
               <div className="flex items-center gap-1.5 text-xs text-light-textMuted dark:text-dark-textMuted">
                 <FaEyeSlash className="opacity-60" />
@@ -384,17 +724,19 @@ export default function ProfileHeader({
             )}
           </div>
 
-          {/* Save / cancel when editing */}
           {isEditing && (
             <div className="flex gap-2 mt-1">
               <button
                 type="button"
                 onClick={handleSaveAllChanges}
                 disabled={isSaving}
-                className={`px-4 py-1.5 rounded-lg text-sm font-bold bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white transition ${isSaving ? "opacity-60 cursor-not-allowed" : ""}`}
+                className={`px-4 py-1.5 rounded-lg text-sm font-bold bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white transition ${
+                  isSaving ? "opacity-60 cursor-not-allowed" : ""
+                }`}
               >
                 {isSaving ? "Saving…" : "Save Changes"}
               </button>
+
               <button
                 type="button"
                 disabled={isSaving}
@@ -406,7 +748,9 @@ export default function ProfileHeader({
                   setCurrentAvatar(profileData.avatar || null);
                   setIsEditing(false);
                 }}
-                className={`px-4 py-1.5 rounded-lg text-sm font-semibold border border-light-border dark:border-dark-border bg-transparent text-light-textSecondary dark:text-dark-textMuted hover:bg-light-alt dark:hover:bg-dark-alt transition ${isSaving ? "opacity-60 cursor-not-allowed" : ""}`}
+                className={`px-4 py-1.5 rounded-lg text-sm font-semibold border border-light-border dark:border-dark-border bg-transparent text-light-textSecondary dark:text-dark-textMuted hover:bg-light-alt dark:hover:bg-dark-alt transition ${
+                  isSaving ? "opacity-60 cursor-not-allowed" : ""
+                }`}
               >
                 Cancel
               </button>
@@ -414,7 +758,6 @@ export default function ProfileHeader({
           )}
         </div>
 
-        {/* ── Right: actions + social — tight column, no dead space ── */}
         <div className="flex-shrink-0 flex flex-col items-end gap-2">
           {!isOwnProfile && !!profileUserId && (
             <button
@@ -427,6 +770,7 @@ export default function ProfileHeader({
               Message
             </button>
           )}
+
           {isOwnProfile && !isEditing && (
             <button
               type="button"
@@ -437,10 +781,17 @@ export default function ProfileHeader({
               Edit Profile
             </button>
           )}
+
           <ProfileSocialLinks profileUrl={profileUrl} editable={false} />
         </div>
-
       </div>
+
+      <SellerReviewsDrawer
+        sellerId={profileUserId}
+        sellerUsername={username}
+        open={showReviews}
+        onClose={() => setShowReviews(false)}
+      />
     </div>
   );
 }

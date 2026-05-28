@@ -36,6 +36,16 @@ const CREATE_OFFER_MUTATION = gql`
 `;
 
 import { gqlFetch } from "@/utils/apiClient";
+import SellerReviewsDrawer from "./SellerReviewsDrawer";
+import SellerTierBadge from "./SellerTierBadge";
+
+const SELLER_REPUTATION_QUERY = `
+  query SellerReputationBadge($userId: ID!) {
+    sellerReputation(userId: $userId) {
+      score positive negative neutral completedMarketplace
+    }
+  }
+`;
 
 function fmt(amount, currency = "GBP") {
   try {
@@ -240,15 +250,27 @@ function OfferForm({ listing, token, onDone, onCancel }) {
 
 export default function ListingDetailModal({ listing, onClose }) {
   const auth = useContext(AuthContext) || {};
-  const token = auth.accessToken || auth.token || null;
-  const isLoggedIn = !!(auth.isAuthenticated || token);
+  const token = auth.token || null;
+  const isLoggedIn = !!(auth.user || token);
 
-  // phase: "detail" | "paying" | "offer" | "done" | "offered" | "carted"
+  // phase: "detail" | "paying" | "offer" | "done" | "offered" | "carted" | "carted_guest"
   const [phase, setPhase] = useState("detail");
   const [order, setOrder] = useState(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [showTrade, setShowTrade] = useState(false);
+  const [reputation, setReputation] = useState(null);
+  const [showReviews, setShowReviews] = useState(false);
+
+  const sellerId = listing?.seller?.id ?? null;
+
+  useEffect(() => {
+    if (!sellerId) return;
+    setReputation(null);
+    gqlFetch(SELLER_REPUTATION_QUERY, { userId: sellerId })
+      .then((d) => setReputation(d?.sellerReputation ?? null))
+      .catch(() => {});
+  }, [sellerId]);
 
   if (!listing) return null;
 
@@ -276,11 +298,11 @@ export default function ListingDetailModal({ listing, onClose }) {
 
   function handleAddToCart() {
     const ok = addToCart(listing, info);
-    if (ok) setPhase("carted");
+    if (ok) setPhase(isLoggedIn ? "carted" : "carted_guest");
   }
 
   // ── success banners
-  const successPhase = phase === "done" || phase === "offered" || phase === "carted";
+  const successPhase = phase === "done" || phase === "offered" || phase === "carted" || phase === "carted_guest";
 
   return (
     <>
@@ -303,9 +325,9 @@ export default function ListingDetailModal({ listing, onClose }) {
               {phase === "done" ? "🎉" : phase === "offered" ? "📨" : "🛒"}
             </div>
             <h2 className="text-xl font-bold text-light-strong dark:text-dark-strong">
-              {phase === "done"    ? "Payment successful!"   :
-               phase === "offered" ? "Offer sent!"           :
-                                     "Added to cart!"}
+              {phase === "done"         ? "Payment successful!" :
+               phase === "offered"      ? "Offer sent!"         :
+                                          "Added to cart!"}
             </h2>
             <p className="text-sm text-center text-light-muted dark:text-dark-muted">
               {phase === "done"
@@ -314,9 +336,33 @@ export default function ListingDetailModal({ listing, onClose }) {
                 ? "The seller will be notified and can accept, counter, or decline your offer."
                 : `${info.name || "Card"} has been added to your cart.`}
             </p>
+
+            {/* Guest nudge — sign in to complete purchase */}
+            {phase === "carted_guest" && (
+              <div className="w-full rounded-2xl bg-light-elevated dark:bg-dark-elevated border border-light-border dark:border-dark-border p-4 flex flex-col gap-3 text-center">
+                <p className="text-xs text-light-muted dark:text-dark-muted">
+                  Sign in to complete your purchase. Your cart will be waiting.
+                </p>
+                <div className="flex gap-2 justify-center">
+                  <a
+                    href="/login?redirect=/marketplace"
+                    className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white bg-light-accent dark:bg-dark-accent hover:opacity-90 transition"
+                  >
+                    Sign in
+                  </a>
+                  <a
+                    href="/register?redirect=/marketplace"
+                    className="rounded-xl px-5 py-2.5 text-sm font-semibold border border-light-border dark:border-dark-border text-light-strong dark:text-dark-strong hover:bg-light-surface dark:hover:bg-dark-surface transition"
+                  >
+                    Create account
+                  </a>
+                </div>
+              </div>
+            )}
+
             <button onClick={onClose}
               className="mt-2 rounded-xl px-8 py-3 text-sm font-semibold text-white bg-light-accent dark:bg-dark-accent hover:opacity-90 transition">
-              {phase === "carted" ? "Continue browsing" : "Done"}
+              {(phase === "carted" || phase === "carted_guest") ? "Continue browsing" : "Done"}
             </button>
           </div>
         )}
@@ -383,6 +429,12 @@ export default function ListingDetailModal({ listing, onClose }) {
                     {isTradeOnly ? "⇄ Trade Only" : "⇄ Will Trade"}
                   </span>
                 )}
+                {listing.pendingOfferCount > 0 && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold bg-orange-500/20 border border-orange-400/40 text-orange-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+                    Under Offer
+                  </span>
+                )}
               </div>
 
               {/* Price + seller */}
@@ -410,7 +462,17 @@ export default function ListingDetailModal({ listing, onClose }) {
                     )}
                     <div>
                       <div className="text-sm font-semibold text-light-strong dark:text-dark-strong">{seller.username}</div>
-                      <div className="text-[10px] text-light-muted dark:text-dark-muted">Seller</div>
+                      <div className="mt-1">
+                        {reputation ? (
+                          <SellerTierBadge
+                            reputation={reputation}
+                            size="sm"
+                            onClick={() => setShowReviews(true)}
+                          />
+                        ) : (
+                          <div className="text-[10px] text-light-muted dark:text-dark-muted">Seller</div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -445,14 +507,14 @@ export default function ListingDetailModal({ listing, onClose }) {
                       </button>
 
                       {/* Secondary row: Add to cart + Make an offer */}
-                      <div className="grid gap-2" style={{ gridTemplateColumns: listing.allowOffers ? "1fr 1fr" : "1fr" }}>
-                        <button type="button" onClick={handleAddToCart} disabled={!isLoggedIn}
-                          className="rounded-xl py-2.5 text-sm font-semibold border-2 border-light-border dark:border-dark-border text-light-strong dark:text-dark-strong hover:border-light-accent dark:hover:border-dark-accent hover:text-light-accent dark:hover:text-dark-accent disabled:opacity-50 transition-colors">
+                      <div className="grid gap-2" style={{ gridTemplateColumns: listing.allowOffers && isLoggedIn ? "1fr 1fr" : "1fr" }}>
+                        <button type="button" onClick={handleAddToCart}
+                          className="rounded-xl py-2.5 text-sm font-semibold border-2 border-light-border dark:border-dark-border text-light-strong dark:text-dark-strong hover:border-light-accent dark:hover:border-dark-accent hover:text-light-accent dark:hover:text-dark-accent transition-colors">
                           🛒 Add to cart
                         </button>
-                        {listing.allowOffers && (
-                          <button type="button" onClick={() => setPhase("offer")} disabled={!isLoggedIn}
-                            className="rounded-xl py-2.5 text-sm font-semibold border-2 border-light-border dark:border-dark-border text-light-strong dark:text-dark-strong hover:border-amber-500 hover:text-amber-500 disabled:opacity-50 transition-colors">
+                        {listing.allowOffers && isLoggedIn && (
+                          <button type="button" onClick={() => setPhase("offer")}
+                            className="rounded-xl py-2.5 text-sm font-semibold border-2 border-light-border dark:border-dark-border text-light-strong dark:text-dark-strong hover:border-amber-500 hover:text-amber-500 transition-colors">
                             💬 Make an offer
                           </button>
                         )}
@@ -465,12 +527,6 @@ export default function ListingDetailModal({ listing, onClose }) {
                           className="w-full rounded-xl py-2.5 text-sm font-semibold border-2 border-violet-600 text-violet-600 dark:text-violet-400 dark:border-violet-500 hover:bg-violet-600 hover:text-white dark:hover:bg-violet-600 dark:hover:text-white transition-colors">
                           ⇄ Propose a trade
                         </button>
-                      )}
-
-                      {!isLoggedIn && (
-                        <p className="text-xs text-center text-light-muted dark:text-dark-muted">
-                          Sign in to buy, add to cart, or make an offer.
-                        </p>
                       )}
                     </>
                   )}
@@ -509,6 +565,13 @@ export default function ListingDetailModal({ listing, onClose }) {
         onClose={() => setShowTrade(false)}
       />
     )}
+
+    <SellerReviewsDrawer
+      sellerId={seller.id}
+      sellerUsername={seller.username}
+      open={showReviews}
+      onClose={() => setShowReviews(false)}
+    />
     </>
   );
 }

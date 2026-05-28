@@ -7,6 +7,7 @@ import { devError } from "@/utils/devLog";
 import StatusMessage from "@/components/UI/StatusMessage";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 import { fetchPrefs, setPrefs } from "@/graphql/notifications";
+import { enableWebPush, disableWebPush, isPushSupported, getCurrentPushSubscription } from "@/utils/webPush";
 
 const defaultPrefs = {
   inappEnabled: true,
@@ -24,6 +25,7 @@ export default function NotificationsTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null);
+  const [pushBusy, setPushBusy] = useState(false);
 
   const dirty = useMemo(() => JSON.stringify(prefs) !== JSON.stringify(initial), [prefs, initial]);
 
@@ -37,8 +39,17 @@ export default function NotificationsTab() {
           setLoading(false);
           return;
         }
-        const server = await fetchPrefs({ token });
-        const merged = { ...defaultPrefs, ...(server || {}) };
+        const [server, browserSub] = await Promise.all([
+          fetchPrefs({ token }),
+          getCurrentPushSubscription(),
+        ]);
+        // If there's no active browser subscription, override pushEnabled to false
+        // so the toggle reflects the true state regardless of stored pref
+        const merged = {
+          ...defaultPrefs,
+          ...(server || {}),
+          pushEnabled: !!(server?.pushEnabled && browserSub),
+        };
         if (!cancelled) {
           setPrefsState(merged);
           setInitial(merged);
@@ -56,6 +67,34 @@ export default function NotificationsTab() {
   function setBool(key, val) {
     setPrefsState((p) => ({ ...p, [key]: !!val }));
   }
+
+  async function handlePushToggle(enabled) {
+    if (!isPushSupported()) {
+      setStatus({ type: 'error', message: 'Push notifications are not supported in this browser.' });
+      return;
+    }
+    setPushBusy(true);
+    setStatus(null);
+    try {
+      if (enabled) {
+        await enableWebPush(token);
+        setBool('pushEnabled', true);
+        setStatus({ type: 'success', message: 'Browser push notifications enabled.' });
+      } else {
+        await disableWebPush(token);
+        setBool('pushEnabled', false);
+        setStatus({ type: 'success', message: 'Browser push notifications disabled.' });
+      }
+    } catch (e) {
+      devError('Push toggle failed', e);
+      const msg = e.message?.includes('denied')
+        ? 'Notification permission was denied. Please allow notifications in your browser settings.'
+        : (e.message || 'Failed to update push notification settings.');
+      setStatus({ type: 'error', message: msg });
+    } finally {
+      setPushBusy(false);
+    }
+  }
   function setDigest(val) {
     setPrefsState((p) => ({ ...p, digest: val }));
   }
@@ -69,6 +108,8 @@ export default function NotificationsTab() {
     setSaving(true);
     setStatus(null);
     try {
+      // pushEnabled is managed by handlePushToggle (requires browser permission flow)
+      // but we still persist its current value along with the other prefs
       const ok = await setPrefs({ token, input: { ...prefs } });
       if (ok) {
         setInitial(prefs);
@@ -123,15 +164,19 @@ export default function NotificationsTab() {
             )}
           />
           <PrefRow
-            title="Push (beta)"
-            desc="Enable web push for real-time alerts (coming soon)."
+            title="Browser push"
+            desc={
+              !isPushSupported()
+                ? "Not supported in this browser."
+                : "Receive real-time alerts even when the tab is closed."
+            }
             control={(
               <input
                 type="checkbox"
                 className="toggle-checkbox"
                 checked={!!prefs.pushEnabled}
-                onChange={(e) => setBool('pushEnabled', e.target.checked)}
-                disabled={loading || saving}
+                onChange={(e) => handlePushToggle(e.target.checked)}
+                disabled={loading || saving || pushBusy || !isPushSupported()}
               />
             )}
           />

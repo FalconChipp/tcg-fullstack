@@ -239,8 +239,8 @@ function PaymentForm({ orders, currency, onSuccess }) {
 
 export default function CheckoutPage() {
   const auth = useContext(AuthContext) || {};
-  const token = auth.accessToken || auth.token || null;
-  const isAuthenticated = !!(auth.isAuthenticated || token);
+  const token = auth.token || null;
+  const isAuthenticated = !!(auth.user || token);
   const router = useRouter();
 
   // 'summary' → 'payment' → 'success'

@@ -273,6 +273,14 @@ function ListingDetailInner() {
   }
 
   var isProduct = listing && listing.__typename === "ProductListing";
+  var isCard    = listing && listing.__typename === "CardListing";
+
+  // Card listings live in the marketplace modal — redirect there
+  useEffect(function () {
+    if (isCard) {
+      router.replace("/marketplace?listing=" + listing.id);
+    }
+  }, [isCard]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (listing) {
     // eslint-disable-next-line no-console
@@ -551,6 +559,13 @@ function ListingDetailInner() {
       "p",
       { className: subtitleCls },
       "Listing not found."
+    );
+  } else if (isCard) {
+    // Card listings open in the marketplace modal — just show a brief redirect message
+    contentNode = React.createElement(
+      "p",
+      { className: subtitleCls },
+      "Redirecting to marketplace…"
     );
   } else {
     var currency = listing.currency || "GBP";

@@ -33,6 +33,7 @@ export async function getServerSideProps({ params, res }) {
         bio
         favouritePokemon
         avatar
+        planName
         user {
           id
           username

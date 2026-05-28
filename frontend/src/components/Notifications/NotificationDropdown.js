@@ -200,13 +200,14 @@ const NotificationDropdown = forwardRef(function NotificationDropdown(
               onClick={markAllAsRead}
               type="button"
             >
-              Mark all as read
+              Mark all read
             </button>
             <a
               href="/account?tab=notifications"
               className="inline-flex items-center gap-1 text-xs text-light-textSecondary dark:text-dark-textSecondary hover:text-light-accent dark:hover:text-dark-accent"
+              title="Notification settings"
             >
-              <Cog className="w-4 h-4" /> Settings
+              <Cog className="w-4 h-4" />
             </a>
           </div>
         </div>
@@ -261,7 +262,7 @@ const NotificationDropdown = forwardRef(function NotificationDropdown(
                     {n.title}
                   </div>
                   {n.body ? (
-                    <div className="text-xs text-light-textMuted dark:text-dark-textMuted truncate">
+                    <div className="text-xs text-light-textMuted dark:text-dark-textMuted line-clamp-2 whitespace-normal">
                       {n.body}
                     </div>
                   ) : null}
@@ -297,6 +298,17 @@ const NotificationDropdown = forwardRef(function NotificationDropdown(
             </li>
           )}
         </ul>
+
+        {/* Footer — view all inbox */}
+        <div className="border-t border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt">
+          <a
+            href="/dashboard?view=notifications"
+            className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-light-accent dark:text-dark-accent hover:opacity-80 transition"
+            onClick={() => onRequestClose ? onRequestClose() : setOpen?.(false)}
+          >
+            View all notifications →
+          </a>
+        </div>
       </motion.div>
     </AnimatePresence>
   );

@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useContext, useCallback } from "react";
 import StatusMessage from "@/components/UI/StatusMessage";
-import { FaDiscord, FaGoogle } from "react-icons/fa";
+import { FaDiscord } from "react-icons/fa";
 import { AuthContext } from "../Auth/AuthProvider";
 import { getApiBase, getGraphqlUrl } from "@/utils/apiClient";
 import { devError } from "@/utils/devLog";
@@ -844,28 +844,6 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
             )}
           </li>
 
-          {/* Google placeholder (disabled) */}
-          <li className="flex items-center justify-between py-5 opacity-60 cursor-not-allowed">
-            <div className="flex items-center gap-3">
-              <span
-                className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-light-border dark:border-dark-border"
-                style={{ color: "#ea4335" }}
-              >
-                <FaGoogle className="text-current text-lg" />
-              </span>
-              <div>
-                <div className="font-semibold">Google</div>
-                <div className="text-sm text-light-textMuted dark:text-dark-textMuted">Coming soon</div>
-              </div>
-            </div>
-            <button
-              type="button"
-              disabled
-              className="px-5 py-2 rounded-lg font-semibold border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text cursor-not-allowed"
-            >
-              Link (Coming soon)
-            </button>
-          </li>
         </ul>
 
         {connStatus && (

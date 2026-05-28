@@ -22,7 +22,7 @@ const MY_ORDERS_QUERY = `
       seller { id username avatar }
       listing {
         ... on CardListing {
-          id title
+          id title rating
           cardInfo { name imageSmall setName }
         }
       }
@@ -77,6 +77,12 @@ const CANCEL_ORDER = `
 const LEAVE_FEEDBACK = `
   mutation LeaveOrderFeedback($id: ID!, $rating: Int!, $review: String) {
     leaveOrderFeedback(id: $id, rating: $rating, review: $review)
+  }
+`;
+
+const DISPUTE_REVIEW = `
+  mutation DisputeOrderReview($id: ID!, $reason: String) {
+    disputeOrderReview(id: $id, reason: $reason)
   }
 `;
 
@@ -320,11 +326,12 @@ function StarPicker({ value, onChange }) {
 /* ─── Order detail panel ──────────────────────────────────────────────────────── */
 
 function OrderDetail({ order, token, isBuyer, onUpdated }) {
-  const [disputeReason, setDispute]   = useState("");
-  const [cancelReason, setCancel]     = useState("");
-  const [rating, setRating]           = useState(0);
-  const [review, setReview]           = useState("");
-  const [activeForm, setActiveForm]   = useState(null); // 'dispute'|'cancel'|'feedback'
+  const [disputeReason, setDispute]     = useState("");
+  const [cancelReason, setCancel]       = useState("");
+  const [flagReason, setFlagReason]     = useState("");
+  const [rating, setRating]             = useState(0);
+  const [review, setReview]             = useState("");
+  const [activeForm, setActiveForm]     = useState(null); // 'dispute'|'cancel'|'feedback'|'flag'
   const [busy, setBusy]               = useState(false);
   const [err, setErr]                 = useState(null);
   const [done, setDone]               = useState(null);
@@ -485,12 +492,26 @@ function OrderDetail({ order, token, isBuyer, onUpdated }) {
             Cancel order
           </button>
         )}
+        {/* Seller: flag a review they've received */}
+        {!isBuyer && fs === "completed" && order.listing?.rating && (
+          <button type="button" onClick={() => setActiveForm(f => f === "flag" ? null : "flag")}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-red-400/40 text-red-500 hover:bg-red-500/10 transition">
+            Flag review
+          </button>
+        )}
+
         {/* Buyer: leave feedback */}
         {isBuyer && fs === "completed" && (
-          <button type="button" onClick={() => setActiveForm(f => f === "feedback" ? null : "feedback")}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-amber-400/40 text-amber-600 hover:bg-amber-500/10 transition">
-            Leave feedback
-          </button>
+          order.listing?.rating ? (
+            <span className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center gap-1">
+              {"★".repeat(order.listing.rating)} Feedback given
+            </span>
+          ) : (
+            <button type="button" onClick={() => setActiveForm(f => f === "feedback" ? null : "feedback")}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-amber-400/40 text-amber-600 hover:bg-amber-500/10 transition">
+              Leave feedback
+            </button>
+          )
         )}
       </div>
 
@@ -519,6 +540,23 @@ function OrderDetail({ order, token, isBuyer, onUpdated }) {
             onClick={() => act(CANCEL_ORDER, { id: order.id, reason: cancelReason || null }, "Order cancelled.")}
             className="px-4 py-1.5 rounded-lg text-sm font-semibold bg-red-500 text-white hover:bg-red-600 transition disabled:opacity-50">
             {busy ? "Cancelling…" : "Confirm cancel"}
+          </button>
+        </div>
+      )}
+
+      {activeForm === "flag" && (
+        <div className="p-4 rounded-xl border border-red-400/30 bg-red-500/5 space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-red-500">Flag review as suspicious</p>
+          <p className="text-xs text-light-textMuted dark:text-dark-textMuted">
+            This sends the review to our moderation team. It will be held from your reputation score while under review.
+          </p>
+          <textarea value={flagReason} onChange={e => setFlagReason(e.target.value)} rows={2}
+            placeholder="Why do you think this review is unfair or fraudulent? (optional)"
+            className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none" />
+          <button type="button" disabled={busy}
+            onClick={() => act(DISPUTE_REVIEW, { id: order.id, reason: flagReason || null }, "Review flagged — our team will investigate.")}
+            className="px-4 py-1.5 rounded-lg text-sm font-semibold bg-red-500 text-white hover:bg-red-600 transition disabled:opacity-50">
+            {busy ? "Submitting…" : "Submit flag"}
           </button>
         </div>
       )}

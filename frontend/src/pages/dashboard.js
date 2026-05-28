@@ -11,16 +11,19 @@ import { getGraphqlUrl } from "@/utils/apiClient";
 import OrdersTab from "@/components/Account/OrdersTab";
 import OffersTab from "@/components/Account/OffersTab";
 import TradesTab from "@/components/Account/TradesTab";
+import SellingTab from "@/components/Account/SellingTab";
+import NotificationsInboxTab from "@/components/Account/NotificationsInboxTab";
 import {
   Wallet,
   ShoppingBag,
   Tag,
   LayoutList,
   Loader2,
-  TrendingUp,
   ExternalLink,
   ChevronRight,
   ArrowLeftRight,
+  Store,
+  Bell,
 } from "lucide-react";
 
 /* ─── GQL ─────────────────────────────────────────────────────────────────── */
@@ -44,6 +47,7 @@ const DASHBOARD_STATS_QUERY = `
     myWallet(limit: 1) { balance currency }
     myListings(status: ACTIVE, limit: 200) { id }
     myOrders(limit: 100) { id paymentStatus fulfilmentStatus }
+    sellerOrders: myOrders(role: "seller", limit: 100) { id paymentStatus fulfilmentStatus }
     myIncomingOffers { id status }
     myOffers { id status }
     myTrades(pageSize: 100) { id status initiatorId lastCounterBy partyAId partyBId }
@@ -115,9 +119,11 @@ function StatCard({ icon: Icon, label, value, sub, href, color }) {
 /* ─── View tabs ───────────────────────────────────────────────────────────── */
 
 const VIEWS = [
-  { key: "orders", label: "Orders",  icon: ShoppingBag },
-  { key: "offers", label: "Offers",  icon: Tag },
-  { key: "trades", label: "Trades",  icon: ArrowLeftRight },
+  { key: "orders",        label: "Orders",        icon: ShoppingBag },
+  { key: "offers",        label: "Offers",        icon: Tag },
+  { key: "trades",        label: "Trades",        icon: ArrowLeftRight },
+  { key: "selling",       label: "Selling",       icon: Store },
+  { key: "notifications", label: "Notifications", icon: Bell },
 ];
 
 /* ─── Page ────────────────────────────────────────────────────────────────── */
@@ -164,15 +170,21 @@ export default function DashboardPage() {
           (t.status === "INITIATED" && t.initiatorId !== myId) ||
           (t.status === "NEGOTIATING" && t.lastCounterBy !== myId)
       ).length;
+      const sellerPendingDispatch = (data?.sellerOrders ?? []).filter(
+        (o) =>
+          (o.paymentStatus === "paid" || o.paymentStatus === "captured") &&
+          ["pending_dispatch", "pending"].includes(o.fulfilmentStatus)
+      ).length;
       setStats({
-        balance:        data?.myWallet?.balance ?? 0,
-        currency:       data?.myWallet?.currency ?? "GBP",
-        activeListings: (data?.myListings ?? []).length,
+        balance:               data?.myWallet?.balance ?? 0,
+        currency:              data?.myWallet?.currency ?? "GBP",
+        activeListings:        (data?.myListings ?? []).length,
         pendingOrders,
         incomingPending,
         sentActive,
         incomingTrades,
-        totalOrders:    orders.length,
+        totalOrders:           orders.length,
+        sellerPendingDispatch,
       });
     } catch (_) {
       // non-fatal
@@ -297,7 +309,12 @@ export default function DashboardPage() {
             <div className="flex gap-2">
               {VIEWS.map(({ key, label, icon: Icon }) => {
                 const active = view === key;
-                const badge = key === "orders" ? stats?.pendingOrders : key === "offers" ? stats?.incomingPending : stats?.incomingTrades;
+                const badge =
+                  key === "orders"  ? stats?.pendingOrders :
+                  key === "offers"  ? stats?.incomingPending :
+                  key === "trades"  ? stats?.incomingTrades :
+                  key === "selling"       ? stats?.sellerPendingDispatch :
+                  0;
                 return (
                   <button
                     key={key}
@@ -332,20 +349,16 @@ export default function DashboardPage() {
               >
                 <ExternalLink className="w-3.5 h-3.5" /> Marketplace
               </Link>
-              <Link
-                href="/account?tab=marketplace"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface hover:bg-light-alt dark:hover:bg-dark-alt text-sm text-light-textSecondary dark:text-dark-textSecondary transition"
-              >
-                <TrendingUp className="w-3.5 h-3.5" /> Seller settings
-              </Link>
             </div>
           </div>
 
           {/* Content panel */}
           <div className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface shadow-sm overflow-hidden">
-            {view === "orders" && <OrdersTab token={token} embedded />}
-            {view === "offers" && <OffersTab token={token} embedded />}
-            {view === "trades" && <TradesTab token={token} myId={myId} embedded />}
+            {view === "orders"        && <OrdersTab token={token} embedded />}
+            {view === "offers"        && <OffersTab token={token} embedded />}
+            {view === "trades"        && <TradesTab token={token} myId={myId} embedded />}
+            {view === "selling"       && <SellingTab token={token} myId={myId} />}
+            {view === "notifications" && <NotificationsInboxTab token={token} />}
           </div>
 
         </div>

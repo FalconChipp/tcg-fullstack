@@ -1,18 +1,19 @@
 // src/components/UserProfile/ProfileListingsPanel.js
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import { getCardImageUrl } from "@/utils/imageUtils";
 import { gqlFetch } from "@/utils/apiClient";
+import CardSkeleton from "@/components/UI/CardSkeleton";
 
-/* ─── GraphQL helper (token, query, vars) — wraps gqlFetch ──────────────────── */
+/* ─── GQL ─────────────────────────────────────────────────────────────────── */
 
-// gqlFetch signature is (query, variables, token) — wrapper keeps local call sites unchanged
 function gql(token, query, variables = {}) {
   return gqlFetch(query, variables, token);
 }
 
-// Own profile — all statuses
 const MY_LISTINGS_QUERY = `
   query MyListings($status: ListingStatus, $limit: Int) {
     myListings(status: $status, limit: $limit) {
@@ -23,7 +24,6 @@ const MY_LISTINGS_QUERY = `
   }
 `;
 
-// Other users — ACTIVE only (public storefront)
 const PUBLIC_LISTINGS_QUERY = `
   query PublicListings($sellerId: ID!, $limit: Int) {
     listings(sellerId: $sellerId, status: ACTIVE, limit: $limit) {
@@ -56,15 +56,143 @@ const SUBMIT_PROOF_MUTATION = `
   }
 `;
 
-/* ─── Proof submission (own profile, PENDING_PROOF listings) ─────────────────── */
+/* ─── Constants ───────────────────────────────────────────────────────────── */
 
-function ProofSubmit({ listing, token, onActivated, onCodeRefreshed }) {
-  const [file, setFile]           = useState(null);
-  const [preview, setPreview]     = useState(null);
+const CONDITION_LABELS = {
+  NM: "Near Mint", LP: "Lightly Played", MP: "Mod. Played",
+  HP: "Heavily Played", DMG: "Damaged",
+};
+
+const CONDITION_SHORT = {
+  NM: "NM", LP: "LP", MP: "MP", HP: "HP", DMG: "DMG",
+};
+
+const STATUS_META = {
+  ACTIVE:        { label: "Active",       cls: "bg-emerald-500 text-white" },
+  PENDING_PROOF: { label: "Needs proof",  cls: "bg-amber-500 text-white" },
+  SOLD:          { label: "Sold",         cls: "bg-blue-500 text-white" },
+  CANCELLED:     { label: "Delisted",     cls: "bg-neutral-500 text-white" },
+};
+
+const CONDITION_COLOR = {
+  NM:  "bg-emerald-500/80 text-white",
+  LP:  "bg-teal-500/80 text-white",
+  MP:  "bg-amber-500/80 text-white",
+  HP:  "bg-orange-500/80 text-white",
+  DMG: "bg-red-500/80 text-white",
+};
+
+const STATUS_FILTERS = [
+  { value: null,            label: "All" },
+  { value: "ACTIVE",        label: "Active" },
+  { value: "PENDING_PROOF", label: "Needs proof" },
+  { value: "SOLD",          label: "Sold" },
+  { value: "CANCELLED",     label: "Delisted" },
+];
+
+const SORT_OPTIONS = [
+  { value: "price-asc",  label: "Price (Low → High)" },
+  { value: "price-desc", label: "Price (High → Low)" },
+  { value: "name-asc",   label: "Name (A–Z)" },
+  { value: "name-desc",  label: "Name (Z–A)" },
+  { value: "date-desc",  label: "Newest first" },
+  { value: "date-asc",   label: "Oldest first" },
+];
+
+/* ─── Edit modal ──────────────────────────────────────────────────────────── */
+
+function EditModal({ listing, token, onSaved, onClose }) {
+  const [price, setPrice]             = useState(String(listing.price ?? ""));
+  const [qty, setQty]                 = useState(String(listing.quantity ?? 1));
+  const [allowOffers, setAllowOffers] = useState(!!listing.allowOffers);
+  const [willTrade, setWillTrade]     = useState(!!listing.willTrade);
+  const [saving, setSaving]           = useState(false);
+  const [err, setErr]                 = useState(null);
+
+  async function save() {
+    setSaving(true); setErr(null);
+    try {
+      await gql(token, UPDATE_MUTATION, {
+        id: listing.id,
+        input: { price: Number(price) || listing.price, quantity: Number(qty) || listing.quantity, allowOffers, willTrade },
+      });
+      onSaved({ price: Number(price), quantity: Number(qty), allowOffers, willTrade });
+    } catch (e) { setErr(e.message); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface shadow-2xl overflow-hidden">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-light-border dark:border-dark-border">
+          <div>
+            <h3 className="font-bold text-light-text dark:text-dark-text">Edit listing</h3>
+            <p className="text-xs text-light-textMuted dark:text-dark-textMuted mt-0.5 truncate max-w-[260px]">
+              {listing.cardInfo?.name || listing.title}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-light-alt dark:hover:bg-dark-alt transition text-light-textMuted dark:text-dark-textMuted">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-5 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold mb-1 text-light-textMuted dark:text-dark-textMuted">Price (£)</label>
+              <input type="number" min="0" step="0.01" value={price} onChange={e => setPrice(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent text-sm transition" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-1 text-light-textMuted dark:text-dark-textMuted">Quantity</label>
+              <input type="number" min="1" step="1" value={qty} onChange={e => setQty(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent text-sm transition" />
+            </div>
+          </div>
+
+          <div className="flex gap-5">
+            <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-light-text dark:text-dark-text">
+              <input type="checkbox" className="accent-light-accent dark:accent-dark-accent w-4 h-4"
+                checked={allowOffers} onChange={e => setAllowOffers(e.target.checked)} />
+              Allow offers
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-light-text dark:text-dark-text">
+              <input type="checkbox" className="accent-light-accent dark:accent-dark-accent w-4 h-4"
+                checked={willTrade} onChange={e => setWillTrade(e.target.checked)} />
+              Will trade
+            </label>
+          </div>
+
+          {err && <p className="text-xs text-red-500">{err}</p>}
+
+          <div className="flex gap-2 pt-1">
+            <button onClick={save} disabled={saving}
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-light-accent dark:bg-dark-accent text-white hover:bg-light-accentLight dark:hover:bg-dark-accentLight transition disabled:opacity-50">
+              {saving ? "Saving…" : "Save changes"}
+            </button>
+            <button onClick={onClose}
+              className="px-4 py-2.5 rounded-xl text-sm font-semibold border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt hover:bg-light-surface dark:hover:bg-dark-surface transition">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Proof modal ─────────────────────────────────────────────────────────── */
+
+function ProofModal({ listing: initial, token, onActivated, onClose }) {
+  const [listing, setListing] = useState(initial);
+  const [file, setFile]       = useState(null);
+  const [preview, setPreview] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult]       = useState(null); // { ok, result, newProofCode }
-  const [err, setErr]             = useState(null);
-  const [proofCode, setProofCode] = useState(listing.proofCode || "");
+  const [result, setResult]   = useState(null);
+  const [err, setErr]         = useState(null);
 
   function handleFile(e) {
     const f = e.target.files?.[0];
@@ -85,360 +213,258 @@ function ProofSubmit({ listing, token, onActivated, onCodeRefreshed }) {
       if (res?.result === 'approved') {
         onActivated(listing.id);
       } else if (res?.result === 'expired' && res?.newProofCode) {
-        setProofCode(res.newProofCode);
-        onCodeRefreshed(listing.id, res.newProofCode);
+        setListing(l => ({ ...l, proofCode: res.newProofCode }));
         setFile(null); setPreview(null);
       }
-    } catch (e) {
-      setErr(e.message);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  // Success states
-  if (result?.result === 'approved') {
-    return (
-      <div className="mt-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-sm text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-2">
-        ✅ Proof approved — your listing is now live!
-      </div>
-    );
-  }
-  if (result?.result === 'pending_admin') {
-    return (
-      <div className="mt-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-sm text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-2">
-        ⏳ Proof submitted — under admin review. Your listing will go live once approved.
-      </div>
-    );
+    } catch (e) { setErr(e.message); }
+    finally { setSubmitting(false); }
   }
 
   return (
-    <div className="mt-3 p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 space-y-4">
-      {/* Proof code display */}
-      <div>
-        <p className="text-xs font-semibold text-light-textMuted dark:text-dark-textMuted mb-2 uppercase tracking-wide">
-          Your proof code
-        </p>
-        <div className="inline-flex items-center gap-3 px-4 py-2.5 rounded-xl bg-light-surface dark:bg-dark-surface border-2 border-amber-500/40">
-          <span className="font-mono font-extrabold text-xl tracking-[0.2em] text-amber-600 dark:text-amber-400 select-all">
-            {proofCode}
-          </span>
-        </div>
-        <p className="mt-2 text-xs text-light-textMuted dark:text-dark-textMuted leading-relaxed">
-          Write or print this code on a piece of paper, place it next to your card, and take a clear photo showing both the card and the code together.
-        </p>
-        {result?.result === 'expired' && (
-          <p className="mt-1 text-xs text-amber-600 dark:text-amber-400 font-semibold">
-            ⚠️ Your previous code expired. A new code has been issued above — re-photograph with the new code.
-          </p>
-        )}
-      </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface shadow-2xl overflow-hidden">
 
-      {/* Upload */}
-      <div>
-        <p className="text-xs font-semibold text-light-textMuted dark:text-dark-textMuted mb-2 uppercase tracking-wide">
-          Upload photo
-        </p>
-        <label className="flex flex-col items-center justify-center w-full rounded-xl border-2 border-dashed border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt cursor-pointer hover:bg-light-surface dark:hover:bg-dark-surface transition overflow-hidden">
-          {preview ? (
-            <img src={preview} alt="Proof preview" className="w-full max-h-56 object-contain p-2" />
-          ) : (
-            <div className="py-6 text-center">
-              <div className="text-3xl mb-2">📷</div>
-              <p className="text-sm text-light-textMuted dark:text-dark-textMuted">Click to select a photo</p>
-              <p className="text-xs text-light-textMuted dark:text-dark-textMuted mt-0.5">JPG, PNG, WEBP</p>
-            </div>
-          )}
-          <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFile} />
-        </label>
-        {preview && (
-          <button type="button" onClick={() => { setFile(null); setPreview(null); }}
-            className="mt-2 text-xs text-light-textMuted dark:text-dark-textMuted underline">
-            Remove photo
+        <div className="flex items-center justify-between px-5 py-4 border-b border-light-border dark:border-dark-border">
+          <div>
+            <h3 className="font-bold text-light-text dark:text-dark-text">Submit proof</h3>
+            <p className="text-xs text-light-textMuted dark:text-dark-textMuted mt-0.5 truncate max-w-[260px]">
+              {listing.cardInfo?.name || listing.title}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-light-alt dark:hover:bg-dark-alt transition text-light-textMuted dark:text-dark-textMuted">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
           </button>
-        )}
-      </div>
-
-      {err && <p className="text-xs text-red-500">{err}</p>}
-
-      <button type="button" onClick={submit} disabled={!file || submitting}
-        className="w-full py-2.5 rounded-xl text-sm font-semibold bg-amber-500 hover:bg-amber-600 text-white transition disabled:opacity-50">
-        {submitting ? "Submitting…" : "Submit proof"}
-      </button>
-    </div>
-  );
-}
-
-/* ─── Shared helpers ─────────────────────────────────────────────────────────── */
-
-const STATUS_META = {
-  ACTIVE:        { label: "Active",        cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
-  PENDING_PROOF: { label: "Pending proof", cls: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
-  SOLD:          { label: "Sold",          cls: "bg-blue-500/15 text-blue-600 dark:text-blue-400" },
-  CANCELLED:     { label: "Delisted",      cls: "bg-light-textMuted/15 text-light-textMuted dark:text-dark-textMuted" },
-};
-
-const CONDITION_LABELS = {
-  NM: "Near Mint", LP: "Lightly Played", MP: "Moderately Played",
-  HP: "Heavily Played", DMG: "Damaged",
-};
-
-function StatusBadge({ status }) {
-  const m = STATUS_META[status] || { label: status, cls: "bg-light-alt text-light-textMuted" };
-  return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${m.cls}`}>
-      {m.label}
-    </span>
-  );
-}
-
-/* ─── Inline edit form (own profile only) ─────────────────────────────────────── */
-
-function EditForm({ listing, token, onSaved, onCancel }) {
-  const [price, setPrice]             = useState(String(listing.price ?? ""));
-  const [qty, setQty]                 = useState(String(listing.quantity ?? 1));
-  const [allowOffers, setAllowOffers] = useState(!!listing.allowOffers);
-  const [willTrade, setWillTrade]     = useState(!!listing.willTrade);
-  const [saving, setSaving]           = useState(false);
-  const [err, setErr]                 = useState(null);
-
-  async function save() {
-    setSaving(true); setErr(null);
-    try {
-      await gql(token, UPDATE_MUTATION, {
-        id: listing.id,
-        input: {
-          price:       Number(price)  || listing.price,
-          quantity:    Number(qty)    || listing.quantity,
-          allowOffers,
-          willTrade,
-        },
-      });
-      onSaved({ price: Number(price), quantity: Number(qty), allowOffers, willTrade });
-    } catch (e) {
-      setErr(e.message);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div className="mt-3 p-4 rounded-xl border border-light-accent/30 dark:border-dark-accent/30 bg-light-accent/5 dark:bg-dark-accent/5 space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-semibold mb-1 text-light-textMuted dark:text-dark-textMuted">Price (£)</label>
-          <input
-            type="number" min="0" step="0.01" value={price}
-            onChange={e => setPrice(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent transition text-sm"
-          />
         </div>
-        <div>
-          <label className="block text-xs font-semibold mb-1 text-light-textMuted dark:text-dark-textMuted">Quantity</label>
-          <input
-            type="number" min="1" step="1" value={qty}
-            onChange={e => setQty(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent transition text-sm"
-          />
+
+        <div className="p-5 space-y-4">
+          {result?.result === 'approved' ? (
+            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-sm text-emerald-600 dark:text-emerald-400 font-semibold text-center">
+              ✅ Proof approved — your listing is now live!
+            </div>
+          ) : result?.result === 'pending_admin' ? (
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-sm text-amber-600 dark:text-amber-400 font-semibold text-center">
+              ⏳ Submitted — under admin review.
+            </div>
+          ) : (
+            <>
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-1">
+                <p className="text-xs font-semibold text-light-textMuted dark:text-dark-textMuted uppercase tracking-wide mb-2">Your proof code</p>
+                <div className="inline-flex items-center gap-3 px-4 py-2.5 rounded-xl bg-light-alt dark:bg-dark-alt border-2 border-amber-500/40">
+                  <span className="font-mono font-extrabold text-xl tracking-[0.2em] text-amber-600 dark:text-amber-400 select-all">
+                    {listing.proofCode}
+                  </span>
+                </div>
+                <p className="text-xs text-light-textMuted dark:text-dark-textMuted leading-relaxed mt-2">
+                  Write this code on paper, place it next to the card, and take a clear photo showing both.
+                </p>
+                {result?.result === 'expired' && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold">
+                    ⚠️ Previous code expired — new code issued above.
+                  </p>
+                )}
+              </div>
+
+              <label className="flex flex-col items-center justify-center w-full rounded-xl border-2 border-dashed border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt cursor-pointer hover:bg-light-surface dark:hover:bg-dark-surface transition overflow-hidden">
+                {preview ? (
+                  <img src={preview} alt="Proof preview" className="w-full max-h-48 object-contain p-2" />
+                ) : (
+                  <div className="py-6 text-center">
+                    <div className="text-3xl mb-2">📷</div>
+                    <p className="text-sm text-light-textMuted dark:text-dark-textMuted">Click to select photo</p>
+                    <p className="text-xs text-light-textMuted dark:text-dark-textMuted mt-0.5">JPG, PNG, WEBP</p>
+                  </div>
+                )}
+                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFile} />
+              </label>
+
+              {err && <p className="text-xs text-red-500">{err}</p>}
+
+              <button onClick={submit} disabled={!file || submitting}
+                className="w-full py-2.5 rounded-xl text-sm font-semibold bg-amber-500 hover:bg-amber-600 text-white transition disabled:opacity-50">
+                {submitting ? "Submitting…" : "Submit proof"}
+              </button>
+            </>
+          )}
         </div>
-      </div>
-      <div className="flex gap-5">
-        <label className="flex items-center gap-2 cursor-pointer select-none text-sm">
-          <input type="checkbox" className="accent-light-accent dark:accent-dark-accent w-4 h-4"
-            checked={allowOffers} onChange={e => setAllowOffers(e.target.checked)} />
-          Allow offers
-        </label>
-        <label className="flex items-center gap-2 cursor-pointer select-none text-sm">
-          <input type="checkbox" className="accent-light-accent dark:accent-dark-accent w-4 h-4"
-            checked={willTrade} onChange={e => setWillTrade(e.target.checked)} />
-          Will trade
-        </label>
-      </div>
-      {err && <p className="text-xs text-red-500">{err}</p>}
-      <div className="flex gap-2">
-        <button type="button" onClick={save} disabled={saving}
-          className="px-4 py-1.5 rounded-lg text-sm font-semibold bg-light-accent dark:bg-dark-accent text-white hover:bg-light-accentLight dark:hover:bg-dark-accentLight transition disabled:opacity-50">
-          {saving ? "Saving…" : "Save changes"}
-        </button>
-        <button type="button" onClick={onCancel}
-          className="px-4 py-1.5 rounded-lg text-sm font-semibold border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt hover:bg-light-surface dark:hover:bg-dark-surface transition">
-          Cancel
-        </button>
       </div>
     </div>
   );
 }
 
-/* ─── Single listing row ─────────────────────────────────────────────────────── */
+/* ─── Card tile ───────────────────────────────────────────────────────────── */
 
-function ListingRow({ listing: initial, token, isOwnProfile, onDelisted }) {
-  const [listing, setListing]       = useState(initial);
-  const [editing, setEditing]       = useState(false);
-  const [showProof, setShowProof]   = useState(false);
+function ListingTile({ listing: initial, token, isOwnProfile, onDelisted }) {
+  const [listing, setListing]   = useState(initial);
+  const [showEdit, setShowEdit] = useState(false);
+  const [showProof, setShowProof] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
-  const [deleting, setDeleting]     = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const name    = listing.cardInfo?.name || listing.title || "Card listing";
+  const img     = listing.cardInfo?.imageSmall || null;
+  const setName = listing.cardInfo?.setName || null;
+  const cond    = listing.condition;
+  const status  = listing.status;
+
+  const isActive  = status === "ACTIVE";
+  const isPending = status === "PENDING_PROOF";
 
   async function delist() {
     setDeleting(true);
     try {
       await gql(token, DELETE_MUTATION, { id: listing.id });
       onDelisted(listing.id);
-    } catch {
-      setDeleting(false);
-    }
+    } catch { setDeleting(false); }
   }
 
-  const name          = listing.cardInfo?.name || listing.title || "Card listing";
-  const setName       = listing.cardInfo?.setName || null;
-  const img           = listing.cardInfo?.imageSmall || null;
-  const cond          = CONDITION_LABELS[listing.condition] || listing.condition || "";
-  const isActive      = listing.status === "ACTIVE";
-  const isPending     = listing.status === "PENDING_PROOF";
-  const canEdit        = isOwnProfile && isActive;
-  const canSubmitProof = isOwnProfile && isPending;
-
   return (
-    <li className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface overflow-hidden">
-      <div className="flex gap-4 p-4">
-        {/* Thumbnail */}
-        <div className="flex-shrink-0 w-12 h-[68px] rounded-lg overflow-hidden bg-black/20 dark:bg-white/5 border border-light-border dark:border-dark-border">
-          {img
-            ? <img src={img} alt={name} className="w-full h-full object-cover" />
-            : <div className="w-full h-full flex items-center justify-center text-lg">🃏</div>}
+    <>
+      <div className="bg-light-surface dark:bg-dark-surface rounded-xl shadow p-3 flex flex-col group hover:shadow-xl transition">
+
+        {/* Image */}
+        <div className="relative w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-lg overflow-hidden mb-2">
+          {img ? (
+            <Image src={getCardImageUrl(img)} alt={name} fill unoptimized
+              className="object-contain rounded-lg group-hover:scale-105 transition-transform duration-300" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-4xl">🃏</div>
+          )}
+
+          {/* Condition overlay */}
+          {cond && (
+            <span className={`absolute bottom-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold ${CONDITION_COLOR[cond] ?? "bg-black/60 text-white"}`}>
+              {CONDITION_SHORT[cond] ?? cond}
+            </span>
+          )}
+
+          {/* Status overlay — own profile */}
+          {isOwnProfile && status && status !== "ACTIVE" && (
+            <span className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold ${STATUS_META[status]?.cls ?? "bg-neutral-500 text-white"}`}>
+              {STATUS_META[status]?.label ?? status}
+            </span>
+          )}
+
+          {/* Quantity overlay */}
+          {listing.quantity > 1 && (
+            <span className="absolute top-2 right-2 bg-black/70 text-white px-2 py-0.5 rounded-full text-[10px] font-bold">
+              ×{listing.quantity}
+            </span>
+          )}
         </div>
 
         {/* Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-2 mb-0.5">
-            <span className="font-bold text-light-primary dark:text-dark-primary truncate text-sm">{name}</span>
-            {isOwnProfile && <StatusBadge status={listing.status} />}
-          </div>
-          <div className="text-xs text-light-textMuted dark:text-dark-textMuted mb-2">
-            {[setName, cond, listing.variant].filter(Boolean).join(" • ")}
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
+        <div className="flex-1 flex flex-col min-w-0">
+          <p className="font-bold text-sm text-light-text dark:text-dark-text truncate" title={name}>{name}</p>
+          {setName && (
+            <p className="text-xs text-light-textMuted dark:text-dark-textMuted truncate">{setName}</p>
+          )}
+
+          {/* Price row */}
+          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
             {listing.willTrade && !listing.price ? (
-              <span className="font-extrabold text-base text-violet-500 dark:text-violet-400">Trade only</span>
+              <span className="font-extrabold text-sm text-violet-500 dark:text-violet-400">Trade only</span>
             ) : (
-              <span className="font-extrabold text-base text-light-primary dark:text-dark-primary">
+              <span className="font-extrabold text-sm text-light-text dark:text-dark-text">
                 £{Number(listing.price || 0).toFixed(2)}
               </span>
             )}
-            <span className="text-xs text-light-textMuted dark:text-dark-textMuted">Qty: {listing.quantity}</span>
             {listing.allowOffers && (
-              <span className="text-xs px-2 py-0.5 rounded-full border border-light-border dark:border-dark-border text-light-textMuted dark:text-dark-textMuted">
-                Offers ✓
-              </span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-light-accent/10 dark:bg-dark-accent/10 text-light-accent dark:text-dark-accent font-semibold">Offers</span>
             )}
-            {listing.willTrade && (
-              <span className="text-xs px-2 py-0.5 rounded-full border border-light-border dark:border-dark-border text-light-textMuted dark:text-dark-textMuted">
-                Trade ✓
-              </span>
+            {listing.willTrade && listing.price > 0 && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-500/10 text-violet-500 dark:text-violet-400 font-semibold">Trade</span>
             )}
           </div>
         </div>
 
         {/* Actions */}
-        <div className="flex-shrink-0 flex flex-col gap-2 items-end justify-start">
-          {canSubmitProof && (
-            <button type="button" onClick={() => { setShowProof(v => !v); setEditing(false); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition
-                ${showProof
-                  ? "border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                  : "border-amber-500/40 bg-amber-500/5 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"}`}>
-              {showProof ? "Close" : "Submit proof"}
+        <div className="mt-3 flex flex-wrap gap-1.5 items-center">
+          {/* Own profile */}
+          {isOwnProfile && isPending && (
+            <button onClick={() => setShowProof(true)}
+              className="flex-1 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/10 border border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition">
+              Submit proof
             </button>
           )}
-          {canEdit && (
-            <button type="button" onClick={() => { setEditing(v => !v); setShowProof(false); }}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt hover:bg-light-surface dark:hover:bg-dark-surface transition">
-              {editing ? "Close" : "Edit"}
+          {isOwnProfile && isActive && (
+            <button onClick={() => setShowEdit(true)}
+              className="flex-1 py-1.5 rounded-lg text-xs font-semibold border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt hover:bg-light-surface dark:hover:bg-dark-surface transition text-light-text dark:text-dark-text">
+              Edit
             </button>
           )}
           {isOwnProfile && isActive && !confirmDel && (
-            <button type="button" onClick={() => setConfirmDel(true)}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-red-400/40 text-red-500 hover:bg-red-500/10 transition">
+            <button onClick={() => setConfirmDel(true)}
+              className="flex-1 py-1.5 rounded-lg text-xs font-semibold border border-red-400/40 text-red-500 hover:bg-red-500/10 transition">
               Delist
             </button>
           )}
           {isOwnProfile && isActive && confirmDel && (
-            <div className="flex gap-1">
-              <button type="button" onClick={delist} disabled={deleting}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-500 text-white hover:bg-red-600 transition disabled:opacity-50">
+            <div className="flex gap-1 flex-1">
+              <button onClick={delist} disabled={deleting}
+                className="flex-1 py-1.5 rounded-lg text-xs font-semibold bg-red-500 text-white hover:bg-red-600 transition disabled:opacity-50">
                 {deleting ? "…" : "Confirm"}
               </button>
-              <button type="button" onClick={() => setConfirmDel(false)}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt transition">
+              <button onClick={() => setConfirmDel(false)}
+                className="flex-1 py-1.5 rounded-lg text-xs font-semibold border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt transition">
                 No
               </button>
             </div>
           )}
+
+          {/* Public profile */}
           {!isOwnProfile && isActive && (
             <Link href="/marketplace"
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-light-accent dark:bg-dark-accent !text-white hover:bg-light-accentLight dark:hover:bg-dark-accentLight transition">
-              View
+              className="flex-1 text-center py-1.5 rounded-lg text-xs font-semibold bg-light-accent dark:bg-dark-accent !text-white hover:bg-light-accentLight dark:hover:bg-dark-accentLight transition">
+              View on marketplace
             </Link>
           )}
         </div>
       </div>
 
+      {/* Modals */}
+      {showEdit && (
+        <EditModal listing={listing} token={token}
+          onSaved={updated => { setListing(l => ({ ...l, ...updated })); setShowEdit(false); }}
+          onClose={() => setShowEdit(false)} />
+      )}
       {showProof && (
-        <div className="px-4 pb-4">
-          <ProofSubmit
-            listing={listing}
-            token={token}
-            onActivated={(id) => {
-              setListing(l => ({ ...l, status: "ACTIVE" }));
-              setShowProof(false);
-            }}
-            onCodeRefreshed={(id, newCode) => {
-              setListing(l => ({ ...l, proofCode: newCode }));
-            }}
-          />
-        </div>
+        <ProofModal listing={listing} token={token}
+          onActivated={() => { setListing(l => ({ ...l, status: "ACTIVE" })); setShowProof(false); }}
+          onClose={() => setShowProof(false)} />
       )}
-
-      {editing && (
-        <div className="px-4 pb-4">
-          <EditForm
-            listing={listing}
-            token={token}
-            onSaved={updated => { setListing(l => ({ ...l, ...updated })); setEditing(false); }}
-            onCancel={() => setEditing(false)}
-          />
-        </div>
-      )}
-    </li>
+    </>
   );
 }
 
-/* ─── Filter pills ───────────────────────────────────────────────────────────── */
+/* ─── Skeleton grid ───────────────────────────────────────────────────────── */
 
-const FILTERS = [
-  { value: null,            label: "All" },
-  { value: "ACTIVE",        label: "Active" },
-  { value: "PENDING_PROOF", label: "Pending proof" },
-  { value: "SOLD",          label: "Sold" },
-  { value: "CANCELLED",     label: "Delisted" },
-];
+function ListingsSkeletonGrid({ count = 10 }) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 mt-2">
+      {Array.from({ length: count }).map((_, i) => <CardSkeleton key={i} />)}
+    </div>
+  );
+}
 
-/* ─── Main panel ─────────────────────────────────────────────────────────────── */
+/* ─── Main panel ──────────────────────────────────────────────────────────── */
 
 export default function ProfileListingsPanel({ userId, isOwnProfile, token }) {
   const [listings, setListings]         = useState([]);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState(null);
   const [statusFilter, setStatusFilter] = useState(null);
+  const [search, setSearch]             = useState("");
+  const [sortOption, setSortOption]     = useState("date-desc");
 
   const load = useCallback(async (status) => {
     setLoading(true); setError(null);
     try {
       let items = [];
       if (isOwnProfile) {
-        const data = await gql(token, MY_LISTINGS_QUERY, { ...(status ? { status } : {}), limit: 100 });
+        const data = await gql(token, MY_LISTINGS_QUERY, { ...(status ? { status } : {}), limit: 200 });
         items = data?.myListings ?? [];
       } else {
-        const data = await gql(null, PUBLIC_LISTINGS_QUERY, { sellerId: userId, limit: 100 });
+        const data = await gql(null, PUBLIC_LISTINGS_QUERY, { sellerId: userId, limit: 200 });
         items = (data?.listings ?? []).filter(Boolean);
       }
       setListings(items);
@@ -455,24 +481,41 @@ export default function ProfileListingsPanel({ userId, isOwnProfile, token }) {
     setListings(ls => ls.map(l => l.id === id ? { ...l, status: "CANCELLED" } : l));
   }
 
-  const counts      = listings.reduce((acc, l) => { acc[l.status] = (acc[l.status] || 0) + 1; return acc; }, {});
-  const filtered    = statusFilter ? listings.filter(l => l.status === statusFilter) : listings;
-  const activeCount = listings.filter(l => l.status === "ACTIVE").length;
+  // Derived
+  const counts      = useMemo(() => listings.reduce((acc, l) => { acc[l.status] = (acc[l.status] || 0) + 1; return acc; }, {}), [listings]);
+  const activeCount = counts["ACTIVE"] ?? 0;
+
+  const displayed = useMemo(() => {
+    let arr = statusFilter ? listings.filter(l => l.status === statusFilter) : listings;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      arr = arr.filter(l => (l.cardInfo?.name || l.title || "").toLowerCase().includes(q));
+    }
+    const [by, dir] = sortOption.split("-");
+    const mult = dir === "asc" ? 1 : -1;
+    return [...arr].sort((a, b) => {
+      if (by === "price") return mult * ((Number(a.price) || 0) - (Number(b.price) || 0));
+      if (by === "name")  return mult * ((a.cardInfo?.name || a.title || "").localeCompare(b.cardInfo?.name || b.title || ""));
+      if (by === "date")  return mult * (new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+      return 0;
+    });
+  }, [listings, statusFilter, search, sortOption]);
 
   return (
-    <div className="space-y-5 mt-2">
+    <section className="w-full max-w-8xl mx-auto mt-6">
+
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 px-4 mb-4">
         <div>
           <h3 className="text-xl font-extrabold text-light-primary dark:text-dark-primary">
             {isOwnProfile ? "My listings" : "Listings"}
           </h3>
           <p className="text-sm text-light-textMuted dark:text-dark-textMuted mt-0.5">
             {isOwnProfile
-              ? "Manage, edit, or delist your active card listings."
+              ? "Manage your card listings"
               : activeCount > 0
-                ? `${activeCount} active listing${activeCount !== 1 ? "s" : ""} for sale`
-                : "No active listings right now."}
+                ? `${activeCount} card${activeCount !== 1 ? "s" : ""} for sale`
+                : "No active listings right now"}
           </p>
         </div>
         {isOwnProfile && (
@@ -489,79 +532,88 @@ export default function ProfileListingsPanel({ userId, isOwnProfile, token }) {
         )}
       </div>
 
-      {/* Filter pills — own profile only */}
-      {isOwnProfile && (
-        <div className="flex flex-wrap gap-2">
-          {FILTERS.map(f => {
-            const active = statusFilter === f.value;
-            const count  = f.value ? (counts[f.value] ?? 0) : listings.length;
-            return (
-              <button key={String(f.value)} type="button" onClick={() => setStatusFilter(f.value)}
-                className={`px-3 py-1.5 rounded-full text-sm font-semibold border transition flex items-center gap-1.5
-                  ${active
-                    ? "bg-light-accent dark:bg-dark-accent text-white border-light-accent dark:border-dark-accent"
-                    : "border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text hover:bg-light-surface dark:hover:bg-dark-surface"}`}>
-                {f.label}
-                <span className={`text-xs px-1.5 rounded-full ${active ? "bg-white/20" : "bg-light-border dark:bg-dark-border"}`}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
+      {/* Filters */}
+      <div className="flex flex-col gap-2 mb-4 px-4">
+        <div className="flex flex-wrap gap-2 items-center">
+          {/* Search */}
+          <div className="relative w-[200px]">
+            <input type="text" placeholder="Search" value={search} onChange={e => setSearch(e.target.value)}
+              className="w-full bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 pl-8 py-1.5 border border-light-border dark:border-dark-border focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm h-9 font-semibold transition" />
+            <svg className="absolute left-2 top-1/2 -translate-y-1/2 text-light-textSecondary dark:text-dark-textSecondary pointer-events-none" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+            </svg>
+          </div>
+
+          {/* Sort */}
+          <select value={sortOption} onChange={e => setSortOption(e.target.value)}
+            className="bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 py-1.5 border border-light-border dark:border-dark-border focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm h-9 font-semibold transition">
+            {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
         </div>
-      )}
+
+        {/* Status pills — own profile only */}
+        {isOwnProfile && (
+          <div className="flex flex-wrap gap-2">
+            {STATUS_FILTERS.map(f => {
+              const active = statusFilter === f.value;
+              const count  = f.value ? (counts[f.value] ?? 0) : listings.length;
+              return (
+                <button key={String(f.value)} type="button" onClick={() => setStatusFilter(f.value)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-semibold border transition flex items-center gap-1.5
+                    ${active
+                      ? "bg-light-accent dark:bg-dark-accent text-white border-transparent"
+                      : "border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text hover:bg-light-surface dark:hover:bg-dark-surface"}`}>
+                  {f.label}
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${active ? "bg-white/20" : "bg-light-border dark:bg-dark-border"}`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Result count */}
+        <p className="text-xs text-light-textMuted dark:text-dark-textMuted">
+          Showing <span className="font-semibold">{displayed.length}</span>
+          {listings.length !== displayed.length && <> of <span className="font-semibold">{listings.length}</span></>} listing{displayed.length !== 1 ? "s" : ""}
+        </p>
+      </div>
 
       {/* Loading */}
-      {loading && (
-        <div className="space-y-3">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface p-4 animate-pulse">
-              <div className="flex gap-4">
-                <div className="w-12 h-[68px] rounded-lg bg-light-border/60 dark:bg-dark-border/60" />
-                <div className="flex-1 space-y-2 py-1">
-                  <div className="h-4 w-40 bg-light-border/60 dark:bg-dark-border/60 rounded" />
-                  <div className="h-3 w-28 bg-light-border/40 dark:bg-dark-border/40 rounded" />
-                  <div className="h-4 w-20 bg-light-border/40 dark:bg-dark-border/40 rounded" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      {loading && <ListingsSkeletonGrid />}
 
       {/* Error */}
       {!loading && error && (
-        <div className="rounded-xl border border-red-400/30 bg-red-500/5 p-4 text-sm text-red-500">
+        <div className="mx-4 rounded-xl border border-red-400/30 bg-red-500/5 p-4 text-sm text-red-500">
           Failed to load listings: {error}
         </div>
       )}
 
       {/* Empty */}
-      {!loading && !error && filtered.length === 0 && (
-        <div className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface p-10 text-center">
+      {!loading && !error && displayed.length === 0 && (
+        <div className="mx-4 rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface p-10 text-center">
           <div className="text-4xl mb-3">🏷️</div>
-          <div className="font-bold text-light-primary dark:text-dark-primary mb-1">
+          <p className="font-bold text-light-primary dark:text-dark-primary mb-1">
             {isOwnProfile
-              ? statusFilter
-                ? `No ${STATUS_META[statusFilter]?.label.toLowerCase() ?? statusFilter} listings`
-                : "No listings yet"
+              ? statusFilter ? `No ${STATUS_META[statusFilter]?.label.toLowerCase() ?? statusFilter} listings` : "No listings yet"
               : "No listings for sale right now"}
-          </div>
-          {isOwnProfile && (
-            <p className="text-sm text-light-textMuted dark:text-dark-textMuted">
+          </p>
+          {isOwnProfile && !statusFilter && (
+            <p className="text-sm text-light-textMuted dark:text-dark-textMuted mt-1">
               <Link href="/marketplace" className="underline text-light-accent dark:text-dark-accent">
-                Create a listing
-              </Link>{" "}on the marketplace.
+                Create your first listing
+              </Link>
             </p>
           )}
         </div>
       )}
 
-      {/* Rows */}
-      {!loading && !error && filtered.length > 0 && (
-        <ul className="space-y-3">
-          {filtered.map(l => (
-            <ListingRow
+      {/* Grid */}
+      {!loading && !error && displayed.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 px-4">
+          {displayed.map(l => (
+            <ListingTile
               key={l.id}
               listing={l}
               token={token}
@@ -569,8 +621,8 @@ export default function ProfileListingsPanel({ userId, isOwnProfile, token }) {
               onDelisted={handleDelisted}
             />
           ))}
-        </ul>
+        </div>
       )}
-    </div>
+    </section>
   );
 }

@@ -311,6 +311,7 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
   const [labelPaidBy, setLabelPaidBy] = useState("seller");
   const [allowOffers, setAllowOffers] = useState(false);
   const [willTrade, setWillTrade]     = useState(false);
+  const [notes, setNotes]             = useState("");
 
   // Submit
   const [busy, setBusy] = useState(false);
@@ -407,12 +408,13 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
         CREATE_LISTING_MUTATION,
         {
           input: {
-            cardId:     selectedEntry.cardId,
-            title:      selectedEntry.card?.name ?? selectedEntry.cardId,
+            cardId:      selectedEntry.cardId,
+            title:       selectedEntry.card?.name ?? selectedEntry.cardId,
+            description: notes.trim() || undefined,
             condition,
-            variant:    variation !== "Standard" ? variation : undefined,
+            variant:     variation !== "Standard" ? variation : undefined,
             ...(priceNum != null ? { price: priceNum, currency: "GBP" } : {}),
-            quantity:   parseInt(quantity, 10) || 1,
+            quantity:    parseInt(quantity, 10) || 1,
             parcelSize,
             labelPaidBy,
             allowOffers: tradeOnly ? false : allowOffers,
@@ -454,10 +456,16 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
     return (gbp || market) ? { gbp, market } : null;
   }, [tcgData, variation]);
 
-  // Reference price for deviation warning — median of marketplace listings
+  // Reference price for deviation warning — marketplace median, or catalog price as fallback
   const referencePrice = useMemo(() => {
     const prices = priceSuggestion?.map((l) => l.price).filter(Boolean) ?? [];
-    return prices.length ? median(prices) : null;
+    if (prices.length) return median(prices);
+    return apiPrices?.market ?? apiPrices?.gbp ?? null;
+  }, [priceSuggestion, apiPrices]);
+
+  const referenceSource = useMemo(() => {
+    const prices = priceSuggestion?.map((l) => l.price).filter(Boolean) ?? [];
+    return prices.length > 0 ? "marketplace median" : "catalog price";
   }, [priceSuggestion]);
 
   // Price deviation from marketplace median
@@ -705,9 +713,9 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
                         <div className="flex items-baseline justify-between mt-1.5 px-0.5">
                           {deviationPct != null && Math.abs(deviationPct) > 15 ? (
                             <p className={["text-[11px] flex items-center gap-1", deviationPct > 0 ? "text-amber-400" : "text-sky-400"].join(" ")}>
-                              {deviationPct > 0 ? "↑" : "↓"} {Math.abs(Math.round(deviationPct))}% {deviationPct > 0 ? "above" : "below"} median (£{referencePrice.toFixed(2)})
+                              {deviationPct > 0 ? "↑" : "↓"} {Math.abs(Math.round(deviationPct))}% {deviationPct > 0 ? "above" : "below"} {referenceSource} (£{referencePrice.toFixed(2)})
                             </p>
-                          ) : <span />}
+                          ) : referencePrice && !deviationPct ? null : <span />}
                           {selectedEntry && (
                             <p className="text-[10px] text-neutral-600">You own ×{selectedEntry.quantity}</p>
                           )}
@@ -762,6 +770,24 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
                           ))}
                         </div>
                       )}
+
+                      {/* 6. Seller notes */}
+                      <div>
+                        <label className={labelCls}>
+                          Notes <span className="text-neutral-600 font-normal normal-case">(optional)</span>
+                        </label>
+                        <textarea
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          rows={3}
+                          maxLength={500}
+                          placeholder="e.g. Minor scratch on top-left corner, sleeve included, ships next day…"
+                          className={inputCls + " resize-none"}
+                        />
+                        {notes.length > 400 && (
+                          <p className="text-[11px] text-neutral-600 mt-1 text-right">{notes.length}/500</p>
+                        )}
+                      </div>
                     </>
                   )}
 

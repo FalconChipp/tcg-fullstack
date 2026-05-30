@@ -69,6 +69,14 @@ const INITIATE_TRADE_MUTATION = gql`
 
 import { gqlFetch } from "@/utils/apiClient";
 
+const CARD_MARKET_PRICE_QUERY = gql`
+  query CardMarketPriceForTrade($id: ID!) {
+    cardsearchCard(id: $id) {
+      latestPrices { variation currency gbp market }
+    }
+  }
+`;
+
 function fmt(amount, currency = "GBP") {
   try {
     return new Intl.NumberFormat("en-GB", { style: "currency", currency }).format(
@@ -169,6 +177,12 @@ export default function ProposeTradeModal({ listing, onClose }) {
   const [walletCurrency, setWalletCurrency] = useState("GBP");
   const [loadingCollection, setLoadingCollection] = useState(true);
 
+  // Market price of the wanted card (from listing)
+  const [wantedMarketPrice, setWantedMarketPrice] = useState(null);
+
+  // Market prices of the offered cards: cardId → price
+  const [offeredPrices, setOfferedPrices] = useState(new Map());
+
   // Selection state
   const [selected, setSelected] = useState(new Map()); // entryId → entry
   const [search, setSearch] = useState("");
@@ -196,6 +210,50 @@ export default function ProposeTradeModal({ listing, onClose }) {
       .finally(() => setLoadingCollection(false));
   }, [token]);
 
+  // Fetch market price for the wanted card
+  useEffect(() => {
+    if (!listing?.cardId) return;
+    gqlFetch(CARD_MARKET_PRICE_QUERY, { id: listing.cardId })
+      .then((d) => {
+        const prices = d?.cardsearchCard?.latestPrices;
+        if (!prices?.length) return;
+        const listingVariation = (listing.variation || "").toLowerCase();
+        const match =
+          prices.find((p) => p.variation?.toLowerCase() === listingVariation && (Number(p.market) || Number(p.gbp))) ??
+          prices.find((p) => Number(p.market) || Number(p.gbp)) ??
+          prices[0];
+        const val = Number(match?.market) || Number(match?.gbp) || null;
+        setWantedMarketPrice(val);
+      })
+      .catch(() => {});
+  }, [listing?.cardId, listing?.variation]);
+
+  // Fetch market prices for newly selected cards
+  useEffect(() => {
+    const entries = [...selected.values()];
+    const missing = [...new Map(entries.map((e) => [e.cardId, e])).values()]
+      .filter((e) => !offeredPrices.has(e.cardId));
+    if (!missing.length) return;
+    missing.forEach((entry) => {
+      gqlFetch(CARD_MARKET_PRICE_QUERY, { id: entry.cardId })
+        .then((d) => {
+          const prices = d?.cardsearchCard?.latestPrices;
+          if (!prices?.length) return;
+          // Prefer matching variation, then first with a non-zero value
+          const cardVariation = (entry.variation || "").toLowerCase();
+          const match =
+            prices.find((p) => p.variation?.toLowerCase() === cardVariation && (Number(p.market) || Number(p.gbp))) ??
+            prices.find((p) => Number(p.market) || Number(p.gbp)) ??
+            prices[0];
+          const val = Number(match?.market) || Number(match?.gbp) || null;
+          if (val) {
+            setOfferedPrices((prev) => new Map(prev).set(entry.cardId, val));
+          }
+        })
+        .catch(() => {});
+    });
+  }, [selected]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Filtered collection
   const filtered = useMemo(() => {
     if (!search.trim()) return collection;
@@ -219,6 +277,14 @@ export default function ProposeTradeModal({ listing, onClose }) {
   const topUpNum = parseFloat(topUp) || 0;
   const topUpExceedsBalance =
     walletBalance != null && topUpNum > 0 && topUpNum > walletBalance;
+
+  const offeredCardTotal = useMemo(() =>
+    [...selected.values()].reduce((sum, e) => sum + (offeredPrices.get(e.cardId) || 0), 0),
+    [selected, offeredPrices]
+  );
+
+  // Total estimated value of offered cards + cash top-up
+  const totalOfferedValue = offeredCardTotal + topUpNum;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -514,6 +580,58 @@ export default function ProposeTradeModal({ listing, onClose }) {
                   <span className="font-medium text-light-strong dark:text-dark-strong">
                     {info.name || listing?.cardId}
                   </span>
+                </div>
+              )}
+
+              {/* Value context */}
+              {(wantedMarketPrice || listing?.price > 0 || selected.size > 0) && (
+                <div className="rounded-xl border border-light-border dark:border-dark-border px-3 py-2 text-xs text-light-muted dark:text-dark-muted space-y-0.5">
+                  {/* Card they're sending */}
+                  {listing?.price > 0 && (
+                    <div className="flex justify-between">
+                      <span>Listing price</span>
+                      <span className="font-semibold text-light-strong dark:text-dark-strong">{fmt(listing.price, listing.currency)}</span>
+                    </div>
+                  )}
+                  {wantedMarketPrice && (
+                    <div className="flex justify-between">
+                      <span>Their card market value</span>
+                      <span className="font-semibold text-light-strong dark:text-dark-strong">{fmt(wantedMarketPrice)}</span>
+                    </div>
+                  )}
+
+                  {/* Divider before your offer */}
+                  {selected.size > 0 && (
+                    <div className="border-t border-light-border dark:border-dark-border pt-1 mt-1 space-y-0.5">
+                      {offeredCardTotal > 0 ? (
+                        <div className="flex justify-between">
+                          <span>Your cards value <span className="opacity-60">(est.)</span></span>
+                          <span className="font-semibold text-light-strong dark:text-dark-strong">{fmt(offeredCardTotal)}</span>
+                        </div>
+                      ) : (
+                        <div className="flex justify-between">
+                          <span>Your cards</span>
+                          <span className="font-semibold text-light-muted dark:text-dark-muted">
+                            {selected.size} card{selected.size !== 1 ? "s" : ""} — fetching value…
+                          </span>
+                        </div>
+                      )}
+                      {topUpNum > 0 && (
+                        <div className="flex justify-between">
+                          <span>Cash sweetener</span>
+                          <span className="font-semibold text-emerald-500">+ {fmt(topUpNum)}</span>
+                        </div>
+                      )}
+                      {totalOfferedValue > 0 && (topUpNum > 0 || offeredCardTotal > 0) && (
+                        <div className="flex justify-between border-t border-light-border dark:border-dark-border pt-1 mt-1">
+                          <span className="font-semibold text-light-strong dark:text-dark-strong">Your total offer value</span>
+                          <span className={`font-bold ${wantedMarketPrice && totalOfferedValue < wantedMarketPrice * 0.7 ? "text-amber-400" : "text-emerald-500"}`}>
+                            {fmt(totalOfferedValue)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 

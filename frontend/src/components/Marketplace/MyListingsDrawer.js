@@ -3,7 +3,7 @@
 import React, { useEffect } from "react";
 import ProfileListingsPanel from "@/components/UserProfile/ProfileListingsPanel";
 
-export default function MyListingsDrawer({ open, onClose, token }) {
+export default function MyListingsDrawer({ open, onClose, token, onCreateListing }) {
   // Prevent body scroll while drawer is open
   useEffect(() => {
     if (open) {
@@ -71,6 +71,9 @@ export default function MyListingsDrawer({ open, onClose, token }) {
             <ProfileListingsPanel
               isOwnProfile={true}
               token={token}
+              compact={true}
+              fixedStatus="ACTIVE"
+              onCreateListing={onCreateListing}
             />
           )}
         </div>

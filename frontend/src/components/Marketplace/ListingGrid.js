@@ -124,6 +124,7 @@ const LISTINGS_QUERY = gql`
         cardId
         condition
         variation
+        description
         allowOffers
         willTrade
         moderationResult

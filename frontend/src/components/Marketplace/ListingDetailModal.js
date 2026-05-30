@@ -47,6 +47,14 @@ const SELLER_REPUTATION_QUERY = `
   }
 `;
 
+const CARD_MARKET_PRICE_QUERY = `
+  query CardMarketPrice($id: ID!) {
+    cardsearchCard(id: $id) {
+      latestPrices { variation currency gbp market }
+    }
+  }
+`;
+
 function fmt(amount, currency = "GBP") {
   try {
     return new Intl.NumberFormat("en-GB", { style: "currency", currency }).format(Number(amount) || 0);
@@ -165,7 +173,7 @@ function PaymentForm({ clientSecret, price, currency, onSuccess, onCancel }) {
 
 // ─── Make an offer form ───────────────────────────────────────────────────────
 
-function OfferForm({ listing, token, onDone, onCancel }) {
+function OfferForm({ listing, token, onDone, onCancel, marketPrice }) {
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -176,11 +184,14 @@ function OfferForm({ listing, token, onDone, onCancel }) {
   const pctOff    = listPrice > 0 && offerNum > 0
     ? Math.round(((listPrice - offerNum) / listPrice) * 100)
     : null;
+  // Market value deviation
+  const marketPctOff = marketPrice && offerNum > 0
+    ? Math.round(((marketPrice - offerNum) / marketPrice) * 100)
+    : null;
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (!offerNum || offerNum <= 0) { setErr("Enter a valid amount."); return; }
-    if (offerNum >= listPrice) { setErr("Your offer must be below the listing price."); return; }
     setBusy(true); setErr("");
     try {
       await gqlFetch(CREATE_OFFER_MUTATION, {
@@ -212,11 +223,25 @@ function OfferForm({ listing, token, onDone, onCancel }) {
           <input
             type="number" min="0.01" step="0.01"
             value={amount} onChange={(e) => setAmount(e.target.value)}
-            placeholder={`Max ${fmt(listPrice - 0.01)}`}
+            placeholder="e.g. 4.99"
             className={inputCls + " pl-7"}
           />
         </div>
-        {pctOff !== null && pctOff > 0 && (
+        {/* Market value context */}
+        {marketPrice && (
+          <p className="text-xs text-light-muted dark:text-dark-muted mt-1">
+            Market value: {fmt(marketPrice)}
+            {marketPctOff !== null && marketPctOff > 10 && (
+              <span className={marketPctOff > 30 ? " text-amber-400 font-medium" : ""}>
+                {" "}· this offer is {marketPctOff}% below market value
+              </span>
+            )}
+            {marketPctOff !== null && marketPctOff <= 0 && (
+              <span className=" text-emerald-500 font-medium"> · at or above market value</span>
+            )}
+          </p>
+        )}
+        {!marketPrice && pctOff !== null && pctOff > 0 && (
           <p className="text-xs text-light-muted dark:text-dark-muted mt-1">
             {pctOff}% below asking price
           </p>
@@ -261,6 +286,7 @@ export default function ListingDetailModal({ listing, onClose }) {
   const [showTrade, setShowTrade] = useState(false);
   const [reputation, setReputation] = useState(null);
   const [showReviews, setShowReviews] = useState(false);
+  const [marketPrice, setMarketPrice] = useState(null);
 
   const sellerId = listing?.seller?.id ?? null;
 
@@ -271,6 +297,20 @@ export default function ListingDetailModal({ listing, onClose }) {
       .then((d) => setReputation(d?.sellerReputation ?? null))
       .catch(() => {});
   }, [sellerId]);
+
+  useEffect(() => {
+    if (!listing?.cardId) return;
+    setMarketPrice(null);
+    gqlFetch(CARD_MARKET_PRICE_QUERY, { id: listing.cardId })
+      .then((d) => {
+        const prices = d?.cardsearchCard?.latestPrices;
+        if (!prices?.length) return;
+        const match = prices.find((p) => !p.variation || p.variation === listing.variation) ?? prices[0];
+        const val = Number(match?.market) || Number(match?.gbp) || null;
+        setMarketPrice(val);
+      })
+      .catch(() => {});
+  }, [listing?.cardId, listing?.variation]);
 
   if (!listing) return null;
 
@@ -437,6 +477,14 @@ export default function ListingDetailModal({ listing, onClose }) {
                 )}
               </div>
 
+              {/* Seller notes */}
+              {listing.description && (
+                <div className="rounded-xl border border-light-border dark:border-dark-border bg-light-elevated dark:bg-dark-elevated px-4 py-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-light-muted dark:text-dark-muted mb-1.5">Seller notes</p>
+                  <p className="text-sm text-light-strong dark:text-dark-strong whitespace-pre-wrap leading-relaxed">{listing.description}</p>
+                </div>
+              )}
+
               {/* Price + seller */}
               <div className="rounded-2xl bg-light-elevated dark:bg-dark-elevated border border-light-border dark:border-dark-border p-4 flex items-center justify-between gap-4">
                 <div>
@@ -549,6 +597,7 @@ export default function ListingDetailModal({ listing, onClose }) {
               {phase === "offer" && (
                 <OfferForm
                   listing={listing} token={token}
+                  marketPrice={marketPrice}
                   onDone={() => setPhase("offered")}
                   onCancel={() => setPhase("detail")}
                 />

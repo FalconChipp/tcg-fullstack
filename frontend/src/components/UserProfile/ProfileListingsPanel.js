@@ -438,9 +438,12 @@ function ListingTile({ listing: initial, token, isOwnProfile, onDelisted }) {
 
 /* ─── Skeleton grid ───────────────────────────────────────────────────────── */
 
-function ListingsSkeletonGrid({ count = 10 }) {
+function ListingsSkeletonGrid({ count = 10, compact = false }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 mt-2">
+    <div className={compact
+      ? "grid grid-cols-2 gap-3 mt-2"
+      : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 mt-2"
+    }>
       {Array.from({ length: count }).map((_, i) => <CardSkeleton key={i} />)}
     </div>
   );
@@ -448,13 +451,16 @@ function ListingsSkeletonGrid({ count = 10 }) {
 
 /* ─── Main panel ──────────────────────────────────────────────────────────── */
 
-export default function ProfileListingsPanel({ userId, isOwnProfile, token }) {
+export default function ProfileListingsPanel({ userId, isOwnProfile, token, compact = false, fixedStatus = null, onCreateListing }) {
   const [listings, setListings]         = useState([]);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState(null);
   const [statusFilter, setStatusFilter] = useState(null);
   const [search, setSearch]             = useState("");
   const [sortOption, setSortOption]     = useState("date-desc");
+
+  // When fixedStatus is set, always query with that status and ignore the UI filter
+  const effectiveStatus = fixedStatus ?? statusFilter;
 
   const load = useCallback(async (status) => {
     setLoading(true); setError(null);
@@ -475,7 +481,7 @@ export default function ProfileListingsPanel({ userId, isOwnProfile, token }) {
     }
   }, [token, userId, isOwnProfile]);
 
-  useEffect(() => { load(statusFilter); }, [load, statusFilter]);
+  useEffect(() => { load(effectiveStatus); }, [load, effectiveStatus]);
 
   function handleDelisted(id) {
     setListings(ls => ls.map(l => l.id === id ? { ...l, status: "CANCELLED" } : l));
@@ -520,11 +526,18 @@ export default function ProfileListingsPanel({ userId, isOwnProfile, token }) {
         </div>
         {isOwnProfile && (
           <div className="flex gap-2">
-            <Link href="/marketplace"
-              className="px-4 py-2 rounded-xl text-sm font-semibold bg-light-accent dark:bg-dark-accent !text-white hover:bg-light-accentLight dark:hover:bg-dark-accentLight transition">
-              + New listing
-            </Link>
-            <button type="button" onClick={() => load(statusFilter)}
+            {onCreateListing ? (
+              <button type="button" onClick={onCreateListing}
+                className="px-4 py-2 rounded-xl text-sm font-semibold bg-light-accent dark:bg-dark-accent !text-white hover:bg-light-accentLight dark:hover:bg-dark-accentLight transition">
+                + New listing
+              </button>
+            ) : (
+              <Link href="/marketplace"
+                className="px-4 py-2 rounded-xl text-sm font-semibold bg-light-accent dark:bg-dark-accent !text-white hover:bg-light-accentLight dark:hover:bg-dark-accentLight transition">
+                + New listing
+              </Link>
+            )}
+            <button type="button" onClick={() => load(effectiveStatus)}
               className="px-3 py-2 rounded-xl text-sm border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt hover:bg-light-surface dark:hover:bg-dark-surface transition">
               ↺
             </button>
@@ -551,8 +564,8 @@ export default function ProfileListingsPanel({ userId, isOwnProfile, token }) {
           </select>
         </div>
 
-        {/* Status pills — own profile only */}
-        {isOwnProfile && (
+        {/* Status pills — own profile only, hidden when fixedStatus is set */}
+        {isOwnProfile && !fixedStatus && (
           <div className="flex flex-wrap gap-2">
             {STATUS_FILTERS.map(f => {
               const active = statusFilter === f.value;
@@ -581,7 +594,7 @@ export default function ProfileListingsPanel({ userId, isOwnProfile, token }) {
       </div>
 
       {/* Loading */}
-      {loading && <ListingsSkeletonGrid />}
+      {loading && <ListingsSkeletonGrid compact={compact} />}
 
       {/* Error */}
       {!loading && error && (
@@ -601,9 +614,15 @@ export default function ProfileListingsPanel({ userId, isOwnProfile, token }) {
           </p>
           {isOwnProfile && !statusFilter && (
             <p className="text-sm text-light-textMuted dark:text-dark-textMuted mt-1">
-              <Link href="/marketplace" className="underline text-light-accent dark:text-dark-accent">
-                Create your first listing
-              </Link>
+              {onCreateListing ? (
+                <button type="button" onClick={onCreateListing} className="underline text-light-accent dark:text-dark-accent">
+                  Create your first listing
+                </button>
+              ) : (
+                <Link href="/marketplace" className="underline text-light-accent dark:text-dark-accent">
+                  Create your first listing
+                </Link>
+              )}
             </p>
           )}
         </div>
@@ -611,7 +630,10 @@ export default function ProfileListingsPanel({ userId, isOwnProfile, token }) {
 
       {/* Grid */}
       {!loading && !error && displayed.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 px-4">
+        <div className={compact
+          ? "grid grid-cols-2 gap-3 px-4"
+          : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 px-4"
+        }>
           {displayed.map(l => (
             <ListingTile
               key={l.id}

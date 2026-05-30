@@ -204,6 +204,10 @@ function MarketplacePage() {
         open={showMyListings}
         onClose={() => setShowMyListings(false)}
         token={token}
+        onCreateListing={() => {
+          setShowMyListings(false);
+          setShowCreateListing(true);
+        }}
       />
 
       <BulkListingModal

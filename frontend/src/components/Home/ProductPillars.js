@@ -1,4 +1,3 @@
-// src/components/Home/ProductPillars.js
 "use client";
 
 import React from "react";
@@ -6,88 +5,90 @@ import React from "react";
 const pillars = [
   {
     label: "Search",
-    title: "Find the exact card faster",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="11" cy="11" r="7" />
+        <path d="M21 21l-4.35-4.35" />
+      </svg>
+    ),
+    title: "Find the exact card you mean",
     description:
-      "Search by card name, set, number, or expansion so you can quickly find the version you actually mean.",
-    meta: "Name · Set · Number",
+      "Search by name, set, number, or expansion. Narrow down to the exact printing instantly — whether it's a 1st edition base set or last month's special art rare.",
   },
   {
     label: "Collection",
-    title: "Track what you own",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="7" width="20" height="14" rx="2" />
+        <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
+        <line x1="12" y1="12" x2="12" y2="16" />
+        <line x1="10" y1="14" x2="14" y2="14" />
+      </svg>
+    ),
+    title: "Track everything you own",
     description:
-      "Add cards to your collection, keep quantities organised, and build a clearer picture of what you already have.",
-    meta: "Owned · Quantity · Value",
+      "Log cards with conditions, quantities, and variants. Your collection stays organised and valued in one place — no more spreadsheets or guesswork.",
   },
   {
     label: "Binders",
-    title: "Build around real collecting goals",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+      </svg>
+    ),
+    title: "Build around real goals",
     description:
-      "Create digital binders for master sets, themes, trades, wishlists, or the same layouts you use physically.",
-    meta: "Sets · Pages · Progress",
+      "Create digital binders for master sets, theme builds, or trade stock. See your progress at a glance and share them with other collectors.",
   },
   {
     label: "Wishlist",
-    title: "Keep chase cards visible",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+      </svg>
+    ),
+    title: "Keep chase cards in sight",
     description:
-      "Track the cards you still want, plan future pickups, and keep your next collecting goals in one place.",
-    meta: "Chase cards · Missing cards",
+      "Add cards you're hunting to your wishlist. Know exactly what you still need, plan your next pickup, and never lose track of a target card.",
   },
 ];
 
-function PillarCard({ pillar, index }) {
+function PillarCard({ pillar }) {
   return (
     <article className="group rounded-3xl border border-dark-border bg-dark-surface p-6 shadow-xl shadow-black/10 transition hover:-translate-y-1 hover:border-dark-accent/70 hover:shadow-2xl hover:shadow-black/20">
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-dark-accent/15 text-sm font-black text-dark-accentLight">
-          {String(index + 1).padStart(2, "0")}
+      <div className="mb-5 flex items-center gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-dark-accent/15 text-dark-accentLight">
+          {pillar.icon}
         </div>
-
-        <span className="rounded-full border border-dark-border bg-dark-alt px-3 py-1 text-xs font-bold text-dark-textMuted">
-          {pillar.label}
-        </span>
+        <span className="text-sm font-black text-dark-strong">{pillar.label}</span>
       </div>
 
-      <h3 className="text-xl font-black tracking-tight text-dark-strong">
+      <h3 className="text-lg font-black tracking-tight text-dark-strong leading-snug">
         {pillar.title}
       </h3>
 
       <p className="mt-3 text-sm leading-6 text-dark-textMuted">
         {pillar.description}
       </p>
-
-      <div className="mt-5 rounded-2xl border border-dark-border bg-dark-alt px-4 py-3 text-xs font-bold text-dark-textMuted">
-        {pillar.meta}
-      </div>
     </article>
   );
 }
 
 export default function ProductPillars() {
   return (
-    <section className="relative overflow-hidden bg-dark-background px-5 py-20 sm:px-7">
-      {/* 
-        Background effects
-
-        Changed:
-        - Moved the purple glow higher so it no longer clips hard at the bottom.
-        - Reduced opacity slightly.
-        - Added a bottom fade overlay so the section blends into the next area.
-        - Added a subtle right-side gradient instead of relying on a huge clipped blur.
-      */}
+    <section className="relative overflow-hidden bg-dark-background px-5 py-14 sm:px-7 lg:py-20">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-[-160px] top-20 h-[360px] w-[360px] rounded-full bg-dark-accent/10 blur-3xl" />
-
         <div className="absolute right-[-140px] top-[170px] h-[420px] w-[420px] rounded-full bg-purple-500/[0.07] blur-3xl" />
-
         <div className="absolute bottom-0 right-0 h-[260px] w-[420px] bg-gradient-to-t from-dark-background via-dark-background/70 to-transparent" />
-
         <div className="absolute bottom-0 left-0 h-28 w-full bg-gradient-to-b from-transparent to-dark-background" />
       </div>
 
       <div className="relative mx-auto max-w-7xl">
         <div className="mb-10 max-w-3xl">
           <div className="mb-4 inline-flex rounded-full border border-dark-border bg-dark-surface px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-dark-textMuted">
-            Core tools
+            Explore the platform
           </div>
 
           <h2 className="text-3xl font-black tracking-tight text-dark-strong sm:text-4xl">
@@ -102,8 +103,8 @@ export default function ProductPillars() {
         </div>
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-          {pillars.map((pillar, index) => (
-            <PillarCard key={pillar.title} pillar={pillar} index={index} />
+          {pillars.map((pillar) => (
+            <PillarCard key={pillar.label} pillar={pillar} />
           ))}
         </div>
       </div>

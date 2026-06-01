@@ -107,7 +107,7 @@ function ListingCard({ name, set, price, badge, image }) {
 
 export default function MarketplaceTeaser() {
   return (
-    <section className="relative overflow-hidden bg-dark-background px-5 py-20 sm:px-7">
+    <section className="relative overflow-hidden bg-dark-background px-5 py-14 sm:px-7 lg:py-20">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute right-[-160px] top-10 h-[420px] w-[420px] rounded-full bg-dark-accent/10 blur-3xl" />
       </div>

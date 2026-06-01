@@ -1,7 +1,6 @@
-// src/components/Layout/FAQ.js
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState } from "react";
 
 const DISCORD_INVITE = "https://discord.gg/PRMbMbRE2H";
 
@@ -44,42 +43,11 @@ export const FAQ_ITEMS = [
   },
 ];
 
-function Collapsible({ id, isOpen, children }) {
-  const innerRef = useRef(null);
-  const [height, setHeight] = useState(0);
-
-  useEffect(() => {
-    if (!innerRef.current) return;
-
-    setHeight(innerRef.current.scrollHeight);
-  }, [isOpen, children]);
-
-  return (
-    <div
-      id={id}
-      className={`overflow-hidden transition-all duration-300 ease-in-out ${
-        isOpen ? "opacity-100" : "opacity-0"
-      }`}
-      style={{ maxHeight: isOpen ? height : 0 }}
-      aria-hidden={!isOpen}
-    >
-      <div
-        ref={innerRef}
-        className="px-5 pb-5 pt-0 text-sm leading-6 text-dark-textMuted"
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
 function FAQItem({ item, index, isOpen, onToggle }) {
-  const bodyId = `faq-body-${index}`;
-
   return (
     <div
       className={[
-        "rounded-2xl border transition",
+        "rounded-2xl border transition-colors duration-200",
         isOpen
           ? "border-dark-accent/70 bg-dark-surface shadow-xl shadow-black/20"
           : "border-dark-border bg-dark-surface hover:border-dark-accent/50",
@@ -87,24 +55,20 @@ function FAQItem({ item, index, isOpen, onToggle }) {
     >
       <button
         type="button"
-        className="flex w-full items-center justify-between gap-4 rounded-2xl px-5 py-4 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-dark-accent"
         onClick={onToggle}
         aria-expanded={isOpen}
-        aria-controls={bodyId}
+        className="flex w-full items-center justify-between gap-4 rounded-2xl px-5 py-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-dark-accent"
       >
         <div className="flex items-center gap-3">
           <span
             className={[
               "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-black",
-              isOpen
-                ? "bg-dark-accent text-white"
-                : "bg-dark-alt text-dark-textMuted",
+              isOpen ? "bg-dark-accent text-white" : "bg-dark-alt text-dark-textMuted",
             ].join(" ")}
             aria-hidden="true"
           >
             {index + 1}
           </span>
-
           <span
             className={[
               "text-sm font-black sm:text-base",
@@ -117,7 +81,7 @@ function FAQItem({ item, index, isOpen, onToggle }) {
 
         <span
           className={[
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border text-lg font-black transition",
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border text-lg font-black transition-colors duration-200",
             isOpen
               ? "border-dark-accent bg-dark-accent/15 text-dark-accentLight"
               : "border-dark-border bg-dark-alt text-dark-textMuted",
@@ -128,72 +92,69 @@ function FAQItem({ item, index, isOpen, onToggle }) {
         </span>
       </button>
 
-      <Collapsible id={bodyId} isOpen={isOpen}>
-        {item.a}
-      </Collapsible>
+      <div
+        aria-hidden={!isOpen}
+        style={{
+          display: "grid",
+          gridTemplateRows: isOpen ? "1fr" : "0fr",
+          overflow: "hidden",
+          transition: "grid-template-rows 280ms ease-in-out, opacity 200ms ease-in-out",
+          opacity: isOpen ? 1 : 0,
+        }}
+      >
+        <div style={{ minHeight: 0 }}>
+          <div className="mx-5 border-t border-dark-border/40" />
+          <p className="px-5 py-4 text-sm leading-7 text-dark-textMuted">
+            {item.a}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
 
 export default function FAQ() {
-  const [open, setOpen] = useState(0);
+  const [open, setOpen] = useState(null);
 
   return (
-    <section className="relative overflow-hidden bg-dark-background px-5 py-20 sm:px-7">
+    <section className="relative overflow-hidden bg-dark-background px-5 py-14 sm:px-7 lg:py-20">
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute right-[-180px] top-20 h-[420px] w-[420px] rounded-full bg-dark-accent/10 blur-3xl" />
+        <div className="absolute left-1/2 top-10 h-[460px] w-[460px] -translate-x-1/2 rounded-full bg-dark-accent/[0.06] blur-3xl" />
       </div>
 
       <div className="relative mx-auto grid max-w-7xl grid-cols-1 gap-10 lg:grid-cols-[0.8fr_1.2fr]">
+        {/* Left — heading */}
         <div>
           <div className="mb-4 inline-flex rounded-full border border-dark-border bg-dark-surface px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-dark-textMuted">
             FAQ
           </div>
-
           <h2 className="text-3xl font-black tracking-tight text-dark-strong sm:text-4xl">
-            Questions?
+            Questions answered.
           </h2>
-
-          <p className="mt-4 max-w-xl text-base leading-7 text-dark-textMuted">
-            SixByFive TCG is in active development. These are the questions that
-            come up most often from collectors trying the platform.
+          <p className="mt-4 text-base leading-7 text-dark-textMuted">
+            Can't find what you're looking for? Come chat in the Discord.
           </p>
-
-          <div className="mt-8 rounded-3xl border border-dark-border bg-dark-surface p-5">
-            <h3 className="text-base font-black text-dark-strong">
-              Still need help?
-            </h3>
-
-            <p className="mt-2 text-sm leading-6 text-dark-textMuted">
-              Join Discord for support, roadmap updates, feature testing, and
-              direct feedback.
-            </p>
-
-            <a
-              href={DISCORD_INVITE}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-4 inline-flex h-11 items-center justify-center rounded-2xl bg-dark-accent px-5 text-sm font-black text-white transition hover:bg-dark-accentLight"
-            >
-              Join Discord
-            </a>
-          </div>
+          <a
+            href={DISCORD_INVITE}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-5 inline-flex h-11 items-center justify-center rounded-2xl bg-dark-accent px-5 text-sm font-black text-white transition hover:bg-dark-accentLight"
+          >
+            Join Discord
+          </a>
         </div>
 
+        {/* Right — items */}
         <div className="space-y-3">
-          {FAQ_ITEMS.map((item, index) => {
-            const isOpen = open === index;
-
-            return (
-              <FAQItem
-                key={item.q}
-                item={item}
-                index={index}
-                isOpen={isOpen}
-                onToggle={() => setOpen(isOpen ? null : index)}
-              />
-            );
-          })}
+          {FAQ_ITEMS.map((item, index) => (
+            <FAQItem
+              key={item.q}
+              item={item}
+              index={index}
+              isOpen={open === index}
+              onToggle={() => setOpen(open === index ? null : index)}
+            />
+          ))}
         </div>
       </div>
     </section>

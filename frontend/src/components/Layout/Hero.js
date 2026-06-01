@@ -4,6 +4,7 @@ import React, { useContext } from "react";
 import { useRouter } from "next/router";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 
+
 /*
   frontend/src/components/Layout/Hero.js
 
@@ -116,8 +117,8 @@ function FlowStep({ number, title, text }) {
   );
 }
 
-export default function HeroSection({ onOpenAuthModal }) {
-  const { user } = useContext(AuthContext);
+export default function HeroSection() {
+  const { user, openAuthModal } = useContext(AuthContext);
   const router = useRouter();
 
   function scrollToSearch() {
@@ -135,7 +136,7 @@ export default function HeroSection({ onOpenAuthModal }) {
 
   function handlePrimaryClick() {
     if (!user) {
-      onOpenAuthModal?.();
+      openAuthModal();
       return;
     }
 
@@ -143,7 +144,7 @@ export default function HeroSection({ onOpenAuthModal }) {
   }
 
   return (
-    <section className="relative isolate overflow-hidden bg-dark-background">
+    <section className="relative isolate overflow-hidden bg-dark-background px-5 sm:px-7">
       {/* Background */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-1/2 top-[-160px] h-[620px] w-[620px] -translate-x-1/2 rounded-full bg-dark-accent/12 blur-3xl" />
@@ -162,15 +163,15 @@ export default function HeroSection({ onOpenAuthModal }) {
         <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-dark-background to-transparent" />
       </div>
 
-      <div className="relative mx-auto flex min-h-[calc(100vh-5rem)] max-w-7xl flex-col justify-center px-5 py-20 sm:px-7 lg:py-24">
+      <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col justify-center py-24 lg:py-28">
         {/* Main hero content */}
-        <div className="max-w-4xl">
+        <div className="max-w-5xl">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-dark-border bg-dark-surface/80 px-3 py-1.5 text-xs font-bold text-dark-textMuted shadow-lg shadow-black/20">
             <span className="h-2 w-2 rounded-full bg-dark-accentLight" />
             Built for Pokémon TCG collectors
           </div>
 
-          <h1 className="max-w-4xl text-4xl font-black tracking-tight text-dark-strong sm:text-5xl lg:text-7xl">
+          <h1 className="max-w-5xl text-5xl font-black tracking-tight text-dark-strong sm:text-6xl lg:text-7xl xl:text-8xl">
             Organise your Pokémon cards like a real collection.
           </h1>
 
@@ -185,7 +186,7 @@ export default function HeroSection({ onOpenAuthModal }) {
               onClick={handlePrimaryClick}
               className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-dark-accent px-6 text-sm font-black text-white shadow-xl shadow-dark-accent/20 transition hover:bg-dark-accentLight"
             >
-              {user ? "Open dashboard" : "Start free"}
+              {user ? "Open dashboard" : "Create free account"}
               <ArrowIcon />
             </button>
 

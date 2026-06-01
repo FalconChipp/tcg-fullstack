@@ -24,7 +24,11 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   const refreshTimerRef = useRef(null);
+
+  const openAuthModal = useCallback(() => setAuthModalOpen(true), []);
+  const closeAuthModal = useCallback(() => setAuthModalOpen(false), []);
 
   const storeToken = useCallback((t) => {
     setToken(t);
@@ -251,6 +255,9 @@ export function AuthProvider({ children }) {
         updateToken,
         logout,
         loading,
+        authModalOpen,
+        openAuthModal,
+        closeAuthModal,
         connectDiscord, // NEW: expose this to your UI
         login: async (identifier, password, mfaToken) =>
           authMutation(

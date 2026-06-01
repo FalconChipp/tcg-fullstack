@@ -5,7 +5,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/router";
 
-import AuthModal from "../Auth/AuthModal";
 import { setCookie } from "@/utils/cookieUtils";
 import { AuthContext } from "../Auth/AuthProvider";
 import NotificationBell from "@/components/Notifications/NotificationBell";
@@ -143,7 +142,7 @@ function HeaderAccountLink({ href, children, isActive }) {
 /* ----------------------------- Component ----------------------------- */
 
 export default function Header({ onStartTour }) {
-  const { user, setUser, loading, token } = useContext(AuthContext);
+  const { user, setUser, loading, token, openAuthModal: openAuthModalCtx } = useContext(AuthContext);
 
   const router = useRouter();
   const pathname = router.pathname;
@@ -151,7 +150,6 @@ export default function Header({ onStartTour }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   const dropdownRef = useRef(null);
 
@@ -170,9 +168,9 @@ export default function Header({ onStartTour }) {
 
   useEffect(() => {
     if (router.query.verify === "1") {
-      setAuthModalOpen(true);
+      openAuthModalCtx();
     }
-  }, [router.query.verify]);
+  }, [router.query.verify]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handleScroll = () => {
@@ -240,7 +238,7 @@ export default function Header({ onStartTour }) {
   }
 
   function openAuthModal() {
-    setAuthModalOpen(true);
+    openAuthModalCtx();
     setMenuOpen(false);
   }
 
@@ -426,7 +424,7 @@ export default function Header({ onStartTour }) {
                   onClick={openAuthModal}
                   className={`header-clickable hidden h-11 rounded-2xl bg-dark-accent px-5 text-sm font-black text-white transition hover:bg-dark-accentLight active:bg-dark-accentLight sm:inline-flex sm:items-center ${safeFocusClass()}`}
                 >
-                  Start free
+                  Sign up free
                 </button>
               )}
 
@@ -533,14 +531,6 @@ export default function Header({ onStartTour }) {
         </div>
       </aside>
 
-      {/* Auth modal */}
-      {authModalOpen && (
-        <AuthModal
-          isOpen={authModalOpen}
-          onClose={() => setAuthModalOpen(false)}
-          onAuthSuccess={() => setAuthModalOpen(false)}
-        />
-      )}
 
       <style jsx global>{`
         #main-header a,

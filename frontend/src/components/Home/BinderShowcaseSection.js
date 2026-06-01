@@ -236,7 +236,7 @@ function BinderPagePreview() {
 
 export default function BinderShowcaseSection() {
   return (
-    <section className="bg-dark-background px-5 py-20 sm:px-7">
+    <section className="bg-dark-background px-5 py-14 sm:px-7 lg:py-20">
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-12 lg:grid-cols-[1fr_0.9fr] lg:items-center">
         <div>
           <div className="mb-4 inline-flex rounded-full border border-dark-border bg-dark-surface px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-dark-textMuted">

@@ -66,7 +66,7 @@ export default function MobileAppPromo({
   }
 
   return (
-    <section className="relative overflow-hidden bg-dark-background px-5 py-20 sm:px-7">
+    <section className="relative overflow-hidden bg-dark-background px-5 py-14 sm:px-7 lg:py-20">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-[-160px] top-10 h-[420px] w-[420px] rounded-full bg-dark-accent/10 blur-3xl" />
         <div className="absolute right-[-180px] bottom-[-180px] h-[440px] w-[440px] rounded-full bg-purple-500/10 blur-3xl" />

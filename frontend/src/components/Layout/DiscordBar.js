@@ -45,7 +45,7 @@ export default function DiscordJoinBar({
   return (
     <section
       aria-label="Join the SixByFive collector community"
-      className={`relative overflow-hidden bg-dark-background px-5 py-20 sm:px-7 ${className}`}
+      className={`relative overflow-hidden bg-dark-background px-5 py-14 sm:px-7 lg:py-20 ${className}`}
     >
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-1/2 top-10 h-[460px] w-[460px] -translate-x-1/2 rounded-full bg-[#5865F2]/10 blur-3xl" />

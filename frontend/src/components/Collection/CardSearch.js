@@ -5,10 +5,12 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useContext,
   useMemo,
   useRef,
   startTransition,
 } from "react";
+import { AuthContext } from "@/components/Auth/AuthProvider";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
@@ -379,6 +381,7 @@ function PopularSearchButton({ children, onClick }) {
 
 export default function CardSearch({ variant = "search" }) {
   const { dark } = useTheme();
+  const { openAuthModal } = useContext(AuthContext);
 
   const isHomeVariant = variant === "home";
   const isSearchVariant = !isHomeVariant;
@@ -751,7 +754,7 @@ export default function CardSearch({ variant = "search" }) {
     const token = getCookie("authToken");
 
     if (!token) {
-      showStatusMessage("error", "You must be logged in to add to wishlist.");
+      openAuthModal();
       return;
     }
 
@@ -844,13 +847,13 @@ export default function CardSearch({ variant = "search" }) {
     : false;
 
   const rootClass = isHomeVariant
-    ? "bg-dark-background text-dark-text"
+    ? "bg-dark-background text-dark-text px-5 sm:px-7"
     : `${
         hasActiveResultsSection ? "min-h-screen " : ""
       }bg-light-background text-light-text dark:bg-dark-background dark:text-dark-text transition-colors`;
 
   const innerClass = isHomeVariant
-    ? "max-w-6xl mx-auto px-5 py-14 sm:py-16"
+    ? "max-w-7xl mx-auto py-14 sm:py-16"
     : "max-w-[1200px] mx-auto px-5 py-10";
 
   const formClass = isHomeVariant
@@ -1015,24 +1018,6 @@ export default function CardSearch({ variant = "search" }) {
             </div>
           </div>
 
-          {isHomeVariant && (
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wide text-dark-textMuted">
-                Popular:
-              </span>
-
-              {["Charizard", "Pikachu", "Umbreon", "Base Set", "151"].map(
-                (label) => (
-                  <PopularSearchButton
-                    key={label}
-                    onClick={() => applyPopularSearch(label)}
-                  >
-                    {label}
-                  </PopularSearchButton>
-                )
-              )}
-            </div>
-          )}
 
           {searchError ? (
             <div
@@ -1334,28 +1319,6 @@ export default function CardSearch({ variant = "search" }) {
                 </div>
               )}
 
-              {isHomeVariant && (
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wide text-dark-textMuted">
-                    Popular:
-                  </span>
-
-                  {[
-                    { label: "Charizard", name: "Charizard" },
-                    { label: "Pikachu", name: "Pikachu" },
-                    { label: "Umbreon", name: "Umbreon" },
-                    { label: "Base Set", setCode: "base1" },
-                    { label: "151", setCode: "sv3pt5" },
-                  ].map((item) => (
-                    <PopularSearchButton
-                      key={item.label}
-                      onClick={() => applyPopularSearch(item)}
-                    >
-                      {item.label}
-                    </PopularSearchButton>
-                  ))}
-                </div>
-              )}
 
               {isSearchVariant && (
                 <>

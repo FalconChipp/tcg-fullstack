@@ -38,6 +38,7 @@ export const MY_SUBSCRIPTION = gql`
         price
         currency
         interval
+        platformFeePercent
       }
     }
   }

@@ -20,7 +20,7 @@ import {
 export async function fetchSubscriptionPlans() {
   const { data } = await apolloClient.query({
     query: SUBSCRIPTION_PLANS,
-    fetchPolicy: 'network-only',
+    fetchPolicy: 'no-cache',
   });
   return data?.subscriptionPlans ?? [];
 }

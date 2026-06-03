@@ -151,7 +151,7 @@ function CurrentPlanCard({ subscription, capabilities, onCancel, onReactivate, o
   const isActive    = subscription?.status === "active";
   const isCancelling = Boolean(subscription?.cancelAtPeriodEnd);
   const renewsAt    = subscription?.currentPeriodEnd;
-  const fee         = capabilities?.platformFeePercent;
+  const fee         = subscription?.plan?.platformFeePercent ?? capabilities?.platformFeePercent;
 
   return (
     <div className={`rounded-2xl border p-5 ${
@@ -225,7 +225,7 @@ function CurrentPlanCard({ subscription, capabilities, onCancel, onReactivate, o
 
 // ─── Plan picker ──────────────────────────────────────────────────────────────
 
-const TIER_ORDER = ["Free", "Collector", "Elite Collector", "Vendor"];
+const TIER_ORDER = ["Free", "Collector", "Trader", "Vendor"];
 
 function PlanPicker({ plans, currentPlanId, hasActiveSub, billing, onBillingChange, onSelect, selectLoading }) {
   // Group plans by tier name (Free only has monthly)
@@ -287,7 +287,12 @@ function PlanPicker({ plans, currentPlanId, hasActiveSub, billing, onBillingChan
           const isCurrent = tier.monthly?.id === currentPlanId || tier.yearly?.id === currentPlanId;
           const isFree    = Number(plan.price) === 0;
           const isLoading = selectLoading === plan.id;
-          const features  = Array.isArray(plan.featuresJson) ? plan.featuresJson.slice(0, 4) : [];
+          const features  = (() => {
+            const raw = plan.featuresJson;
+            if (Array.isArray(raw)) return raw.slice(0, 4);
+            if (typeof raw === 'string') { try { return JSON.parse(raw).slice(0, 4); } catch { return []; } }
+            return [];
+          })();
 
           return (
             <div

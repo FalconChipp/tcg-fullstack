@@ -72,7 +72,6 @@ export default function MyListingsDrawer({ open, onClose, token, onCreateListing
               isOwnProfile={true}
               token={token}
               compact={true}
-              fixedStatus="ACTIVE"
               onCreateListing={onCreateListing}
             />
           )}

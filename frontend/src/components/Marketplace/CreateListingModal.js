@@ -424,7 +424,6 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
         token,
       );
       setDone(true);
-      if (onCreated) onCreated(data.createListing);
     } catch (ex) {
       setErr(ex.message || "Failed to create listing");
     } finally {
@@ -539,14 +538,18 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
             <div className="flex flex-col sm:flex-row gap-2 w-full max-w-sm">
               <button
                 type="button"
-                onClick={() => onViewListings ? onViewListings() : onClose()}
+                onClick={() => {
+                  if (onCreated) onCreated();
+                  if (onViewListings) onViewListings();
+                  else onClose();
+                }}
                 className="flex-1 rounded-xl py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 transition"
               >
                 View my listings
               </button>
               <button
                 type="button"
-                onClick={onClose}
+                onClick={() => { if (onCreated) onCreated(); onClose(); }}
                 className="flex-1 rounded-xl py-2.5 text-sm font-medium text-neutral-400 border border-white/10 hover:bg-white/[0.04] transition"
               >
                 Close
@@ -565,7 +568,7 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
                 {/* ── Left: form ── */}
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
-                  {/* 1. Collection search */}
+                  {/* 1. Collection picker */}
                   <div>
                     <div className="flex items-baseline justify-between mb-1.5">
                       <label className={labelCls + " mb-0"}>Card</label>
@@ -583,37 +586,9 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
                       </p>
                     )}
 
-                    {collection.length > 0 && !selectedEntry && (
-                      <input
-                        type="text"
-                        value={query}
-                        onChange={(e) => { setQuery(e.target.value); if (selectedEntry) setSelectedEntry(null); }}
-                        placeholder="Search your collection…"
-                        className={inputCls}
-                        autoComplete="off"
-                        disabled={collectionLoading}
-                      />
-                    )}
-
-                    {showDropdown && (
-                      <div className="mt-1.5 flex flex-col gap-0.5 max-h-48 overflow-y-auto rounded-2xl border border-white/[0.06] p-1.5 bg-[#080a12]">
-                        {filteredEntries.map((entry, i) => (
-                          <CollectionRow
-                            key={`${entry.cardId}-${entry.variation ?? ""}-${i}`}
-                            entry={entry}
-                            selected={selectedEntry}
-                            onSelect={handleSelectEntry}
-                          />
-                        ))}
-                      </div>
-                    )}
-
-                    {query.trim().length > 0 && filteredEntries.length === 0 && !selectedEntry && (
-                      <p className="text-xs text-neutral-600 mt-2">No cards matching "{query}".</p>
-                    )}
-
+                    {/* Selected card */}
                     {selectedEntry && (
-                      <div className="flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2">
+                      <div className="flex items-center gap-2.5 rounded-xl border border-indigo-500/30 bg-indigo-500/[0.06] px-3 py-2">
                         {selectedEntry.card?.images?.small && (
                           <img src={selectedEntry.card.images.small} alt={selectedEntry.card.name} className="w-7 h-9 object-contain rounded shrink-0" />
                         )}
@@ -621,10 +596,56 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
                           <p className="text-xs font-medium text-neutral-100 truncate">{selectedEntry.card?.name ?? selectedEntry.cardId}</p>
                           <p className="text-[11px] text-neutral-500 truncate">
                             {[selectedEntry.card?.set?.name, selectedEntry.card?.number ? `#${selectedEntry.card.number}` : null].filter(Boolean).join(" · ")}
+                            {selectedEntry.condition ? ` · ${selectedEntry.condition}` : ""}
                           </p>
                         </div>
                         <button type="button" onClick={handleClearEntry} className="text-xs text-neutral-600 hover:text-red-400 transition shrink-0 px-1">✕</button>
                       </div>
+                    )}
+
+                    {/* Card grid picker */}
+                    {!selectedEntry && collection.length > 0 && (
+                      <>
+                        <input
+                          type="text"
+                          value={query}
+                          onChange={(e) => setQuery(e.target.value)}
+                          placeholder="Search your collection…"
+                          className={inputCls + " mb-2"}
+                          autoComplete="off"
+                          disabled={collectionLoading}
+                        />
+                        {filteredEntries.length === 0 && query.trim() ? (
+                          <p className="text-xs text-neutral-600 text-center py-3">No cards matching "{query}".</p>
+                        ) : (
+                          <div className="grid grid-cols-4 gap-2 max-h-56 overflow-y-auto rounded-xl border border-white/[0.06] p-2 bg-black/20">
+                            {filteredEntries.map((entry, i) => {
+                              const imgUrl = entry.card?.images?.small;
+                              const name = entry.card?.name ?? entry.cardId;
+                              return (
+                                <button
+                                  key={`${entry.cardId}-${entry.variation ?? ""}-${i}`}
+                                  type="button"
+                                  onClick={() => handleSelectEntry(entry)}
+                                  title={`${name}${entry.condition ? ` · ${entry.condition}` : ""}`}
+                                  className="group relative aspect-[2/3] rounded-lg overflow-hidden border border-white/[0.06] hover:border-indigo-500/50 transition bg-black/40"
+                                >
+                                  {imgUrl ? (
+                                    <img src={imgUrl} alt={name} className="w-full h-full object-contain group-hover:scale-105 transition duration-200" />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-[9px] text-neutral-600 p-1 text-center leading-tight">{name}</div>
+                                  )}
+                                  {entry.condition && (
+                                    <span className="absolute top-1 left-1 text-[8px] font-bold px-1 py-0.5 rounded bg-black/70 text-neutral-300">
+                                      {entry.condition}
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
 

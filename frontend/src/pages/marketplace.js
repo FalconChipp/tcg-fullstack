@@ -31,7 +31,7 @@ const GET_LISTING_BY_ID = gql`
     listing(id: $id) {
       __typename id type price currency quantity allowOffers status createdAt updatedAt
       ... on CardListing {
-        cardId condition variation allowOffers willTrade moderationResult pendingOfferCount
+        cardId condition variation allowOffers willTrade moderationResult proofCode proofImageUrl pendingOfferCount
         seller { id username avatar }
         cardInfo { id name number rarity setName imageSmall imageLarge }
       }

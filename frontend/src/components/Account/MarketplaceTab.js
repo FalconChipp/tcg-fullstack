@@ -20,6 +20,7 @@ const SELLER_STATUS_QUERY = `
     myWallet(limit: 1) { balance currency }
     myCapabilities { platformFeePercent maxActiveListings }
     sellerAddress { name line1 line2 city postcode country phone email }
+    myDeliveryAddress { address1 address2 city postcode state country }
   }
 `;
 
@@ -215,6 +216,93 @@ function PayoutsSection({ walletBalance, walletCurrency, token }) {
           Go to Wallet <ExternalLink className="w-3.5 h-3.5" />
         </Link>
       </div>
+    </SectionCard>
+  );
+}
+
+/* ─── Delivery address section ───────────────────────────────────────────────── */
+
+const UPDATE_DELIVERY_ADDRESS = `
+  mutation UpdateDeliveryAddress(
+    $address1: String $address2: String $city: String $postcode: String $state: String $country: String
+  ) {
+    updateProfile(address1: $address1 address2: $address2 city: $city postcode: $postcode state: $state country: $country) {
+      address1 address2 city postcode state country
+    }
+  }
+`;
+
+function DeliveryAddressSection({ token, initialAddress }) {
+  const empty = { address1: "", address2: "", city: "", postcode: "", country: "GB" };
+  const [addr, setAddr] = useState(() => ({ ...empty, ...(initialAddress || {}) }));
+  const [synced, setSynced] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  if (!synced && initialAddress && Object.values(initialAddress).some(Boolean)) {
+    setAddr({ ...empty, ...initialAddress });
+    setSynced(true);
+  }
+
+  async function handleSave(e) {
+    e.preventDefault();
+    if (!addr.address1.trim() || !addr.city.trim() || !addr.postcode.trim()) {
+      setMsg({ ok: false, text: "Address line 1, city, and postcode are required." });
+      return;
+    }
+    setSaving(true);
+    setMsg(null);
+    try {
+      await gql(token, UPDATE_DELIVERY_ADDRESS, {
+        address1: addr.address1.trim(),
+        address2: addr.address2.trim() || null,
+        city: addr.city.trim(),
+        postcode: addr.postcode.trim(),
+        state: addr.state?.trim() || null,
+        country: addr.country || "GB",
+      });
+      setMsg({ ok: true, text: "Delivery address saved." });
+    } catch (err) {
+      setMsg({ ok: false, text: err.message || "Could not save address." });
+    } finally {
+      setSaving(false);
+      setTimeout(() => setMsg(null), 3500);
+    }
+  }
+
+  const f = (field) => (e) => setAddr((a) => ({ ...a, [field]: e.target.value }));
+
+  return (
+    <SectionCard icon={Truck} title="Delivery address" subtitle="Used when buying cards — pre-filled at checkout and on offers">
+      <form onSubmit={handleSave} className="space-y-4">
+        <div className="grid grid-cols-1 gap-4">
+          <Field label="Address line 1">
+            <Input value={addr.address1} onChange={f("address1")} placeholder="123 Example Street" />
+          </Field>
+          <Field label="Address line 2 (optional)">
+            <Input value={addr.address2 || ""} onChange={f("address2")} placeholder="Flat, apartment, etc." />
+          </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="City">
+              <Input value={addr.city} onChange={f("city")} placeholder="London" />
+            </Field>
+            <Field label="Postcode">
+              <Input value={addr.postcode} onChange={f("postcode")} placeholder="SW1A 1AA" />
+            </Field>
+          </div>
+        </div>
+        {msg && (
+          <p className={`text-xs font-medium flex items-center gap-1.5 ${msg.ok ? "text-emerald-500" : "text-rose-400"}`}>
+            {msg.ok ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />} {msg.text}
+          </p>
+        )}
+        <div className="flex justify-end">
+          <button type="submit" disabled={saving}
+            className="px-4 py-2 rounded-xl text-xs font-semibold bg-light-accent dark:bg-dark-accent text-white hover:opacity-90 disabled:opacity-50 transition">
+            {saving ? "Saving…" : "Save address"}
+          </button>
+        </div>
+      </form>
     </SectionCard>
   );
 }
@@ -513,9 +601,10 @@ export default function MarketplaceTab({ user, token }) {
     }
   }
 
-  const feePercent    = apiData?.myCapabilities?.platformFeePercent ?? 8;
-  const walletBalance = apiData?.myWallet?.balance;
-  const sellerAddress = apiData?.sellerAddress ?? null;
+  const feePercent       = apiData?.myCapabilities?.platformFeePercent ?? 8;
+  const walletBalance    = apiData?.myWallet?.balance;
+  const sellerAddress    = apiData?.sellerAddress ?? null;
+  const deliveryAddress  = apiData?.myDeliveryAddress ?? null;
 
   return (
     <div className="p-6 space-y-6">
@@ -571,6 +660,9 @@ export default function MarketplaceTab({ user, token }) {
           </Field>
         </div>
       </SectionCard>
+
+      {/* Delivery address */}
+      <DeliveryAddressSection token={token} initialAddress={deliveryAddress} />
 
       {/* Return address */}
       <ReturnAddressSection token={token} initialAddress={sellerAddress} />

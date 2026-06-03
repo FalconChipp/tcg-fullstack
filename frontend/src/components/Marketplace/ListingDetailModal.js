@@ -35,7 +35,7 @@ const CREATE_OFFER_MUTATION = gql`
   }
 `;
 
-import { gqlFetch } from "@/utils/apiClient";
+import { gqlFetch, getApiBase } from "@/utils/apiClient";
 import SellerReviewsDrawer from "./SellerReviewsDrawer";
 import SellerTierBadge from "./SellerTierBadge";
 
@@ -52,6 +52,12 @@ const CARD_MARKET_PRICE_QUERY = `
     cardsearchCard(id: $id) {
       latestPrices { variation currency gbp market }
     }
+  }
+`;
+
+const MY_DELIVERY_ADDRESS_QUERY = `
+  query MyDeliveryAddress {
+    myDeliveryAddress { address1 address2 city postcode country }
   }
 `;
 
@@ -178,6 +184,14 @@ function OfferForm({ listing, token, onDone, onCancel, marketPrice }) {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [deliveryAddress, setDeliveryAddress] = useState(null);
+
+  useEffect(() => {
+    if (!token) return;
+    gqlFetch(MY_DELIVERY_ADDRESS_QUERY, {}, token)
+      .then((d) => setDeliveryAddress(d?.myDeliveryAddress ?? null))
+      .catch(() => {});
+  }, [token]);
 
   const listPrice = Number(listing.price) || 0;
   const offerNum  = parseFloat(amount) || 0;
@@ -258,8 +272,30 @@ function OfferForm({ listing, token, onDone, onCancel, marketPrice }) {
           className={inputCls + " resize-none"}
         />
       </div>
+      {/* Delivery address notice */}
+      <div className="rounded-xl border border-light-border dark:border-dark-border bg-light-elevated dark:bg-dark-elevated px-3 py-2.5 text-xs text-light-muted dark:text-dark-muted">
+        <p className="font-semibold uppercase tracking-wide mb-1">Ship to</p>
+        {deliveryAddress?.address1 ? (
+          <p className="leading-5">
+            {[deliveryAddress.address1, deliveryAddress.address2, deliveryAddress.city, deliveryAddress.postcode]
+              .filter(Boolean).join(", ")}
+            {" · "}
+            <a href="/account?tab=marketplace" className="underline hover:text-light-strong dark:hover:text-dark-strong">
+              Change
+            </a>
+          </p>
+        ) : (
+          <p>
+            No delivery address saved.{" "}
+            <a href="/account?tab=marketplace" className="underline hover:text-light-strong dark:hover:text-dark-strong">
+              Add one in account settings
+            </a>
+            {" "}before making an offer.
+          </p>
+        )}
+      </div>
       {err && <p className="text-xs text-red-400">{err}</p>}
-      <button type="submit" disabled={busy}
+      <button type="submit" disabled={busy || !deliveryAddress?.address1}
         className="w-full rounded-xl py-3 text-sm font-semibold text-white bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight disabled:opacity-50 transition-colors">
         {busy ? "Sending…" : "Send offer"}
       </button>
@@ -287,6 +323,8 @@ export default function ListingDetailModal({ listing, onClose }) {
   const [reputation, setReputation] = useState(null);
   const [showReviews, setShowReviews] = useState(false);
   const [marketPrice, setMarketPrice] = useState(null);
+  const [imgSlide, setImgSlide] = useState(0);
+  const [lightbox, setLightbox] = useState(false);
 
   const sellerId = listing?.seller?.id ?? null;
 
@@ -321,6 +359,7 @@ export default function ListingDetailModal({ listing, onClose }) {
   const seller      = listing.seller || {};
   const cond        = COND[listing.condition] || null;
   const imageUrl    = info.imageLarge || info.imageSmall || null;
+  const proofImgSrc = listing.proofImageUrl ? `${getApiBase()}${listing.proofImageUrl}` : null;
 
   async function handleBuy() {
     if (!isLoggedIn) { setErr("Please sign in to purchase."); return; }
@@ -410,12 +449,26 @@ export default function ListingDetailModal({ listing, onClose }) {
         {!successPhase && (
           <div className="flex flex-col sm:flex-row overflow-y-auto">
 
-            {/* ── LEFT: card hero ── */}
-            <div className="relative sm:w-56 flex-shrink-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-6 sm:p-8 min-h-[220px] sm:min-h-0">
-              {imageUrl ? (
+            {/* ── LEFT: card hero / proof photo carousel ── */}
+            <div
+              className={`relative sm:w-72 flex-shrink-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-6 sm:p-10 min-h-[260px] sm:min-h-0 ${proofImgSrc ? "cursor-pointer select-none" : ""}`}
+              onClick={() => proofImgSrc && setImgSlide(s => s === 0 ? 1 : 0)}
+            >
+              {proofImgSrc && imgSlide === 1 ? (
+                <div className="relative z-10 w-full group" onClick={(e) => { e.stopPropagation(); setLightbox(true); }}>
+                  <img
+                    src={proofImgSrc}
+                    alt="Proof photo"
+                    className="w-full rounded-xl shadow-2xl object-contain max-h-[240px] sm:max-h-none cursor-zoom-in"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center rounded-xl opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
+                    <span className="bg-black/60 backdrop-blur-sm text-white text-xs font-medium px-3 py-1.5 rounded-full">Click to enlarge</span>
+                  </div>
+                </div>
+              ) : imageUrl ? (
                 <>
                   <img src={imageUrl} alt={info.name || "Card"}
-                    className="relative z-10 w-full max-w-[160px] sm:max-w-none rounded-xl shadow-2xl"
+                    className="relative z-10 w-full rounded-xl shadow-2xl"
                     style={{ filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.6))" }}
                   />
                   <div className="absolute inset-0 opacity-20 blur-2xl scale-75"
@@ -424,6 +477,14 @@ export default function ListingDetailModal({ listing, onClose }) {
                 </>
               ) : (
                 <div className="w-32 h-44 rounded-xl bg-white/10 flex items-center justify-center text-xs text-white/50">No image</div>
+              )}
+              {/* Toggle label */}
+              {proofImgSrc && (
+                <div className="absolute bottom-3 left-0 right-0 flex justify-center">
+                  <span className="text-[10px] font-medium text-white/60 bg-black/40 backdrop-blur-sm rounded-full px-3 py-1">
+                    {imgSlide === 0 ? "Tap to view proof photo" : "Tap to view card"}
+                  </span>
+                </div>
               )}
             </div>
 
@@ -461,9 +522,33 @@ export default function ListingDetailModal({ listing, onClose }) {
                 {listing.moderationResult === "approved" && (
                   <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold bg-emerald-600/20 border border-emerald-500/40 text-emerald-400">
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-                    Photo verified
+                    Card verified
                   </span>
                 )}
+                {listing.moderationResult === "approved" && listing.proofCode && (
+                  <button
+                    type="button"
+                    title="Click to view proof photo — check this code appears written in the image"
+                    onClick={() => proofImgSrc && setImgSlide(1)}
+                    className="inline-flex items-center rounded-full px-3 py-1 text-xs font-mono border border-light-border dark:border-dark-border text-light-muted dark:text-dark-muted hover:border-emerald-500/50 hover:text-emerald-400 transition-colors"
+                  >
+                    Code: {listing.proofCode}
+                  </button>
+                )}
+              </div>
+              {proofImgSrc && (
+                <button
+                  type="button"
+                  onClick={() => setImgSlide(s => s === 0 ? 1 : 0)}
+                  className="flex items-start gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2.5 text-left hover:bg-emerald-500/10 transition-colors w-full"
+                >
+                  <svg className="mt-0.5 shrink-0 text-emerald-400" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <p className="text-[11px] text-emerald-300/80 leading-snug">
+                    A proof photo has been submitted for this listing. Tap the card image (or here) to view it and verify the code above appears written in the photo.
+                  </p>
+                </button>
+              )}
+              <div className="flex flex-wrap gap-2">
                 {listing.willTrade && (
                   <span className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold bg-violet-600 text-white">
                     {isTradeOnly ? "⇄ Trade Only" : "⇄ Will Trade"}
@@ -621,6 +706,41 @@ export default function ListingDetailModal({ listing, onClose }) {
       open={showReviews}
       onClose={() => setShowReviews(false)}
     />
+
+    {lightbox && proofImgSrc && (
+      <div
+        className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black/90 backdrop-blur-md p-4"
+        onClick={() => setLightbox(false)}
+      >
+        {/* Close button */}
+        <button
+          type="button"
+          onClick={() => setLightbox(false)}
+          className="absolute top-4 right-4 rounded-full bg-white/10 hover:bg-white/20 text-white p-2 transition-colors"
+          aria-label="Close"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+
+        {/* Image */}
+        <img
+          src={proofImgSrc}
+          alt="Proof photo"
+          className="max-w-full max-h-[80vh] rounded-2xl shadow-2xl object-contain"
+          onClick={(e) => e.stopPropagation()}
+        />
+
+        {/* Code + instruction */}
+        <div className="mt-4 flex flex-col items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <p className="text-white/50 text-xs">Check the handwritten code matches the listing code</p>
+          {listing.proofCode && (
+            <span className="font-mono font-bold tracking-[0.25em] text-white text-lg bg-white/10 rounded-xl px-5 py-2">
+              {listing.proofCode}
+            </span>
+          )}
+        </div>
+      </div>
+    )}
     </>
   );
 }

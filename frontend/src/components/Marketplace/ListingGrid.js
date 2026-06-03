@@ -128,6 +128,8 @@ const LISTINGS_QUERY = gql`
         allowOffers
         willTrade
         moderationResult
+        proofCode
+        proofImageUrl
         pendingOfferCount
         seller {
           id

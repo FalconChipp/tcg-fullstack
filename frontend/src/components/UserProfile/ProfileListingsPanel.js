@@ -198,8 +198,21 @@ function ProofModal({ listing: initial, token, onActivated, onClose }) {
     const f = e.target.files?.[0];
     if (!f) return;
     setFile(f);
+    // Convert any format (AVIF, HEIC, WEBP, PNG…) to JPEG via canvas
+    // so Tesseract always receives a format it can read
     const reader = new FileReader();
-    reader.onload = (ev) => setPreview(ev.target.result);
+    reader.onload = (ev) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width  = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        setPreview(canvas.toDataURL('image/jpeg', 0.92));
+      };
+      img.onerror = () => setPreview(ev.target.result); // fallback: send as-is
+      img.src = ev.target.result;
+    };
     reader.readAsDataURL(f);
   }
 
@@ -244,6 +257,13 @@ function ProofModal({ listing: initial, token, onActivated, onClose }) {
           ) : result?.result === 'pending_admin' ? (
             <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-sm text-amber-600 dark:text-amber-400 font-semibold text-center">
               ⏳ Submitted — under admin review.
+            </div>
+          ) : result?.result === 'processing' ? (
+            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30 text-sm text-blue-400 font-semibold text-center space-y-1">
+              <p>🔍 Photo received — verifying now.</p>
+              <p className="text-xs font-normal text-light-textMuted dark:text-dark-textMuted">
+                This usually takes under a minute. Check your notifications — we'll let you know once it's approved.
+              </p>
             </div>
           ) : (
             <>

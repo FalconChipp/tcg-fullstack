@@ -9,7 +9,7 @@
 "use client";
 
 import React, { useRef, useState, useCallback } from "react";
-import { useQuery, useMutation, gql } from "@apollo/client";
+import { useQuery, useMutation, useApolloClient, gql } from "@apollo/client";
 import {
   ArrowLeftRight, RefreshCw, Loader2, ChevronDown, ChevronUp,
   CheckCircle2, XCircle, RotateCcw, AlertCircle, Clock,
@@ -23,6 +23,8 @@ const MY_TRADES_QUERY = gql`
     myTrades(pageSize: 100, status: $status) {
       id status initiatorId partyAId partyBId
       lastCounterBy counterCount topUpAmount topUpPaidBy
+      addressASet addressBSet
+      trackingNumberA trackingNumberB
       createdAt updatedAt agreedAt completedAt cancelledAt cancelledReason
       cards { id tradeId userId cardId quantity condition variation }
     }
@@ -57,6 +59,28 @@ const SUBMIT_TRADE_TRACKING = gql`
   mutation SubmitTradeTracking($id: ID!, $trackingNumber: String!) {
     submitTradeTracking(id: $id, trackingNumber: $trackingNumber) {
       id status
+    }
+  }
+`;
+
+const SET_TRADE_ADDRESS = gql`
+  mutation SetTradeShippingAddress($id: ID!, $address: JSON!) {
+    setTradeShippingAddress(id: $id, address: $address)
+  }
+`;
+
+const QUOTE_TRADE_SHIPPING = gql`
+  query QuoteTradeShipping($id: ID!) {
+    quoteTradeShipping(id: $id) {
+      amountPence amount currency carrier service
+    }
+  }
+`;
+
+const SHIP_TRADE = gql`
+  mutation ShipTrade($id: ID!, $parcelSize: String) {
+    shipTrade(id: $id, parcelSize: $parcelSize) {
+      ok trackingNumber trackingUrl labelUrl carrier service labelCost labelCostPence
     }
   }
 `;
@@ -129,15 +153,24 @@ function TradeRow({ trade, myId, onRefresh }) {
   const [proofPreview,   setProofPreview]   = useState(null);
   const proofRef = useRef(null);
 
-  // Tracking
-  const [trackingNum,    setTrackingNum]    = useState("");
-  const [showTracking,   setShowTracking]   = useState(false);
+  // Shipping address form
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [addrName,        setAddrName]        = useState("");
+  const [addrLine1,       setAddrLine1]       = useState("");
+  const [addrCity,        setAddrCity]        = useState("");
+  const [addrPostcode,    setAddrPostcode]    = useState("");
+  const [shipResult,      setShipResult]      = useState(null);
+  const [shippingQuote,   setShippingQuote]   = useState(null); // { amount, carrier }
+  const [quoteLoading,    setQuoteLoading]    = useState(false);
 
-  const [respondToTrade]      = useMutation(RESPOND_TO_TRADE);
-  const [cancelTrade]         = useMutation(CANCEL_TRADE);
-  const [uploadTradeProof]    = useMutation(UPLOAD_TRADE_PROOF);
-  const [submitTradeTracking] = useMutation(SUBMIT_TRADE_TRACKING);
-  const [confirmTradeReceived]= useMutation(CONFIRM_TRADE_RECEIVED);
+  const [respondToTrade]       = useMutation(RESPOND_TO_TRADE);
+  const [cancelTrade]          = useMutation(CANCEL_TRADE);
+  const [uploadTradeProof]     = useMutation(UPLOAD_TRADE_PROOF);
+  const [submitTradeTracking]  = useMutation(SUBMIT_TRADE_TRACKING);
+  const [confirmTradeReceived] = useMutation(CONFIRM_TRADE_RECEIVED);
+  const [setTradeAddress] = useMutation(SET_TRADE_ADDRESS);
+  const [shipTrade]       = useMutation(SHIP_TRADE);
+  const apolloClient      = useApolloClient();
 
   const isInitiator   = trade.initiatorId === myId;
   const myCards       = (trade.cards || []).filter((c) => c.userId === myId);
@@ -221,15 +254,44 @@ function TradeRow({ trade, myId, onRefresh }) {
     setProofPreview(null);
   }
 
-  /* ── tracking ── */
-  async function handleTracking() {
-    if (!trackingNum.trim()) { setErr("Enter a tracking number."); return; }
+  /* ── shipping address + auto-label ── */
+  const myAddressSet    = trade.partyAId === myId ? trade.addressASet   : trade.addressBSet;
+  const otherAddressSet = trade.partyAId === myId ? trade.addressBSet   : trade.addressASet;
+
+  async function handleSaveAddress() {
+    if (!addrPostcode.trim()) { setErr("Postcode is required."); return; }
     await run(
-      () => submitTradeTracking({ variables: { id: trade.id, trackingNumber: trackingNum.trim() } }),
-      "Tracking number submitted — the other party has been notified.",
+      () => setTradeAddress({ variables: { id: trade.id, address: { name: addrName, line1: addrLine1, city: addrCity, postcode: addrPostcode.trim().toUpperCase(), country: "GB" } } }),
+      "Address saved.",
     );
-    setShowTracking(false);
-    setTrackingNum("");
+    setShowAddressForm(false);
+    onRefresh();
+  }
+
+  async function handleFetchQuote() {
+    setQuoteLoading(true);
+    setErr("");
+    try {
+      const { data } = await apolloClient.query({
+        query: QUOTE_TRADE_SHIPPING,
+        variables: { id: trade.id },
+        fetchPolicy: "network-only",
+      });
+      setShippingQuote(data?.quoteTradeShipping ?? null);
+    } catch (e) {
+      setErr(`Could not get shipping quote: ${e.message}`);
+    } finally {
+      setQuoteLoading(false);
+    }
+  }
+
+  async function handleShipTrade() {
+    await run(async () => {
+      const { data } = await shipTrade({ variables: { id: trade.id, parcelSize: "LARGE_LETTER" } });
+      const res = data?.shipTrade;
+      if (res?.ok) setShipResult(res);
+    }, "Shipping label generated — cards marked as in transit.");
+    onRefresh();
   }
 
   /* ── confirm receipt ── */
@@ -486,35 +548,92 @@ function TradeRow({ trade, myId, onRefresh }) {
             </div>
           )}
 
-          {/* ── SUBMIT TRACKING NUMBER (LOCKED) ── */}
-          {trade.status === "LOCKED" && !done && (
+          {/* ── SHIP (LOCKED or IN_TRANSIT) ── */}
+          {(trade.status === "LOCKED" || (trade.status === "IN_TRANSIT" && !myAddressSet)) && !done && (
             <div className="flex flex-col gap-3 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/20 p-3">
               <div className="flex items-start gap-2">
                 <Truck className="w-4 h-4 text-indigo-500 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">Ship your cards and enter your tracking number</p>
+                  <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">Ship your cards</p>
                   <p className="text-[10px] text-indigo-600/70 dark:text-indigo-400/70 mt-0.5">
-                    Both parties must ship. Enter your tracking number once dispatched.
+                    Both parties share their address, then a Parcel2Go label is auto-generated for each.
                   </p>
                 </div>
               </div>
-              {!showTracking ? (
-                <button onClick={() => setShowTracking(true)} className={btnIndigo} disabled={busy}>
-                  <Truck className="w-4 h-4" /> Enter tracking number
+
+              {/* Step 1: address not set yet */}
+              {!myAddressSet && !showAddressForm && (
+                <button onClick={() => setShowAddressForm(true)} className={btnIndigo} disabled={busy}>
+                  <Truck className="w-4 h-4" /> Share my shipping address
                 </button>
-              ) : (
-                <div className="flex gap-2">
-                  <input
-                    className={`${inputCls} flex-1`}
-                    placeholder="e.g. JD123456789GB"
-                    value={trackingNum}
-                    onChange={(e) => setTrackingNum(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleTracking()}
-                  />
-                  <button onClick={handleTracking} disabled={busy || !trackingNum.trim()} className={btnIndigo}>
-                    {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Submit"}
-                  </button>
-                  <button onClick={() => { setShowTracking(false); setTrackingNum(""); }} className={btnSecondary}>Cancel</button>
+              )}
+
+              {/* Address form */}
+              {showAddressForm && (
+                <div className="flex flex-col gap-2">
+                  <input className={inputCls} placeholder="Full name" value={addrName} onChange={e => setAddrName(e.target.value)} />
+                  <input className={inputCls} placeholder="Address line 1" value={addrLine1} onChange={e => setAddrLine1(e.target.value)} />
+                  <input className={inputCls} placeholder="City / town" value={addrCity} onChange={e => setAddrCity(e.target.value)} />
+                  <input className={inputCls} placeholder="Postcode *" value={addrPostcode} onChange={e => setAddrPostcode(e.target.value)} />
+                  <div className="flex gap-2">
+                    <button onClick={handleSaveAddress} disabled={busy || !addrPostcode.trim()} className={btnIndigo}>
+                      {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save address"}
+                    </button>
+                    <button onClick={() => setShowAddressForm(false)} className={btnSecondary}>Cancel</button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: my address set, waiting for other party */}
+              {myAddressSet && !otherAddressSet && (
+                <p className="text-xs text-indigo-600/80 dark:text-indigo-400/80">
+                  ✓ Your address is saved. Waiting for the other party to share theirs before generating labels.
+                </p>
+              )}
+
+              {/* Step 3: both addresses set — quote then confirm */}
+              {myAddressSet && otherAddressSet && !shipResult && (
+                <div className="flex flex-col gap-2">
+                  {!shippingQuote ? (
+                    <button onClick={handleFetchQuote} disabled={busy || quoteLoading} className={btnIndigo}>
+                      {quoteLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Truck className="w-4 h-4" /> Get shipping quote</>}
+                    </button>
+                  ) : (
+                    <>
+                      <p className="text-xs text-indigo-700 dark:text-indigo-300">
+                        <span className="font-semibold">Shipping cost: £{shippingQuote.amount?.toFixed(2)}</span>
+                        {shippingQuote.carrier && <span className="text-indigo-500/70"> via {shippingQuote.carrier}</span>}
+                        <span className="text-indigo-500/70"> — charged to your wallet</span>
+                      </p>
+                      <div className="flex gap-2">
+                        <button onClick={handleShipTrade} disabled={busy} className={btnIndigo}>
+                          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : `Pay £${shippingQuote.amount?.toFixed(2)} & generate label`}
+                        </button>
+                        <button onClick={() => setShippingQuote(null)} className={btnSecondary}>Cancel</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Step 4: label generated */}
+              {shipResult && (
+                <div className="flex flex-col gap-1">
+                  <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+                    ✓ Label generated — {shipResult.carrier} · {shipResult.trackingNumber}
+                  </p>
+                  {shipResult.labelUrl && (
+                    <a href={shipResult.labelUrl} target="_blank" rel="noopener noreferrer"
+                      className="text-xs text-indigo-500 underline">
+                      Download / print label →
+                    </a>
+                  )}
+                  {shipResult.trackingUrl && (
+                    <a href={shipResult.trackingUrl} target="_blank" rel="noopener noreferrer"
+                      className="text-xs text-indigo-500 underline">
+                      Track parcel →
+                    </a>
+                  )}
                 </div>
               )}
             </div>

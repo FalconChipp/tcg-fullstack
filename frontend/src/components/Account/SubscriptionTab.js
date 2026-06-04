@@ -227,6 +227,13 @@ function CurrentPlanCard({ subscription, capabilities, onCancel, onReactivate, o
 
 const TIER_ORDER = ["Free", "Collector", "Trader", "Vendor"];
 
+const FALLBACK_FEATURES = {
+  free:      ["Collection tracking (unlimited cards)", "Up to 3 digital binders", "Advanced card search", "Wishlist"],
+  collector: ["Everything in Free", "Unlimited digital binders", "Saved searches & filters", "5% marketplace fee"],
+  trader:    ["Everything in Collector", "Historical value charts & stats", "Price change alerts (hourly)", "4% marketplace fee"],
+  vendor:    ["Everything in Trader", "Unlimited active listings", "Seller profile & storefront", "2% marketplace fee"],
+};
+
 function PlanPicker({ plans, currentPlanId, hasActiveSub, billing, onBillingChange, onSelect, selectLoading }) {
   // Group plans by tier name (Free only has monthly)
   const byTier = plans.reduce((acc, p) => {
@@ -289,9 +296,9 @@ function PlanPicker({ plans, currentPlanId, hasActiveSub, billing, onBillingChan
           const isLoading = selectLoading === plan.id;
           const features  = (() => {
             const raw = plan.featuresJson;
-            if (Array.isArray(raw)) return raw.slice(0, 4);
-            if (typeof raw === 'string') { try { return JSON.parse(raw).slice(0, 4); } catch { return []; } }
-            return [];
+            if (Array.isArray(raw) && raw.length > 0) return raw.slice(0, 4);
+            if (typeof raw === 'string') { try { const p = JSON.parse(raw); if (p.length) return p.slice(0, 4); } catch {} }
+            return FALLBACK_FEATURES[(plan.name || "").toLowerCase()] ?? [];
           })();
 
           return (

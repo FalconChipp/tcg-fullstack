@@ -17,6 +17,8 @@ export const SUBSCRIPTION_PLANS = gql`
       maxActiveListings
       maxActiveTrades
       featuresJson
+      stripePriceIdMonthly
+      stripePriceIdYearly
       active
       sortOrder
     }

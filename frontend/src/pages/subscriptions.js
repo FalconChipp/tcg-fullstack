@@ -48,9 +48,9 @@ const PLAN_META = {
       { label: "Priority support (Discord role)", live: true },
     ],
   },
-  "elite collector": {
+  trader: {
     highlight: "The most for serious collectors. Best non-seller fee.",
-    cta: "Go Elite",
+    cta: "Upgrade to Trader",
     popular: true,
     forSellers: false,
     color: "violet",
@@ -70,7 +70,7 @@ const PLAN_META = {
     forSellers: true,
     color: "amber",
     features: [
-      { label: "Everything in Elite Collector", live: true },
+      { label: "Everything in Trader", live: true },
       { label: "Unlimited digital binders", live: true },
       { label: "Unlimited active listings", live: true },
       { label: "Unlimited active trades", live: true },
@@ -84,18 +84,18 @@ const PLAN_META = {
 };
 
 const COMPARISON_ROWS = [
-  { feature: "Marketplace fee",        free: "7%",  collector: "5%",  elite: "3%",  vendor: "2%" },
-  { feature: "Active listings",        free: "5",   collector: "10",  elite: "25",  vendor: "Unlimited" },
-  { feature: "Active trades",          free: "3",   collector: "5",   elite: "10",  vendor: "Unlimited" },
-  { feature: "Digital binders",        free: "3",   collector: "10",  elite: "25",  vendor: "Unlimited" },
-  { feature: "Collection tracking",    free: "✓",   collector: "✓",   elite: "✓",   vendor: "✓" },
-  { feature: "Card search",            free: "✓",   collector: "✓",   elite: "✓",   vendor: "✓" },
-  { feature: "Wishlist",               free: "✓",   collector: "✓",   elite: "✓",   vendor: "✓" },
-  { feature: "Price tracking & alerts",free: "✓",   collector: "✓",   elite: "✓",   vendor: "✓" },
-  { feature: "Price history",          free: "✓",   collector: "✓",   elite: "✓",   vendor: "✓" },
-  { feature: "Shipping labels",        free: "✓",   collector: "✓",   elite: "✓",   vendor: "✓" },
-  { feature: "Seller storefront",      free: "—",   collector: "—",   elite: "—",   vendor: "Soon" },
-  { feature: "Priority support",       free: "—",   collector: "✓",   elite: "✓",   vendor: "✓" },
+  { feature: "Marketplace fee",        free: "7%",  collector: "5%",  trader: "4%",  vendor: "2%" },
+  { feature: "Active listings",        free: "5",   collector: "10",  trader: "25",  vendor: "Unlimited" },
+  { feature: "Active trades",          free: "3",   collector: "5",   trader: "10",  vendor: "Unlimited" },
+  { feature: "Digital binders",        free: "3",   collector: "10",  trader: "25",  vendor: "Unlimited" },
+  { feature: "Collection tracking",    free: "✓",   collector: "✓",   trader: "✓",   vendor: "✓" },
+  { feature: "Card search",            free: "✓",   collector: "✓",   trader: "✓",   vendor: "✓" },
+  { feature: "Wishlist",               free: "✓",   collector: "✓",   trader: "✓",   vendor: "✓" },
+  { feature: "Price tracking & alerts",free: "✓",   collector: "✓",   trader: "✓",   vendor: "✓" },
+  { feature: "Price history",          free: "✓",   collector: "✓",   trader: "✓",   vendor: "✓" },
+  { feature: "Shipping labels",        free: "✓",   collector: "✓",   trader: "✓",   vendor: "✓" },
+  { feature: "Seller storefront",      free: "—",   collector: "—",   trader: "—",   vendor: "Soon" },
+  { feature: "Priority support",       free: "—",   collector: "✓",   trader: "✓",   vendor: "✓" },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -146,6 +146,13 @@ function PlanCard({ plan, monthly, yearly, isCurrent, billing, onSelect, checkou
 
   // Yearly savings
   const saving = monthly && yearly ? yearlySavingPct(monthly.rawPrice, yearly.rawPrice) : null;
+
+  // Use featuresJson from DB if available, fall back to static PLAN_META
+  const featuresJsonRaw = activePlan?.featuresJson ?? monthly?.featuresJson ?? yearly?.featuresJson;
+  const dbFeatures = Array.isArray(featuresJsonRaw) && featuresJsonRaw.length > 0
+    ? featuresJsonRaw.map((f) => ({ label: f, live: true }))
+    : null;
+  const features = dbFeatures ?? meta.features;
 
   const priceDisplay = () => {
     if (!activePlan || activePlan.rawPrice === 0) return <span className="text-4xl font-black">Free</span>;
@@ -217,7 +224,7 @@ function PlanCard({ plan, monthly, yearly, isCurrent, billing, onSelect, checkou
 
       {/* Features */}
       <ul className="flex-1 space-y-2 mb-6">
-        {meta.features.map((f, i) => (
+        {features.map((f, i) => (
           <li key={i} className="flex items-start gap-2 text-sm">
             {f.live ? (
               <svg className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -307,14 +314,10 @@ function CurrentPlanBanner({ subscription, onManage }) {
 }
 
 function ComparisonTable({ plans }) {
-  const tiers = ["free", "collector", "elite collector", "vendor"];
+  const tiers = ["free", "collector", "trader", "vendor"];
   const cols = tiers.map((t) => plans.find((p) => p.name.toLowerCase() === t)).filter(Boolean);
 
-  const colLabel = (name) => {
-    const k = name.toLowerCase();
-    if (k === "elite collector") return "Elite";
-    return name;
-  };
+  const colLabel = (name) => name;
 
   return (
     <section className="max-w-6xl mx-auto px-4 py-12">
@@ -339,7 +342,7 @@ function ComparisonTable({ plans }) {
                 <td className="px-5 py-3 font-medium text-light-text dark:text-dark-text">{row.feature}</td>
                 {cols.map((p) => {
                   const k = p.name.toLowerCase();
-                  const val = row[k === "elite collector" ? "elite" : k];
+                  const val = row[k];
                   const isTick = val === "✓";
                   const isDash = val === "—";
                   return (
@@ -413,8 +416,8 @@ export default function SubscriptionsPage() {
   const plansByTier = apiPlans.reduce((acc, plan) => {
     const k = plan.name;
     if (!acc[k]) acc[k] = { name: k };
-    if (plan.interval === "month") acc[k].monthly = { ...plan, rawPrice: Math.round(Number(plan.price) * 100), hasStripe: Boolean(plan.stripePriceId) };
-    if (plan.interval === "year")  acc[k].yearly  = { ...plan, rawPrice: Math.round(Number(plan.price) * 100), hasStripe: Boolean(plan.stripePriceId) };
+    if (plan.interval === "month") acc[k].monthly = { ...plan, rawPrice: Math.round(Number(plan.price) * 100), hasStripe: Boolean(plan.stripePriceIdMonthly) };
+    if (plan.interval === "year")  acc[k].yearly  = { ...plan, rawPrice: Math.round(Number(plan.price) * 100), hasStripe: Boolean(plan.stripePriceIdYearly) };
     return acc;
   }, {});
 

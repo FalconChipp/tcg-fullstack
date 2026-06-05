@@ -37,6 +37,8 @@ export default function Home() {
 
         <MarketplaceTeaser />
 
+        <MobileAppPromo />
+
         <section className="px-4 py-8 max-w-7xl mx-auto">
           <p className="text-xs font-bold uppercase tracking-widest text-light-textMuted dark:text-dark-textMuted mb-4">
             Our Partners
@@ -53,7 +55,7 @@ export default function Home() {
               ctaLabel="Shop Evolved"
               ctaHref="https://evolvedcardprotection.co.uk?sca_ref=9820478.MfkcaLj4ToIM"
               heroSrc="/assets/partners/evolved.png"
-              mode="card"
+              mode="banner"
             />
             <EvolvedProtectionSpotlight
               partnerName="Leo's Poké Vault"
@@ -63,12 +65,10 @@ export default function Home() {
               ctaLabel="Shop Sealed"
               ctaHref="https://www.leospokevault.co.uk"
               heroSrc="/assets/partners/leos.png"
-              mode="card"
+              mode="banner"
             />
           </div>
         </section>
-
-        <MobileAppPromo />
 
         <DiscordJoinBar />
 

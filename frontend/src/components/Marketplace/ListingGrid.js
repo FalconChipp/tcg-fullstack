@@ -11,7 +11,7 @@
 
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useQuery, gql } from "@apollo/client";
 import ListingCard from "./ListingCard";
 import { devError } from "@/utils/devLog";
@@ -430,7 +430,15 @@ export default function ListingGrid(props) {
 
   const limit = pageSize || 24;
 
-  const { data, loading, error, fetchMore } = useQuery(LISTINGS_QUERY, {
+  const [page, setPage] = useState(0);
+  const offset = page * limit;
+
+  // Reset to page 0 whenever any filter changes
+  useEffect(() => {
+    setPage(0);
+  }, [type, status, condition, variation, sort, minPrice, maxPrice, search]);
+
+  const { data, loading, error } = useQuery(LISTINGS_QUERY, {
     variables: {
       type: type || undefined,
       status: status || "ACTIVE",
@@ -440,7 +448,7 @@ export default function ListingGrid(props) {
       minPrice: minPrice != null ? minPrice : undefined,
       maxPrice: maxPrice != null ? maxPrice : undefined,
       limit: limit,
-      offset: 0,
+      offset: offset,
     },
     notifyOnNetworkStatusChange: true,
     fetchPolicy: "cache-and-network",
@@ -599,47 +607,56 @@ export default function ListingGrid(props) {
         })
       ),
 
-    /* Load more */
+    /* Pagination controls */
     !isMock &&
-      !hasSearch &&
-      listings.length >= limit &&
       React.createElement(
         "div",
-        { className: "flex justify-center pt-4" },
+        {
+          className:
+            "flex items-center justify-between gap-3 pt-5 border-t border-light-border dark:border-dark-border",
+        },
+        /* Previous */
         React.createElement(
           "button",
           {
             type: "button",
+            disabled: page === 0 || loading,
+            onClick: function () { setPage(function (p) { return p - 1; }); },
             className:
-              "rounded-lg px-4 py-2 text-sm border border-light-border dark:border-dark-border " +
-              "bg-light-surface hover:bg-light-elevated " +
-              "dark:bg-dark-surface dark:hover:bg-dark-elevated " +
-              "text-light-strong dark:text-dark-strong",
-            onClick: function () {
-              fetchMore({
-                variables: {
-                  offset: listings.length,
-                  limit: limit,
-                  type: type || undefined,
-                  status: status || "ACTIVE",
-                  condition: condition || undefined,
-                  variation: variation || undefined,
-                  sort: sort || undefined,
-                  minPrice: minPrice != null ? minPrice : undefined,
-                  maxPrice: maxPrice != null ? maxPrice : undefined,
-                },
-                updateQuery: function (prev, opts) {
-                  var next = opts && opts.fetchMoreResult;
-                  if (!next) return prev;
-
-                  return Object.assign({}, prev, {
-                    listings: (prev.listings || []).concat(next.listings || []),
-                  });
-                },
-              });
-            },
+              "inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium " +
+              "border border-light-border dark:border-dark-border " +
+              "bg-light-surface dark:bg-dark-surface " +
+              "text-light-strong dark:text-dark-strong " +
+              "hover:bg-light-elevated dark:hover:bg-dark-elevated " +
+              "disabled:opacity-40 disabled:cursor-not-allowed transition-colors",
           },
-          "Load more"
+          "← Previous"
+        ),
+        /* Page indicator */
+        React.createElement(
+          "span",
+          {
+            className:
+              "text-sm text-light-textMuted dark:text-dark-textMuted tabular-nums",
+          },
+          loading ? "Loading…" : "Page " + (page + 1)
+        ),
+        /* Next */
+        React.createElement(
+          "button",
+          {
+            type: "button",
+            disabled: listings.length < limit || loading,
+            onClick: function () { setPage(function (p) { return p + 1; }); },
+            className:
+              "inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium " +
+              "border border-light-border dark:border-dark-border " +
+              "bg-light-surface dark:bg-dark-surface " +
+              "text-light-strong dark:text-dark-strong " +
+              "hover:bg-light-elevated dark:hover:bg-dark-elevated " +
+              "disabled:opacity-40 disabled:cursor-not-allowed transition-colors",
+          },
+          "Next →"
         )
       )
   );

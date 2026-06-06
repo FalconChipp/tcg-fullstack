@@ -1,6 +1,7 @@
 // pages/index.js
 
 import React from "react";
+import Image from "next/image";
 import Layout from "@/components/Layout/Layout";
 import HeroSection from "@/components/Layout/Hero";
 import CardSearch from "@/components/Collection/CardSearch";
@@ -11,7 +12,52 @@ import MobileAppPromo from "@/components/Home/AppBanner";
 import ProductPillars from "@/components/Home/ProductPillars";
 import BinderShowcaseSection from "@/components/Home/BinderShowcaseSection";
 import MarketplaceTeaser from "@/components/Home/MarketplaceTeaser";
-import EvolvedProtectionSpotlight from "@/components/Partners/EvolvedSpotlight";
+
+function PartnerCard({ name, tagline, blurb, imageSrc, ctaLabel, ctaHref }) {
+  return (
+    <div className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface overflow-hidden shadow-sm flex flex-col">
+      {/* Hero image */}
+      <div className="relative h-48 w-full shrink-0">
+        <Image
+          src={imageSrc}
+          alt={name}
+          fill
+          sizes="(max-width: 768px) 100vw, 50vw"
+          className="object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent pointer-events-none" />
+        <p className="absolute bottom-3 left-4 text-[10px] font-bold uppercase tracking-widest text-white/60">
+          In partnership with SixByFive TCG
+        </p>
+      </div>
+
+      {/* Copy */}
+      <div className="p-5 flex flex-col gap-3 flex-1">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-light-textMuted dark:text-dark-textMuted mb-1">
+            {name}
+          </p>
+          <h3 className="text-xl font-extrabold tracking-tight leading-snug">
+            {tagline}
+          </h3>
+        </div>
+        <p className="text-sm text-light-textMuted dark:text-dark-textMuted leading-relaxed">
+          {blurb}
+        </p>
+        <div className="mt-auto pt-2">
+          <a
+            href={ctaHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold bg-light-accent dark:bg-dark-accent text-white hover:opacity-90 transition"
+          >
+            {ctaLabel}
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
   return (
@@ -39,33 +85,26 @@ export default function Home() {
 
         <MobileAppPromo />
 
-        <section className="px-4 py-8 max-w-7xl mx-auto">
-          <p className="text-xs font-bold uppercase tracking-widest text-light-textMuted dark:text-dark-textMuted mb-4">
+        <section className="px-4 py-10 max-w-7xl mx-auto">
+          <p className="text-xs font-bold uppercase tracking-widest text-light-textMuted dark:text-dark-textMuted mb-5">
             Our Partners
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <EvolvedProtectionSpotlight
-              partnerName="Evolved Protection"
+            <PartnerCard
+              name="Evolved Protection"
               tagline="Evolve the way you protect your cards"
-              blurb="Trusted sleeves, toploaders & shields for serious collectors."
-              bullets={[
-                "Sleeves that actually fit",
-                "Toploaders you can trust",
-              ]}
+              blurb="Trusted sleeves, toploaders & shields built for serious collectors. UK-based and collector-first."
+              imageSrc="/assets/partners/evolved.png"
               ctaLabel="Shop Evolved"
               ctaHref="https://evolvedcardprotection.co.uk?sca_ref=9820478.MfkcaLj4ToIM"
-              heroSrc="/assets/partners/evolved.png"
-              mode="banner"
             />
-            <EvolvedProtectionSpotlight
-              partnerName="Leo's Poké Vault"
-              tagline={null}
-              blurb="A family-run store built on a shared love of Pokémon and Trading Card Games. Here to help you find the perfect cards, accessories, and supplies."
-              bullets={[]}
-              ctaLabel="Shop Sealed"
+            <PartnerCard
+              name="Leo's Poké Vault"
+              tagline="A family-run store for Pokémon fans"
+              blurb="Sealed product, singles, accessories and supplies — built by collectors, for collectors."
+              imageSrc="/assets/partners/leos.png"
+              ctaLabel="Visit Leo's"
               ctaHref="https://www.leospokevault.co.uk"
-              heroSrc="/assets/partners/leos.png"
-              mode="banner"
             />
           </div>
         </section>

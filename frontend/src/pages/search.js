@@ -536,7 +536,12 @@ export default function CardSearchWorkbenchPage() {
     setSubmitResult(null);
     setSubmitErrors([]);
     setToast(null);
-  }, [name, setCode, number]);
+    // Stop any in-progress pagination so loadMoreResults can't fire with the
+    // old lastKeyRef while the inputs have already changed to something new.
+    setHasMore(false);
+    setIsLoadingMore(false);
+    disconnectObserver();
+  }, [name, setCode, number, disconnectObserver]);
 
   const handleSearch = useCallback(
     async (e) => {
@@ -608,6 +613,13 @@ export default function CardSearchWorkbenchPage() {
           totalCount,
           nextOffset,
           pageSize,
+          // Record the exact params used for this search so loadMoreResults
+          // always paginates against the same query, not the current input state.
+          queryParams: {
+            name: name || undefined,
+            set: setCode || undefined,
+            number: number || undefined,
+          },
         };
 
         bucketsRef.current.set(key, bucketNext);
@@ -666,11 +678,13 @@ export default function CardSearchWorkbenchPage() {
         return;
       }
 
+      // Use the params stored when this bucket was created, not the current
+      // input state — the user may have changed inputs since the last Search.
       const vars = {
         input: {
-          name: name || undefined,
-          set: setCode || undefined,
-          number: number || undefined,
+          name: prev.queryParams?.name,
+          set: prev.queryParams?.set,
+          number: prev.queryParams?.number,
           limit: pageSize,
           offset: nextOffset,
         },
@@ -747,7 +761,7 @@ export default function CardSearchWorkbenchPage() {
       loadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
-  }, [fetchMore, hasMore, currentKey, name, setCode, number, showToast]);
+  }, [fetchMore, hasMore, currentKey, showToast]);
 
   useEffect(() => {
     if (!hasMore) {

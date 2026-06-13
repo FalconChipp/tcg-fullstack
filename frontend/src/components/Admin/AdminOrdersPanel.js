@@ -12,22 +12,18 @@ const ADMIN_ORDERS_QUERY = gql`
       id
       orderNumber
       createdAt
-      status
       fulfilmentStatus
       paymentStatus
       totalAmount
       currency
       buyerEmail
       shippingAddressJson
-      metadataJson
       buyer { id username }
       seller { id username }
       listing {
         __typename
-        id
-        type
-        ... on ProductListing { title fulfilmentType }
-        ... on CardListing    { cardId condition variation }
+        ... on ProductListing { id title fulfilmentType }
+        ... on CardListing    { id cardId condition variation }
       }
     }
   }
@@ -278,7 +274,7 @@ function OrdersSection() {
                   <td className="px-3 py-3 align-top whitespace-nowrap">
                     <p className="text-[11px] font-medium text-neutral-100">
                       {order.totalAmount != null
-                        ? `£${Number(order.totalAmount / 100).toFixed(2)}`
+                        ? `£${Number(order.totalAmount).toFixed(2)}`
                         : "—"}
                     </p>
                   </td>
@@ -310,256 +306,27 @@ function OrdersSection() {
   );
 }
 
-// ─── Resolve dispute modal ────────────────────────────────────────────────────
-
-function ResolveModal({ dispute, onConfirm, onCancel, loading }) {
-  const [resolution, setResolution] = useState("");
-  const [favour, setFavour] = useState("buyer");
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75">
-      <div
-        className="bg-[#0d0f17] border border-white/10 rounded-2xl p-6 w-full max-w-sm space-y-5 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div>
-          <h3 className="text-sm font-semibold text-neutral-50">Resolve dispute</h3>
-          <p className="text-xs text-neutral-500 mt-1">
-            This will settle the escrow and notify both parties.
-          </p>
-        </div>
-
-        <div className="border border-white/[0.06] rounded-lg p-3 bg-white/[0.02] space-y-0.5">
-          <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Order</p>
-          <p className="text-[11px] font-mono text-neutral-300">{dispute.orderId}</p>
-          {dispute.reason && (
-            <>
-              <p className="text-[10px] text-neutral-500 uppercase tracking-wider mt-2">Reason filed</p>
-              <p className="text-[11px] text-neutral-300">{dispute.reason}</p>
-            </>
-          )}
-        </div>
-
-        <div className="space-y-1.5">
-          <p className="text-[11px] font-medium text-neutral-400">Resolve in favour of</p>
-          <div className="grid grid-cols-2 gap-2">
-            {["buyer", "seller"].map((opt) => (
-              <button
-                key={opt}
-                type="button"
-                onClick={() => setFavour(opt)}
-                className={[
-                  "py-2.5 rounded-xl text-xs font-semibold border transition",
-                  favour === opt
-                    ? opt === "buyer"
-                      ? "bg-sky-500/20 border-sky-500/50 text-sky-200"
-                      : "bg-violet-500/20 border-violet-500/50 text-violet-200"
-                    : "border-white/10 text-neutral-500 hover:bg-white/5 hover:text-neutral-300",
-                ].join(" ")}
-              >
-                {opt === "buyer" ? "Buyer" : "Seller"}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-[11px] font-medium text-neutral-400">
-            Resolution notes <span className="text-red-400">*</span>
-          </label>
-          <textarea
-            className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-xs text-neutral-100 placeholder-neutral-700 focus:outline-none focus:ring-1 focus:ring-white/20 resize-none"
-            rows={3}
-            placeholder="Explain the decision for the record…"
-            value={resolution}
-            onChange={(e) => setResolution(e.target.value)}
-          />
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={loading}
-            className="flex-1 py-2 rounded-lg text-xs font-medium border border-white/15 text-neutral-300 hover:bg-white/5 disabled:opacity-50 transition"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            disabled={loading || !resolution.trim()}
-            onClick={() => onConfirm({ resolution, resolvedInFavourOf: favour })}
-            className="flex-1 py-2 rounded-lg text-xs font-medium bg-indigo-600/80 border border-indigo-500/50 text-white hover:bg-indigo-600 disabled:opacity-50 transition"
-          >
-            {loading ? "Resolving…" : "Confirm resolution"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Disputes section ─────────────────────────────────────────────────────────
+// NOTE: adminOrderDisputes and adminResolveDispute have not yet been added to
+// the gateway schema. This section renders a placeholder until they are.
 
 function DisputesSection() {
-  const [statusFilter, setStatusFilter] = useState("open");
-  const [resolveTarget, setResolveTarget] = useState(null);
-
-  const { data, loading, error, refetch } = useQuery(ADMIN_DISPUTES_QUERY, {
-    variables: { status: statusFilter },
-    fetchPolicy: "network-only",
-  });
-
-  const [resolveDispute, { loading: resolving }] = useMutation(ADMIN_RESOLVE_DISPUTE, {
-    onCompleted: () => refetch(),
-  });
-
-  const disputes = data?.adminOrderDisputes ?? [];
-
-  const handleResolveConfirm = ({ resolution, resolvedInFavourOf }) => {
-    resolveDispute({ variables: { id: resolveTarget.id, resolution, resolvedInFavourOf } });
-    setResolveTarget(null);
-  };
-
   return (
     <div className="space-y-3">
-      {resolveTarget && (
-        <ResolveModal
-          dispute={resolveTarget}
-          onConfirm={handleResolveConfirm}
-          onCancel={() => setResolveTarget(null)}
-          loading={resolving}
-        />
-      )}
-
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <h2 className="text-base font-semibold text-neutral-50">Order Disputes</h2>
-          <p className="text-xs text-neutral-500 mt-0.5">
-            {loading ? "Loading…" : `${disputes.length} ${statusFilter === "all" ? "" : statusFilter} dispute${disputes.length !== 1 ? "s" : ""}.`}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-lg border border-white/10 overflow-hidden text-[11px]">
-            {["open", "resolved", "all"].map((opt) => (
-              <button
-                key={opt}
-                type="button"
-                onClick={() => setStatusFilter(opt)}
-                className={[
-                  "px-3 py-1.5 font-medium transition",
-                  statusFilter === opt
-                    ? "bg-white/10 text-neutral-100"
-                    : "text-neutral-500 hover:text-neutral-300 hover:bg-white/5",
-                ].join(" ")}
-              >
-                {opt.charAt(0).toUpperCase() + opt.slice(1)}
-              </button>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium border border-white/15 text-neutral-300 hover:bg-white/5 transition"
-          >
-            Refresh
-          </button>
-        </div>
+      <div>
+        <h2 className="text-base font-semibold text-neutral-50">Order Disputes</h2>
+        <p className="text-xs text-neutral-500 mt-0.5">Dispute management for marketplace orders.</p>
       </div>
-
-      {error && (
-        <div className="border border-red-500/30 rounded-2xl p-4 bg-red-950/20">
-          <p className="text-xs text-red-300">{error.message}</p>
-        </div>
-      )}
-
-      {!loading && !error && disputes.length === 0 && (
-        <div className="border border-white/[0.06] rounded-2xl p-8 bg-white/[0.01] flex flex-col items-center gap-2 text-center">
-          <div className="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-400" aria-hidden="true">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          </div>
-          <p className="text-sm text-neutral-300 font-medium">No {statusFilter !== "all" ? statusFilter : ""} disputes</p>
-        </div>
-      )}
-
-      {disputes.length > 0 && (
-        <div className="space-y-2">
-          {disputes.map((d) => (
-            <div
-              key={d.id}
-              className={[
-                "border rounded-2xl p-4 bg-white/[0.02] flex gap-4 items-start",
-                d.status === "open"
-                  ? "border-orange-500/20"
-                  : "border-white/[0.06]",
-              ].join(" ")}
-            >
-              {/* Status indicator */}
-              <div className="shrink-0 mt-0.5">
-                {d.status === "open" ? (
-                  <span className="inline-flex items-center rounded-full px-2 py-1 text-[10px] font-semibold bg-orange-500/10 text-orange-300 border border-orange-500/30">
-                    Open
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center rounded-full px-2 py-1 text-[10px] font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
-                    Resolved
-                  </span>
-                )}
-              </div>
-
-              {/* Content */}
-              <div className="flex-1 min-w-0 space-y-2">
-                <div>
-                  <p className="text-[10px] text-neutral-600 uppercase tracking-wider">Order</p>
-                  <p className="text-[11px] font-mono text-neutral-300 truncate">{d.orderId}</p>
-                </div>
-
-                {d.reason && (
-                  <div>
-                    <p className="text-[10px] text-neutral-600 uppercase tracking-wider">Reason filed</p>
-                    <p className="text-[11px] text-neutral-200">{d.reason}</p>
-                  </div>
-                )}
-
-                {d.resolution && (
-                  <div>
-                    <p className="text-[10px] text-neutral-600 uppercase tracking-wider">Admin resolution</p>
-                    <p className="text-[11px] text-neutral-300">{d.resolution}</p>
-                    {d.resolvedInFavourOf && (
-                      <p className="text-[10px] text-neutral-500 mt-0.5">
-                        Resolved in favour of{" "}
-                        <span className={d.resolvedInFavourOf === "buyer" ? "text-sky-300" : "text-violet-300"}>
-                          {d.resolvedInFavourOf}
-                        </span>
-                        {d.escrowActionTaken && ` · Escrow: ${d.escrowActionTaken}`}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                <p className="text-[10px] text-neutral-600">
-                  Raised {fmt(d.createdAt)}
-                  {d.resolvedAt && ` · Resolved ${fmt(d.resolvedAt)}`}
-                </p>
-              </div>
-
-              {/* Action */}
-              {d.status === "open" && (
-                <button
-                  type="button"
-                  onClick={() => setResolveTarget(d)}
-                  disabled={resolving}
-                  className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-600/70 border border-indigo-500/40 text-white hover:bg-indigo-600 disabled:opacity-50 transition"
-                >
-                  Resolve
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="border border-amber-500/20 rounded-xl px-4 py-3 bg-amber-500/[0.04] flex gap-3 items-start">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-400 mt-0.5 shrink-0" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <p className="text-xs text-amber-300/90">
+          Order dispute queries (<code className="font-mono text-amber-200">adminOrderDisputes</code>,{" "}
+          <code className="font-mono text-amber-200">adminResolveDispute</code>) have not yet been implemented in
+          the gateway. This section will become active once those operations are added to the schema.
+        </p>
+      </div>
     </div>
   );
 }

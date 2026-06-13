@@ -4,8 +4,8 @@ import React, { useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 
 const USERS_QUERY = gql`
-  query AdminUsers($limit: Int, $search: String) {
-    allUsers(limit: $limit, search: $search) {
+  query AdminUsers($limit: Int) {
+    allUsers(limit: $limit) {
       id
       username
       email
@@ -59,11 +59,18 @@ export default function AdminUsersPanel() {
   const [copied, setCopied] = useState(null);
 
   const { data, loading, error, refetch } = useQuery(USERS_QUERY, {
-    variables: { limit: 200, search: search || null },
+    variables: { limit: 200 },
     fetchPolicy: "network-only",
   });
 
-  const users = data?.allUsers ?? [];
+  // allUsers has no server-side search — filter client-side from the fetched batch
+  const allFetchedUsers = data?.allUsers ?? [];
+  const users = search
+    ? allFetchedUsers.filter((u) =>
+        u.username?.toLowerCase().includes(search.toLowerCase()) ||
+        u.email?.toLowerCase().includes(search.toLowerCase())
+      )
+    : allFetchedUsers;
 
   const copy = async (label, value) => {
     try {

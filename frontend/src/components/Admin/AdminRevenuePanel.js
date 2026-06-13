@@ -143,8 +143,10 @@ function MonthlyChart({ monthly }) {
 // ─── Main panel ───────────────────────────────────────────────────────────────
 
 export default function AdminRevenuePanel() {
-  const { data: rd, loading: rl, error: re, refetch: rRefetch } = useQuery(REVENUE_SUMMARY_QUERY, { fetchPolicy: "network-only" });
-  const { data: td, loading: tl, refetch: tRefetch } = useQuery(TRANSACTIONS_QUERY, { variables: { page: 1, pageSize: 50 }, fetchPolicy: "network-only" });
+  // adminRevenueSummary, adminMarketplaceRevenue, adminAllTransactions do not
+  // yet exist in the gateway schema — skip queries to prevent 400 errors.
+  const { data: rd, loading: rl, error: re, refetch: rRefetch } = useQuery(REVENUE_SUMMARY_QUERY, { fetchPolicy: "network-only", skip: true });
+  const { data: td, loading: tl, refetch: tRefetch } = useQuery(TRANSACTIONS_QUERY, { variables: { page: 1, pageSize: 50 }, fetchPolicy: "network-only", skip: true });
 
   const sub    = rd?.adminRevenueSummary;
   const mkt    = rd?.adminMarketplaceRevenue;
@@ -178,6 +180,18 @@ export default function AdminRevenuePanel() {
         >
           Refresh
         </button>
+      </div>
+
+      <div className="border border-amber-500/20 rounded-xl px-4 py-3 bg-amber-500/[0.04] flex gap-3 items-start">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-400 mt-0.5 shrink-0" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <p className="text-xs text-amber-300/90">
+          ⚠️ Revenue queries (<code className="font-mono text-amber-200">adminRevenueSummary</code>,{" "}
+          <code className="font-mono text-amber-200">adminMarketplaceRevenue</code>,{" "}
+          <code className="font-mono text-amber-200">adminAllTransactions</code>) have not yet been implemented
+          in the gateway. Figures below are placeholders — data will populate once these operations are added to the schema.
+        </p>
       </div>
 
       {re && <div className="border border-red-500/30 rounded-xl p-3 bg-red-950/20 text-xs text-red-300">{re.message}</div>}

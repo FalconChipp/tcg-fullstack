@@ -20,9 +20,8 @@ export const ADMIN_OVERVIEW_QUERY = gql`
     }
     listings(limit: $listingsLimit) {
       __typename
-      id
-      type
-      status
+      ... on CardListing    { id status }
+      ... on ProductListing { id status }
     }
   }
 `;

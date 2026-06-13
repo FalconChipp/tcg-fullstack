@@ -269,14 +269,12 @@ export default function AdminProductsPanel() {
           currency: currency.trim() || DEFAULT_CURRENCY,
           quantity: Number.isNaN(parsedQuantity) ? 1 : parsedQuantity,
           imageUrl: imageUrl.trim() || null, // primary image
-          inventoryId: null, // can be wired later if you want inventory per product
 
           // These must line up with Listing model:
           // fulfilmentType: 'INTERNAL' | 'POD'
           fulfilmentType: fulfilmentType || null,
           fulfilmentProvider: fulfilmentProvider.trim() || null,
           fulfilmentExternalId: externalFulfilmentId.trim() || null,
-          fulfilmentMetaJson: meta,
 
           // JSON metadata for multiple images + colours
           imagesJson: imagesArray.length ? imagesArray : null,
@@ -398,14 +396,12 @@ export default function AdminProductsPanel() {
           quantity: Number.isNaN(parsedQuantity) ? 1 : parsedQuantity,
           imageUrl:
             (editingProduct.imageUrl || "").trim() || null,
-          inventoryId: null, // can be wired later
 
           fulfilmentType: editingProduct.fulfilmentType || null,
           fulfilmentProvider:
             (editingProduct.fulfilmentProvider || "").trim() || null,
           fulfilmentExternalId:
             (editingProduct.fulfilmentExternalId || "").trim() || null,
-          fulfilmentMetaJson: meta,
 
           imagesJson: imagesArray.length ? imagesArray : null,
           colourVariantsJson: coloursArray.length ? coloursArray : null,

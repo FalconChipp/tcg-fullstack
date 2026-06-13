@@ -75,7 +75,7 @@ export default function ForgotPasswordPage() {
         <meta name="twitter:image" content="https://tcg.sixbyfive.com/og-image.png" />
       </Head>
       <div className="min-h-[calc(100vh-80px)] flex items-center justify-center bg-light-background dark:bg-dark-background pt-20">
-      <div className="w-full max-w-md mx-auto p-7 rounded-2xl bg-white dark:bg-[#181822] border border-light-border dark:border-dark-border shadow-xl">
+      <div className="w-full max-w-md mx-auto p-7 rounded-2xl bg-white dark:bg-dark-surface border border-light-border dark:border-dark-border shadow-xl">
         <h1 className="text-2xl font-bold mb-4 text-light-primary dark:text-dark-primary text-center">
           Forgot Password
         </h1>

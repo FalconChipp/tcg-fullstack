@@ -210,7 +210,7 @@ export default function AccountPage() {
       {head}
       <Layout>
         {/* Top header — soft gradient, no heavy borders */}
-        <section className="w-full px-4 pt-6 pb-8 bg-gradient-to-br from-light-alt via-light-background to-[#eaf3ff] dark:from-[#191923] dark:via-dark-surface dark:to-dark-background">
+        <section className="w-full px-4 pt-6 pb-8 bg-gradient-to-br from-light-alt via-light-background to-[#eaf3ff] dark:from-dark-alt dark:via-dark-surface dark:to-dark-background">
           <div className="max-w-6xl mx-auto">
             <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-2">Account settings</h1>
             <p className="text-light-textSecondary dark:text-dark-textSecondary max-w-2xl">

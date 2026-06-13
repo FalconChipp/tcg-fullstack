@@ -252,8 +252,11 @@ function QueueCard({ item, onApprove, onReject, busy }) {
 export default function AdminProofQueuePanel() {
   const [rejectTarget, setRejectTarget] = useState(null);
 
+  // adminProofQueue / adminApproveProof / adminRejectProof are not yet in
+  // the gateway schema — skip the query to prevent 400 errors.
   const { data, loading, error, refetch } = useQuery(PROOF_QUEUE_QUERY, {
     fetchPolicy: "network-only",
+    skip: true,
   });
 
   const [approveProof, { loading: approving }] = useMutation(APPROVE_PROOF, {
@@ -334,13 +337,17 @@ export default function AdminProofQueuePanel() {
               Listings awaiting manual photo verification.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium border border-white/15 text-neutral-300 hover:bg-white/5 transition"
-          >
-            Refresh
-          </button>
+        </div>
+        <div className="border border-amber-500/20 rounded-xl px-4 py-3 bg-amber-500/[0.04] flex gap-3 items-start">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-400 mt-0.5 shrink-0" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <p className="text-xs text-amber-300/90">
+            ⚠️ Proof queue operations (<code className="font-mono text-amber-200">adminProofQueue</code>,{" "}
+            <code className="font-mono text-amber-200">adminApproveProof</code>,{" "}
+            <code className="font-mono text-amber-200">adminRejectProof</code>) have not yet been implemented
+            in the gateway. This queue will populate once those operations are added to the schema.
+          </p>
         </div>
         <div className="border border-white/[0.06] rounded-2xl p-10 bg-white/[0.01] flex flex-col items-center text-center gap-3">
           <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">

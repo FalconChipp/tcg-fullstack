@@ -239,11 +239,14 @@ function SubscriptionsTab() {
   const [changePlanTarget, setChangePlanTarget] = useState(null);
   const [grantOpen, setGrantOpen] = useState(false);
 
+  // adminSubscriptions / adminPlans do not yet exist in the gateway schema.
+  // skip: true prevents 400 errors; remove once the schema is extended.
   const { data: sd, loading: sl, error: se, refetch: sRefetch } = useQuery(SUBSCRIPTIONS_QUERY, {
     variables: { status: statusFilter === "all" ? null : statusFilter, page: 1, pageSize: 100 },
     fetchPolicy: "network-only",
+    skip: true,
   });
-  const { data: pd } = useQuery(PLANS_QUERY, { fetchPolicy: "cache-first" });
+  const { data: pd } = useQuery(PLANS_QUERY, { fetchPolicy: "cache-first", skip: true });
 
   const [cancelSub,  { loading: cancelling }]  = useMutation(CANCEL_SUB,  { onCompleted: () => sRefetch() });
   const [resumeSub,  { loading: resuming }]    = useMutation(RESUME_SUB,  { onCompleted: () => sRefetch() });
@@ -433,7 +436,8 @@ function SubscriptionsTab() {
 function PlansTab() {
   const [editTarget, setEditTarget] = useState(null);
 
-  const { data, loading, error, refetch } = useQuery(PLANS_QUERY, { fetchPolicy: "network-only" });
+  // skip: true — adminPlans not yet in gateway schema
+  const { data, loading, error, refetch } = useQuery(PLANS_QUERY, { fetchPolicy: "network-only", skip: true });
   const [updatePlan, { loading: saving }] = useMutation(UPDATE_PLAN, {
     onCompleted: () => { refetch(); setEditTarget(null); },
   });
@@ -501,6 +505,18 @@ export default function AdminSubscriptionsPanel() {
 
   return (
     <div className="space-y-5">
+      {/* Not-yet-implemented notice */}
+      <div className="border border-amber-500/20 rounded-xl px-4 py-3 bg-amber-500/[0.04] flex gap-3 items-start">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-400 mt-0.5 shrink-0" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <p className="text-xs text-amber-300/90">
+          ⚠️ Subscription management queries (<code className="font-mono text-amber-200">adminSubscriptions</code>,{" "}
+          <code className="font-mono text-amber-200">adminPlans</code>) and their mutations have not yet been
+          implemented in the gateway. Data will appear here once those operations are added to the schema.
+        </p>
+      </div>
+
       {/* Tab bar */}
       <div className="flex border-b border-white/[0.06]">
         {TABS.map((t) => (

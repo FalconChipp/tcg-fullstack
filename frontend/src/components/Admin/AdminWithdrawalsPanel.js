@@ -130,6 +130,12 @@ export default function AdminWithdrawalsPanel() {
   const toast = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 4000); };
 
   const load = useCallback(async (pg = 0) => {
+    // adminWithdrawals / adminCompleteWithdrawal / adminRejectWithdrawal are not
+    // yet implemented in the gateway schema. Return empty state to prevent 400s.
+    setData({ total: 0, withdrawals: [] });
+    setLoading(false);
+    return;
+    /* eslint-disable no-unreachable */
     if (!token) return;
     setLoading(true);
     setError(null);
@@ -146,6 +152,7 @@ export default function AdminWithdrawalsPanel() {
     } finally {
       setLoading(false);
     }
+    /* eslint-enable no-unreachable */
   }, [token, status]);
 
   useEffect(() => { load(0); }, [load]);
@@ -195,6 +202,19 @@ export default function AdminWithdrawalsPanel() {
             {data.total} total
           </span>
         )}
+      </div>
+
+      {/* Not-yet-implemented notice */}
+      <div className="border border-amber-500/20 rounded-xl px-4 py-3 bg-amber-500/[0.04] flex gap-3 items-start">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-400 mt-0.5 shrink-0" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <p className="text-xs text-amber-300/90">
+          ⚠️ Withdrawal queries (<code className="font-mono text-amber-200">adminWithdrawals</code>,{" "}
+          <code className="font-mono text-amber-200">adminCompleteWithdrawal</code>,{" "}
+          <code className="font-mono text-amber-200">adminRejectWithdrawal</code>) have not yet been implemented
+          in the gateway. This section will become active once those operations are added to the schema.
+        </p>
       </div>
 
       {/* Status tabs */}

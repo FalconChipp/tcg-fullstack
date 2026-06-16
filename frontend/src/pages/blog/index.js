@@ -12,8 +12,16 @@ import React from "react";
 import Link from "next/link";
 import Layout from "@/components/Layout/Layout";
 
-// UPDATED: newest post (Dev Blog #2) first, older ones after
 const POSTS = [
+  {
+    slug: "dev-blog-4-email-and-mobile-gaps",
+    title: "Dev Blog #4 — Here's What We've Been Building",
+    excerpt:
+      "A look at everything in progress — the redesign, marketplace, trading, subscriptions, real-time messaging, notifications, public profiles, Discord integration, and more.",
+    date: "16 June 2026",
+    readTime: 14,
+    tag: "Dev Blog",
+  },
   {
   slug: "dev-blog-3-safety-before-social",
   title: "Dev Blog #3 — Safety Before Social: Preparing SixByFive for Community Features",

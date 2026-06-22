@@ -4,16 +4,18 @@ import { useRouter } from "next/router";
 import { devWarn } from "@/utils/devLog";
 import Image from "next/image";
 import Head from "next/head";
+import Link from "next/link";
 import Layout from "@/components/Layout/Layout";
 import { getSetLogo } from "@/utils/setLogos";
 import SetChecklistHeader from "@/components/Sets/SetChecklistHeader";
+import CardDetailsModal from "@/components/Cards/CardDetailsModal";
 import useSetPrices from "@/hooks/useSetPrices";
 import useSetOwned from "@/hooks/useSetOwned";
 import inferSetEra from "@/utils/setEra";
 import executeServerGraphql from "@/utils/serverGraphql";
 
 /* -------------------- UI: Card Tile -------------------- */
-function SetCardTile({ card, owned = false, price, eager = false }) {
+function SetCardTile({ card, owned = false, price, eager = false, onExpand }) {
   const hasImg = Boolean(card?.imageUrl);
   const priceStr =
     price && typeof price.gbp === "number" && price.gbp > 0
@@ -31,7 +33,12 @@ function SetCardTile({ card, owned = false, price, eager = false }) {
       role="article"
       aria-label={card?.name || "Card"}
     >
-      <div className="relative w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-xl overflow-hidden">
+      <button
+        type="button"
+        onClick={() => onExpand?.(card)}
+        className="relative w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-xl overflow-hidden cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent"
+        aria-label={`Expand ${card?.name || "card"} image`}
+      >
         {hasImg ? (
           <Image
             src={card.imageUrl}
@@ -54,7 +61,7 @@ function SetCardTile({ card, owned = false, price, eager = false }) {
             Owned
           </span>
         )}
-      </div>
+      </button>
 
       <div className="mt-3">
         <div className="flex items-start justify-between gap-2">
@@ -79,6 +86,25 @@ function SetCardTile({ card, owned = false, price, eager = false }) {
   );
 }
 
+/* -------------------- UI: Back to Sets link -------------------- */
+function BackToSetsLink() {
+  return (
+    <Link
+      href="/sets"
+      className="inline-flex items-center gap-1.5 text-sm font-medium text-light-textMuted dark:text-dark-textMuted hover:text-light-accent dark:hover:text-dark-accent transition mb-4"
+    >
+      <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path
+          fillRule="evenodd"
+          d="M12.79 5.23a.75.75 0 0 1 0 1.06L9.06 10l3.73 3.71a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z"
+          clipRule="evenodd"
+        />
+      </svg>
+      Back to Sets
+    </Link>
+  );
+}
+
 /* -------------------- Page component -------------------- */
 function parseIntSafe(v) {
   const n = parseInt(v, 10);
@@ -94,6 +120,7 @@ export default function SetPage() {
   const [filter, setFilter] = useState("");
   const [sort, setSort] = useState("number-asc");
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [expandedCard, setExpandedCard] = useState(null);
 
   // Fetch set data client-side so we don't depend on Netlify SSR reaching the backend
   useEffect(() => {
@@ -204,6 +231,7 @@ export default function SetPage() {
     return (
       <Layout seo={{ title: seoTitle, description: seoDesc }} noTopPadding={false}>
         <div className="mx-auto max-w-[1200px] px-5 py-8">
+          <BackToSetsLink />
           <div className="h-10 w-64 bg-light-alt dark:bg-dark-alt rounded mb-6 animate-pulse" />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
             {Array.from({ length: 20 }).map((_, i) => (
@@ -219,6 +247,9 @@ export default function SetPage() {
     return (
       <Layout seo={{ title: "Set Not Found | SixByFive TCG", description: "" }} noTopPadding={false}>
         <div className="mx-auto max-w-[1200px] px-5 py-16 text-center">
+          <div className="text-left">
+            <BackToSetsLink />
+          </div>
           <p className="text-light-textMuted dark:text-dark-textMuted text-lg">Set not found.</p>
         </div>
       </Layout>
@@ -234,6 +265,7 @@ export default function SetPage() {
       </Head>
 
       <div className="mx-auto max-w-[1200px] px-5 py-8">
+        <BackToSetsLink />
         <SetChecklistHeader
           name={set.name}
           code={set.code}
@@ -271,11 +303,27 @@ export default function SetPage() {
             const price = pricesById[id] || null;
             const eager = idx < 10;
             return (
-              <SetCardTile key={id} card={card} owned={owned} price={price} eager={eager} />
+              <SetCardTile
+                key={id}
+                card={card}
+                owned={owned}
+                price={price}
+                eager={eager}
+                onExpand={() => setExpandedCard({ card, alreadyOwned: owned })}
+              />
             );
           })}
         </div>
       </div>
+
+      {expandedCard && (
+        <CardDetailsModal
+          card={expandedCard.card}
+          owned={false}
+          alreadyOwned={expandedCard.alreadyOwned}
+          onClose={() => setExpandedCard(null)}
+        />
+      )}
     </Layout>
   );
 }

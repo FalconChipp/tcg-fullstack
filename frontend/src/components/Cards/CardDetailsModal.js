@@ -1,4 +1,10 @@
-// src/components/UserProfile/CardDetailsModal.js
+// src/components/Cards/CardDetailsModal.js
+//
+// Shared across the profile (owned collection/wishlist entries), search
+// workbench, and set checklist pages. Ownership-specific UI (quantity,
+// condition, duplicate/edit/delete, notes) only renders when `owned` is
+// true; everything else (image, identity, variation picker, price
+// history, alerts, watchlist) works for any card with a cardId.
 
 "use client";
 
@@ -10,7 +16,7 @@ import { formatVariation } from "@/utils/formatVariation";
 import { formatCondition, getConditionClass } from "@/utils/formatCondition";
 import { formatDate, formatRelativeTime } from "@/utils/formatDate";
 import { AuthContext } from "@/components/Auth/AuthProvider";
-import PriceHistoryChart from "./PriceHistoryChart";
+import PriceHistoryChart from "@/components/UserProfile/PriceHistoryChart";
 import { fetchMyAlerts, upsertAlert } from "@/graphql/priceAlerts";
 import { executeMutation } from "@/utils/graphqlUtils";
 
@@ -271,6 +277,7 @@ const pickImage = (card) => {
     card?.modalImage,
     card?.tcgImageUrl,
     card?.tcgImage,
+    card?.imageUrl,
     card?.images?.large,
     card?.images?.small,
     card?.tcgplayer?.images?.large,
@@ -327,6 +334,18 @@ export default function CardDetailsModal({
   onDelete,
   onAddToWatchlist,
   onDuplicate,
+  onAddToCollection,
+
+  // false when viewing a catalog card the user doesn't have a collection
+  // entry for yet (search results, set checklists) — hides quantity/
+  // condition/notes/duplicate and swaps "Duplicate" for "Add to Collection".
+  owned = true,
+
+  // When !owned, callers can still tell us the user has *a* copy of this
+  // card somewhere in their collection (without the full entry data owned
+  // would require) so the badge reflects reality instead of always saying
+  // "Not owned".
+  alreadyOwned = false,
 
   // ownership & share context
   isOwnProfile,
@@ -513,6 +532,43 @@ export default function CardDetailsModal({
     if (!result?.addToCollection) throw new Error("Failed to duplicate this card.");
     return "Added another copy to your collection.";
   }, [token, cardId, backendVariant, card.quantity, card.condition]);
+
+  const addToCollectionEnabled = typeof onAddToCollection === "function";
+
+  const fallbackAddToCollection = React.useCallback(async () => {
+    if (!token) throw new Error("Sign in to add cards to your collection.");
+    if (!cardId) throw new Error("Missing card identifier.");
+    const mutation = `
+      mutation QuickAddToCollection($cardId: String!, $quantity: Int, $variation: String) {
+        addToCollection(cardId: $cardId, quantity: $quantity, variation: $variation) { id }
+      }
+    `;
+    const variables = { cardId, quantity: 1, variation: backendVariant ?? null };
+    const result = await executeMutation(mutation, variables, token);
+    if (!result?.addToCollection) throw new Error("Failed to add this card to your collection.");
+    const cardName = card.name || card.tcgName || "Card";
+    return `"${cardName}" added to your collection.`;
+  }, [token, cardId, backendVariant, card.name, card.tcgName]);
+
+  const handleAddToCollectionClick = React.useCallback(async () => {
+    if (duplicateBusy) return;
+    setQuickActionMessage(null);
+    try {
+      setDuplicateBusy(true);
+      let successText = "Added to your collection.";
+      if (addToCollectionEnabled) {
+        const maybePromise = onAddToCollection(card, selectedVar);
+        if (maybePromise && typeof maybePromise.then === "function") await maybePromise;
+      } else {
+        successText = await fallbackAddToCollection();
+      }
+      setQuickActionMessage({ type: "success", text: successText });
+    } catch (err) {
+      setQuickActionMessage({ type: "error", text: err?.message || "Unable to add this card right now." });
+    } finally {
+      setDuplicateBusy(false);
+    }
+  }, [duplicateBusy, addToCollectionEnabled, onAddToCollection, card, selectedVar, fallbackAddToCollection]);
 
   const handleWatchlistClick = React.useCallback(async () => {
     if (watchlistBusy) return;
@@ -734,26 +790,29 @@ export default function CardDetailsModal({
 
   /* ---------- token classes ---------- */
   const bgPanel = isDark ? "bg-dark-surface border border-dark-border" : "bg-white border border-light-border";
-  const bgHeader = isDark ? "bg-dark-background" : "bg-light-background";
+  const bgHeader = isDark ? "bg-dark-surface" : "bg-white";
   const border = isDark ? "border-dark-border" : "border-light-border";
   const textMuted = isDark ? "text-dark-textMuted" : "text-light-textMuted";
-  const textMain = isDark ? "text-white" : "text-light-primary";
-  const chipRarity = isDark ? "bg-dark-primary text-dark-accentLight" : "bg-light-accent text-white";
-  const chipEdition = isDark ? "bg-dark-border text-dark-accentLight" : "bg-light-border text-light-accent";
-  const cardBg = isDark ? "bg-dark-background" : "bg-light-background";
+  const textMain = isDark ? "text-white" : "text-light-text";
+  // Stat/quick-action cards sit a layer above the panel background so they
+  // read as distinct cards instead of blending into the modal itself.
+  const cardBg = isDark ? "bg-dark-alt" : "bg-light-alt";
+  const cardBorder = isDark ? "border-dark-borderMid" : "border-light-border";
+  const chipRarity = isDark ? "bg-dark-accentDim text-dark-accentLight" : "bg-light-accent/15 text-light-accent";
+  const chipEdition = isDark ? "bg-dark-alt text-dark-textSecondary" : "bg-light-alt text-light-textSecondary";
   const headerGradient = isDark
-    ? "bg-gradient-to-r from-dark-accent/35 via-transparent to-transparent"
-    : "bg-gradient-to-r from-light-accent/40 via-transparent to-transparent";
-  const headerDivider = isDark ? "bg-dark-border/80" : "bg-light-border/70";
-  const statCard = `${cardBg} ${border} shadow-sm backdrop-blur-sm`;
-  const subtlePill = isDark ? "bg-dark-border/70 text-dark-textMuted" : "bg-light-border/80 text-light-textMuted";
-  const highlightPill = isDark ? "bg-dark-accent/20 text-dark-accentLight" : "bg-light-accent/20 text-light-accent";
+    ? "bg-gradient-to-br from-dark-accent/20 via-transparent to-transparent"
+    : "bg-gradient-to-br from-light-accent/15 via-transparent to-transparent";
+  const headerDivider = isDark ? "bg-dark-border" : "bg-light-border";
+  const statCard = `${cardBg} border ${cardBorder} shadow-sm transition-colors`;
+  const subtlePill = isDark ? "bg-dark-surf3 text-dark-textMuted" : "bg-light-border/80 text-light-textMuted";
+  const highlightPill = isDark ? "bg-dark-accentDim text-dark-accentLight" : "bg-light-accent/15 text-light-accent";
   const primaryCta = isDark
-    ? "bg-dark-accent text-black hover:bg-dark-accentLight focus:ring-dark-accent"
-    : "bg-light-accent text-white hover:bg-light-accentLight focus:ring-light-accent";
+    ? "bg-dark-accent text-white shadow-lg shadow-dark-accent/25 hover:bg-dark-accentLight focus:ring-dark-accent"
+    : "bg-light-accent text-white shadow-md shadow-light-accent/20 hover:bg-light-accentLight focus:ring-light-accent";
   const secondaryCta = isDark
-    ? "border border-dark-border/80 text-dark-textMuted hover:text-white hover:border-dark-accent"
-    : "border border-light-border/80 text-light-textMuted hover:text-light-primary hover:border-light-accent";
+    ? "border border-dark-borderMid text-dark-textSecondary hover:text-white hover:border-dark-accent hover:bg-dark-accentDim"
+    : "border border-light-border text-light-textSecondary hover:text-light-text hover:border-light-accent hover:bg-light-accent/10";
   const disabledCta = isDark
     ? "bg-dark-border text-dark-textMuted cursor-not-allowed opacity-70"
     : "bg-light-border text-light-textMuted cursor-not-allowed opacity-70";
@@ -765,8 +824,8 @@ export default function CardDetailsModal({
     : `${secondaryCta} opacity-90`;
 
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 ${isDark ? "dark" : ""}`}>
-      <div className={`w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden ${bgPanel} animate-fade-in flex flex-col max-h-[calc(100vh-2rem)]`}>
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 ${isDark ? "dark" : ""}`}>
+      <div className={`w-full max-w-5xl rounded-3xl shadow-2xl ring-1 ${isDark ? "ring-white/5" : "ring-black/5"} overflow-hidden ${bgPanel} animate-fade-in flex flex-col max-h-[calc(100vh-2rem)]`}>
         {/* Header */}
         <div className={`relative flex flex-wrap items-start gap-4 px-6 py-5 border-b ${bgHeader} ${border}`}>
           <div className={`pointer-events-none absolute inset-0 ${headerGradient}`} />
@@ -819,7 +878,7 @@ export default function CardDetailsModal({
                 className={`rounded-xl px-3 py-2 text-xs font-semibold border transition ${
                   isDark
                     ? "border-dark-border/70 text-white hover:border-dark-accent hover:bg-dark-border/50"
-                    : "border-light-border/70 text-light-primary hover:border-light-accent hover:bg-light-accent/10"
+                    : "border-light-border/70 text-light-text hover:border-light-accent hover:bg-light-accent/10"
                 }`}
               >
                 Edit
@@ -839,7 +898,7 @@ export default function CardDetailsModal({
               className={`rounded-full p-2 transition border ${
                 isDark
                   ? "border-dark-border/70 text-dark-textMuted hover:text-white hover:bg-dark-border/60"
-                  : "border-light-border/70 text-light-textMuted hover:text-light-primary hover:bg-light-border/50"
+                  : "border-light-border/70 text-light-textMuted hover:text-light-text hover:bg-light-border/50"
               } focus:outline-none focus:ring-2 ${isDark ? "focus:ring-dark-accent" : "focus:ring-light-accent"}`}
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" stroke="currentColor">
@@ -878,8 +937,14 @@ export default function CardDetailsModal({
               <div className={`w-full max-w-[18rem] md:max-w-sm rounded-2xl p-4 ${statCard} flex flex-col gap-3`}>
                 <div className="flex items-center justify-between">
                   <span className={`text-2xs uppercase tracking-wide ${textMuted}`}>Quick actions</span>
-                  <span className={`text-2xs px-2 py-0.5 rounded-full font-semibold ${subtlePill}`}>
-                    {computedSourceType === "wishlist" ? "Wishlist" : "Collection"}
+                  <span
+                    className={`text-2xs px-2 py-0.5 rounded-full font-semibold ${
+                      owned || alreadyOwned ? highlightPill : subtlePill
+                    }`}
+                  >
+                    {owned
+                      ? computedSourceType === "wishlist" ? "Wishlist" : "Collection"
+                      : alreadyOwned ? "Owned" : "Not owned"}
                   </span>
                 </div>
 
@@ -902,7 +967,7 @@ export default function CardDetailsModal({
 
                   <button
                     type="button"
-                    onClick={handleDuplicateClick}
+                    onClick={owned ? handleDuplicateClick : handleAddToCollectionClick}
                     className={[
                       "w-full inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-0",
                       duplicateButtonStyles,
@@ -913,11 +978,15 @@ export default function CardDetailsModal({
                     <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                       <path d="M6 4a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2h-1v2a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h1V4zm2 0v2h3a2 2 0 012 2v4h1V4H8zM5 8v8h6V8H5z" />
                     </svg>
-                    {duplicateBusy ? "Duplicating..." : "Duplicate Entry"}
+                    {owned
+                      ? duplicateBusy ? "Duplicating..." : "Duplicate Entry"
+                      : duplicateBusy
+                        ? "Adding..."
+                        : alreadyOwned ? "Add another copy" : "Add to Collection"}
                   </button>
 
-                  {/* Share button (only for own profile) */}
-                  {computedIsOwnProfile && (
+                  {/* Share button (only for own profile, owned entries) */}
+                  {owned && computedIsOwnProfile && (
                     <button
                       type="button"
                       onClick={() => setShareOpen(true)}
@@ -991,7 +1060,7 @@ export default function CardDetailsModal({
                                 : "bg-light-accent text-white border-light-accent shadow-sm -translate-y-0.5"
                               : isDark
                               ? "bg-dark-alt/70 text-dark-textMuted hover:text-white hover:bg-dark-border/60 border-dark-border/70"
-                              : "bg-light-alt text-light-textMuted hover:text-light-primary border-light-border",
+                              : "bg-light-alt text-light-textMuted hover:text-light-text border-light-border",
                           ].join(" ")}
                         >
                           {formatVariation(v)}
@@ -1006,7 +1075,7 @@ export default function CardDetailsModal({
               <div>
                 <div
                   className={`grid grid-cols-2 gap-1 rounded-2xl border ${border} shadow-sm p-1 ${
-                    isDark ? "bg-dark-background/70" : "bg-light-background/80"
+                    isDark ? "bg-dark-alt" : "bg-light-alt"
                   }`}
                 >
                   {["overview", "history"].map((key) => {
@@ -1022,10 +1091,10 @@ export default function CardDetailsModal({
                           isActive
                             ? isDark
                               ? "bg-dark-accent text-white shadow"
-                              : "bg-light-primary text-white shadow"
+                              : "bg-light-accent text-white shadow"
                             : isDark
                             ? "text-dark-textMuted hover:text-white"
-                            : "text-light-textMuted hover:text-light-primary",
+                            : "text-light-textMuted hover:text-light-text",
                         ].join(" ")}
                       >
                         {label}
@@ -1039,25 +1108,27 @@ export default function CardDetailsModal({
                 <div className="pt-5 flex flex-col gap-5 md:pt-6">
                   {activeTab === "overview" ? (
                     <>
-                      <div className="grid gap-4 sm:grid-cols-3">
-                        <div className={`rounded-2xl p-4 ${statCard}`}>
-                          <div className={`text-[11px] uppercase tracking-wide mb-2 ${textMuted}`}>Quantity</div>
-                          <div className={`text-2xl font-bold ${textMain}`}>{quantity}</div>
-                          <div className={`text-2xs mt-1 ${textMuted}`}>In portfolio</div>
+                      {owned && (
+                        <div className="grid gap-4 sm:grid-cols-3">
+                          <div className={`rounded-2xl p-4 ${statCard}`}>
+                            <div className={`text-[11px] uppercase tracking-wide mb-2 ${textMuted}`}>Quantity</div>
+                            <div className={`text-2xl font-bold ${textMain}`}>{quantity}</div>
+                            <div className={`text-2xs mt-1 ${textMuted}`}>In portfolio</div>
+                          </div>
+                          <div className={`rounded-2xl p-4 ${statCard}`}>
+                            <div className={`text-[11px] uppercase tracking-wide mb-2 ${textMuted}`}>Condition</div>
+                            <div className={`text-sm font-semibold ${conditionClass}`}>{conditionLabel}</div>
+                            <div className={`text-2xs mt-1 ${textMuted}`}>Trader reported</div>
+                          </div>
+                          <div className={`rounded-2xl p-4 ${statCard}`}>
+                            <div className={`text-[11px] uppercase tracking-wide mb-2 ${textMuted}`}>Added</div>
+                            <div className={`text-sm font-semibold ${textMain}`}>{addedDateText || "--"}</div>
+                            {addedDateRelative && <div className={`text-2xs mt-1 ${textMuted}`}>{addedDateRelative}</div>}
+                          </div>
                         </div>
-                        <div className={`rounded-2xl p-4 ${statCard}`}>
-                          <div className={`text-[11px] uppercase tracking-wide mb-2 ${textMuted}`}>Condition</div>
-                          <div className={`text-sm font-semibold ${conditionClass}`}>{conditionLabel}</div>
-                          <div className={`text-2xs mt-1 ${textMuted}`}>Trader reported</div>
-                        </div>
-                        <div className={`rounded-2xl p-4 ${statCard}`}>
-                          <div className={`text-[11px] uppercase tracking-wide mb-2 ${textMuted}`}>Added</div>
-                          <div className={`text-sm font-semibold ${textMain}`}>{addedDateText || "--"}</div>
-                          {addedDateRelative && <div className={`text-2xs mt-1 ${textMuted}`}>{addedDateRelative}</div>}
-                        </div>
-                      </div>
+                      )}
 
-                      <div className="grid gap-4 lg:grid-cols-2">
+                      <div className={`grid gap-4 ${owned ? "lg:grid-cols-2" : ""}`}>
                         <div className={`rounded-2xl p-5 ${statCard}`}>
                           <div className="flex items-center justify-between gap-3 flex-wrap">
                             <div>
@@ -1073,18 +1144,20 @@ export default function CardDetailsModal({
                           </div>
                         </div>
 
-                        <div className={`rounded-2xl p-5 ${statCard}`}>
-                          <div className="flex items-center justify-between gap-3 flex-wrap">
-                            <div>
-                              <div className={`text-[11px] uppercase tracking-wide ${textMuted}`}>Portfolio Value</div>
-                              <div className={`text-2xl font-bold ${textMain}`}>{totalValue == null ? "--" : gbp(totalValue)}</div>
+                        {owned && (
+                          <div className={`rounded-2xl p-5 ${statCard}`}>
+                            <div className="flex items-center justify-between gap-3 flex-wrap">
+                              <div>
+                                <div className={`text-[11px] uppercase tracking-wide ${textMuted}`}>Portfolio Value</div>
+                                <div className={`text-2xl font-bold ${textMain}`}>{totalValue == null ? "--" : gbp(totalValue)}</div>
+                              </div>
+                              <span className={`text-2xs px-2 py-0.5 rounded-full font-semibold ${highlightPill}`}>
+                                {quantity} {quantity === 1 ? "copy" : "copies"}
+                              </span>
                             </div>
-                            <span className={`text-2xs px-2 py-0.5 rounded-full font-semibold ${highlightPill}`}>
-                              {quantity} {quantity === 1 ? "copy" : "copies"}
-                            </span>
+                            <div className={`text-2xs mt-3 ${textMuted}`}>Current market estimate across your holdings.</div>
                           </div>
-                          <div className={`text-2xs mt-3 ${textMuted}`}>Current market estimate across your holdings.</div>
-                        </div>
+                        )}
                       </div>
 
                       {variations.length > 0 && (
@@ -1275,7 +1348,7 @@ export default function CardDetailsModal({
                                   className={`h-11 px-3 py-2 rounded-lg border transition focus:outline-none focus:ring-2 ${
                                     isDark
                                       ? "bg-dark-alt border-dark-border focus:border-dark-accent focus:ring-dark-accent/60 text-white"
-                                      : "bg-light-surface border-light-border focus:border-light-accent focus:ring-light-accent/70 text-light-primary"
+                                      : "bg-light-surface border-light-border focus:border-light-accent focus:ring-light-accent/70 text-light-text"
                                   } appearance-none pr-8`}
                                   value={alertForm.condition}
                                   onChange={(e) => {
@@ -1315,7 +1388,7 @@ export default function CardDetailsModal({
                                   className={`h-11 px-3 py-2 rounded-lg border transition focus:outline-none focus:ring-2 ${
                                     isDark
                                       ? "bg-dark-alt border-dark-border focus:border-dark-accent focus:ring-dark-accent/60 text-white"
-                                      : "bg-light-surface border-light-border focus:border-light-accent focus:ring-light-accent/70 text-light-primary"
+                                      : "bg-light-surface border-light-border focus:border-light-accent focus:ring-light-accent/70 text-light-text"
                                   }`}
                                   value={alertForm.value}
                                   onChange={(e) => setAlertForm((prev) => ({ ...prev, value: e.target.value }))}
@@ -1331,7 +1404,7 @@ export default function CardDetailsModal({
                                   className={`h-11 px-3 py-2 rounded-lg border transition focus:outline-none focus:ring-2 ${
                                     isDark
                                       ? "bg-dark-alt border-dark-border focus:border-dark-accent focus:ring-dark-accent/60 text-white"
-                                      : "bg-light-surface border-light-border focus:border-light-accent focus:ring-light-accent/70 text-light-primary"
+                                      : "bg-light-surface border-light-border focus:border-light-accent focus:ring-light-accent/70 text-light-text"
                                   }`}
                                   value={alertForm.windowHours}
                                   onChange={(e) => setAlertForm((prev) => ({ ...prev, windowHours: e.target.value }))}
@@ -1402,7 +1475,7 @@ export default function CardDetailsModal({
                                     }`}
                                   >
                                     <div className="space-y-1">
-                                      <div className="text-sm font-semibold text-light-primary dark:text-white">{conditionLabel}</div>
+                                      <div className="text-sm font-semibold text-light-text dark:text-white">{conditionLabel}</div>
                                       <div className={`text-xs ${textMuted}`}>
                                         Window&nbsp;
                                         <span className="font-medium text-light-accent dark:text-dark-accent">{windowHours}h</span>

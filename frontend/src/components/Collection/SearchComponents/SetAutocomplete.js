@@ -3,6 +3,7 @@ import { gql, useApolloClient } from "@apollo/client";
 import { useTheme } from "@/hooks/ThemeProvider";
 import { getSetLogo } from "@/utils/setLogos";
 import fallbackSetList from "@/utils/setList";
+import { normalizeSearchText } from "@/utils/normalizeSearchText";
 
 const CARDSEARCH_SETS_QUERY = gql`
   query CardsearchSetAutocomplete($limit: Int!, $offset: Int!) {
@@ -135,15 +136,15 @@ export default function SetAutocomplete({ value, onChange, onSelect }) {
   // Filtered options by code, abbr, or name
   const options = useMemo(() => {
     if (!displayValue) return [];
-    const query = displayValue.trim().toLowerCase();
+    const query = normalizeSearchText(displayValue);
     if (!query) return [];
 
     return sets
       .filter(
         (set) =>
-          (set.code && set.code.toLowerCase().includes(query)) ||
-          (set.abbr && set.abbr.toLowerCase().includes(query)) ||
-          (set.name && set.name.toLowerCase().includes(query))
+          (set.code && normalizeSearchText(set.code).includes(query)) ||
+          (set.abbr && normalizeSearchText(set.abbr).includes(query)) ||
+          (set.name && normalizeSearchText(set.name).includes(query))
       )
       .slice(0, 10);
   }, [displayValue, sets]);

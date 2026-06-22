@@ -72,16 +72,14 @@ const cache = new InMemoryCache({
     Query: {
       fields: {
         cardsearchSearchCards: {
-          keyArgs: (args) => {
-            const input = args?.input || {};
-            return [
-              input.name ?? "",
-              input.set ?? "",
-              input.number ?? "",
-              input.variant ?? "",
-              input.orderBy ?? "RELEVANCE",
-            ];
-          },
+          // keyArgs must be a KeySpecifier — a list of *argument paths* for
+          // Apollo to read at cache-key time, not precomputed values. The
+          // previous version returned actual strings (e.g. "Drampa", "sm1"),
+          // which Apollo tried to interpret as field names to look up on
+          // `args` — none matched, so every search collapsed to the same
+          // empty key ("cardsearchSearchCards:{}") and merge() below kept
+          // blending results across totally different searches.
+          keyArgs: ["input", ["name", "set", "number"]],
           merge(existing = { items: [] }, incoming, { args }) {
             if (!incoming) return existing;
 

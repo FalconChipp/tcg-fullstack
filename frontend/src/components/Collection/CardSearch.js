@@ -33,7 +33,7 @@ const AddToCollectionPanel = dynamic(() => import("./AddToCollectionPanel"), {
 });
 
 const CardDetailsModal = dynamic(
-  () => import("../UserProfile/CardDetailsModal"),
+  () => import("../Cards/CardDetailsModal"),
   { ssr: false }
 );
 
@@ -1379,6 +1379,7 @@ export default function CardSearch({ variant = "search" }) {
         {showCardDetail && cardDetailData && (
           <CardDetailsModal
             card={cardDetailData}
+            owned={false}
             onClose={() => setShowCardDetail(false)}
             dark={dark}
           />

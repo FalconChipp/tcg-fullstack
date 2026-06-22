@@ -10,6 +10,7 @@ import { getSetLogo } from "@/utils/setLogos";
 import inferSetEra from "@/utils/setEra";
 import executeServerGraphql from "@/utils/serverGraphql";
 import { mapCacheSetSummary } from "@/utils/setDataTransforms";
+import { normalizeSearchText } from "@/utils/normalizeSearchText";
 import path from "path";
 
 /* ---------------- Canonical era keys & labels (display only) ---------------- */
@@ -167,15 +168,15 @@ export default function SetsPage({ sets }) {
   }, [enhanced]);
 
   const grouped = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = normalizeSearchText(query);
     const byEra = new Map();
 
     for (const set of enhanced) {
       if (eraFilter !== "all" && set.era !== eraFilter) continue;
 
       if (q) {
-        const name = (set.name || "").toLowerCase();
-        const code = (set.code || "").toLowerCase();
+        const name = normalizeSearchText(set.name);
+        const code = normalizeSearchText(set.code);
         if (!name.includes(q) && !code.includes(q)) continue;
       }
 

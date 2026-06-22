@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useSearchParams, useRouter } from "next/navigation"; // NEW: read query params + optionally clean URL
 import { getSetLogo } from "@/utils/setLogos";
 import EditCollectionCardModal from "@/components/Collection/EditCollectionCardModal";
-import CardDetailsModal from "@/components/UserProfile/CardDetailsModal";
+import CardDetailsModal from "@/components/Cards/CardDetailsModal";
 import { formatCondition, getConditionClass } from "@/utils/formatCondition";
 import { formatRelativeTime } from "@/utils/formatDate";
 import { AuthContext } from "@/components/Auth/AuthProvider";

@@ -424,7 +424,7 @@ export default function Header({ onStartTour }) {
                   onClick={openAuthModal}
                   className={`header-clickable hidden h-11 rounded-2xl bg-dark-accent px-5 text-sm font-black text-white transition hover:bg-dark-accentLight active:bg-dark-accentLight sm:inline-flex sm:items-center ${safeFocusClass()}`}
                 >
-                  Sign up free
+                  Sign In / Sign Up
                 </button>
               )}
 
@@ -524,7 +524,7 @@ export default function Header({ onStartTour }) {
                 onClick={openAuthModal}
                 className={`header-clickable w-full rounded-2xl bg-dark-accent px-4 py-3 text-sm font-black text-white transition hover:bg-dark-accentLight active:bg-dark-accentLight ${safeFocusClass()}`}
               >
-                Start free
+                Sign In / Sign Up
               </button>
             )}
           </div>

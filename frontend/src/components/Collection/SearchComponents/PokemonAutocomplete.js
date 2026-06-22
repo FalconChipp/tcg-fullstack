@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useTheme } from "@/hooks/ThemeProvider";
 import pokemonList, { getPokemonDisplaySprite } from "@/utils/pokemonListShiny";
+import { normalizeSearchText } from "@/utils/normalizeSearchText";
 
 export default function PokemonAutocomplete({ value, onChange, onSelect }) {
   const [showDropdown, setShowDropdown] = useState(false);
@@ -35,8 +36,9 @@ export default function PokemonAutocomplete({ value, onChange, onSelect }) {
   const options = useMemo(() => {
     if (!value) return [];
 
+    const query = normalizeSearchText(value);
     return pokemonList
-      .filter((p) => p.name.toLowerCase().includes(value.toLowerCase()))
+      .filter((p) => normalizeSearchText(p.name).includes(query))
       .slice(0, 10)
       .map((p) => getStableDisplaySprite(p));
   }, [value]);

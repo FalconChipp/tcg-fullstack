@@ -18,6 +18,7 @@ import React, {
   useMemo,
   useCallback,
   useRef,
+  useContext,
   startTransition,
   useEffect,
 } from "react";
@@ -30,8 +31,16 @@ import PokemonAutocomplete from "@/components/Collection/SearchComponents/Pokemo
 import SetAutocomplete from "@/components/Collection/SearchComponents/SetAutocomplete";
 import AdvancedFilters from "@/components/Collection/SearchComponents/AdvancedFilters";
 import StatusMessage from "@/components/UI/StatusMessage";
+import { AuthContext } from "@/components/Auth/AuthProvider";
+import AuthModal from "@/components/Auth/AuthModal";
+import CardDetailsModal from "@/components/Cards/CardDetailsModal";
 import { getSetLogo } from "@/utils/setLogos";
 import { formatVariation } from "@/utils/formatVariation";
+
+// Matches the auth-service/collections-service session-rejection messages
+// (e.g. "Authentication required", "Invalid or expired session") so we can
+// show a login prompt instead of a raw error string.
+const isAuthError = (message) => /authentic|session/i.test(message || "");
 
 /* ---------------- GraphQL ---------------- */
 
@@ -439,6 +448,9 @@ function WorkbenchButton({
 /* ---------------- Page ---------------- */
 
 export default function CardSearchWorkbenchPage() {
+  const { user } = useContext(AuthContext);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+
   const [name, setName] = useState("");
   const [setCode, setSetCode] = useState("");
   const [number, setNumber] = useState("");
@@ -452,6 +464,7 @@ export default function CardSearchWorkbenchPage() {
 
   const [submitResult, setSubmitResult] = useState(null);
   const [submitErrors, setSubmitErrors] = useState([]);
+  const [expandedCard, setExpandedCard] = useState(null);
   const [toast, setToast] = useState(null);
 
   const bucketsRef = useRef(new Map());
@@ -1071,6 +1084,11 @@ export default function CardSearchWorkbenchPage() {
   async function handleAddAllToCollection() {
     if (selectedList.length === 0) return;
 
+    if (!user) {
+      setAuthModalOpen(true);
+      return;
+    }
+
     setSubmitResult(null);
     setSubmitErrors([]);
 
@@ -1134,6 +1152,12 @@ export default function CardSearchWorkbenchPage() {
       devError(err);
 
       const msg = err?.message || "Something went wrong while adding cards.";
+
+      if (isAuthError(msg)) {
+        setAuthModalOpen(true);
+        return;
+      }
+
       setSubmitResult({ ok: false, message: msg });
       showToast("error", msg);
     }
@@ -1399,7 +1423,12 @@ export default function CardSearchWorkbenchPage() {
                             : "border-dark-border bg-dark-alt hover:border-dark-accent/60"
                         }`}
                       >
-                        <div className="relative mb-2 aspect-[3/4] overflow-hidden rounded-xl bg-black/30">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedCard(card)}
+                          aria-label={`Expand ${card.name || "card"} image`}
+                          className="relative mb-2 aspect-[3/4] overflow-hidden rounded-xl bg-black/30 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-dark-accent"
+                        >
                           {card.tcgImageUrl || card.image ? (
                             <Image
                               src={card.tcgImageUrl || card.image}
@@ -1408,7 +1437,7 @@ export default function CardSearchWorkbenchPage() {
                               className="object-contain"
                             />
                           ) : null}
-                        </div>
+                        </button>
 
                         <div className="flex flex-1 flex-col justify-between text-xs">
                           <div>
@@ -1642,7 +1671,11 @@ export default function CardSearchWorkbenchPage() {
                   onClick={handleAddAllToCollection}
                   variant="primary"
                 >
-                  {adding ? "Adding..." : "Add all to Collection"}
+                  {adding
+                    ? "Adding..."
+                    : user
+                      ? "Add all to Collection"
+                      : "Log in to add to Collection"}
                 </WorkbenchButton>
 
                 <button
@@ -1658,6 +1691,24 @@ export default function CardSearchWorkbenchPage() {
           </section>
         </main>
       </div>
+
+      {expandedCard && (
+        <CardDetailsModal
+          card={expandedCard}
+          owned={false}
+          dark
+          onClose={() => setExpandedCard(null)}
+        />
+      )}
+
+      {authModalOpen && (
+        <AuthModal
+          isOpen={authModalOpen}
+          onClose={() => setAuthModalOpen(false)}
+          onAuthSuccess={() => setAuthModalOpen(false)}
+          defaultMode="login"
+        />
+      )}
     </Layout>
   );
 }

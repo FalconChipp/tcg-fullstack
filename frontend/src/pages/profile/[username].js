@@ -7,7 +7,7 @@ import ProfileHeader from "@/components/UserProfile/ProfileHeader";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 import StatusMessage from "@/components/UI/StatusMessage";
 import { useTheme } from "@/hooks/ThemeProvider";
-import CardDetailsModal from "@/components/UserProfile/CardDetailsModal";
+import CardDetailsModal from "@/components/Cards/CardDetailsModal";
 import useProfileCollection from "@/hooks/useProfileCollection";
 import useProfileCardActions from "@/hooks/useProfileCardActions";
 import ProfileTabs from "@/components/UserProfile/ProfileTabs";

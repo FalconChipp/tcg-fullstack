@@ -131,9 +131,9 @@ export default function NotificationsTab() {
       ) : null}
 
       {/* Channel toggles */}
-      <section className="rounded-xl border border-light-border dark:border-dark-border p-5 bg-light-surface dark:bg-dark-surface">
+      <section className="rounded-[10px] border border-vault-border p-5 bg-vault-surface">
         <h2 className="text-lg font-semibold mb-1">Channels</h2>
-        <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary mb-4">
+        <p className="text-sm text-vault-textSecondary mb-4">
           Choose how you want to receive alerts and updates.
         </p>
         <div className="space-y-3">
@@ -184,9 +184,9 @@ export default function NotificationsTab() {
       </section>
 
       {/* Delivery */}
-      <section className="rounded-xl border border-light-border dark:border-dark-border p-5 bg-light-surface dark:bg-dark-surface">
+      <section className="rounded-[10px] border border-vault-border p-5 bg-vault-surface">
         <h2 className="text-lg font-semibold mb-1">Delivery</h2>
-        <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary mb-4">
+        <p className="text-sm text-vault-textSecondary mb-4">
           Send alerts instantly or as a periodic digest.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -216,9 +216,9 @@ export default function NotificationsTab() {
       </section>
 
       {/* Quiet hours */}
-      <section className="rounded-xl border border-light-border dark:border-dark-border p-5 bg-light-surface dark:bg-dark-surface">
+      <section className="rounded-[10px] border border-vault-border p-5 bg-vault-surface">
         <h2 className="text-lg font-semibold mb-1">Quiet hours</h2>
-        <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary mb-4">
+        <p className="text-sm text-vault-textSecondary mb-4">
           Suppress non-critical alerts between these local times.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -229,7 +229,7 @@ export default function NotificationsTab() {
               value={prefs.quietStart || ""}
               onChange={(e) => setQuiet("quietStart", e.target.value)}
               disabled={loading || saving}
-              className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface"
+              className="w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-surface"
             />
           </div>
           <div>
@@ -239,7 +239,7 @@ export default function NotificationsTab() {
               value={prefs.quietEnd || ""}
               onChange={(e) => setQuiet("quietEnd", e.target.value)}
               disabled={loading || saving}
-              className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface"
+              className="w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-surface"
             />
           </div>
         </div>
@@ -250,14 +250,14 @@ export default function NotificationsTab() {
         <button
           onClick={handleSave}
           disabled={!dirty || saving || loading}
-          className="bg-light-accent dark:bg-dark-accent text-white px-4 py-2 rounded-lg font-semibold hover:bg-light-accentLight dark:hover:bg-dark-accentLight transition disabled:opacity-50"
+          className="bg-vault-accent text-white px-4 py-2 rounded-[6px] font-semibold hover:bg-vault-accentHover transition disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save preferences"}
         </button>
         <button
           onClick={() => setPrefsState(initial)}
           disabled={!dirty || saving}
-          className="px-4 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text hover:bg-light-surface dark:hover:bg-dark-surface transition disabled:opacity-50"
+          className="px-4 py-2 rounded-[6px] border border-vault-border bg-vault-raised text-vault-text hover:bg-vault-surface dark:hover:bg-vault-surface transition disabled:opacity-50"
         >
           Reset
         </button>
@@ -277,10 +277,10 @@ export default function NotificationsTab() {
 /* row layout for each preference */
 function PrefRow({ title, desc, control }) {
   return (
-    <div className="rounded-xl border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt p-4 flex items-center justify-between gap-4">
+    <div className="rounded-[10px] border border-vault-border bg-vault-raised p-4 flex items-center justify-between gap-4">
       <div className="min-w-0">
         <div className="font-semibold">{title}</div>
-        <div className="text-sm text-light-textSecondary dark:text-dark-textSecondary">
+        <div className="text-sm text-vault-textSecondary">
           {desc}
         </div>
       </div>

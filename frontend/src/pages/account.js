@@ -50,7 +50,7 @@ const normalizeTab = (t) => (VALID_TABS.includes(String(t || "").toLowerCase()) 
    ========================= */
 function SoonBadge() {
   return (
-    <span className="ml-auto text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-light-alt dark:bg-dark-alt text-light-textMuted dark:text-dark-textMuted border border-light-border dark:border-dark-border">
+    <span className="ml-auto text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-[6px] bg-vault-raised text-vault-textTertiary border border-vault-border">
       Soon
     </span>
   );
@@ -66,17 +66,17 @@ function NavButton({ active, onClick, icon: Icon, children, disabled, showSoon }
       onClick={onClick}
       disabled={disabled}
       className={`
-        w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left
-        transition
+        w-full flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-left
+        transition-colors
         ${active
-          ? "bg-light-accent text-white dark:bg-dark-accent shadow"
-          : "text-light-text dark:text-dark-text hover:bg-light-alt dark:hover:bg-dark-alt"}
+          ? "bg-vault-accent text-vault-text"
+          : "text-vault-textSecondary hover:bg-vault-raised hover:text-vault-text"}
         ${disabled ? "opacity-60 cursor-not-allowed" : ""}
       `}
       aria-current={active ? "page" : undefined}
     >
-      <Icon className={`w-4.5 h-4.5 ${active ? "opacity-90" : "text-light-textMuted dark:text-dark-textMuted"}`} />
-      <span className={`text-[15px] font-semibold ${active ? "text-white" : ""}`}>{children}</span>
+      <Icon className={`w-4.5 h-4.5 ${active ? "opacity-90" : "text-vault-textTertiary"}`} />
+      <span className="text-[15px] font-semibold">{children}</span>
       {showSoon && !active && <SoonBadge />}
     </button>
   );
@@ -87,7 +87,7 @@ function NavButton({ active, onClick, icon: Icon, children, disabled, showSoon }
    ========================= */
 function MobileTabs({ activeTab, setActiveTab }) {
   return (
-    <div className="md:hidden sticky top-[72px] z-30 bg-light-background/80 dark:bg-dark-background/80 backdrop-blur border-b border-light-border dark:border-dark-border">
+    <div className="md:hidden sticky top-[72px] z-30 bg-vault-bg/90 border-b border-vault-border">
       <div className="max-w-6xl mx-auto px-4 py-3 overflow-x-auto no-scrollbar">
         <div className="flex gap-2">
           {NAV.map((item) => {
@@ -98,10 +98,10 @@ function MobileTabs({ activeTab, setActiveTab }) {
                 onClick={() => !item.soon && setActiveTab(item.key)}
                 disabled={item.soon}
                 className={`
-                  px-3 py-1.5 rounded-full text-sm whitespace-nowrap border
+                  px-3 py-1.5 rounded-[6px] text-sm whitespace-nowrap border transition-colors
                   ${active
-                    ? "bg-light-accent text-white border-light-accent dark:bg-dark-accent dark:border-dark-accent"
-                    : "bg-light-surface/70 dark:bg-dark-surface/70 border-light-border dark:border-dark-border text-light-text dark:text-dark-text hover:bg-light-alt dark:hover:bg-dark-alt"}
+                    ? "bg-vault-accent text-vault-text border-vault-accent"
+                    : "bg-vault-surface border-vault-border text-vault-textSecondary hover:bg-vault-raised hover:text-vault-text"}
                   ${item.soon ? "opacity-60 cursor-not-allowed" : ""}
                 `}
               >
@@ -167,14 +167,16 @@ export default function AccountPage() {
       <>
         {head}
         <Layout>
+          <div className="min-h-screen bg-vault-bg">
           <div className="max-w-6xl mx-auto px-4 py-16">
-            <div className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface p-8 shadow">
+            <div className="rounded-[14px] border border-vault-border bg-vault-surface p-8">
               <div className="animate-pulse space-y-4">
-                <div className="h-8 w-64 bg-light-border/60 dark:bg-dark-border/60 rounded" />
-                <div className="h-4 w-80 bg-light-border/40 dark:bg-dark-border/40 rounded" />
-                <div className="h-4 w-72 bg-light-border/40 dark:bg-dark-border/40 rounded" />
+                <div className="h-8 w-64 bg-vault-raised rounded-[6px]" />
+                <div className="h-4 w-80 bg-vault-raised rounded-[6px]" />
+                <div className="h-4 w-72 bg-vault-raised rounded-[6px]" />
               </div>
             </div>
+          </div>
           </div>
         </Layout>
       </>
@@ -186,19 +188,21 @@ export default function AccountPage() {
       <>
         {head}
         <Layout>
+          <div className="min-h-screen bg-vault-bg">
           <div className="max-w-3xl mx-auto px-4 py-16 text-center">
-            <div className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface p-10 shadow">
-              <h1 className="text-2xl font-bold mb-2">Sign in required</h1>
-              <p className="text-light-textSecondary dark:text-dark-textSecondary">
+            <div className="rounded-[14px] border border-vault-border bg-vault-surface p-10">
+              <h1 className="font-vault text-2xl font-semibold text-vault-text mb-2">Sign in required</h1>
+              <p className="text-vault-textSecondary">
                 You need to be logged in to manage your account settings.
               </p>
               <Link
                 href="/"
-                className="inline-block mt-6 px-5 py-2 rounded-xl bg-light-accent hover:bg-light-accentLight !text-white dark:bg-dark-accent dark:hover:bg-dark-accentLight"
+                className="inline-block mt-6 px-5 py-2 rounded-[10px] bg-vault-accent hover:bg-vault-accentHover !text-vault-text"
               >
                 Go to home
               </Link>
             </div>
+          </div>
           </div>
         </Layout>
       </>
@@ -209,11 +213,15 @@ export default function AccountPage() {
     <>
       {head}
       <Layout>
-        {/* Top header — soft gradient, no heavy borders */}
-        <section className="w-full px-4 pt-6 pb-8 bg-gradient-to-br from-light-alt via-light-background to-[#eaf3ff] dark:from-dark-alt dark:via-dark-surface dark:to-dark-background">
+      <div className="min-h-screen bg-vault-bg">
+        {/* Top header */}
+        <section className="w-full border-b border-vault-border px-4 pt-10 pb-8">
           <div className="max-w-6xl mx-auto">
-            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-2">Account settings</h1>
-            <p className="text-light-textSecondary dark:text-dark-textSecondary max-w-2xl">
+            <p className="mb-4 font-vault-body text-[11px] font-semibold uppercase tracking-[0.08em] text-vault-textTertiary">
+              Account
+            </p>
+            <h1 className="font-vault text-[32px] font-semibold tracking-tight text-vault-text mb-2">Account settings</h1>
+            <p className="text-vault-textSecondary max-w-2xl">
               Update your security, notifications, subscriptions, and more.
             </p>
           </div>
@@ -227,9 +235,9 @@ export default function AccountPage() {
           <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6 md:gap-8">
             {/* Sidebar */}
             <aside className="md:sticky md:top-24">
-              <div className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface shadow-sm p-4">
+              <div className="rounded-[14px] border border-vault-border bg-vault-surface p-4">
                 <div className="px-2 pb-3">
-                  <h2 className="text-lg font-extrabold">Account</h2>
+                  <h2 className="font-vault text-lg font-semibold text-vault-text">Account</h2>
                 </div>
                 <div className="space-y-1">
                   {NAV.map(({ key, label, icon, soon }) => (
@@ -248,9 +256,9 @@ export default function AccountPage() {
 
                 {/* Side tip */}
                 <div className="
-                  mt-4 overflow-hidden rounded-2xl border
-                  border-light-border dark:border-dark-border
-                  bg-light-alt dark:bg-dark-alt shadow-sm
+                  mt-4 overflow-hidden rounded-[10px] border
+                  border-vault-border
+                  bg-vault-raised
                 ">
                   {/* Header row with soft brand tint */}
                   <div className="
@@ -258,10 +266,10 @@ export default function AccountPage() {
                     bg-gradient-to-r from-[#5865F2]/12 to-transparent text-center
                   ">
                     <div className="min-w-0">
-                      <div className="font-semibold text-light-text dark:text-dark-text pb-3">
+                      <div className="font-semibold text-vault-text pb-3">
                         Join our Discord for updates & help
                       </div>
-                      <p className="text-xs text-light-textMuted dark:text-dark-textMuted">
+                      <p className="text-xs text-vault-textTertiary">
                         Release notes, quick support & feature ideas.
                       </p>
                     </div>
@@ -276,11 +284,11 @@ export default function AccountPage() {
                       aria-label="Join the SixByFive Discord (opens in a new tab)"
                       className="
                         w-full inline-flex items-center justify-center gap-2
-                        px-3.5 py-2 rounded-lg text-sm font-semibold leading-none
+                        px-3.5 py-2 rounded-[10px] text-sm font-semibold leading-none
                         bg-[#5865F2] hover:bg-[#4c59d6]
                         !text-white hover:!text-white focus:!text-white        /* force white text */
-                        shadow-sm ring-1 ring-inset ring-[#5865F2]/35
-                        transition focus:outline-none focus:ring-2 focus:ring-[#5865F2]/40
+                        ring-1 ring-inset ring-[#5865F2]/35
+                        transition-colors focus:outline-none focus:ring-2 focus:ring-[#5865F2]/40
                       "
                     >
                       <FaDiscord className="w-4 h-4 shrink-0 text-white" />   {/* force white + no squish */}
@@ -294,7 +302,7 @@ export default function AccountPage() {
 
             {/* Content: single surface, no extra nested frames to avoid “double borders” */}
             <main className="min-w-0">
-              <div className="rounded-2xl bg-light-surface/60 dark:bg-dark-surface/60">
+              <div className="rounded-[10px] bg-vault-surface/60">
                 {activeTab === "security" && <SecurityTab user={user} token={token} />}
                 {activeTab === "wallet" && <WalletTab token={token} />}
                 {activeTab === "subscriptions" && <SubscriptionTab user={user} token={token} />}
@@ -306,6 +314,7 @@ export default function AccountPage() {
             </main>
           </div>
         </div>
+      </div>
       </Layout>
     </>
   );

@@ -50,15 +50,15 @@ export default function ProfileActivityFeed({ activityData = mockActivityData, d
   return (
     <div
       className={`
-        rounded-2xl shadow-lg mt-6 mb-8 p-6 w-full
-        bg-light-surface dark:bg-dark-surface
-        text-light-text dark:text-dark-text
+        rounded-[10px]  mt-6 mb-8 p-6 w-full
+        bg-vault-surface
+        text-vault-text
       `}
     >
       {/* Header & Filter */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2 text-xl font-bold">
-          <span className="inline-block rounded-full bg-light-accentLight/30 dark:bg-dark-accent/20 p-2">
+          <span className="inline-block rounded-[6px] bg-vault-accentHover/30 dark:bg-vault-accent/20 p-2">
             <svg width={22} height={22} fill="none" viewBox="0 0 24 24">
               <path d="M12 7v5l3 3"
                 stroke="#a158a1"
@@ -77,11 +77,11 @@ export default function ProfileActivityFeed({ activityData = mockActivityData, d
         {/* Filter Dropdown */}
         <select
           className={`
-            px-3 py-2 rounded-lg border text-sm
-            bg-light-alt dark:bg-dark-alt
-            border-light-border dark:border-dark-border
-            text-light-text dark:text-dark-text
-            focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent
+            px-3 py-2 rounded-[6px] border text-sm
+            bg-vault-raised
+            border-vault-border
+            text-vault-text
+            focus:outline-none focus:ring-2 focus:ring-vault-accent dark:focus:ring-vault-accent
             transition
           `}
           value={filter}
@@ -100,7 +100,7 @@ export default function ProfileActivityFeed({ activityData = mockActivityData, d
             <ActivityFeedItem key={activity.id} activity={activity} dark={dark} />
           ))
         ) : (
-          <div className="py-8 text-center text-light-textMuted dark:text-dark-textMuted">
+          <div className="py-8 text-center text-vault-textTertiary">
             No recent activity.
           </div>
         )}

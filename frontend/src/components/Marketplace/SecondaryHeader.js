@@ -268,17 +268,17 @@ export default function SecondaryHeader(props) {
     "section",
     {
       className:
-        "relative mb-6 overflow-hidden rounded-3xl border p-4 shadow-sm " +
-        "border-light-border dark:border-dark-border " +
-        "bg-light-surface dark:bg-dark-surface",
+        "relative mb-6 overflow-hidden rounded-[14px] border p-4  " +
+        "border-vault-border " +
+        "bg-vault-surface",
       "aria-label": "Marketplace toolbar",
     },
 
     React.createElement("div", {
       className:
         "pointer-events-none absolute inset-x-0 top-0 h-1 " +
-        "bg-gradient-to-r from-light-accent via-light-accentLight to-light-accent " +
-        "dark:from-dark-accent dark:via-dark-accentLight dark:to-dark-accent",
+        "bg-gradient-to-r from-vault-accent via-vault-accentHover to-vault-accent " +
+        "dark:from-vault-accent dark:via-vault-accentHover dark:to-vault-accent",
     }),
 
     React.createElement(
@@ -305,10 +305,10 @@ export default function SecondaryHeader(props) {
             "span",
             {
               className:
-                "rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide " +
-                "border-light-border dark:border-dark-border " +
-                "bg-light-alt dark:bg-dark-alt " +
-                "text-light-textMuted dark:text-dark-textMuted",
+                "rounded-[6px] border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide " +
+                "border-vault-border " +
+                "bg-vault-raised " +
+                "text-vault-textTertiary",
             },
             "Marketplace"
           ),
@@ -317,9 +317,9 @@ export default function SecondaryHeader(props) {
             "span",
             {
               className:
-                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold " +
-                "bg-light-accent/10 text-light-accent " +
-                "dark:bg-dark-accent/15 dark:text-dark-accentLight",
+                "inline-flex items-center gap-1.5 rounded-[6px] px-2.5 py-1 text-[11px] font-semibold " +
+                "bg-vault-accent/10 text-vault-accent " +
+                "dark:bg-vault-accent/15 dark:text-vault-accentHover",
             },
             React.createElement(ShieldIcon, { size: 14 }),
             "Protected checkout"
@@ -336,7 +336,7 @@ export default function SecondaryHeader(props) {
             "h2",
             {
               className:
-                "text-lg font-black tracking-tight text-light-strong dark:text-dark-strong sm:text-xl",
+                "text-lg font-black tracking-tight text-vault-text sm:text-xl",
             },
             "Buy, review, and checkout securely"
           ),
@@ -345,7 +345,7 @@ export default function SecondaryHeader(props) {
             "p",
             {
               className:
-                "mt-1 max-w-2xl text-sm leading-6 text-light-textMuted dark:text-dark-textMuted",
+                "mt-1 max-w-2xl text-sm leading-6 text-vault-textTertiary",
             },
             "Review your basket, check your available wallet balance, and continue when everything looks right."
           )
@@ -366,9 +366,9 @@ export default function SecondaryHeader(props) {
               "div",
               {
                 className:
-                  "rounded-2xl border p-3 " +
-                  "border-light-border dark:border-dark-border " +
-                  "bg-light-alt/70 dark:bg-dark-alt/70",
+                  "rounded-[10px] border p-3 " +
+                  "border-vault-border " +
+                  "bg-vault-raised/70 dark:bg-vault-raised/70",
               },
 
               React.createElement(
@@ -381,9 +381,9 @@ export default function SecondaryHeader(props) {
                   "span",
                   {
                     className:
-                      "inline-flex h-9 w-9 items-center justify-center rounded-xl " +
-                      "bg-light-surface text-light-accent " +
-                      "dark:bg-dark-surface dark:text-dark-accentLight",
+                      "inline-flex h-9 w-9 items-center justify-center rounded-[10px] " +
+                      "bg-vault-surface text-vault-accent " +
+                      "dark:bg-vault-surface dark:text-vault-accentHover",
                   },
                   React.createElement(WalletIcon, { size: 18 })
                 ),
@@ -397,7 +397,7 @@ export default function SecondaryHeader(props) {
                     "div",
                     {
                       className:
-                        "text-[11px] font-semibold uppercase tracking-wide text-light-textMuted dark:text-dark-textMuted",
+                        "text-[11px] font-semibold uppercase tracking-wide text-vault-textTertiary",
                     },
                     "Wallet"
                   ),
@@ -405,7 +405,7 @@ export default function SecondaryHeader(props) {
                     "div",
                     {
                       className:
-                        "truncate text-base font-black text-light-strong dark:text-dark-strong",
+                        "truncate text-base font-black text-vault-text",
                     },
                     walletBalance
                   )
@@ -428,9 +428,9 @@ export default function SecondaryHeader(props) {
             "div",
             {
               className:
-                "grid grid-cols-1 gap-2 rounded-2xl border p-2 " +
-                "border-light-border dark:border-dark-border " +
-                "bg-light-alt dark:bg-dark-alt sm:grid-cols-[1fr_auto]",
+                "grid grid-cols-1 gap-2 rounded-[10px] border p-2 " +
+                "border-vault-border " +
+                "bg-vault-raised sm:grid-cols-[1fr_auto]",
             },
 
             React.createElement(
@@ -438,8 +438,8 @@ export default function SecondaryHeader(props) {
               Object.assign(
                 {
                   className:
-                    "flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition " +
-                    "hover:bg-light-surface dark:hover:bg-dark-surface",
+                    "flex items-center justify-between gap-3 rounded-[10px] px-3 py-2 text-left transition " +
+                    "hover:bg-vault-surface dark:hover:bg-vault-surface",
                 },
                 cartSummaryProps
               ),
@@ -454,9 +454,9 @@ export default function SecondaryHeader(props) {
                   "span",
                   {
                     className:
-                      "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl " +
-                      "bg-light-surface text-light-accent " +
-                      "dark:bg-dark-surface dark:text-dark-accentLight",
+                      "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] " +
+                      "bg-vault-surface text-vault-accent " +
+                      "dark:bg-vault-surface dark:text-vault-accentHover",
                   },
                   React.createElement(CartIcon, { size: 19 })
                 ),
@@ -470,7 +470,7 @@ export default function SecondaryHeader(props) {
                     "span",
                     {
                       className:
-                        "block truncate text-sm font-bold text-light-strong dark:text-dark-strong",
+                        "block truncate text-sm font-bold text-vault-text",
                     },
                     getItemLabel(cartCount)
                   ),
@@ -478,7 +478,7 @@ export default function SecondaryHeader(props) {
                     "span",
                     {
                       className:
-                        "block text-xs text-light-textMuted dark:text-dark-textMuted",
+                        "block text-xs text-vault-textTertiary",
                     },
                     "Basket subtotal"
                   )
@@ -489,7 +489,7 @@ export default function SecondaryHeader(props) {
                 "span",
                 {
                   className:
-                    "shrink-0 text-base font-black text-light-strong dark:text-dark-strong",
+                    "shrink-0 text-base font-black text-vault-text",
                 },
                 formatMoney(symbol, subtotal)
               )
@@ -500,10 +500,10 @@ export default function SecondaryHeader(props) {
               Object.assign(
                 {
                   className:
-                    "inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-black " +
-                    "shadow-sm transition " +
-                    "bg-light-accent hover:bg-light-accentLight !text-white " +
-                    "dark:bg-dark-accent dark:hover:bg-dark-accentLight dark:text-white",
+                    "inline-flex items-center justify-center rounded-[10px] px-4 py-3 text-sm font-black " +
+                    " transition " +
+                    "bg-vault-accent hover:bg-vault-accentHover !text-white " +
+                    "dark:bg-vault-accent dark:hover:bg-vault-accentHover dark:text-white",
                   "aria-label": "View cart and checkout",
                 },
                 actionProps

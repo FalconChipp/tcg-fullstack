@@ -25,12 +25,12 @@ export default function ProfileOverviewPanel({
   // Stat blocks config (uses text-accent classes)
   const statItems = [
     {
-      icon: <FaThLarge className="text-light-accent dark:text-dark-accent" />,
+      icon: <FaThLarge className="text-vault-accent" />,
       label: "Cards",
       value: stats.cards ?? "--",
     },
     {
-      icon: <FaFolderOpen className="text-light-secondary dark:text-dark-secondary" />,
+      icon: <FaFolderOpen className="text-vault-textSecondary dark:text-vault-textSecondary" />,
       label: "Binders",
       value: stats.binders ?? "--",
     },
@@ -63,10 +63,10 @@ export default function ProfileOverviewPanel({
         className={`
           w-full max-w-5xl mx-auto flex flex-col md:flex-row justify-center items-stretch
           gap-4 md:gap-8 px-2 py-5
-          rounded-2xl shadow-inner border
+          rounded-[10px] -inner border
           ${dark
-            ? "bg-dark-surface border-dark-border"
-            : "bg-light-alt border-light-border"}
+            ? "bg-vault-surface border-vault-border"
+            : "bg-vault-raised border-vault-border"}
         `}
       >
         {statItems.map((stat, i) => (
@@ -74,20 +74,20 @@ export default function ProfileOverviewPanel({
             key={i}
             className={`
               flex-1 flex flex-col items-center justify-center py-3 px-2
-              rounded-xl
+              rounded-[10px]
               ${dark
-                ? "bg-dark-background border border-dark-border"
-                : "bg-white border border-light-border"}
-              shadow-sm
+                ? "bg-vault-bg border border-vault-border"
+                : "bg-white border border-vault-border"}
+              
               min-w-[110px]
               transition
             `}
           >
             <div className="text-3xl mb-1">{stat.icon}</div>
-            <div className="text-2xl font-extrabold text-light-primary dark:text-white mb-1">
+            <div className="text-2xl font-extrabold text-vault-accent dark:text-white mb-1">
               {stat.value}
             </div>
-            <div className="text-xs uppercase font-semibold tracking-wide text-light-textMuted dark:text-dark-textMuted">
+            <div className="text-xs uppercase font-semibold tracking-wide text-vault-textTertiary">
               {stat.label}
             </div>
           </div>

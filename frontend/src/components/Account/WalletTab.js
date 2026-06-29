@@ -196,19 +196,19 @@ function TopupPaymentForm({ amountPence, clientSecret, paymentIntentId, token, o
   const borderColour = cardErr
     ? (dark ? "border-rose-500"   : "border-rose-500")
     : focused
-    ? (dark ? "border-sky-400"    : "border-light-accent")
-    : (dark ? "border-dark-border": "border-light-border");
+    ? (dark ? "border-sky-400"    : "border-vault-accent")
+    : (dark ? "border-vault-border": "border-vault-border");
 
-  const bgColour = dark ? "bg-dark-background" : "bg-white";
+  const bgColour = dark ? "bg-vault-bg" : "bg-white";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Amount label */}
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wide text-light-textMuted dark:text-dark-textMuted">
+        <span className="text-xs font-semibold uppercase tracking-wide text-vault-textTertiary">
           Card details
         </span>
-        <span className="text-sm font-bold text-light-primary dark:text-white tabular-nums">
+        <span className="text-sm font-bold text-vault-accent dark:text-white tabular-nums">
           {fmt(amountPence / 100)}
         </span>
       </div>
@@ -216,7 +216,7 @@ function TopupPaymentForm({ amountPence, clientSecret, paymentIntentId, token, o
       {/* Card input wrapper — styled to match our other inputs */}
       <div
         className={[
-          "rounded-xl border px-4 py-3 transition-colors",
+          "rounded-[10px] border px-4 py-3 transition-colors",
           bgColour,
           borderColour,
         ].join(" ")}
@@ -236,14 +236,14 @@ function TopupPaymentForm({ amountPence, clientSecret, paymentIntentId, token, o
 
       {/* Server / stripe error */}
       {err && (
-        <p className="text-sm text-rose-500 bg-rose-500/10 rounded-lg px-3 py-2">{err}</p>
+        <p className="text-sm text-rose-500 bg-rose-500/10 rounded-[6px] px-3 py-2">{err}</p>
       )}
 
       <div className="flex gap-3">
         <button
           type="submit"
           disabled={!stripe || paying}
-          className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white transition disabled:opacity-60 disabled:cursor-wait"
+          className="flex-1 py-2.5 rounded-[10px] text-sm font-semibold bg-vault-accent hover:bg-vault-accentHover dark:bg-vault-accent dark:hover:bg-vault-accentHover text-white transition disabled:opacity-60 disabled:cursor-wait"
         >
           {paying ? "Processing…" : `Pay ${fmt(amountPence / 100)}`}
         </button>
@@ -251,7 +251,7 @@ function TopupPaymentForm({ amountPence, clientSecret, paymentIntentId, token, o
           type="button"
           onClick={onCancel}
           disabled={paying}
-          className="px-4 py-2.5 rounded-xl text-sm font-semibold border border-light-border dark:border-dark-border text-light-textMuted dark:text-dark-textMuted hover:text-light-primary dark:hover:text-white transition disabled:opacity-50"
+          className="px-4 py-2.5 rounded-[10px] text-sm font-semibold border border-vault-border text-vault-textTertiary hover:text-vault-accent dark:hover:text-white transition disabled:opacity-50"
         >
           Cancel
         </button>
@@ -406,12 +406,12 @@ export default function WalletTab({ token }) {
   }
 
   /* ─── shared style tokens ────────────────────────────────────────────────── */
-  const card  = "rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface";
-  const muted = "text-light-textMuted dark:text-dark-textMuted";
-  const main  = "text-light-primary dark:text-white";
+  const card  = "rounded-[10px] border border-vault-border bg-vault-surface";
+  const muted = "text-vault-textTertiary";
+  const main  = "text-vault-accent dark:text-white";
   const btn   = {
-    active:   "bg-light-accent text-white border-light-accent dark:bg-dark-accent dark:border-dark-accent",
-    inactive: `border-light-border dark:border-dark-border ${main} hover:border-light-accent dark:hover:border-dark-accent`,
+    active:   "bg-vault-accent text-white border-vault-accent dark:bg-vault-accent dark:border-vault-accent",
+    inactive: `border-vault-border ${main} hover:border-vault-borderStrong`,
   };
 
   /* ─── render ─────────────────────────────────────────────────────────────── */
@@ -428,11 +428,11 @@ export default function WalletTab({ token }) {
       {/* ── Balance cards ── */}
       {loading && !wallet ? (
         <div className={`${card} p-6 animate-pulse space-y-3`}>
-          <div className="h-4 w-24 bg-light-border/60 dark:bg-dark-border/60 rounded" />
-          <div className="h-10 w-36 bg-light-border/60 dark:bg-dark-border/60 rounded" />
+          <div className="h-4 w-24 bg-vault-border/60 dark:bg-vault-border/60 rounded" />
+          <div className="h-10 w-36 bg-vault-border/60 dark:bg-vault-border/60 rounded" />
         </div>
       ) : fetchErr ? (
-        <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-5 text-sm text-rose-500">
+        <div className="rounded-[10px] border border-rose-500/30 bg-rose-500/10 p-5 text-sm text-rose-500">
           {fetchErr}
         </div>
       ) : wallet && (
@@ -460,7 +460,7 @@ export default function WalletTab({ token }) {
 
       {/* ── Success banner ── */}
       {successMsg && (
-        <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-sm px-4 py-3">
+        <div className="rounded-[10px] bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-sm px-4 py-3">
           {successMsg}
         </div>
       )}
@@ -477,7 +477,7 @@ export default function WalletTab({ token }) {
               type="button"
               onClick={() => selectPreset(pence)}
               className={[
-                "px-4 py-2 rounded-xl text-sm font-semibold border transition",
+                "px-4 py-2 rounded-[10px] text-sm font-semibold border transition",
                 selectedPence === pence ? btn.active : btn.inactive,
               ].join(" ")}
             >
@@ -488,7 +488,7 @@ export default function WalletTab({ token }) {
             type="button"
             onClick={() => { setSelectedPence("custom"); setClientSecret(null); setTopupError(null); }}
             className={[
-              "px-4 py-2 rounded-xl text-sm font-semibold border transition",
+              "px-4 py-2 rounded-[10px] text-sm font-semibold border transition",
               selectedPence === "custom" ? btn.active : btn.inactive,
             ].join(" ")}
           >
@@ -509,11 +509,11 @@ export default function WalletTab({ token }) {
               value={customGBP}
               onChange={(e) => { setCustomGBP(e.target.value); setClientSecret(null); }}
               className={[
-                "flex-1 h-10 px-3 rounded-xl border text-sm transition",
-                "bg-light-background dark:bg-dark-background",
-                "border-light-border dark:border-dark-border",
-                `${main} placeholder:text-light-textMuted dark:placeholder:text-dark-textMuted`,
-                "focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent",
+                "flex-1 h-10 px-3 rounded-[10px] border text-sm transition",
+                "bg-vault-bg",
+                "border-vault-border",
+                `${main} placeholder:text-vault-textTertiary dark:placeholder:text-vault-textTertiary`,
+                "focus:outline-none focus:ring-2 focus:ring-vault-accent dark:focus:ring-vault-accent",
               ].join(" ")}
             />
           </div>
@@ -524,7 +524,7 @@ export default function WalletTab({ token }) {
         </p>
 
         {topupError && (
-          <p className="text-sm text-rose-500 bg-rose-500/10 rounded-lg px-3 py-2">{topupError}</p>
+          <p className="text-sm text-rose-500 bg-rose-500/10 rounded-[6px] px-3 py-2">{topupError}</p>
         )}
 
         {/* Top-up button */}
@@ -533,7 +533,7 @@ export default function WalletTab({ token }) {
             type="button"
             onClick={handleStartTopup}
             disabled={!topupPence || topupBusy}
-            className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-5 py-2.5 rounded-[10px] text-sm font-semibold bg-vault-accent hover:bg-vault-accentHover dark:bg-vault-accent dark:hover:bg-vault-accentHover text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {topupBusy ? "Preparing…" : topupPence ? `Top up ${fmt(topupPence / 100)}` : "Select an amount"}
           </button>
@@ -544,9 +544,9 @@ export default function WalletTab({ token }) {
           <div
             ref={payFormRef}
             className={[
-              "mt-1 rounded-xl border p-5 space-y-4",
-              "border-light-border dark:border-dark-border",
-              "bg-light-background dark:bg-dark-background",
+              "mt-1 rounded-[10px] border p-5 space-y-4",
+              "border-vault-border",
+              "bg-vault-bg",
             ].join(" ")}
           >
             <Elements stripe={stripePromise}>
@@ -574,7 +574,7 @@ export default function WalletTab({ token }) {
         </div>
 
         {withdrawSuccess ? (
-          <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-sm px-4 py-3">
+          <div className="rounded-[10px] bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-sm px-4 py-3">
             {withdrawSuccess}
             <button
               type="button"
@@ -596,11 +596,11 @@ export default function WalletTab({ token }) {
                 value={withdrawPence}
                 onChange={(e) => { setWithdrawPence(e.target.value); setWithdrawError(null); }}
                 className={[
-                  "flex-1 h-10 px-3 rounded-xl border text-sm transition",
-                  "bg-light-background dark:bg-dark-background",
-                  "border-light-border dark:border-dark-border",
-                  `${main} placeholder:text-light-textMuted dark:placeholder:text-dark-textMuted`,
-                  "focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent",
+                  "flex-1 h-10 px-3 rounded-[10px] border text-sm transition",
+                  "bg-vault-bg",
+                  "border-vault-border",
+                  `${main} placeholder:text-vault-textTertiary dark:placeholder:text-vault-textTertiary`,
+                  "focus:outline-none focus:ring-2 focus:ring-vault-accent dark:focus:ring-vault-accent",
                 ].join(" ")}
               />
             </div>
@@ -621,11 +621,11 @@ export default function WalletTab({ token }) {
                   onChange={(e) => { setSortCode(e.target.value); setWithdrawError(null); }}
                   maxLength={8}
                   className={[
-                    "w-full h-10 px-3 rounded-xl border text-sm transition",
-                    "bg-light-background dark:bg-dark-background",
-                    "border-light-border dark:border-dark-border",
-                    `${main} placeholder:text-light-textMuted dark:placeholder:text-dark-textMuted`,
-                    "focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent",
+                    "w-full h-10 px-3 rounded-[10px] border text-sm transition",
+                    "bg-vault-bg",
+                    "border-vault-border",
+                    `${main} placeholder:text-vault-textTertiary dark:placeholder:text-vault-textTertiary`,
+                    "focus:outline-none focus:ring-2 focus:ring-vault-accent dark:focus:ring-vault-accent",
                   ].join(" ")}
                 />
               </div>
@@ -638,11 +638,11 @@ export default function WalletTab({ token }) {
                   onChange={(e) => { setAccountNumber(e.target.value); setWithdrawError(null); }}
                   maxLength={8}
                   className={[
-                    "w-full h-10 px-3 rounded-xl border text-sm transition",
-                    "bg-light-background dark:bg-dark-background",
-                    "border-light-border dark:border-dark-border",
-                    `${main} placeholder:text-light-textMuted dark:placeholder:text-dark-textMuted`,
-                    "focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent",
+                    "w-full h-10 px-3 rounded-[10px] border text-sm transition",
+                    "bg-vault-bg",
+                    "border-vault-border",
+                    `${main} placeholder:text-vault-textTertiary dark:placeholder:text-vault-textTertiary`,
+                    "focus:outline-none focus:ring-2 focus:ring-vault-accent dark:focus:ring-vault-accent",
                   ].join(" ")}
                 />
               </div>
@@ -655,25 +655,25 @@ export default function WalletTab({ token }) {
                   onChange={(e) => { setAccountName(e.target.value); setWithdrawError(null); }}
                   maxLength={80}
                   className={[
-                    "w-full h-10 px-3 rounded-xl border text-sm transition",
-                    "bg-light-background dark:bg-dark-background",
-                    "border-light-border dark:border-dark-border",
-                    `${main} placeholder:text-light-textMuted dark:placeholder:text-dark-textMuted`,
-                    "focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent",
+                    "w-full h-10 px-3 rounded-[10px] border text-sm transition",
+                    "bg-vault-bg",
+                    "border-vault-border",
+                    `${main} placeholder:text-vault-textTertiary dark:placeholder:text-vault-textTertiary`,
+                    "focus:outline-none focus:ring-2 focus:ring-vault-accent dark:focus:ring-vault-accent",
                   ].join(" ")}
                 />
               </div>
             </div>
 
             {withdrawError && (
-              <p className="text-sm text-rose-500 bg-rose-500/10 rounded-lg px-3 py-2">{withdrawError}</p>
+              <p className="text-sm text-rose-500 bg-rose-500/10 rounded-[6px] px-3 py-2">{withdrawError}</p>
             )}
 
             <button
               type="button"
               onClick={handleWithdraw}
               disabled={withdrawBusy}
-              className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-5 py-2.5 rounded-[10px] text-sm font-semibold bg-vault-accent hover:bg-vault-accentHover dark:bg-vault-accent dark:hover:bg-vault-accentHover text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {withdrawBusy ? "Requesting…" : "Request withdrawal"}
             </button>
@@ -683,7 +683,7 @@ export default function WalletTab({ token }) {
 
       {/* ── Transaction history ── */}
       <div className={`${card} overflow-hidden`}>
-        <div className={`flex items-center justify-between px-5 py-4 border-b border-light-border dark:border-dark-border`}>
+        <div className={`flex items-center justify-between px-5 py-4 border-b border-vault-border`}>
           <h3 className={`text-sm font-bold ${main}`}>Transaction history</h3>
           {wallet && <span className={`text-xs ${muted}`}>{wallet.total} total</span>}
         </div>
@@ -691,7 +691,7 @@ export default function WalletTab({ token }) {
         {loading && wallet ? (
           <div className="p-5 space-y-3">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-10 rounded-lg bg-light-border/40 dark:bg-dark-border/40 animate-pulse" />
+              <div key={i} className="h-10 rounded-[6px] bg-vault-border/40 dark:bg-vault-border/40 animate-pulse" />
             ))}
           </div>
         ) : !wallet?.transactions?.length ? (
@@ -701,7 +701,7 @@ export default function WalletTab({ token }) {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className={`text-left text-xs uppercase tracking-wide ${muted} border-b border-light-border dark:border-dark-border`}>
+                  <tr className={`text-left text-xs uppercase tracking-wide ${muted} border-b border-vault-border`}>
                     <th className="px-5 py-3 font-semibold">Type</th>
                     <th className="px-5 py-3 font-semibold">Description</th>
                     <th className="px-5 py-3 font-semibold text-right">Amount</th>
@@ -710,9 +710,9 @@ export default function WalletTab({ token }) {
                     <th className="px-5 py-3" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-light-border dark:divide-dark-border">
+                <tbody className="divide-y divide-vault-border dark:divide-vault-border">
                   {wallet.transactions.map((tx) => (
-                    <tr key={tx.id} className="hover:bg-light-alt/50 dark:hover:bg-dark-alt/50 transition">
+                    <tr key={tx.id} className="hover:bg-vault-raised/50 dark:hover:bg-vault-raised/50 transition">
                       <td className={`px-5 py-3.5 font-medium ${main} whitespace-nowrap`}>
                         {TX_LABELS[tx.type] || tx.type}
                       </td>
@@ -724,7 +724,7 @@ export default function WalletTab({ token }) {
                       </td>
                       <td className="px-5 py-3.5">
                         <span className={[
-                          "text-xs font-semibold px-2.5 py-0.5 rounded-full",
+                          "text-xs font-semibold px-2.5 py-0.5 rounded-[6px]",
                           tx.status === "completed" ? "bg-emerald-500/10 text-emerald-500" :
                           tx.status === "pending"   ? "bg-amber-500/10  text-amber-500"   :
                                                       "bg-rose-500/10   text-rose-500",
@@ -741,7 +741,7 @@ export default function WalletTab({ token }) {
                             type="button"
                             onClick={() => handleRetry(tx)}
                             disabled={retryingId === tx.id}
-                            className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-light-accent/10 hover:bg-light-accent/20 dark:bg-dark-accent/10 dark:hover:bg-dark-accent/20 text-light-accent dark:text-dark-accent transition disabled:opacity-50"
+                            className="text-xs font-semibold px-2.5 py-1 rounded-[6px] bg-vault-accent/10 hover:bg-vault-accent/20 dark:bg-vault-accent/10 dark:hover:bg-vault-accent/20 text-vault-accent transition disabled:opacity-50"
                           >
                             {retryingId === tx.id ? "Retrying…" : "Retry"}
                           </button>
@@ -754,12 +754,12 @@ export default function WalletTab({ token }) {
             </div>
 
             {totalPages > 1 && (
-              <div className={`flex items-center justify-between px-5 py-3 border-t border-light-border dark:border-dark-border`}>
+              <div className={`flex items-center justify-between px-5 py-3 border-t border-vault-border`}>
                 <button
                   type="button"
                   onClick={() => fetchWallet(page - 1)}
                   disabled={page === 0 || loading}
-                  className={`text-xs font-semibold px-3 py-1.5 rounded-lg border border-light-border dark:border-dark-border ${muted} hover:${main} transition disabled:opacity-40`}
+                  className={`text-xs font-semibold px-3 py-1.5 rounded-[6px] border border-vault-border ${muted} hover:${main} transition disabled:opacity-40`}
                 >
                   ← Previous
                 </button>
@@ -768,7 +768,7 @@ export default function WalletTab({ token }) {
                   type="button"
                   onClick={() => fetchWallet(page + 1)}
                   disabled={page >= totalPages - 1 || loading}
-                  className={`text-xs font-semibold px-3 py-1.5 rounded-lg border border-light-border dark:border-dark-border ${muted} hover:${main} transition disabled:opacity-40`}
+                  className={`text-xs font-semibold px-3 py-1.5 rounded-[6px] border border-vault-border ${muted} hover:${main} transition disabled:opacity-40`}
                 >
                   Next →
                 </button>

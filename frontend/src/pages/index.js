@@ -70,7 +70,7 @@ export default function Home() {
         canonical: "/",
       }}
     >
-      <div className="pt-20 bg-dark-background">
+      <div className="pt-20 bg-vault-bg">
         <HeroSection />
 
         <section id="card-search" className="scroll-mt-28 bg-dark-background">

@@ -83,23 +83,23 @@ export default function UserSearchDropdown() {
         onChange={(e) => setSearchTerm(e.target.value)}
         className="
           w-full px-4 py-2
-          border border-light-border dark:border-dark-border
-          bg-light-surface dark:bg-dark-surface
-          rounded-xl shadow-sm
-          text-light-text dark:text-dark-text
-          placeholder-light-textMuted dark:placeholder-dark-textMuted
-          focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent
+          border border-vault-border
+          bg-vault-surface
+          rounded-[10px] 
+          text-vault-text
+          placeholder-vault-textTertiary dark:placeholder-vault-textTertiary
+          focus:outline-none focus:ring-2 focus:ring-vault-accent dark:focus:ring-vault-accent
           transition
         "
       />
-      {loading && <p className="text-xs text-light-textMuted dark:text-dark-textMuted mt-1">Loading...</p>}
-      {error && <p className="text-xs text-light-error dark:text-dark-error mt-1">{error}</p>}
+      {loading && <p className="text-xs text-vault-textTertiary mt-1">Loading...</p>}
+      {error && <p className="text-xs text-vault-danger dark:text-vault-danger mt-1">{error}</p>}
       {results.length > 0 && (
         <ul className="
-          absolute left-0 right-0 bg-light-surface dark:bg-dark-surface
-          border border-light-border dark:border-dark-border
-          rounded-xl mt-1 shadow-lg z-10
-          divide-y divide-light-border dark:divide-dark-border
+          absolute left-0 right-0 bg-vault-surface
+          border border-vault-border
+          rounded-[10px] mt-1  z-10
+          divide-y divide-vault-border dark:divide-vault-border
           ">
           {results.map((profile) => (
             <li key={profile.id}>
@@ -107,8 +107,8 @@ export default function UserSearchDropdown() {
                 href={`/profile/${profile.username || profile.id || ""}`}
                 className="
                   flex items-center p-2 gap-2
-                  hover:bg-light-alt dark:hover:bg-dark-alt
-                  rounded-xl transition-colors
+                  hover:bg-vault-raised dark:hover:bg-vault-raised
+                  rounded-[10px] transition-colors
                 "
               >
                 <Image
@@ -116,9 +116,9 @@ export default function UserSearchDropdown() {
                   alt={profile.username || "User"}
                   width={40}
                   height={40}
-                  className="rounded-full object-cover border border-light-border dark:border-dark-border"
+                  className="rounded-[6px] object-cover border border-vault-border"
                 />
-                <span className="text-light-text dark:text-dark-text font-semibold">
+                <span className="text-vault-text font-semibold">
                   {profile.username || "(unknown)"}
                 </span>
               </Link>

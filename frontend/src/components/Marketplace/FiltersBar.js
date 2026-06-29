@@ -100,9 +100,9 @@ export default function FiltersBar(props) {
     "section",
     {
       className:
-        "mb-6 w-full rounded-2xl border p-3 shadow-sm " +
-        "border-light-border dark:border-dark-border " +
-        "bg-light-surface dark:bg-dark-surface",
+        "mb-6 w-full rounded-[10px] border p-3 " +
+        "border-vault-border " +
+        "bg-vault-surface",
       "aria-label": "Marketplace search and sort",
     },
 
@@ -123,7 +123,7 @@ export default function FiltersBar(props) {
         React.createElement(SearchIcon, {
           className:
             "pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 " +
-            "text-light-textMuted dark:text-dark-textMuted",
+            "text-vault-textTertiary",
         }),
 
         React.createElement("input", {
@@ -134,13 +134,13 @@ export default function FiltersBar(props) {
             updateField("search", e.target.value || "");
           },
           className:
-            "h-11 w-full rounded-xl border pl-10 pr-3 text-sm font-medium " +
-            "border-light-border dark:border-dark-border " +
-            "bg-light-alt dark:bg-dark-alt " +
-            "text-light-text dark:text-dark-text " +
-            "placeholder:text-light-textMuted dark:placeholder:text-dark-textMuted " +
-            "hover:border-light-accent dark:hover:border-dark-accent " +
-            "focus:outline-none focus:ring-2 focus:ring-light-accent/30 dark:focus:ring-dark-accent/30",
+            "h-11 w-full rounded-[10px] border pl-10 pr-3 text-sm font-medium " +
+            "border-vault-border " +
+            "bg-vault-raised " +
+            "text-vault-text " +
+            "placeholder:text-vault-textTertiary dark:placeholder:text-vault-textTertiary " +
+            "hover:border-vault-borderStrong " +
+            "focus:outline-none focus:ring-2 focus:ring-vault-accent/30 dark:focus:ring-vault-accent/30",
         })
       ),
 
@@ -159,12 +159,12 @@ export default function FiltersBar(props) {
               updateField("sort", e.target.value || "");
             },
             className:
-              "h-11 w-full appearance-none rounded-xl border px-3 pr-9 text-sm font-bold " +
-              "border-light-border dark:border-dark-border " +
-              "bg-light-alt dark:bg-dark-alt " +
-              "text-light-text dark:text-dark-text " +
-              "hover:border-light-accent dark:hover:border-dark-accent " +
-              "focus:outline-none focus:ring-2 focus:ring-light-accent/30 dark:focus:ring-dark-accent/30",
+              "h-11 w-full appearance-none rounded-[10px] border px-3 pr-9 text-sm font-bold " +
+              "border-vault-border " +
+              "bg-vault-raised " +
+              "text-vault-text " +
+              "hover:border-vault-borderStrong " +
+              "focus:outline-none focus:ring-2 focus:ring-vault-accent/30 dark:focus:ring-vault-accent/30",
           },
           React.createElement("option", { value: "" }, "Newest first"),
           React.createElement("option", { value: "PRICE_ASC" }, "Price: low to high"),
@@ -174,7 +174,7 @@ export default function FiltersBar(props) {
         React.createElement(ChevronIcon, {
           className:
             "pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 " +
-            "text-light-textMuted dark:text-dark-textMuted",
+            "text-vault-textTertiary",
         })
       ),
 
@@ -186,12 +186,12 @@ export default function FiltersBar(props) {
           disabled: !hasFilters,
           onClick: clearFilters,
           className:
-            "h-11 rounded-xl border px-4 text-sm font-bold transition " +
-            "border-light-border dark:border-dark-border " +
-            "bg-light-alt dark:bg-dark-alt " +
-            "text-light-textMuted dark:text-dark-textMuted " +
-            "hover:border-light-accent hover:text-light-text " +
-            "dark:hover:border-dark-accent dark:hover:text-dark-text " +
+            "h-11 rounded-[10px] border px-4 text-sm font-bold transition " +
+            "border-vault-border " +
+            "bg-vault-raised " +
+            "text-vault-textTertiary " +
+            "hover:border-vault-accent hover:text-vault-text " +
+            "dark:hover:border-vault-accent dark:hover:text-vault-text " +
             "disabled:cursor-not-allowed disabled:opacity-40",
         },
         "Clear"

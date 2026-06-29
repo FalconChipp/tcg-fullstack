@@ -396,10 +396,10 @@ export default function ProfileCollectionPanel({
       <section className="w-full max-w-8xl mx-auto mt-6">
         <div className="text-center py-8">
           <div className="flex flex-col items-center gap-2 mb-2">
-            <span className="text-2xl font-bold text-light-accent dark:text-dark-accent">
+            <span className="text-2xl font-bold text-vault-accent">
               No cards in this collection yet.
             </span>
-            <span className="text-base text-light-textSecondary dark:text-dark-textSecondary">
+            <span className="text-base text-vault-textSecondary">
               Start adding cards to see them here!
             </span>
           </div>
@@ -428,11 +428,11 @@ export default function ProfileCollectionPanel({
             <input
               type="text"
               placeholder="Search"
-              className="w-full bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 pl-8 py-1.5 border border-light-border dark:border-dark-border focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm transition h-9 font-semibold"
+              className="w-full bg-vault-surface text-vault-text rounded-md px-3 pl-8 py-1.5 border border-vault-border focus:border-vault-accent dark:focus:border-vault-accent outline-none text-sm transition h-9 font-semibold"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-light-textSecondary dark:text-dark-textSecondary pointer-events-none">
+            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-vault-textSecondary pointer-events-none">
               <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <circle cx="11" cy="11" r="8" />
                 <path d="M21 21l-4.35-4.35" />
@@ -442,7 +442,7 @@ export default function ProfileCollectionPanel({
           <select
             value={setFilter}
             onChange={(e) => setSetFilter(e.target.value)}
-            className="w-[110px] bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 py-1.5 border border-light-border dark:border-dark-border focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm transition h-9 font-semibold"
+            className="w-[110px] bg-vault-surface text-vault-text rounded-md px-3 py-1.5 border border-vault-border focus:border-vault-accent dark:focus:border-vault-accent outline-none text-sm transition h-9 font-semibold"
           >
             <option value="">Set</option>
             {allSets.map((set) => (
@@ -454,7 +454,7 @@ export default function ProfileCollectionPanel({
           <select
             value={rarityFilter}
             onChange={(e) => setRarityFilter(e.target.value)}
-            className="w-[110px] bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 py-1.5 border border-light-border dark:border-dark-border focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm transition h-9 font-semibold"
+            className="w-[110px] bg-vault-surface text-vault-text rounded-md px-3 py-1.5 border border-vault-border focus:border-vault-accent dark:focus:border-vault-accent outline-none text-sm transition h-9 font-semibold"
           >
             <option value="">Rarity</option>
             {allRarities.map((rarity) => (
@@ -466,7 +466,7 @@ export default function ProfileCollectionPanel({
           <select
             value={sortOption}
             onChange={(e) => setSortOption(e.target.value)}
-            className="w-[130px] bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 py-1.5 border border-light-border dark:border-dark-border focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm transition h-9 font-semibold"
+            className="w-[130px] bg-vault-surface text-vault-text rounded-md px-3 py-1.5 border border-vault-border focus:border-vault-accent dark:focus:border-vault-accent outline-none text-sm transition h-9 font-semibold"
           >
             {SORT_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -476,12 +476,12 @@ export default function ProfileCollectionPanel({
           </select>
         </div>
 
-        <div className="flex items-center justify-between text-xs text-light-textMuted dark:text-dark-textMuted">
+        <div className="flex items-center justify-between text-xs text-vault-textTertiary">
           <span>
             Showing <span className="font-semibold">{sortedCards.length}</span> of{" "}
             <span className="font-semibold">{displayCollection.length}</span> cards
           </span>
-          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-light-alt dark:bg-dark-alt border border-light-border/70 dark:border-dark-border/70 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-[6px] bg-vault-raised border border-vault-border/70 dark:border-vault-border/70 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
             Estimated value:&nbsp;
             {collectionValue > 0 ? formatCurrency(collectionValue) : "—"}
           </span>
@@ -500,10 +500,10 @@ export default function ProfileCollectionPanel({
           return (
             <div
               key={card.id}
-              className="bg-light-surface dark:bg-dark-surface rounded-xl shadow p-3 flex flex-col items-center hover:shadow-xl transition group"
+              className="bg-vault-surface rounded-[10px]  p-3 flex flex-col items-center hover: transition group"
             >
               <div
-                className="relative w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-lg mb-2 overflow-hidden cursor-pointer"
+                className="relative w-full aspect-[245/337] bg-vault-raised rounded-[6px] mb-2 overflow-hidden cursor-pointer"
                 onClick={() => setSelectedCard(card)}
               >
                 <Image
@@ -511,16 +511,16 @@ export default function ProfileCollectionPanel({
                   alt={card.name}
                   fill
                   unoptimized
-                  className="object-contain rounded-lg group-hover:scale-105 transition-transform duration-300"
+                  className="object-contain rounded-[6px] group-hover:scale-105 transition-transform duration-300"
                 />
                 {card.quantity > 1 && (
-                  <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded-full text-xs font-bold">
+                  <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded-[6px] text-xs font-bold">
                     x{card.quantity}
                   </div>
                 )}
                 {card.condition && (
                   <div
-                    className={`absolute bottom-2 left-2 px-2 py-1 rounded-full text-xs bg-black bg-opacity-70 ${getConditionClass(
+                    className={`absolute bottom-2 left-2 px-2 py-1 rounded-[6px] text-xs bg-black bg-opacity-70 ${getConditionClass(
                       card.condition
                     )}`}
                   >
@@ -532,7 +532,7 @@ export default function ProfileCollectionPanel({
               <div className="w-full flex flex-col items-start mt-1">
                 <div className="flex justify-between items-center w-full mb-1">
                   <span
-                    className="text-base font-bold truncate text-light-text dark:text-dark-text"
+                    className="text-base font-bold truncate text-vault-text"
                     title={card.name}
                   >
                     {card.name}
@@ -542,7 +542,7 @@ export default function ProfileCollectionPanel({
                   )}
                 </div>
 
-                <span className="text-sm text-light-textMuted dark:text-dark-textMuted">
+                <span className="text-sm text-vault-textTertiary">
                   #{card.number || card.cardId}
                 </span>
 
@@ -551,11 +551,11 @@ export default function ProfileCollectionPanel({
                     {formatCurrency(priceGBP)}
                   </span>
                 ) : (
-                  <span className="text-xs text-light-textMuted dark:text-dark-textMuted mt-1">—</span>
+                  <span className="text-xs text-vault-textTertiary mt-1">—</span>
                 )}
 
                 {card.createdAt && (
-                  <span className="text-xs text-light-textMuted dark:text-dark-textMuted mt-1">
+                  <span className="text-xs text-vault-textTertiary mt-1">
                     Added: {formatRelativeTime(getDate(card.createdAt))}
                   </span>
                 )}
@@ -575,7 +575,7 @@ export default function ProfileCollectionPanel({
                         setEditingCard(card);
                         setSelectedCard(null);
                       }}
-                      className="flex items-center gap-1 px-4 py-2 rounded-full text-xs font-semibold bg-light-secondary hover:bg-light-primary dark:bg-dark-secondary dark:hover:bg-dark-primary text-white shadow focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent transition-all duration-150 active:scale-95"
+                      className="flex items-center gap-1 px-4 py-2 rounded-[6px] text-xs font-semibold bg-vault-textSecondary hover:bg-vault-accent dark:bg-vault-textSecondary dark:hover:bg-vault-accent text-vault-text  focus:outline-none focus:ring-2 focus:ring-vault-accent dark:focus:ring-vault-accent transition-all duration-150 active:scale-95"
                       title="Edit card details"
                       tabIndex={0}
                     >
@@ -593,7 +593,7 @@ export default function ProfileCollectionPanel({
                         e.stopPropagation();
                         setSelectedCard(card);
                       }}
-                      className="flex items-center gap-1 px-4 py-2 rounded-full text-xs font-semibold bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white shadow focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent transition-all duration-150 active:scale-95"
+                      className="flex items-center gap-1 px-4 py-2 rounded-[6px] text-xs font-semibold bg-vault-accent hover:bg-vault-accentHover dark:bg-vault-accent dark:hover:bg-vault-accentHover text-white  focus:outline-none focus:ring-2 focus:ring-vault-accent dark:focus:ring-vault-accent transition-all duration-150 active:scale-95"
                       title="View card details"
                       tabIndex={0}
                     >
@@ -609,8 +609,8 @@ export default function ProfileCollectionPanel({
                         e.stopPropagation();
                         triggerRemove(card);
                       }}
-                      className={`flex items-center gap-1 px-4 py-2 rounded-full text-xs font-semibold bg-light-error hover:bg-light-error dark:bg-dark-error dark:hover:bg-dark-error text-white shadow focus:outline-none focus:ring-2 focus:ring-light-error dark:focus:ring-dark-error transition-all duration-150 active:scale-95 ${
-                        confirmRemoveId === card.id ? "ring-2 ring-light-error dark:ring-dark-error scale-105" : ""
+                      className={`flex items-center gap-1 px-4 py-2 rounded-[6px] text-xs font-semibold bg-vault-danger hover:bg-vault-danger dark:bg-vault-danger dark:hover:bg-vault-danger text-white  focus:outline-none focus:ring-2 focus:ring-vault-danger dark:focus:ring-vault-danger transition-all duration-150 active:scale-95 ${
+                        confirmRemoveId === card.id ? "ring-2 ring-vault-danger dark:ring-vault-danger scale-105" : ""
                       }`}
                       title={confirmRemoveId === card.id ? "Click to confirm removal" : "Remove card"}
                       tabIndex={0}

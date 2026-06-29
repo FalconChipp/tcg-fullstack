@@ -118,6 +118,18 @@ const INITIAL_FILTERS = {
   onlyHasReverse: false,
 };
 
+const SORT_OPTIONS = [
+  { value: "relevance", label: "Sort: Relevance" },
+  { value: "price-asc", label: "Price: Low → High" },
+  { value: "price-desc", label: "Price: High → Low" },
+  { value: "rarity-asc", label: "Rarity: Low → High" },
+  { value: "rarity-desc", label: "Rarity: High → Low" },
+  { value: "number-asc", label: "Card No: Ascending" },
+  { value: "number-desc", label: "Card No: Descending" },
+  { value: "name-asc", label: "Name: A → Z" },
+  { value: "name-desc", label: "Name: Z → A" },
+];
+
 /* ---------------- Helpers ---------------- */
 
 function pos(n) {
@@ -410,11 +422,11 @@ function selectIntoBatch(prevSelection, cards, predicate) {
 
 function StatPill({ label, value }) {
   return (
-    <div className="rounded-2xl border border-dark-border bg-dark-surface px-4 py-3">
-      <p className="text-[11px] font-bold uppercase tracking-wide text-dark-textMuted">
+    <div className="rounded-[10px] border border-vault-border bg-vault-raised px-4 py-3">
+      <p className="font-vault-body text-[11px] font-semibold uppercase tracking-[0.06em] text-vault-textTertiary">
         {label}
       </p>
-      <p className="mt-1 text-lg font-black text-dark-strong">{value}</p>
+      <p className="mt-1 font-vault text-lg font-semibold text-vault-text">{value}</p>
     </div>
   );
 }
@@ -428,17 +440,17 @@ function WorkbenchButton({
 }) {
   const cls =
     variant === "primary"
-      ? "bg-dark-accent text-white hover:bg-dark-accentLight disabled:opacity-50"
+      ? "bg-vault-accent text-vault-text hover:bg-vault-accentHover disabled:opacity-50"
       : variant === "danger"
-      ? "border border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20 disabled:opacity-40"
-      : "border border-dark-border bg-dark-alt text-dark-strong hover:border-dark-accent hover:bg-dark-surface disabled:opacity-40";
+      ? "border border-vault-danger/30 bg-vault-danger/10 text-vault-danger hover:bg-vault-danger/20 disabled:opacity-40"
+      : "border border-vault-border bg-transparent text-vault-textSecondary hover:border-vault-borderStrong hover:text-vault-text disabled:opacity-40";
 
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-bold transition disabled:cursor-not-allowed ${cls}`}
+      className={`inline-flex items-center justify-center rounded-[10px] px-4 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed ${cls}`}
     >
       {children}
     </button>
@@ -489,6 +501,7 @@ export default function CardSearchWorkbenchPage() {
   });
 
   const [selectedCards, setSelectedCards] = useState({});
+  const [batchPanelOpen, setBatchPanelOpen] = useState(false);
 
   const [bulkAddToCollection, { loading: adding }] = useMutation(
     CARDSEARCH_BULK_ADD_TO_COLLECTION
@@ -1173,21 +1186,21 @@ export default function CardSearchWorkbenchPage() {
         />
       )}
 
-      <div className="min-h-screen bg-dark-background text-dark-text">
-        <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-10">
+      <div className="min-h-screen bg-vault-bg text-vault-text">
+        <main className="mx-auto max-w-7xl px-5 py-12 sm:px-7">
           {/* Header */}
-          <section className="mb-6">
+          <section className="mb-8">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <div className="mb-3 inline-flex rounded-full border border-dark-border bg-dark-surface px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-dark-textMuted">
+                <p className="mb-4 font-vault-body text-[11px] font-semibold uppercase tracking-[0.08em] text-vault-textTertiary">
                   Collection workbench
-                </div>
+                </p>
 
-                <h1 className="text-3xl font-black tracking-tight text-dark-strong sm:text-4xl">
+                <h1 className="font-vault text-[32px] font-semibold leading-[1.15] tracking-tight text-vault-text sm:text-[36px]">
                   Batch Add to Collection
                 </h1>
 
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-dark-textMuted sm:text-base">
+                <p className="mt-3 max-w-2xl text-[15px] leading-7 text-vault-textSecondary">
                   Search across cards, build a temporary batch, adjust
                   quantities, then save everything to your collection in one go.
                 </p>
@@ -1205,7 +1218,7 @@ export default function CardSearchWorkbenchPage() {
           </section>
 
           {/* Search panel */}
-          <section className="mb-6 rounded-3xl border border-dark-border bg-dark-surface p-5 shadow-xl shadow-black/20">
+          <section className="mb-8 rounded-[14px] border border-vault-border bg-vault-surface p-5 sm:p-6">
             <form
               onSubmit={handleSearch}
               className="space-y-5 text-sm"
@@ -1213,7 +1226,7 @@ export default function CardSearchWorkbenchPage() {
             >
               <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_1fr_0.7fr_auto_auto] md:items-end">
                 <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-dark-textMuted">
+                  <label className="mb-2 block font-vault-body text-[11px] font-semibold uppercase tracking-[0.06em] text-vault-textTertiary">
                     Card Name
                   </label>
 
@@ -1222,12 +1235,12 @@ export default function CardSearchWorkbenchPage() {
                     onChange={setName}
                     onSelect={setName}
                     className="w-full"
-                    inputClassName="w-full rounded-xl border border-dark-border bg-dark-alt px-4 py-3 text-sm text-dark-text outline-none placeholder:text-dark-textMuted focus:border-dark-accent"
+                    inputClassName="w-full rounded-[10px] border border-vault-border bg-vault-raised px-4 py-3 text-sm text-vault-text outline-none placeholder:text-vault-textTertiary focus:border-vault-accent"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-dark-textMuted">
+                  <label className="mb-2 block font-vault-body text-[11px] font-semibold uppercase tracking-[0.06em] text-vault-textTertiary">
                     Set
                   </label>
 
@@ -1236,12 +1249,12 @@ export default function CardSearchWorkbenchPage() {
                     onChange={setSetCode}
                     onSelect={setSetCode}
                     className="w-full"
-                    inputClassName="w-full rounded-xl border border-dark-border bg-dark-alt px-4 py-3 text-sm text-dark-text outline-none placeholder:text-dark-textMuted focus:border-dark-accent"
+                    inputClassName="w-full rounded-[10px] border border-vault-border bg-vault-raised px-4 py-3 text-sm text-vault-text outline-none placeholder:text-vault-textTertiary focus:border-vault-accent"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-dark-textMuted">
+                  <label className="mb-2 block font-vault-body text-[11px] font-semibold uppercase tracking-[0.06em] text-vault-textTertiary">
                     Number
                   </label>
 
@@ -1250,7 +1263,7 @@ export default function CardSearchWorkbenchPage() {
                     value={number}
                     onChange={(e) => setNumber(e.target.value)}
                     placeholder="e.g. 004"
-                    className="w-full rounded-xl border border-dark-border bg-dark-alt px-4 py-3 text-sm text-dark-text outline-none placeholder:text-dark-textMuted focus:border-dark-accent"
+                    className="w-full rounded-[10px] border border-vault-border bg-vault-raised px-4 py-3 text-sm text-vault-text outline-none placeholder:text-vault-textTertiary focus:border-vault-accent"
                   />
                 </div>
 
@@ -1268,16 +1281,16 @@ export default function CardSearchWorkbenchPage() {
               </div>
 
               {setCode && (
-                <div className="rounded-2xl border border-dark-border bg-dark-alt p-4">
+                <div className="rounded-[10px] border border-vault-border bg-vault-raised p-4">
                   <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <p className="text-xs font-black uppercase tracking-wide text-dark-textMuted">
+                      <p className="font-vault-body text-[11px] font-semibold uppercase tracking-[0.06em] text-vault-textTertiary">
                         Smart presets
                       </p>
 
-                      <p className="mt-1 text-sm text-dark-textMuted">
+                      <p className="mt-1 text-sm text-vault-textSecondary">
                         Quick actions for{" "}
-                        <span className="font-bold text-dark-strong">
+                        <span className="font-semibold text-vault-text">
                           {setCode}
                         </span>
                         .
@@ -1310,31 +1323,22 @@ export default function CardSearchWorkbenchPage() {
                 </div>
               )}
 
-              <div className="border-t border-dark-border pt-4">
-                <AdvancedFilters
-                  filters={filters}
-                  onChange={setFilters}
-                  availableRarities={availableRarities}
-                  availableVariations={availableVariations}
-                />
-              </div>
-
               {searchError && (
-                <p className="text-sm font-medium text-red-400" role="alert">
+                <p className="text-sm font-medium text-vault-danger" role="alert">
                   {searchError.message || "Search failed"}
                 </p>
               )}
 
               {submitResult && (
                 <div
-                  className={`rounded-2xl border px-4 py-3 text-sm ${
+                  className={`rounded-[10px] border px-4 py-3 text-sm ${
                     submitResult.ok
-                      ? "border-dark-accent/30 bg-dark-accent/10 text-dark-accentLight"
-                      : "border-red-500/30 bg-red-500/10 text-red-300"
+                      ? "border-vault-success/30 bg-vault-success/10 text-vault-success"
+                      : "border-vault-danger/30 bg-vault-danger/10 text-vault-danger"
                   }`}
                   role="status"
                 >
-                  <div className="font-bold">
+                  <div className="font-semibold">
                     {submitResult.ok
                       ? "Collection updated"
                       : "Collection update failed"}
@@ -1344,12 +1348,12 @@ export default function CardSearchWorkbenchPage() {
 
                   {submitErrors.length > 0 && (
                     <div className="mt-3">
-                      <div className="font-bold">Some items failed:</div>
+                      <div className="font-semibold">Some items failed:</div>
 
                       <ul className="mt-1 list-disc space-y-1 pl-4 text-xs">
                         {submitErrors.slice(0, 8).map((it) => (
                           <li key={`${it.cardId}-${it.error}`}>
-                            <span className="font-semibold">{it.cardId}</span>:{" "}
+                            <span className="font-medium">{it.cardId}</span>:{" "}
                             {it.error}
                           </li>
                         ))}
@@ -1366,16 +1370,26 @@ export default function CardSearchWorkbenchPage() {
           </section>
 
           {/* Workbench */}
-          <section className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+          <section className="grid grid-cols-1 gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+            {/* Filters sidebar */}
+            <aside className="rounded-[14px] border border-vault-border bg-vault-surface p-5 lg:sticky lg:top-28 lg:self-start">
+              <AdvancedFilters
+                filters={filters}
+                onChange={setFilters}
+                availableRarities={availableRarities}
+                availableVariations={availableVariations}
+              />
+            </aside>
+
             {/* Results */}
-            <div className="rounded-3xl border border-dark-border bg-dark-surface p-4 shadow-xl shadow-black/20">
+            <div className="rounded-[14px] border border-vault-border bg-vault-surface p-4 sm:p-5">
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-xl font-black text-dark-strong">
+                  <h2 className="font-vault text-xl font-semibold text-vault-text">
                     Results
                   </h2>
 
-                  <p className="mt-1 text-sm text-dark-textMuted">
+                  <p className="mt-1 text-sm text-vault-textTertiary">
                     {loading && "Searching..."}
                     {searchError && !loading && "Error loading cards"}
                     {!loading &&
@@ -1393,12 +1407,33 @@ export default function CardSearchWorkbenchPage() {
                   </p>
                 </div>
 
-                <WorkbenchButton
-                  onClick={handleSelectAllVisible}
-                  disabled={!hasResults}
-                >
-                  Select all visible
-                </WorkbenchButton>
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={filters?.sortBy || "relevance"}
+                    onChange={(e) =>
+                      setFilters({ ...filters, sortBy: e.target.value })
+                    }
+                    className="rounded-[6px] border border-vault-border bg-vault-raised px-3 py-2 text-xs text-vault-text outline-none focus:border-vault-accent"
+                    aria-label="Sort results"
+                  >
+                    {SORT_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  <WorkbenchButton onClick={() => setBatchPanelOpen(true)}>
+                    Batch ({selectedCount})
+                  </WorkbenchButton>
+
+                  <WorkbenchButton
+                    onClick={handleSelectAllVisible}
+                    disabled={!hasResults}
+                  >
+                    Select all visible
+                  </WorkbenchButton>
+                </div>
               </div>
 
               <div className="max-h-[calc(100vh-350px)] min-h-[460px] overflow-y-auto pr-1">
@@ -1417,17 +1452,17 @@ export default function CardSearchWorkbenchPage() {
                     return (
                       <article
                         key={key}
-                        className={`group flex flex-col rounded-2xl border p-2 transition ${
+                        className={`group flex flex-col rounded-[10px] border p-2 transition-colors ${
                           inSelection
-                            ? "border-dark-accent bg-dark-accent/10"
-                            : "border-dark-border bg-dark-alt hover:border-dark-accent/60"
+                            ? "border-vault-accent bg-vault-accent/10"
+                            : "border-vault-border bg-vault-raised hover:border-vault-borderStrong"
                         }`}
                       >
                         <button
                           type="button"
                           onClick={() => setExpandedCard(card)}
                           aria-label={`Expand ${card.name || "card"} image`}
-                          className="relative mb-2 aspect-[3/4] overflow-hidden rounded-xl bg-black/30 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-dark-accent"
+                          className="relative mb-2 aspect-[3/4] overflow-hidden rounded-[6px] bg-black/30 cursor-zoom-in focus:outline-none focus:ring-1 focus:ring-vault-accent"
                         >
                           {card.tcgImageUrl || card.image ? (
                             <Image
@@ -1442,14 +1477,14 @@ export default function CardSearchWorkbenchPage() {
                         <div className="flex flex-1 flex-col justify-between text-xs">
                           <div>
                             <div className="flex items-start justify-between gap-2">
-                              <div className="line-clamp-2 font-bold text-dark-strong">
+                              <div className="line-clamp-2 font-semibold text-vault-text">
                                 {card.name}
                               </div>
 
                               <img
                                 src={getSetLogo(card.setName, card.setCode)}
                                 alt={card.setName || "Set logo"}
-                                className="h-5 w-8 rounded bg-dark-surface"
+                                className="h-5 w-8 rounded bg-vault-surface"
                                 onError={(e) => {
                                   e.currentTarget.onerror = null;
                                   e.currentTarget.src = FALLBACK_SYMBOL_IMAGE;
@@ -1459,19 +1494,19 @@ export default function CardSearchWorkbenchPage() {
                               />
                             </div>
 
-                            <div className="mt-1 flex justify-between gap-2 text-[11px] text-dark-textMuted">
+                            <div className="mt-1 flex justify-between gap-2 text-[11px] text-vault-textTertiary">
                               <span className="truncate">{card.setName}</span>
-                              <span className="font-semibold">#{card.number}</span>
+                              <span className="font-medium">#{card.number}</span>
                             </div>
 
                             <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
-                              <span className="font-black text-dark-strong">
+                              <span className="font-vault font-semibold text-vault-text">
                                 {formatGBP(displayPrice)}
                               </span>
 
                               {bestRow?.variation &&
                                 bestRow.variation !== "normal" && (
-                                  <span className="text-dark-textMuted">
+                                  <span className="text-vault-textTertiary">
                                     ({formatVariation(bestRow.variation)})
                                   </span>
                                 )}
@@ -1481,10 +1516,10 @@ export default function CardSearchWorkbenchPage() {
                           <button
                             type="button"
                             onClick={() => handleCardSelect(card)}
-                            className={`mt-3 w-full rounded-xl px-2 py-2 text-xs font-bold transition ${
+                            className={`mt-3 w-full rounded-[6px] px-2 py-2 text-xs font-semibold transition-colors ${
                               inSelection
-                                ? "bg-dark-accent text-white"
-                                : "bg-dark-surface text-dark-strong hover:bg-dark-accent hover:text-white"
+                                ? "bg-vault-accent text-vault-text"
+                                : "bg-vault-surface text-vault-textSecondary hover:bg-vault-accent hover:text-vault-text"
                             }`}
                           >
                             {inSelection
@@ -1498,18 +1533,18 @@ export default function CardSearchWorkbenchPage() {
                 </div>
 
                 {!loading && !searchError && hasSearched && !hasResults && (
-                  <div className="flex min-h-[360px] items-center justify-center rounded-2xl border border-dashed border-dark-border text-center text-sm text-dark-textMuted">
+                  <div className="flex min-h-[360px] items-center justify-center rounded-[10px] border border-dashed border-vault-border text-center text-sm text-vault-textTertiary">
                     No cards match your search. Try changing the filters.
                   </div>
                 )}
 
                 {!hasSearched && !loading && (
-                  <div className="flex min-h-[360px] flex-col items-center justify-center rounded-2xl border border-dashed border-dark-border px-6 text-center">
-                    <p className="text-base font-black text-dark-strong">
+                  <div className="flex min-h-[360px] flex-col items-center justify-center rounded-[10px] border border-dashed border-vault-border px-6 text-center">
+                    <p className="font-vault text-base font-semibold text-vault-text">
                       Ready to build a batch?
                     </p>
 
-                    <p className="mt-2 max-w-md text-sm leading-6 text-dark-textMuted">
+                    <p className="mt-2 max-w-md text-sm leading-6 text-vault-textTertiary">
                       Search by card name, set, or number. Add cards to the
                       sidebar and keep searching — your batch stays selected.
                     </p>
@@ -1519,10 +1554,10 @@ export default function CardSearchWorkbenchPage() {
                 <div ref={loadMoreTriggerRef} className="h-4" />
 
                 {(hasMore || isLoadingMore) && (
-                  <div className="mt-4 flex items-center justify-center gap-3 text-sm text-dark-textMuted">
+                  <div className="mt-4 flex items-center justify-center gap-3 text-sm text-vault-textTertiary">
                     {isLoadingMore ? (
                       <>
-                        <span className="inline-block h-4 w-4 rounded-full border-2 border-dark-accent border-r-transparent animate-spin" />
+                        <span className="inline-block h-4 w-4 rounded-full border-2 border-vault-accent border-r-transparent animate-spin" />
                         Loading more cards…
                       </>
                     ) : (
@@ -1533,47 +1568,70 @@ export default function CardSearchWorkbenchPage() {
               </div>
 
               {hasResults && !loading && !searchError && (
-                <p className="mt-4 text-xs text-dark-textMuted">
+                <p className="mt-4 text-xs text-vault-textTertiary">
                   Prices shown are the latest market snapshot from SixByFive TCG
                   and may not include every variant or price point yet.
                 </p>
               )}
             </div>
+          </section>
 
-            {/* Selected batch */}
-            <aside className="rounded-3xl border border-dark-border bg-dark-surface p-4 shadow-xl shadow-black/20 lg:sticky lg:top-28 lg:self-start">
+          {/* Batch drawer */}
+          {batchPanelOpen && (
+            <div
+              className="fixed inset-0 z-40 bg-black/60"
+              onClick={() => setBatchPanelOpen(false)}
+            />
+          )}
+
+          <aside
+            className={`fixed right-0 top-0 z-50 h-full w-full max-w-md transform overflow-y-auto border-l border-vault-border bg-vault-overlay p-4 shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-transform duration-300 sm:p-5 ${
+              batchPanelOpen ? "translate-x-0" : "translate-x-full"
+            }`}
+          >
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-xl font-black text-dark-strong">
+                  <h2 className="font-vault text-xl font-semibold text-vault-text">
                     Selected batch
                   </h2>
 
-                  <p className="mt-1 text-sm text-dark-textMuted">
+                  <p className="mt-1 text-sm text-vault-textTertiary">
                     {selectedCount} cards • {totalQuantity} copies
                   </p>
                 </div>
 
-                {estimatedBatchValue > 0 && (
-                  <div className="rounded-2xl border border-dark-border bg-dark-alt px-3 py-2 text-right">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-dark-textMuted">
-                      Est.
-                    </p>
-                    <p className="text-sm font-black text-dark-strong">
-                      {formatGBP(estimatedBatchValue)}
-                    </p>
-                  </div>
-                )}
+                <div className="flex items-center gap-3">
+                  {estimatedBatchValue > 0 && (
+                    <div className="rounded-[10px] border border-vault-border bg-vault-raised px-3 py-2 text-right">
+                      <p className="font-vault-body text-[10px] font-semibold uppercase tracking-[0.06em] text-vault-textTertiary">
+                        Est.
+                      </p>
+                      <p className="font-vault text-sm font-semibold text-vault-text">
+                        {formatGBP(estimatedBatchValue)}
+                      </p>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setBatchPanelOpen(false)}
+                    aria-label="Close batch panel"
+                    className="rounded-[6px] p-1.5 text-vault-textTertiary transition-colors hover:bg-vault-raised hover:text-vault-text"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
 
-              <div className="mb-4 rounded-2xl border border-dark-border bg-dark-alt p-3 text-xs leading-5 text-dark-textMuted">
+              <div className="mb-4 rounded-[10px] border border-vault-border bg-vault-raised p-3 text-xs leading-5 text-vault-textSecondary">
                 Build your temporary batch here. Adjust quantities before saving.
                 This only updates your personal collection.
               </div>
 
               <div className="max-h-[calc(100vh-430px)] min-h-[260px] space-y-2 overflow-y-auto pr-1">
                 {selectedList.length === 0 && (
-                  <div className="rounded-2xl border border-dashed border-dark-border bg-dark-alt p-4 text-sm text-dark-textMuted">
-                    <p className="font-bold text-dark-strong">
+                  <div className="rounded-[10px] border border-dashed border-vault-border bg-vault-raised p-4 text-sm text-vault-textSecondary">
+                    <p className="font-semibold text-vault-text">
                       No cards selected yet.
                     </p>
 
@@ -1594,9 +1652,9 @@ export default function CardSearchWorkbenchPage() {
                   return (
                     <div
                       key={key}
-                      className="flex gap-3 rounded-2xl border border-dark-border bg-dark-alt p-3"
+                      className="flex gap-3 rounded-[10px] border border-vault-border bg-vault-raised p-3"
                     >
-                      <div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-lg bg-black/30">
+                      <div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-[6px] bg-black/30">
                         {card.tcgImageUrl || card.image ? (
                           <Image
                             src={card.tcgImageUrl || card.image}
@@ -1610,11 +1668,11 @@ export default function CardSearchWorkbenchPage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <p className="line-clamp-1 text-sm font-bold text-dark-strong">
+                            <p className="line-clamp-1 text-sm font-semibold text-vault-text">
                               {card.name}
                             </p>
 
-                            <p className="mt-0.5 line-clamp-1 text-xs text-dark-textMuted">
+                            <p className="mt-0.5 line-clamp-1 text-xs text-vault-textTertiary">
                               {card.setName} #{card.number}
                             </p>
                           </div>
@@ -1622,7 +1680,7 @@ export default function CardSearchWorkbenchPage() {
                           <button
                             type="button"
                             onClick={() => handleRemove(key)}
-                            className="text-xs font-bold text-red-400 hover:text-red-300"
+                            className="text-xs font-semibold text-vault-danger hover:text-vault-danger/80"
                           >
                             Remove
                           </button>
@@ -1630,7 +1688,7 @@ export default function CardSearchWorkbenchPage() {
 
                         <div className="mt-3 flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs text-dark-textMuted">
+                            <span className="text-xs text-vault-textTertiary">
                               Qty
                             </span>
 
@@ -1641,19 +1699,19 @@ export default function CardSearchWorkbenchPage() {
                               onChange={(e) =>
                                 handleQuantityChange(key, e.target.value)
                               }
-                              className="w-16 rounded-lg border border-dark-border bg-dark-surface px-2 py-1 text-xs text-dark-text outline-none focus:border-dark-accent"
+                              className="w-16 rounded-[6px] border border-vault-border bg-vault-surface px-2 py-1 text-xs text-vault-text outline-none focus:border-vault-accent"
                             />
                           </div>
 
                           <div className="text-right">
                             {unitPrice != null && (
-                              <p className="text-xs font-bold text-dark-strong">
+                              <p className="font-vault text-xs font-semibold text-vault-text">
                                 {formatGBP(unitPrice)} each
                               </p>
                             )}
 
                             {lineTotal != null && quantity > 1 && (
-                              <p className="text-[11px] text-dark-textMuted">
+                              <p className="text-[11px] text-vault-textTertiary">
                                 {formatGBP(lineTotal)}
                               </p>
                             )}
@@ -1665,7 +1723,7 @@ export default function CardSearchWorkbenchPage() {
                 })}
               </div>
 
-              <div className="mt-4 space-y-2 border-t border-dark-border pt-4">
+              <div className="mt-4 space-y-2 border-t border-vault-border pt-4">
                 <WorkbenchButton
                   disabled={selectedList.length === 0 || adding}
                   onClick={handleAddAllToCollection}
@@ -1682,13 +1740,12 @@ export default function CardSearchWorkbenchPage() {
                   type="button"
                   disabled={selectedList.length === 0}
                   onClick={handleClearAll}
-                  className="w-full rounded-xl border border-dark-border bg-dark-alt px-4 py-2.5 text-sm font-bold text-dark-strong transition hover:border-red-400/40 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="w-full rounded-[10px] border border-vault-border bg-vault-raised px-4 py-2.5 text-sm font-semibold text-vault-textSecondary transition-colors hover:border-vault-danger/40 hover:text-vault-danger disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Clear selection
                 </button>
               </div>
             </aside>
-          </section>
         </main>
       </div>
 

@@ -17,26 +17,26 @@ export default function VariantSelector(props) {
   if (!variants || variants.length === 0) return null;
 
   var labelCls =
-    "text-xs font-semibold uppercase tracking-wide text-light-textMuted dark:text-dark-textMuted mb-2";
+    "text-xs font-semibold uppercase tracking-wide text-vault-textTertiary mb-2";
 
   var gridCls =
     "grid grid-cols-2 sm:grid-cols-3 gap-3";
 
   var cardBaseCls =
-    "group relative flex flex-col rounded-xl border bg-light-surface dark:bg-dark-surface " +
+    "group relative flex flex-col rounded-[10px] border bg-vault-surface " +
     "transition-colors cursor-pointer overflow-hidden";
 
-  var imageWrapperCls = "relative w-full pb-[70%] bg-light-alt dark:bg-dark-alt";
+  var imageWrapperCls = "relative w-full pb-[70%] bg-vault-raised";
   var imageCls = "absolute inset-0 w-full h-full object-cover";
 
   var nameCls =
-    "text-xs sm:text-sm font-medium text-light-strong dark:text-dark-strong truncate";
+    "text-xs sm:text-sm font-medium text-vault-text truncate";
 
   var subtitleCls =
-    "text-[11px] text-light-textMuted dark:text-dark-textMuted truncate";
+    "text-[11px] text-vault-textTertiary truncate";
 
   var chipBaseCls =
-    "mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium";
+    "mt-1 inline-flex items-center rounded-[6px] px-2 py-0.5 text-[10px] font-medium";
 
   return React.createElement(
     "div",
@@ -50,16 +50,16 @@ export default function VariantSelector(props) {
 
         var cardCls =
           cardBaseCls +
-          " border-light-border dark:border-dark-border " +
+          " border-vault-border " +
           (isSelected
-            ? " ring-2 ring-light-accent dark:ring-dark-accent"
-            : " hover:bg-light-elevated dark:hover:bg-dark-elevated");
+            ? " ring-2 ring-vault-accent dark:ring-vault-accent"
+            : " hover:bg-vault-raised dark:hover:bg-vault-raised");
 
         var chipCls =
           chipBaseCls +
           (isSelected
-            ? " bg-light-accent text-white dark:bg-dark-accent dark:text-white"
-            : " bg-light-alt text-light-textMuted dark:bg-dark-alt dark:text-dark-textMuted");
+            ? " bg-vault-accent text-white dark:bg-vault-accent dark:text-white"
+            : " bg-vault-raised text-vault-textTertiary dark:bg-vault-raised dark:text-vault-textTertiary");
 
         return React.createElement(
           "button",
@@ -87,7 +87,7 @@ export default function VariantSelector(props) {
                   {
                     className:
                       "absolute inset-0 flex items-center justify-center text-[11px] " +
-                      "text-light-textMuted dark:text-dark-textMuted",
+                      "text-vault-textTertiary",
                   },
                   "No image"
                 )
@@ -113,7 +113,7 @@ export default function VariantSelector(props) {
                   "span",
                   {
                     className:
-                      "text-[10px] font-medium text-light-textMuted dark:text-dark-textMuted",
+                      "text-[10px] font-medium text-vault-textTertiary",
                   },
                   v.priceDeltaText
                 )

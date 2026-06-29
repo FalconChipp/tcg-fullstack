@@ -57,13 +57,13 @@ function DetailRow(label, value, key) {
     {
       key: key || label,
       className:
-        "flex items-start justify-between gap-4 text-xs sm:text-sm text-light-text dark:text-dark-text",
+        "flex items-start justify-between gap-4 text-xs sm:text-sm text-vault-text",
     },
     React.createElement(
       "span",
       {
         className:
-          "font-medium text-light-strong dark:text-dark-strong",
+          "font-medium text-vault-text",
       },
       label
     ),
@@ -71,7 +71,7 @@ function DetailRow(label, value, key) {
       "span",
       {
         className:
-          "text-right text-light-textMuted dark:text-dark-textMuted",
+          "text-right text-vault-textTertiary",
       },
       value
     )
@@ -87,7 +87,7 @@ function SectionWrapper(label, children, key) {
       "div",
       {
         className:
-          "text-[11px] font-semibold uppercase tracking-wide text-light-textMuted dark:text-dark-textMuted",
+          "text-[11px] font-semibold uppercase tracking-wide text-vault-textTertiary",
       },
       label
     ),
@@ -151,13 +151,13 @@ function renderClothingDetails(listing) {
     "div",
     {
       className:
-        "mt-2 rounded-xl border border-light-border dark:border-dark-border bg-light-surface/60 dark:bg-dark-surface/60 px-3 py-2",
+        "mt-2 rounded-[10px] border border-vault-border bg-vault-surface/60 dark:bg-vault-surface/60 px-3 py-2",
     },
     React.createElement(
       "div",
       {
         className:
-          "flex items-center justify-between text-[11px] font-semibold text-light-textMuted dark:text-dark-textMuted mb-1",
+          "flex items-center justify-between text-[11px] font-semibold text-vault-textTertiary mb-1",
       },
       React.createElement("span", null, "Size guide"),
       React.createElement(
@@ -168,29 +168,29 @@ function renderClothingDetails(listing) {
     ),
     React.createElement(
       "div",
-      { className: "grid grid-cols-4 gap-1 text-[11px] text-light-textMuted dark:text-dark-textMuted" },
+      { className: "grid grid-cols-4 gap-1 text-[11px] text-vault-textTertiary" },
       React.createElement(
         "div",
         { className: "flex flex-col gap-0.5" },
-        React.createElement("span", { className: "font-medium text-light-strong dark:text-dark-strong" }, "S"),
+        React.createElement("span", { className: "font-medium text-vault-text" }, "S"),
         React.createElement("span", null, "34–36\"")
       ),
       React.createElement(
         "div",
         { className: "flex flex-col gap-0.5" },
-        React.createElement("span", { className: "font-medium text-light-strong dark:text-dark-strong" }, "M"),
+        React.createElement("span", { className: "font-medium text-vault-text" }, "M"),
         React.createElement("span", null, "38–40\"")
       ),
       React.createElement(
         "div",
         { className: "flex flex-col gap-0.5" },
-        React.createElement("span", { className: "font-medium text-light-strong dark:text-dark-strong" }, "L"),
+        React.createElement("span", { className: "font-medium text-vault-text" }, "L"),
         React.createElement("span", null, "42–44\"")
       ),
       React.createElement(
         "div",
         { className: "flex flex-col gap-0.5" },
-        React.createElement("span", { className: "font-medium text-light-strong dark:text-dark-strong" }, "XL+"),
+        React.createElement("span", { className: "font-medium text-vault-text" }, "XL+"),
         React.createElement("span", null, "46\"+")
       )
     )
@@ -222,11 +222,11 @@ export default function ProductDetailsSection(props) {
   if (!productType) return null;
 
   var panelCls =
-    "rounded-2xl border border-light-border dark:border-dark-border " +
-    "bg-light-surface dark:bg-dark-surface p-4 space-y-3";
+    "rounded-[10px] border border-vault-border " +
+    "bg-vault-surface p-4 space-y-3";
 
   var headerCls =
-    "text-xs font-semibold uppercase tracking-wide text-light-textMuted dark:text-dark-textMuted";
+    "text-xs font-semibold uppercase tracking-wide text-vault-textTertiary";
 
   var content;
   if (productType === "3D_PRINT") {

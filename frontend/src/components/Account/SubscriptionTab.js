@@ -43,8 +43,8 @@ function FeeDot({ pct }) {
     pct <= 3 ? "bg-green-500"   :
     pct <= 5 ? "bg-yellow-500"  : "bg-orange-500";
   return (
-    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-light-alt dark:bg-dark-alt border border-light-border dark:border-dark-border">
-      <span className={`w-2 h-2 rounded-full ${color} shrink-0`} />
+    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[6px] text-xs font-semibold bg-vault-raised border border-vault-border">
+      <span className={`w-2 h-2 rounded-[6px] ${color} shrink-0`} />
       {pct}% marketplace fee
     </span>
   );
@@ -60,26 +60,26 @@ function Modal({ open, type, plan, onConfirm, onClose, loading }) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl shadow-xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface p-6"
+        className="w-full max-w-sm rounded-[10px]  border border-vault-border bg-vault-surface p-6"
         onClick={(e) => e.stopPropagation()}
       >
         {type === "cancel" && (
           <>
-            <h3 className="text-lg font-bold mb-2 text-light-primary dark:text-dark-primary">Cancel subscription?</h3>
-            <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary mb-5">
+            <h3 className="text-lg font-bold mb-2 text-vault-accent dark:text-vault-accent">Cancel subscription?</h3>
+            <p className="text-sm text-vault-textSecondary mb-5">
               You'll keep access until the end of your current billing period, then move to the free tier automatically.
             </p>
             <div className="flex gap-2">
               <button
                 onClick={onConfirm}
                 disabled={loading}
-                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold transition disabled:opacity-60"
+                className="px-4 py-2 rounded-[6px] bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold transition disabled:opacity-60"
               >
                 {loading ? "Cancelling…" : "Yes, cancel"}
               </button>
               <button
                 onClick={onClose}
-                className="px-4 py-2 rounded-lg border border-light-border dark:border-dark-border text-sm font-semibold hover:bg-light-alt dark:hover:bg-dark-alt transition"
+                className="px-4 py-2 rounded-[6px] border border-vault-border text-sm font-semibold hover:bg-vault-raised dark:hover:bg-vault-raised transition"
               >
                 Go back
               </button>
@@ -89,21 +89,21 @@ function Modal({ open, type, plan, onConfirm, onClose, loading }) {
 
         {type === "reactivate" && (
           <>
-            <h3 className="text-lg font-bold mb-2 text-light-primary dark:text-dark-primary">Reactivate subscription?</h3>
-            <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary mb-5">
+            <h3 className="text-lg font-bold mb-2 text-vault-accent dark:text-vault-accent">Reactivate subscription?</h3>
+            <p className="text-sm text-vault-textSecondary mb-5">
               Your subscription will continue as normal with no interruption.
             </p>
             <div className="flex gap-2">
               <button
                 onClick={onConfirm}
                 disabled={loading}
-                className="px-4 py-2 rounded-lg bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white text-sm font-semibold transition disabled:opacity-60"
+                className="px-4 py-2 rounded-[6px] bg-vault-accent hover:bg-vault-accentHover dark:bg-vault-accent dark:hover:bg-vault-accentHover text-white text-sm font-semibold transition disabled:opacity-60"
               >
                 {loading ? "Reactivating…" : "Reactivate"}
               </button>
               <button
                 onClick={onClose}
-                className="px-4 py-2 rounded-lg border border-light-border dark:border-dark-border text-sm font-semibold hover:bg-light-alt dark:hover:bg-dark-alt transition"
+                className="px-4 py-2 rounded-[6px] border border-vault-border text-sm font-semibold hover:bg-vault-raised dark:hover:bg-vault-raised transition"
               >
                 Cancel
               </button>
@@ -113,26 +113,26 @@ function Modal({ open, type, plan, onConfirm, onClose, loading }) {
 
         {type === "changePlan" && plan && (
           <>
-            <h3 className="text-lg font-bold mb-1 text-light-primary dark:text-dark-primary">
+            <h3 className="text-lg font-bold mb-1 text-vault-accent dark:text-vault-accent">
               Switch to {plan.name}?
             </h3>
-            <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary mb-1">
+            <p className="text-sm text-vault-textSecondary mb-1">
               {fmtPrice(plan.price)}{fmtInterval(plan.interval)} · {plan.platformFeePercent}% marketplace fee
             </p>
-            <p className="text-xs text-light-textMuted dark:text-dark-textMuted mb-5">
+            <p className="text-xs text-vault-textTertiary mb-5">
               Your plan updates immediately. Any billing difference will be prorated on your next invoice.
             </p>
             <div className="flex gap-2">
               <button
                 onClick={onConfirm}
                 disabled={loading}
-                className="px-4 py-2 rounded-lg bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white text-sm font-semibold transition disabled:opacity-60"
+                className="px-4 py-2 rounded-[6px] bg-vault-accent hover:bg-vault-accentHover dark:bg-vault-accent dark:hover:bg-vault-accentHover text-white text-sm font-semibold transition disabled:opacity-60"
               >
                 {loading ? "Switching…" : "Confirm switch"}
               </button>
               <button
                 onClick={onClose}
-                className="px-4 py-2 rounded-lg border border-light-border dark:border-dark-border text-sm font-semibold hover:bg-light-alt dark:hover:bg-dark-alt transition"
+                className="px-4 py-2 rounded-[6px] border border-vault-border text-sm font-semibold hover:bg-vault-raised dark:hover:bg-vault-raised transition"
               >
                 Cancel
               </button>
@@ -154,23 +154,23 @@ function CurrentPlanCard({ subscription, capabilities, onCancel, onReactivate, o
   const fee         = subscription?.plan?.platformFeePercent ?? capabilities?.platformFeePercent;
 
   return (
-    <div className={`rounded-2xl border p-5 ${
+    <div className={`rounded-[10px] border p-5 ${
       isCancelling
         ? "border-amber-500/30 bg-amber-500/[0.04]"
-        : "border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface"
+        : "border-vault-border bg-vault-surface"
     }`}>
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div className="space-y-2">
           {/* Plan name + status badge */}
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-lg font-bold text-light-primary dark:text-dark-primary">{planName}</span>
+            <span className="text-lg font-bold text-vault-accent dark:text-vault-accent">{planName}</span>
             {isActive && !isCancelling && (
-              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-[6px] bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
                 Active
               </span>
             )}
             {isCancelling && (
-              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-[6px] bg-amber-500/10 text-amber-400 border border-amber-500/20">
                 Cancelling
               </span>
             )}
@@ -180,7 +180,7 @@ function CurrentPlanCard({ subscription, capabilities, onCancel, onReactivate, o
           {fee != null && <FeeDot pct={fee} />}
 
           {/* Renewal / access info */}
-          <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary">
+          <p className="text-sm text-vault-textSecondary">
             {isCancelling && renewsAt
               ? <span className="text-amber-400">Access until {fmtDate(renewsAt)}</span>
               : isActive && renewsAt
@@ -196,7 +196,7 @@ function CurrentPlanCard({ subscription, capabilities, onCancel, onReactivate, o
           {subscription && planName !== "Free" && (
             <button
               onClick={onManageBilling}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-light-border dark:border-dark-border hover:bg-light-alt dark:hover:bg-dark-alt transition"
+              className="text-xs font-semibold px-3 py-1.5 rounded-[6px] border border-vault-border hover:bg-vault-raised dark:hover:bg-vault-raised transition"
             >
               Manage billing
             </button>
@@ -204,7 +204,7 @@ function CurrentPlanCard({ subscription, capabilities, onCancel, onReactivate, o
           {isActive && !isCancelling && planName !== "Free" && (
             <button
               onClick={onCancel}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 transition"
+              className="text-xs font-semibold px-3 py-1.5 rounded-[6px] border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 transition"
             >
               Cancel
             </button>
@@ -212,7 +212,7 @@ function CurrentPlanCard({ subscription, capabilities, onCancel, onReactivate, o
           {isCancelling && (
             <button
               onClick={onReactivate}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white transition"
+              className="text-xs font-semibold px-3 py-1.5 rounded-[6px] bg-vault-accent hover:bg-vault-accentHover dark:bg-vault-accent dark:hover:bg-vault-accentHover text-white transition"
             >
               Reactivate
             </button>
@@ -255,14 +255,14 @@ function PlanPicker({ plans, currentPlanId, hasActiveSub, billing, onBillingChan
     <div>
       {/* Billing toggle */}
       <div className="flex items-center gap-3 mb-4">
-        <span className="text-sm font-semibold text-light-text dark:text-dark-text">Billing</span>
-        <div className="inline-flex items-center rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt p-0.5 gap-0.5">
+        <span className="text-sm font-semibold text-vault-text">Billing</span>
+        <div className="inline-flex items-center rounded-[6px] border border-vault-border bg-vault-raised p-0.5 gap-0.5">
           <button
             onClick={() => onBillingChange("monthly")}
             className={`px-3 py-1 rounded-md text-xs font-semibold transition ${
               billing === "monthly"
-                ? "bg-light-surface dark:bg-dark-surface text-light-primary dark:text-dark-primary shadow-sm"
-                : "text-light-textMuted dark:text-dark-textMuted hover:text-light-text dark:hover:text-dark-text"
+                ? "bg-vault-surface text-vault-accent dark:text-vault-accent "
+                : "text-vault-textTertiary hover:text-vault-text dark:hover:text-vault-text"
             }`}
           >
             Monthly
@@ -271,13 +271,13 @@ function PlanPicker({ plans, currentPlanId, hasActiveSub, billing, onBillingChan
             onClick={() => onBillingChange("yearly")}
             className={`px-3 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1.5 ${
               billing === "yearly"
-                ? "bg-light-surface dark:bg-dark-surface text-light-primary dark:text-dark-primary shadow-sm"
-                : "text-light-textMuted dark:text-dark-textMuted hover:text-light-text dark:hover:text-dark-text"
+                ? "bg-vault-surface text-vault-accent dark:text-vault-accent "
+                : "text-vault-textTertiary hover:text-vault-text dark:hover:text-vault-text"
             }`}
           >
             Yearly
             {saving && (
-              <span className="text-[10px] font-bold px-1 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500">
+              <span className="text-[10px] font-bold px-1 py-0.5 rounded-[6px] bg-emerald-500/15 text-emerald-500">
                 -{saving}%
               </span>
             )}
@@ -304,17 +304,17 @@ function PlanPicker({ plans, currentPlanId, hasActiveSub, billing, onBillingChan
           return (
             <div
               key={plan.name}
-              className={`rounded-xl border p-4 flex flex-col transition ${
+              className={`rounded-[10px] border p-4 flex flex-col transition ${
                 isCurrent
-                  ? "border-light-accent/50 dark:border-dark-accent/50 bg-light-accent/[0.04] dark:bg-dark-accent/[0.06]"
-                  : "border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface"
+                  ? "border-vault-accent/50 dark:border-vault-accent/50 bg-vault-accent/[0.04] dark:bg-vault-accent/[0.06]"
+                  : "border-vault-border bg-vault-surface"
               }`}
             >
               {/* Header */}
               <div className="flex items-center justify-between gap-2 mb-2">
-                <span className="font-bold text-sm text-light-primary dark:text-dark-primary">{plan.name}</span>
+                <span className="font-bold text-sm text-vault-accent dark:text-vault-accent">{plan.name}</span>
                 {isCurrent && (
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 whitespace-nowrap">
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-[6px] bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 whitespace-nowrap">
                     Current
                   </span>
                 )}
@@ -322,11 +322,11 @@ function PlanPicker({ plans, currentPlanId, hasActiveSub, billing, onBillingChan
 
               {/* Price */}
               <div className="mb-2">
-                <span className="text-xl font-extrabold text-light-primary dark:text-dark-primary">
+                <span className="text-xl font-extrabold text-vault-accent dark:text-vault-accent">
                   {isFree ? "Free" : fmtPrice(plan.price)}
                 </span>
                 {!isFree && (
-                  <span className="text-xs text-light-textMuted dark:text-dark-textMuted ml-1">
+                  <span className="text-xs text-vault-textTertiary ml-1">
                     {fmtInterval(plan.interval)}
                   </span>
                 )}
@@ -341,7 +341,7 @@ function PlanPicker({ plans, currentPlanId, hasActiveSub, billing, onBillingChan
               {features.length > 0 && (
                 <ul className="flex-1 mb-3 space-y-1">
                   {features.map((f, i) => (
-                    <li key={i} className="text-xs text-light-textSecondary dark:text-dark-textSecondary flex gap-1.5">
+                    <li key={i} className="text-xs text-vault-textSecondary flex gap-1.5">
                       <span className="text-emerald-500 shrink-0 mt-px">✓</span>
                       <span>{f}</span>
                     </li>
@@ -353,14 +353,14 @@ function PlanPicker({ plans, currentPlanId, hasActiveSub, billing, onBillingChan
               {isCurrent ? (
                 <button
                   disabled
-                  className="mt-auto w-full py-1.5 rounded-lg text-xs font-semibold border border-light-border dark:border-dark-border text-light-textMuted dark:text-dark-textMuted bg-light-alt dark:bg-dark-alt cursor-default"
+                  className="mt-auto w-full py-1.5 rounded-[6px] text-xs font-semibold border border-vault-border text-vault-textTertiary bg-vault-raised cursor-default"
                 >
                   Current plan
                 </button>
               ) : isFree ? (
                 <button
                   disabled
-                  className="mt-auto w-full py-1.5 rounded-lg text-xs font-semibold border border-light-border dark:border-dark-border text-light-textMuted dark:text-dark-textMuted bg-light-alt dark:bg-dark-alt cursor-default"
+                  className="mt-auto w-full py-1.5 rounded-[6px] text-xs font-semibold border border-vault-border text-vault-textTertiary bg-vault-raised cursor-default"
                 >
                   Free forever
                 </button>
@@ -368,7 +368,7 @@ function PlanPicker({ plans, currentPlanId, hasActiveSub, billing, onBillingChan
                 <button
                   onClick={() => onSelect(plan, !hasActiveSub)}
                   disabled={!!selectLoading}
-                  className="mt-auto w-full py-1.5 rounded-lg text-xs font-semibold bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white transition disabled:opacity-60 disabled:cursor-wait"
+                  className="mt-auto w-full py-1.5 rounded-[6px] text-xs font-semibold bg-vault-accent hover:bg-vault-accentHover dark:bg-vault-accent dark:hover:bg-vault-accentHover text-white transition disabled:opacity-60 disabled:cursor-wait"
                 >
                   {isLoading ? "…" : hasActiveSub ? `Switch to ${plan.name}` : `Choose ${plan.name}`}
                 </button>
@@ -386,40 +386,40 @@ function PlanPicker({ plans, currentPlanId, hasActiveSub, billing, onBillingChan
 function TransactionHistory({ transactions }) {
   if (!transactions.length) {
     return (
-      <p className="text-sm text-light-textMuted dark:text-dark-textMuted">No billing history yet.</p>
+      <p className="text-sm text-vault-textTertiary">No billing history yet.</p>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface overflow-hidden">
-      <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto] gap-4 px-5 py-3 border-b border-light-border dark:border-dark-border text-xs font-semibold text-light-textMuted dark:text-dark-textMuted uppercase tracking-wide">
+    <div className="rounded-[10px] border border-vault-border bg-vault-surface overflow-hidden">
+      <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto] gap-4 px-5 py-3 border-b border-vault-border text-xs font-semibold text-vault-textTertiary uppercase tracking-wide">
         <div>Description</div>
         <div>Date</div>
         <div>Amount</div>
         <div>Status</div>
       </div>
-      <ul className="divide-y divide-light-border dark:divide-dark-border">
+      <ul className="divide-y divide-vault-border dark:divide-vault-border">
         {transactions.map((t) => (
           <li
             key={t.id}
             className="px-5 py-3 grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-1 sm:gap-4 items-center text-sm"
           >
-            <div className="font-medium text-light-text dark:text-dark-text">
+            <div className="font-medium text-vault-text">
               {t.description || t.type}
             </div>
-            <div className="text-xs text-light-textMuted dark:text-dark-textMuted">
+            <div className="text-xs text-vault-textTertiary">
               {fmtDate(t.createdAt)}
             </div>
-            <div className="text-light-text dark:text-dark-text">
+            <div className="text-vault-text">
               £{Number(t.amount).toFixed(2)}
             </div>
             <div>
-              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
+              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-[6px] border ${
                 t.status === "completed"
                   ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
                   : t.status === "pending"
                   ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
-                  : "bg-light-alt dark:bg-dark-alt text-light-textMuted dark:text-dark-textMuted border-light-border dark:border-dark-border"
+                  : "bg-vault-raised text-vault-textTertiary border-vault-border"
               }`}>
                 {t.status}
               </span>
@@ -536,8 +536,8 @@ export default function SubscriptionTab() {
   if (loading) {
     return (
       <div className="animate-pulse space-y-4 py-4">
-        <div className="h-24 rounded-2xl bg-light-border/30 dark:bg-dark-border/30" />
-        <div className="h-52 rounded-2xl bg-light-border/30 dark:bg-dark-border/30" />
+        <div className="h-24 rounded-[10px] bg-vault-border/30 dark:bg-vault-border/30" />
+        <div className="h-52 rounded-[10px] bg-vault-border/30 dark:bg-vault-border/30" />
       </div>
     );
   }
@@ -547,7 +547,7 @@ export default function SubscriptionTab() {
 
   return (
     <div className="space-y-8">
-      <h2 className="text-xl font-extrabold text-light-primary dark:text-dark-primary">
+      <h2 className="text-xl font-extrabold text-vault-accent dark:text-vault-accent">
         Subscription & Billing
       </h2>
 
@@ -566,7 +566,7 @@ export default function SubscriptionTab() {
 
       {/* Plan picker */}
       <section>
-        <h3 className="text-base font-bold mb-3 text-light-primary dark:text-dark-primary">Plans</h3>
+        <h3 className="text-base font-bold mb-3 text-vault-accent dark:text-vault-accent">Plans</h3>
         <PlanPicker
           plans={plans}
           currentPlanId={currentPlanId}
@@ -576,9 +576,9 @@ export default function SubscriptionTab() {
           onSelect={handleSelectPlan}
           selectLoading={selectLoading}
         />
-        <p className="mt-3 text-xs text-light-textMuted dark:text-dark-textMuted">
+        <p className="mt-3 text-xs text-vault-textTertiary">
           All prices in GBP.{" "}
-          <a href="/subscriptions" className="underline underline-offset-2 hover:text-light-text dark:hover:text-dark-text transition">
+          <a href="/subscriptions" className="underline underline-offset-2 hover:text-vault-text dark:hover:text-vault-text transition">
             View full plan comparison →
           </a>
         </p>
@@ -586,7 +586,7 @@ export default function SubscriptionTab() {
 
       {/* Billing history */}
       <section>
-        <h3 className="text-base font-bold mb-3 text-light-primary dark:text-dark-primary">Billing History</h3>
+        <h3 className="text-base font-bold mb-3 text-vault-accent dark:text-vault-accent">Billing History</h3>
         <TransactionHistory transactions={transactions} />
       </section>
 

@@ -89,6 +89,52 @@ function toFiniteOrNull(value) {
   return Number.isFinite(num) && num > 0 ? num : null;
 }
 
+/* ---------------- Era banner artwork (optional, drop-in) ---------------- */
+// Per-era crop position for the banner art — artwork composition varies
+// (logo wordmarks, character placement), so each era can override the
+// default. Add an entry here when a new banner's default crop looks off.
+const ERA_BANNER_POSITION_OVERRIDES = {
+  sv: "center 0%",
+  swsh: "center 80%",
+  sm: "center 40%",
+  xy: "center 30%",
+  bw: "center 40%",
+};
+const ERA_BANNER_DEFAULT_POSITION = "center 30%";
+
+function eraBannerPosition(eraKey) {
+  return ERA_BANNER_POSITION_OVERRIDES[eraKey] || ERA_BANNER_DEFAULT_POSITION;
+}
+
+// Put a file named "<era-key>.jpg" (or .png/.webp) in
+// public/assets/era-banners/ — e.g. "sv.jpg", "swsh.png" — and it's picked
+// up automatically as that era's banner background. Eras without a file
+// fall back to the set-logo collage.
+const ERA_BANNER_DIR = "assets/era-banners";
+const ERA_BANNER_EXTENSIONS = ["jpg", "jpeg", "png", "webp"];
+
+function loadEraBannerMap(fs, publicDir) {
+  const map = {};
+  const dir = path.join(publicDir, ERA_BANNER_DIR);
+  if (!fs.existsSync(dir)) return map;
+
+  try {
+    for (const key of Object.keys(ERA_LABELS)) {
+      for (const ext of ERA_BANNER_EXTENSIONS) {
+        const filePath = path.join(dir, `${key}.${ext}`);
+        if (fs.existsSync(filePath)) {
+          map[key] = `/${ERA_BANNER_DIR}/${key}.${ext}`;
+          break;
+        }
+      }
+    }
+  } catch (err) {
+    devWarn("Unable to read era banner assets:", err);
+  }
+
+  return map;
+}
+
 function resolveRepoPath(fs, ...segments) {
   const roots = [
     process.cwd(),
@@ -104,28 +150,17 @@ function resolveRepoPath(fs, ...segments) {
   return null;
 }
 
-/* ----------------------- Polished Set Logo chip ---------------------- */
+/* ----------------------- Flat set logo tile ---------------------- */
 function SetLogo({ name, code }) {
   const src = getSetLogo(name, code);
   return (
-    <div
-      className={[
-        "relative w-28 h-28 sm:w-32 sm:h-32",
-        "rounded-2xl overflow-hidden",
-        "bg-light-alt dark:bg-dark-alt",
-        "shadow-inner ring-1 ring-black/5 dark:ring-white/5",
-        "before:content-[''] before:absolute before:inset-0",
-        "before:bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.12)_0%,rgba(255,255,255,0)_65%)]",
-        "dark:before:bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0)_65%)]",
-        "group-hover:scale-[1.02] group-hover:ring-black/10 dark:group-hover:ring-white/10 transition-transform",
-      ].join(" ")}
-    >
+    <div className="relative h-20 w-20 flex-none overflow-hidden rounded-[6px] bg-vault-raised">
       <Image
         src={src}
         alt={`${name || code?.toUpperCase() || "Set"} logo`}
         fill
-        sizes="(max-width: 640px) 112px, 128px"
-        className="object-contain object-center drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)] p-3"
+        sizes="80px"
+        className="object-contain object-center p-2.5"
         quality={90}
       />
     </div>
@@ -133,7 +168,7 @@ function SetLogo({ name, code }) {
 }
 
 /* --------------------------------- Page --------------------------------- */
-export default function SetsPage({ sets }) {
+export default function SetsPage({ sets, eraBanners = {} }) {
   const enhanced = useMemo(
     () =>
       sets.map((set) => {
@@ -206,25 +241,45 @@ export default function SetsPage({ sets }) {
         description: "Browse every Pokémon TCG set with eras, quick filters, and search.",
       }}
     >
-      <div className="mx-auto max-w-[1200px] px-5 py-8 md:py-12">
-        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-6">
-          Pokémon TCG Sets
-        </h1>
+      <div className="min-h-screen bg-vault-bg">
+        {/* HERO / INTRO */}
+        <section className="w-full border-b border-vault-border px-5 pt-16 pb-10 sm:px-7">
+          <div className="mx-auto max-w-7xl">
+            <p className="mb-4 font-vault-body text-[11px] font-semibold uppercase tracking-[0.08em] text-vault-textTertiary">
+              Catalog · Every era
+            </p>
 
-        {/* Filters */}
-        <div className="bg-light-surface dark:bg-dark-surface rounded-2xl shadow border border-light-border dark:border-dark-border p-5 md:p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-3">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search sets by name or code…"
-              className="w-full border rounded-xl px-4 py-3 text-base bg-light-alt dark:bg-dark-alt border-light-border dark:border-dark-border text-light-text dark:text-dark-text placeholder-light-textMuted dark:placeholder-dark-textMuted focus:border-light-accent dark:focus:border-dark-accent focus:outline-none transition"
-              aria-label="Search sets"
-            />
+            <h1 className="font-vault text-[36px] font-semibold leading-[1.15] tracking-tight text-vault-text sm:text-[42px]">
+              Pokémon TCG Sets
+            </h1>
+
+            <p className="mt-4 max-w-2xl text-[15px] leading-7 text-vault-textSecondary">
+              Every expansion, grouped by era, for discovery into a set&apos;s
+              full checklist.
+            </p>
+          </div>
+        </section>
+
+        <div className="mx-auto max-w-7xl px-5 py-12 sm:px-7">
+          {/* Filters */}
+          <div className="mb-10 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-vault-textTertiary">
+                <SearchGlyph />
+              </span>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search sets by name or code…"
+                className="w-full rounded-[10px] border border-vault-border bg-vault-surface py-2.5 pl-10 pr-4 text-[15px] text-vault-text placeholder-vault-textTertiary outline-none transition-colors focus:border-vault-accent"
+                aria-label="Search sets"
+              />
+            </div>
+
             <select
               value={eraFilter}
               onChange={(e) => setEraFilter(e.target.value)}
-              className="w-full border rounded-xl px-4 py-3 text-base bg-light-alt dark:bg-dark-alt border-light-border dark:border-dark-border text-light-text dark:text-dark-text focus:border-light-accent dark:focus:border-dark-accent focus:outline-none transition"
+              className="rounded-[10px] border border-vault-border bg-vault-surface px-4 py-2.5 text-[15px] text-vault-text outline-none transition-colors focus:border-vault-accent sm:w-56"
               aria-label="Filter by era"
             >
               <option value="all">All eras</option>
@@ -236,74 +291,141 @@ export default function SetsPage({ sets }) {
             </select>
           </div>
 
-          {/* Quick era pills */}
-          <div className="mt-4 flex flex-wrap gap-2">
+          {/* Quick era chips */}
+          <div className="mb-12 flex flex-wrap gap-2">
             <button
+              type="button"
               onClick={() => setEraFilter("all")}
-              className={[
-                "px-3 py-1.5 rounded-xl text-sm border transition",
+              className={`rounded-[6px] px-3 py-1.5 text-[13px] font-medium transition-colors ${
                 eraFilter === "all"
-                  ? "bg-light-accent dark:bg-dark-accent text-light-surface dark:text-dark-surface border-transparent"
-                  : "bg-light-alt dark:bg-dark-alt border-light-border dark:border-dark-border hover:border-light-accent dark:hover:border-dark-accent",
-              ].join(" ")}
+                  ? "bg-vault-accent text-vault-text"
+                  : "bg-vault-raised text-vault-textSecondary hover:text-vault-text"
+              }`}
             >
               All
             </button>
             {erasInData.map((key) => (
               <button
+                type="button"
                 key={key}
                 onClick={() => setEraFilter(key)}
-                className={[
-                  "px-3 py-1.5 rounded-xl text-sm border transition",
-                  eraFilter === key
-                    ? "bg-light-accent dark:bg-dark-accent text-light-surface dark:text-dark-surface border-transparent"
-                    : "bg-light-alt dark:bg-dark-alt border-light-border dark:border-dark-border hover:border-light-accent dark:hover:border-dark-accent",
-                ].join(" ")}
                 title={ERA_LABELS[key] || ERA_LABELS.misc}
+                className={`rounded-[6px] px-3 py-1.5 text-[13px] font-medium transition-colors ${
+                  eraFilter === key
+                    ? "bg-vault-accent text-vault-text"
+                    : "bg-vault-raised text-vault-textSecondary hover:text-vault-text"
+                }`}
               >
                 {ERA_LABELS[key] || ERA_LABELS.misc}
               </button>
             ))}
           </div>
-        </div>
 
-        {/* Grouped sections */}
-        {grouped.length === 0 ? (
-          <div className="text-center text-light-textMuted dark:text-dark-textMuted py-16">
-            No sets match your filters.
-          </div>
-        ) : (
-          grouped.map(({ eraKey, label, items }) => (
-            <section key={eraKey} className="mb-10">
-              <h2 className="text-xl font-bold mb-4">{label}</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
-                {items.map((set) => (
-                  <Link key={set.code} href={`/sets/${set.code}`} className="group">
-                    <div
-                      className={[
-                        "bg-light-surface dark:bg-dark-surface",
-                        "rounded-2xl border border-light-border dark:border-dark-border",
-                        "shadow hover:shadow-2xl transition p-5",
-                        "flex flex-col items-center text-center",
-                      ].join(" ")}
-                    >
-                      <SetLogo name={set.name} code={set.code} />
-                      <h3 className="mt-3 text-lg font-semibold">{set.name}</h3>
-                      <p className="text-xs text-light-textMuted dark:text-dark-textMuted mt-1">
-                        Code: {set.code?.toUpperCase()}
+          {/* Grouped sections */}
+          {grouped.length === 0 ? (
+            <div className="py-16 text-center text-sm text-vault-textTertiary">
+              No sets match your filters.
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {grouped.map(({ eraKey, label, items }) => (
+                <section
+                  key={eraKey}
+                  className="overflow-hidden rounded-[14px] border border-vault-border bg-vault-surface"
+                >
+                  {/* Era banner — real artwork if supplied, logo collage otherwise */}
+                  <div className="relative h-36 overflow-hidden border-b border-vault-border bg-vault-raised sm:h-40">
+                    {eraBanners[eraKey] ? (
+                      <Image
+                        src={eraBanners[eraKey]}
+                        alt=""
+                        fill
+                        sizes="100vw"
+                        className="object-cover"
+                        style={{ objectPosition: eraBannerPosition(eraKey) }}
+                        priority={false}
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-end gap-4 pr-4 opacity-50">
+                        {items.slice(0, 5).map((set) => (
+                          <div key={set.code} className="relative h-24 w-24 flex-none sm:h-28 sm:w-28">
+                            <Image
+                              src={getSetLogo(set.name, set.code)}
+                              alt=""
+                              fill
+                              sizes="112px"
+                              className="object-contain object-center"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="absolute inset-0 bg-gradient-to-r from-vault-bg via-vault-bg/85 to-vault-bg/10" />
+
+                    <div className="relative flex h-full flex-col justify-center px-5 sm:px-6">
+                      <p className="font-vault-body text-[11px] font-semibold uppercase tracking-[0.1em] text-vault-accent">
+                        Era
                       </p>
-                      {/* <p className="text-xs text-light-textMuted dark:text-dark-textMuted">
-                        Cards: {set.totalCards != null ? set.totalCards : "TBA"}
-                      </p> */}
+                      <div className="mt-1 flex items-baseline gap-3">
+                        <h2 className="font-vault text-2xl font-semibold text-vault-text">
+                          {label}
+                        </h2>
+                        <span className="flex-none text-[13px] text-vault-textTertiary">
+                          {items.length} {items.length === 1 ? "set" : "sets"}
+                        </span>
+                      </div>
                     </div>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          ))
-        )}
+                  </div>
+
+                  {/* Set tile grid, nested inside the era panel */}
+                  <div className="grid grid-cols-2 gap-4 p-5 sm:grid-cols-3 sm:p-6 md:grid-cols-4 lg:grid-cols-5">
+                    {items.map((set) => (
+                      <Link
+                        key={set.code}
+                        href={`/sets/${set.code}`}
+                        className="group flex flex-col items-center rounded-[10px] border border-vault-border bg-vault-raised p-4 text-center transition-colors hover:border-vault-borderStrong"
+                      >
+                        <SetLogo name={set.name} code={set.code} />
+
+                        <h3 className="mt-3 line-clamp-2 font-vault text-[13px] font-semibold text-vault-text transition-colors group-hover:text-vault-accent">
+                          {set.name}
+                        </h3>
+                        <p className="mt-1 text-[11px] text-vault-textTertiary">
+                          {set.code?.toUpperCase()}
+                          {set.totalCards != null ? ` · ${set.totalCards} cards` : ""}
+                        </p>
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </Layout>
+  );
+}
+
+function SearchGlyph() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M10.8 18.1a7.3 7.3 0 1 1 0-14.6 7.3 7.3 0 0 1 0 14.6z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M16.2 16.2 21 21"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
@@ -501,10 +623,14 @@ async function loadSetsFromFiles() {
 }
 
 export async function getStaticProps() {
+  const fs = (await import("fs")).default || (await import("fs"));
+  const publicDir = path.join(process.cwd(), "public");
+  const eraBanners = loadEraBannerMap(fs, publicDir);
+
   try {
     const sets = await loadSetsFromBackend();
     if (sets.length) {
-      return { props: { sets } };
+      return { props: { sets, eraBanners } };
     }
     devWarn("GraphQL returned no sets; falling back to local data files.");
   } catch (err) {
@@ -512,5 +638,5 @@ export async function getStaticProps() {
   }
 
   const fallbackSets = await loadSetsFromFiles();
-  return { props: { sets: fallbackSets } };
+  return { props: { sets: fallbackSets, eraBanners } };
 }

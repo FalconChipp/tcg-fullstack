@@ -33,34 +33,34 @@ export default function ColorSelector(props) {
   );
 
   var labelCls =
-    "text-xs font-semibold uppercase tracking-wide text-light-textMuted dark:text-dark-textMuted mb-1";
+    "text-xs font-semibold uppercase tracking-wide text-vault-textTertiary mb-1";
 
   // Slightly tighter grid spacing
   var gridCls = "grid grid-cols-3 sm:grid-cols-4 gap-2";
 
   // Smaller, tighter cards
   var cardBaseCls =
-    "group relative flex flex-col rounded-lg border bg-light-surface dark:bg-dark-surface " +
+    "group relative flex flex-col rounded-[6px] border bg-vault-surface " +
     "transition-colors cursor-pointer overflow-hidden";
 
   // Smaller image area
-  var imageWrapperCls = "relative w-full pb-[60%] bg-light-alt dark:bg-dark-alt";
+  var imageWrapperCls = "relative w-full pb-[60%] bg-vault-raised";
   var imageCls = "absolute inset-0 w-full h-full object-cover";
 
   // Smaller text
   var nameCls =
-    "text-[11px] font-medium text-light-strong dark:text-dark-strong truncate";
+    "text-[11px] font-medium text-vault-text truncate";
 
   var subtitleCls =
-    "text-[10px] text-light-textMuted dark:text-dark-textMuted truncate";
+    "text-[10px] text-vault-textTertiary truncate";
 
   // Smaller "Selected / Choose" chip
   var chipBaseCls =
-    "mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-medium";
+    "mt-1 inline-flex items-center rounded-[6px] px-2 py-0.5 text-[9px] font-medium";
 
   var toggleCls =
-    "mt-1 text-[11px] font-medium text-light-accent dark:text-dark-accent " +
-    "hover:text-light-accentLight dark:hover:text-dark-accentLight cursor-pointer";
+    "mt-1 text-[11px] font-medium text-vault-accent " +
+    "hover:text-vault-accentHover dark:hover:text-vault-accentHover cursor-pointer";
 
   // --- NEW: map simple colour names -> hex swatch colours (frontend only) ---
   var SWATCH_MAP = {
@@ -117,16 +117,16 @@ export default function ColorSelector(props) {
 
         var cardCls =
           cardBaseCls +
-          " border-light-border dark:border-dark-border " +
+          " border-vault-border " +
           (isSelected
-            ? " ring-1 ring-light-accent dark:ring-dark-accent"
-            : " hover:bg-light-elevated dark:hover:bg-dark-elevated");
+            ? " ring-1 ring-vault-accent dark:ring-vault-accent"
+            : " hover:bg-vault-raised dark:hover:bg-vault-raised");
 
         var chipCls =
           chipBaseCls +
           (isSelected
-            ? " bg-light-accent text-white dark:bg-dark-accent dark:text-white"
-            : " bg-light-alt text-light-textMuted dark:bg-dark-alt dark:text-dark-textMuted");
+            ? " bg-vault-accent text-white dark:bg-vault-accent dark:text-white"
+            : " bg-vault-raised text-vault-textTertiary dark:bg-vault-raised dark:text-vault-textTertiary");
 
         // NEW: derive a swatch colour if there is no imageUrl
         var swatchColor = !v.imageUrl ? getSwatchColorFromName(v.name) : null;
@@ -164,7 +164,7 @@ export default function ColorSelector(props) {
                   {
                     className:
                       "absolute inset-0 flex items-center justify-center text-[10px] " +
-                      "text-light-textMuted dark:text-dark-textMuted",
+                      "text-vault-textTertiary",
                   },
                   "No image"
                 )

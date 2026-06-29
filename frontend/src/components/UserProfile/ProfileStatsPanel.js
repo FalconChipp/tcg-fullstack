@@ -19,19 +19,19 @@ export default function ProfileStatsPanel({
 
   // Card & typography palette classes
   const cardClass = `
-    rounded-2xl px-6 py-4 flex items-center gap-3 mb-3 
-    bg-light-surface dark:bg-dark-surface 
-    shadow border border-light-border dark:border-dark-border
+    rounded-[10px] px-6 py-4 flex items-center gap-3 mb-3 
+    bg-vault-surface 
+     border border-vault-border
   `;
   const labelClass = `
     text-xs font-semibold uppercase tracking-wide mb-1 
-    text-light-textMuted dark:text-dark-textMuted
+    text-vault-textTertiary
   `;
   const valueClass = `
-    text-xl font-bold text-light-primary dark:text-white
+    text-xl font-bold text-vault-accent dark:text-white
   `;
   const descClass = `
-    text-xs text-light-textSecondary dark:text-dark-textSecondary
+    text-xs text-vault-textSecondary
   `;
 
   return (
@@ -39,7 +39,7 @@ export default function ProfileStatsPanel({
       <div className="flex flex-col gap-3">
         {/* Collection Value */}
         <div className={cardClass}>
-          <BadgeDollarSign className="w-6 h-6 text-light-accent dark:text-dark-accent" />
+          <BadgeDollarSign className="w-6 h-6 text-vault-accent" />
           <div>
             <div className={labelClass}>Collection Value</div>
             <div className={valueClass}>{formatCurrency(stats.collectionValue)}</div>
@@ -48,7 +48,7 @@ export default function ProfileStatsPanel({
         </div>
         {/* Cards Collected */}
         <div className={cardClass}>
-          <Book className="w-6 h-6 text-light-secondary dark:text-dark-secondary" />
+          <Book className="w-6 h-6 text-vault-textSecondary dark:text-vault-textSecondary" />
           <div>
             <div className={labelClass}>Cards Collected</div>
             <div className={valueClass}>{stats.cardsCollected ?? "—"}</div>
@@ -57,7 +57,7 @@ export default function ProfileStatsPanel({
         </div>
         {/* Unique Sets */}
         <div className={cardClass}>
-          <Gem className="w-6 h-6 text-light-warning dark:text-dark-warning" />
+          <Gem className="w-6 h-6 text-vault-warning dark:text-vault-warning" />
           <div>
             <div className={labelClass}>Unique Sets</div>
             <div className={valueClass}>{stats.uniqueSets ?? "—"}</div>
@@ -66,7 +66,7 @@ export default function ProfileStatsPanel({
         </div>
         {/* Completion Rate */}
         <div className={cardClass}>
-          <Sparkles className="w-6 h-6 text-light-success dark:text-dark-success" />
+          <Sparkles className="w-6 h-6 text-vault-success dark:text-vault-success" />
           <div>
             <div className={labelClass}>Completion Rate</div>
             <div className={valueClass}>
@@ -77,9 +77,9 @@ export default function ProfileStatsPanel({
             <div className={descClass}>Percent complete</div>
             {/* Progress bar (uses accent color for progress) */}
             {typeof stats.completionRate === "number" && (
-              <div className="h-2 w-full bg-light-alt dark:bg-dark-alt rounded mt-1">
+              <div className="h-2 w-full bg-vault-raised rounded mt-1">
                 <div
-                  className="h-2 bg-light-accent dark:bg-dark-accent rounded"
+                  className="h-2 bg-vault-accent rounded"
                   style={{ width: `${stats.completionRate}%` }}
                 />
               </div>
@@ -89,7 +89,7 @@ export default function ProfileStatsPanel({
         {/* Most Valuable Card */}
         {stats.highestValueCard && (
           <div className={cardClass}>
-            <Star className="w-6 h-6 text-light-warning dark:text-dark-warning" />
+            <Star className="w-6 h-6 text-vault-warning dark:text-vault-warning" />
             <div>
               <div className={labelClass}>Most Valuable Card</div>
               <div className={valueClass}>

@@ -88,7 +88,7 @@ function Steps({ current }) {
         return (
           <React.Fragment key={label}>
             <div className="flex items-center gap-1.5">
-              <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+              <div className={`w-5 h-5 rounded-[6px] flex items-center justify-center text-[10px] font-bold shrink-0 ${
                 done   ? "bg-emerald-500 text-white" :
                 active ? "bg-indigo-600 text-white"  :
                          "bg-white/[0.08] text-neutral-500"
@@ -163,7 +163,7 @@ function AddCardsStep({ batch, onAdd, onRemove, onUpdateItem, onNext, capsMax })
               key={c}
               type="button"
               onClick={() => setDefaultCond(c)}
-              className={`px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors ${
+              className={`px-2.5 py-0.5 rounded-[6px] text-xs font-medium border transition-colors ${
                 defaultCond === c
                   ? "bg-indigo-600/80 border-indigo-500 text-white"
                   : "bg-white/[0.04] border-white/10 text-neutral-400 hover:border-white/25"
@@ -183,9 +183,9 @@ function AddCardsStep({ batch, onAdd, onRemove, onUpdateItem, onNext, capsMax })
             placeholder="Search your collection…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg bg-white/[0.06] border border-white/10 px-3 py-2 text-xs text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-indigo-500"
+            className="w-full rounded-[6px] bg-white/[0.06] border border-white/10 px-3 py-2 text-xs text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-indigo-500"
           />
-          <div className="overflow-y-auto max-h-72 rounded-xl border border-white/[0.06] divide-y divide-white/[0.04]">
+          <div className="overflow-y-auto max-h-72 rounded-[10px] border border-white/[0.06] divide-y divide-white/[0.04]">
             {colLoading && (
               <div className="py-8 text-center text-xs text-neutral-600">Loading collection…</div>
             )}
@@ -247,13 +247,13 @@ function AddCardsStep({ batch, onAdd, onRemove, onUpdateItem, onNext, capsMax })
           </div>
 
           {batch.length === 0 ? (
-            <div className="flex-1 rounded-xl border border-dashed border-white/[0.08] flex items-center justify-center min-h-[200px]">
+            <div className="flex-1 rounded-[10px] border border-dashed border-white/[0.08] flex items-center justify-center min-h-[200px]">
               <p className="text-xs text-neutral-600">Select cards from your collection</p>
             </div>
           ) : (
             <div className="overflow-y-auto max-h-72 space-y-1.5">
               {batch.map((item, i) => (
-                <div key={i} className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 flex items-center gap-2">
+                <div key={i} className="rounded-[6px] border border-white/[0.08] bg-white/[0.03] px-3 py-2 flex items-center gap-2">
                   <div className="shrink-0 w-6 h-9 rounded overflow-hidden bg-white/[0.04]">
                     {item.card?.images?.small
                       ? <img src={item.card.images.small} alt="" className="w-full h-full object-contain" />
@@ -306,7 +306,7 @@ function AddCardsStep({ batch, onAdd, onRemove, onUpdateItem, onNext, capsMax })
           type="button"
           onClick={onNext}
           disabled={batch.length === 0}
-          className="px-5 py-2 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition disabled:opacity-40 disabled:cursor-not-allowed"
+          className="px-5 py-2 rounded-[10px] text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Review {batch.length > 0 ? `${batch.length} listing${batch.length !== 1 ? "s" : ""}` : ""} →
         </button>
@@ -349,7 +349,7 @@ function ReviewStep({ batch, onUpdateItem, onRemove, onBack, onSubmit, submittin
   return (
     <div className="flex flex-col gap-4">
       {/* Card list */}
-      <div className="rounded-xl border border-white/[0.08] overflow-hidden">
+      <div className="rounded-[10px] border border-white/[0.08] overflow-hidden">
         <div className="hidden sm:grid grid-cols-[1fr_80px_80px_32px] gap-3 px-4 py-2 border-b border-white/[0.06] text-[10px] font-semibold text-neutral-500 uppercase tracking-wide">
           <div>Card</div><div>Condition</div><div>Price</div><div />
         </div>
@@ -400,7 +400,7 @@ function ReviewStep({ batch, onUpdateItem, onRemove, onBack, onSubmit, submittin
       </div>
 
       {/* Shipping */}
-      <div className="rounded-xl border border-white/[0.08] p-4">
+      <div className="rounded-[10px] border border-white/[0.08] p-4">
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-semibold text-neutral-300">Shipping (applied to all)</span>
           <label className="flex items-center gap-1.5 text-xs text-neutral-500 cursor-pointer">
@@ -466,7 +466,7 @@ function ReviewStep({ batch, onUpdateItem, onRemove, onBack, onSubmit, submittin
       </div>
 
       {error && (
-        <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs text-rose-400">
+        <div className="rounded-[6px] border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs text-rose-400">
           {error}
         </div>
       )}
@@ -483,7 +483,7 @@ function ReviewStep({ batch, onUpdateItem, onRemove, onBack, onSubmit, submittin
           type="button"
           onClick={handleSubmit}
           disabled={submitting || batch.length === 0}
-          className="px-5 py-2 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition disabled:opacity-50 disabled:cursor-wait"
+          className="px-5 py-2 rounded-[10px] text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition disabled:opacity-50 disabled:cursor-wait"
         >
           {submitting ? "Creating listings…" : `Create ${batch.length} listing${batch.length !== 1 ? "s" : ""}`}
         </button>
@@ -540,7 +540,7 @@ function ProofStep({ batchId, proofCode, count, onBack, onDone }) {
   if (result === "expired") {
     return (
       <div className="flex flex-col items-center gap-5 py-6 text-center">
-        <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+        <div className="w-12 h-12 rounded-[6px] bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
           <svg className="w-6 h-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
           </svg>
@@ -548,7 +548,7 @@ function ProofStep({ batchId, proofCode, count, onBack, onDone }) {
         <div>
           <p className="font-semibold text-neutral-100 mb-1">Proof code expired</p>
           <p className="text-xs text-neutral-500 mb-3">A new code has been issued. Re-photograph with the new code below.</p>
-          <div className="inline-block bg-white/[0.06] border border-white/10 rounded-xl px-5 py-3">
+          <div className="inline-block bg-white/[0.06] border border-white/10 rounded-[10px] px-5 py-3">
             <p className="text-[11px] text-neutral-500 mb-1 uppercase tracking-wide">New proof code</p>
             <p className="text-2xl font-black tracking-[0.2em] text-neutral-100 font-mono">{newCode}</p>
           </div>
@@ -556,7 +556,7 @@ function ProofStep({ batchId, proofCode, count, onBack, onDone }) {
         <button
           type="button"
           onClick={() => { setResult(null); setImage(null); setPreview(null); setNewCode(null); }}
-          className="px-5 py-2 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition"
+          className="px-5 py-2 rounded-[10px] text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition"
         >
           Upload new photo
         </button>
@@ -568,7 +568,7 @@ function ProofStep({ batchId, proofCode, count, onBack, onDone }) {
   if (result === "approved") {
     return (
       <div className="flex flex-col items-center gap-5 py-6 text-center">
-        <div className="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+        <div className="w-14 h-14 rounded-[6px] bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
           <svg className="w-7 h-7 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
@@ -582,7 +582,7 @@ function ProofStep({ batchId, proofCode, count, onBack, onDone }) {
         <button
           type="button"
           onClick={onDone}
-          className="px-6 py-2.5 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition"
+          className="px-6 py-2.5 rounded-[10px] text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition"
         >
           Done
         </button>
@@ -594,7 +594,7 @@ function ProofStep({ batchId, proofCode, count, onBack, onDone }) {
   if (result === "pending_admin") {
     return (
       <div className="flex flex-col items-center gap-5 py-6 text-center">
-        <div className="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+        <div className="w-14 h-14 rounded-[6px] bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
           <svg className="w-7 h-7 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -609,7 +609,7 @@ function ProofStep({ batchId, proofCode, count, onBack, onDone }) {
         <button
           type="button"
           onClick={onDone}
-          className="px-6 py-2.5 rounded-xl text-sm font-semibold border border-white/10 text-neutral-400 hover:bg-white/[0.06] transition"
+          className="px-6 py-2.5 rounded-[10px] text-sm font-semibold border border-white/10 text-neutral-400 hover:bg-white/[0.06] transition"
         >
           Close
         </button>
@@ -620,20 +620,20 @@ function ProofStep({ batchId, proofCode, count, onBack, onDone }) {
   return (
     <div className="flex flex-col gap-5">
       {/* Proof code */}
-      <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] p-5">
+      <div className="rounded-[10px] border border-amber-500/20 bg-amber-500/[0.06] p-5">
         <p className="text-[11px] font-semibold text-amber-400 uppercase tracking-wide mb-2">Your proof code</p>
         <p className="text-3xl font-black tracking-[0.2em] text-neutral-100 font-mono mb-3">{proofCode}</p>
         <ol className="space-y-1.5 text-xs text-neutral-400">
           <li className="flex gap-2">
-            <span className="shrink-0 w-4 h-4 rounded-full bg-amber-500/20 text-amber-400 text-[9px] font-bold flex items-center justify-center">1</span>
+            <span className="shrink-0 w-4 h-4 rounded-[6px] bg-amber-500/20 text-amber-400 text-[9px] font-bold flex items-center justify-center">1</span>
             Lay all <strong className="text-neutral-200 mx-1">{count} card{count !== 1 ? "s" : ""}</strong> face-up together in one shot.
           </li>
           <li className="flex gap-2">
-            <span className="shrink-0 w-4 h-4 rounded-full bg-amber-500/20 text-amber-400 text-[9px] font-bold flex items-center justify-center">2</span>
+            <span className="shrink-0 w-4 h-4 rounded-[6px] bg-amber-500/20 text-amber-400 text-[9px] font-bold flex items-center justify-center">2</span>
             Write <strong className="text-neutral-200 mx-1 font-mono">{proofCode}</strong> on a piece of paper and place it clearly in front of the cards.
           </li>
           <li className="flex gap-2">
-            <span className="shrink-0 w-4 h-4 rounded-full bg-amber-500/20 text-amber-400 text-[9px] font-bold flex items-center justify-center">3</span>
+            <span className="shrink-0 w-4 h-4 rounded-[6px] bg-amber-500/20 text-amber-400 text-[9px] font-bold flex items-center justify-center">3</span>
             Take one clear photo showing all cards face-up and the code visible.
           </li>
         </ol>
@@ -650,12 +650,12 @@ function ProofStep({ batchId, proofCode, count, onBack, onDone }) {
           onChange={(e) => handleFile(e.target.files?.[0])}
         />
         {preview ? (
-          <div className="relative rounded-xl overflow-hidden border border-white/10 bg-black/40">
+          <div className="relative rounded-[10px] overflow-hidden border border-white/10 bg-black/40">
             <img src={preview} alt="Proof" className="w-full max-h-52 object-contain" />
             <button
               type="button"
               onClick={() => { setImage(null); setPreview(null); }}
-              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-neutral-300 hover:text-white flex items-center justify-center transition"
+              className="absolute top-2 right-2 w-7 h-7 rounded-[6px] bg-black/60 text-neutral-300 hover:text-white flex items-center justify-center transition"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -666,7 +666,7 @@ function ProofStep({ batchId, proofCode, count, onBack, onDone }) {
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="w-full rounded-xl border-2 border-dashed border-white/10 hover:border-indigo-500/50 bg-white/[0.02] hover:bg-white/[0.04] transition py-10 flex flex-col items-center gap-2 text-neutral-600 hover:text-neutral-400"
+            className="w-full rounded-[10px] border-2 border-dashed border-white/10 hover:border-indigo-500/50 bg-white/[0.02] hover:bg-white/[0.04] transition py-10 flex flex-col items-center gap-2 text-neutral-600 hover:text-neutral-400"
           >
             <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -679,7 +679,7 @@ function ProofStep({ batchId, proofCode, count, onBack, onDone }) {
       </div>
 
       {error && (
-        <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs text-rose-400">
+        <div className="rounded-[6px] border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs text-rose-400">
           {error}
         </div>
       )}
@@ -697,7 +697,7 @@ function ProofStep({ batchId, proofCode, count, onBack, onDone }) {
           type="button"
           onClick={handleSubmit}
           disabled={!image || submitting}
-          className="px-5 py-2 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition disabled:opacity-40 disabled:cursor-not-allowed"
+          className="px-5 py-2 rounded-[10px] text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {submitting ? "Submitting…" : "Submit proof photo"}
         </button>
@@ -780,7 +780,7 @@ export default function BulkListingModal({ open, onClose, onComplete, capsMax = 
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-[#0d0f17] border border-white/[0.08] shadow-2xl flex flex-col"
+        className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[10px] bg-[#0d0f17] border border-white/[0.08]  flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -792,7 +792,7 @@ export default function BulkListingModal({ open, onClose, onComplete, capsMax = 
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-neutral-500 hover:text-neutral-100 hover:bg-white/[0.08] transition"
+            className="w-8 h-8 rounded-[6px] flex items-center justify-center text-neutral-500 hover:text-neutral-100 hover:bg-white/[0.08] transition"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />

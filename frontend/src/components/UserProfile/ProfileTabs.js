@@ -16,9 +16,9 @@ export default function ProfileTabs({ activeTab, onChange }) {
   return (
     <nav
       className="
-        sticky top-0 z-20 w-full bg-light-surface dark:bg-dark-surface mb-6
+        sticky top-0 z-20 w-full bg-vault-surface mb-6
         rounded-b-2xl
-        border-b border-x border-light-border dark:border-dark-border
+        border-b border-x border-vault-border
       "
       aria-label="Profile Sections"
     >
@@ -33,8 +33,8 @@ export default function ProfileTabs({ activeTab, onChange }) {
                 border-b-2
                 ${
                   activeTab === tab.key
-                    ? "text-light-accent dark:text-dark-accent border-light-accent dark:border-dark-accent bg-light-alt dark:bg-dark-alt"
-                    : "text-light-textMuted dark:text-dark-textMuted border-transparent hover:text-light-accent dark:hover:text-dark-accent hover:bg-light-alt/70 dark:hover:bg-dark-alt/70"
+                    ? "text-vault-accent border-vault-accent dark:border-vault-accent bg-vault-raised"
+                    : "text-vault-textTertiary border-transparent hover:text-vault-accent dark:hover:text-vault-accent hover:bg-vault-raised/70 dark:hover:bg-vault-raised/70"
                 }
                 focus:outline-none
               `}

@@ -83,12 +83,12 @@ loadPrefs.__defaults = (user) => ({
 
 function SectionCard({ title, subtitle, icon: Icon, children, accent = false }) {
   return (
-    <div className={`rounded-2xl border ${accent ? "border-light-accent/30 dark:border-dark-accent/30" : "border-light-border dark:border-dark-border"} bg-light-surface dark:bg-dark-surface overflow-hidden`}>
-      <div className={`px-6 py-4 border-b border-light-border dark:border-dark-border flex items-center gap-3 ${accent ? "bg-light-accent/5 dark:bg-dark-accent/5" : "bg-light-alt/50 dark:bg-dark-alt/50"}`}>
-        {Icon && <Icon className={`w-4.5 h-4.5 shrink-0 ${accent ? "text-light-accent dark:text-dark-accent" : "text-light-textMuted dark:text-dark-textMuted"}`} />}
+    <div className={`rounded-[10px] border ${accent ? "border-vault-accent/30 dark:border-vault-accent/30" : "border-vault-border"} bg-vault-surface overflow-hidden`}>
+      <div className={`px-6 py-4 border-b border-vault-border flex items-center gap-3 ${accent ? "bg-vault-accent/5 dark:bg-vault-accent/5" : "bg-vault-raised/50 dark:bg-vault-raised/50"}`}>
+        {Icon && <Icon className={`w-4.5 h-4.5 shrink-0 ${accent ? "text-vault-accent" : "text-vault-textTertiary"}`} />}
         <div>
-          <h3 className="text-sm font-bold text-light-text dark:text-dark-text">{title}</h3>
-          {subtitle && <p className="text-xs text-light-textMuted dark:text-dark-textMuted mt-0.5">{subtitle}</p>}
+          <h3 className="text-sm font-bold text-vault-text">{title}</h3>
+          {subtitle && <p className="text-xs text-vault-textTertiary mt-0.5">{subtitle}</p>}
         </div>
       </div>
       <div className="p-6">{children}</div>
@@ -104,11 +104,11 @@ function Toggle({ checked, onChange, disabled }) {
       aria-checked={checked}
       disabled={disabled}
       onClick={() => !disabled && onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition shrink-0
+      className={`relative inline-flex h-6 w-11 items-center rounded-[6px] transition shrink-0
         ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}
-        ${checked ? "bg-light-accent dark:bg-dark-accent" : "bg-light-border dark:bg-dark-border"}`}
+        ${checked ? "bg-vault-accent" : "bg-vault-border dark:bg-vault-border"}`}
     >
-      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition
+      <span className={`inline-block h-4 w-4 transform rounded-[6px] bg-white  transition
         ${checked ? "translate-x-6" : "translate-x-1"}`} />
     </button>
   );
@@ -117,8 +117,8 @@ function Toggle({ checked, onChange, disabled }) {
 function Field({ label, hint, children }) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-sm font-semibold text-light-text dark:text-dark-text">{label}</label>
-      {hint && <p className="text-xs text-light-textMuted dark:text-dark-textMuted">{hint}</p>}
+      <label className="block text-sm font-semibold text-vault-text">{label}</label>
+      {hint && <p className="text-xs text-vault-textTertiary">{hint}</p>}
       {children}
     </div>
   );
@@ -128,7 +128,7 @@ function Input({ className = "", ...props }) {
   return (
     <input
       {...props}
-      className={`w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-sm focus:outline-none focus:ring-2 focus:ring-light-accent/50 dark:focus:ring-dark-accent/50 transition ${className}`}
+      className={`w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-raised text-sm focus:outline-none focus:ring-2 focus:ring-vault-accent/50 dark:focus:ring-vault-accent/50 transition ${className}`}
     />
   );
 }
@@ -137,17 +137,17 @@ function Textarea({ className = "", ...props }) {
   return (
     <textarea
       {...props}
-      className={`w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-sm focus:outline-none focus:ring-2 focus:ring-light-accent/50 dark:focus:ring-dark-accent/50 transition resize-none ${className}`}
+      className={`w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-raised text-sm focus:outline-none focus:ring-2 focus:ring-vault-accent/50 dark:focus:ring-vault-accent/50 transition resize-none ${className}`}
     />
   );
 }
 
 function RowToggle({ label, description, checked, onChange, disabled }) {
   return (
-    <div className="flex items-center justify-between gap-4 py-3 border-b border-light-border/50 dark:border-dark-border/50 last:border-0">
+    <div className="flex items-center justify-between gap-4 py-3 border-b border-vault-border/50 dark:border-vault-border/50 last:border-0">
       <div>
         <p className="text-sm font-semibold">{label}</p>
-        {description && <p className="text-xs text-light-textMuted dark:text-dark-textMuted mt-0.5">{description}</p>}
+        {description && <p className="text-xs text-vault-textTertiary mt-0.5">{description}</p>}
       </div>
       <Toggle checked={checked} onChange={onChange} disabled={disabled} />
     </div>
@@ -169,12 +169,12 @@ function PayoutsSection({ walletBalance, walletCurrency, token }) {
       subtitle="How you receive earnings from sales"
     >
       {/* Model explanation */}
-      <div className="rounded-xl bg-light-alt dark:bg-dark-alt border border-light-border dark:border-dark-border p-4 mb-5">
+      <div className="rounded-[10px] bg-vault-raised border border-vault-border p-4 mb-5">
         <div className="flex items-start gap-3">
           <CheckCircle2 className="w-4.5 h-4.5 text-emerald-500 shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-semibold">No Stripe account needed to sell</p>
-            <p className="text-xs text-light-textSecondary dark:text-dark-textSecondary mt-1 leading-relaxed">
+            <p className="text-xs text-vault-textSecondary mt-1 leading-relaxed">
               When a buyer confirms receipt, your earnings (sale price minus platform fee) are credited
               directly to your SixByFive wallet. No external account setup required.
             </p>
@@ -185,33 +185,33 @@ function PayoutsSection({ walletBalance, walletCurrency, token }) {
       {/* Current balance */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <p className="text-xs text-light-textMuted dark:text-dark-textMuted uppercase tracking-wide font-semibold mb-1">
+          <p className="text-xs text-vault-textTertiary uppercase tracking-wide font-semibold mb-1">
             Wallet balance
           </p>
-          <p className="text-3xl font-black text-light-text dark:text-dark-text">{bal}</p>
-          <p className="text-xs text-light-textMuted dark:text-dark-textMuted mt-1">
+          <p className="text-3xl font-black text-vault-text">{bal}</p>
+          <p className="text-xs text-vault-textTertiary mt-1">
             Available to spend or withdraw
           </p>
         </div>
         <Link
           href="/account?tab=wallet"
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-light-border dark:border-dark-border hover:bg-light-alt dark:hover:bg-dark-alt text-sm font-semibold transition"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-[10px] border border-vault-border hover:bg-vault-raised dark:hover:bg-vault-raised text-sm font-semibold transition"
         >
           View wallet <ExternalLink className="w-3.5 h-3.5" />
         </Link>
       </div>
 
       {/* Withdrawal — handled in Wallet tab */}
-      <div className="rounded-xl border border-light-border dark:border-dark-border p-4 flex items-center justify-between gap-4">
+      <div className="rounded-[10px] border border-vault-border p-4 flex items-center justify-between gap-4">
         <div>
           <p className="text-sm font-semibold">Withdraw to bank</p>
-          <p className="text-xs text-light-textMuted dark:text-dark-textMuted mt-0.5">
+          <p className="text-xs text-vault-textTertiary mt-0.5">
             Transfer your balance — minimum £10, arrives within 1–3 business days
           </p>
         </div>
         <Link
           href="/account?tab=wallet"
-          className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl border border-light-border dark:border-dark-border hover:bg-light-alt dark:hover:bg-dark-alt text-sm font-semibold transition whitespace-nowrap"
+          className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-[10px] border border-vault-border hover:bg-vault-raised dark:hover:bg-vault-raised text-sm font-semibold transition whitespace-nowrap"
         >
           Go to Wallet <ExternalLink className="w-3.5 h-3.5" />
         </Link>
@@ -298,7 +298,7 @@ function DeliveryAddressSection({ token, initialAddress }) {
         )}
         <div className="flex justify-end">
           <button type="submit" disabled={saving}
-            className="px-4 py-2 rounded-xl text-xs font-semibold bg-light-accent dark:bg-dark-accent text-white hover:opacity-90 disabled:opacity-50 transition">
+            className="px-4 py-2 rounded-[10px] text-xs font-semibold bg-vault-accent text-white hover:opacity-90 disabled:opacity-50 transition">
             {saving ? "Saving…" : "Save address"}
           </button>
         </div>
@@ -378,7 +378,7 @@ function ReturnAddressSection({ token, initialAddress }) {
         </Field>
         <div className="flex items-center gap-3">
           <button type="submit" disabled={saving}
-            className="px-5 py-2 rounded-xl bg-light-accent dark:bg-dark-accent text-white text-sm font-bold hover:bg-light-accentLight dark:hover:bg-dark-accentLight transition disabled:opacity-40 flex items-center gap-2">
+            className="px-5 py-2 rounded-[10px] bg-vault-accent text-white text-sm font-bold hover:bg-vault-accentHover transition disabled:opacity-40 flex items-center gap-2">
             {saving && <Loader2 className="w-4 h-4 animate-spin" />}
             {saving ? "Saving…" : "Save address"}
           </button>
@@ -389,7 +389,7 @@ function ReturnAddressSection({ token, initialAddress }) {
             </span>
           )}
         </div>
-        <p className="text-xs text-light-textMuted dark:text-dark-textMuted">
+        <p className="text-xs text-vault-textTertiary">
           Labels must always be tracked — P2G Parcel2Go is used automatically when you ship an order.
         </p>
       </form>
@@ -464,7 +464,7 @@ function TradeSection({ state, setState }) {
       <div className="mt-4 space-y-4">
         <Field label="Minimum trade value" hint="Trades below this are auto-declined">
           <div className="flex items-center gap-2 max-w-[180px]">
-            <span className="text-light-textMuted">£</span>
+            <span className="text-vault-textTertiary">£</span>
             <Input
               type="number"
               min={0}
@@ -486,10 +486,10 @@ function TradeSection({ state, setState }) {
                 key={opt.id}
                 type="button"
                 onClick={() => setState((s) => ({ ...s, trade: { ...s.trade, acceptFrom: opt.id } }))}
-                className={`py-2 px-3 rounded-lg border text-sm font-medium transition
+                className={`py-2 px-3 rounded-[6px] border text-sm font-medium transition
                   ${state.trade.acceptFrom === opt.id
-                    ? "border-light-accent dark:border-dark-accent bg-light-accent/5 dark:bg-dark-accent/5 text-light-accent dark:text-dark-accent"
-                    : "border-light-border dark:border-dark-border hover:bg-light-alt dark:hover:bg-dark-alt"}`}
+                    ? "border-vault-accent dark:border-vault-accent bg-vault-accent/5 dark:bg-vault-accent/5 text-vault-accent"
+                    : "border-vault-border hover:bg-vault-raised dark:hover:bg-vault-raised"}`}
               >
                 {opt.label}
               </button>
@@ -529,23 +529,23 @@ function BlockedSection({ state, setState }) {
         <button
           type="button"
           onClick={add}
-          className="px-4 py-2 rounded-lg bg-light-accent dark:bg-dark-accent text-white text-sm font-semibold hover:bg-light-accentLight dark:hover:bg-dark-accentLight transition"
+          className="px-4 py-2 rounded-[6px] bg-vault-accent text-white text-sm font-semibold hover:bg-vault-accentHover transition"
         >
           Block
         </button>
       </div>
 
       {state.blocked.users.length === 0 ? (
-        <p className="text-sm text-light-textMuted dark:text-dark-textMuted">No blocked users.</p>
+        <p className="text-sm text-vault-textTertiary">No blocked users.</p>
       ) : (
-        <ul className="divide-y divide-light-border dark:divide-dark-border rounded-xl border border-light-border dark:border-dark-border overflow-hidden">
+        <ul className="divide-y divide-vault-border dark:divide-vault-border rounded-[10px] border border-vault-border overflow-hidden">
           {state.blocked.users.map((u) => (
-            <li key={u} className="flex items-center justify-between px-4 py-2.5 bg-light-alt/50 dark:bg-dark-alt/50">
+            <li key={u} className="flex items-center justify-between px-4 py-2.5 bg-vault-raised/50 dark:bg-vault-raised/50">
               <span className="text-sm font-medium">{u}</span>
               <button
                 type="button"
                 onClick={() => setState((s) => ({ ...s, blocked: { ...s.blocked, users: s.blocked.users.filter((x) => x !== u) } }))}
-                className="text-xs px-3 py-1 rounded-lg border border-light-border dark:border-dark-border hover:bg-light-surface dark:hover:bg-dark-surface transition"
+                className="text-xs px-3 py-1 rounded-[6px] border border-vault-border hover:bg-vault-surface dark:hover:bg-vault-surface transition"
               >
                 Unblock
               </button>
@@ -611,14 +611,14 @@ export default function MarketplaceTab({ user, token }) {
       {/* Header */}
       <div>
         <h2 className="text-xl font-extrabold">Marketplace Settings</h2>
-        <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary mt-0.5">
+        <p className="text-sm text-vault-textSecondary mt-0.5">
           Configure your shop, payouts, shipping, and trading preferences
         </p>
       </div>
 
       {/* Platform fee banner */}
       {!apiLoading && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-light-alt dark:bg-dark-alt border border-light-border dark:border-dark-border text-sm">
+        <div className="flex items-center gap-3 px-4 py-3 rounded-[10px] bg-vault-raised border border-vault-border text-sm">
           <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
           <span>
             Your platform fee:{" "}
@@ -681,7 +681,7 @@ export default function MarketplaceTab({ user, token }) {
         <button
           onClick={onSave}
           disabled={!dirty || saving}
-          className="px-6 py-2.5 rounded-xl bg-light-accent dark:bg-dark-accent text-white font-bold hover:bg-light-accentLight dark:hover:bg-dark-accentLight transition disabled:opacity-40 flex items-center gap-2"
+          className="px-6 py-2.5 rounded-[10px] bg-vault-accent text-white font-bold hover:bg-vault-accentHover transition disabled:opacity-40 flex items-center gap-2"
         >
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
           {saving ? "Saving…" : "Save settings"}
@@ -690,7 +690,7 @@ export default function MarketplaceTab({ user, token }) {
           type="button"
           onClick={() => { const s = loadPrefs(user); setPrefs(s); setSaved(s); }}
           disabled={!dirty || saving}
-          className="px-6 py-2.5 rounded-xl border border-light-border dark:border-dark-border font-bold disabled:opacity-40 hover:bg-light-alt dark:hover:bg-dark-alt transition"
+          className="px-6 py-2.5 rounded-[10px] border border-vault-border font-bold disabled:opacity-40 hover:bg-vault-raised dark:hover:bg-vault-raised transition"
         >
           Revert
         </button>

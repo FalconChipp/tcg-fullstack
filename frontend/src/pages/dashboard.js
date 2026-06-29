@@ -56,57 +56,28 @@ const DASHBOARD_STATS_QUERY = `
 
 /* ─── Stat card ───────────────────────────────────────────────────────────── */
 
-function StatCard({ icon: Icon, label, value, sub, href, color }) {
-  const colors = {
-    purple: {
-      bg: "from-violet-500/10 to-purple-500/5 dark:from-violet-500/15 dark:to-purple-900/10",
-      icon: "bg-violet-500/15 text-violet-500 dark:text-violet-400",
-      border: "border-violet-500/20 dark:border-violet-500/20",
-      value: "text-violet-600 dark:text-violet-300",
-    },
-    teal: {
-      bg: "from-teal-500/10 to-cyan-500/5 dark:from-teal-500/15 dark:to-cyan-900/10",
-      icon: "bg-teal-500/15 text-teal-600 dark:text-teal-400",
-      border: "border-teal-500/20 dark:border-teal-500/20",
-      value: "text-teal-700 dark:text-teal-300",
-    },
-    amber: {
-      bg: "from-amber-500/10 to-orange-500/5 dark:from-amber-500/15 dark:to-orange-900/10",
-      icon: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
-      border: "border-amber-500/20 dark:border-amber-500/20",
-      value: "text-amber-700 dark:text-amber-300",
-    },
-    blue: {
-      bg: "from-blue-500/10 to-indigo-500/5 dark:from-blue-500/15 dark:to-indigo-900/10",
-      icon: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
-      border: "border-blue-500/20 dark:border-blue-500/20",
-      value: "text-blue-700 dark:text-blue-300",
-    },
-  };
-
-  const c = colors[color] ?? colors.blue;
-
+function StatCard({ icon: Icon, label, value, sub, href }) {
   const inner = (
     <div
       className={`
-        relative overflow-hidden rounded-2xl border ${c.border}
-        bg-gradient-to-br ${c.bg} p-5
-        ${href ? "hover:scale-[1.02] transition-transform duration-200 cursor-pointer" : ""}
+        relative overflow-hidden rounded-[10px] border border-vault-border
+        bg-vault-surface p-5 transition-colors
+        ${href ? "hover:border-vault-borderStrong cursor-pointer" : ""}
       `}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${c.icon}`}>
+        <div className="w-10 h-10 rounded-[6px] flex items-center justify-center shrink-0 bg-vault-raised text-vault-accent">
           <Icon className="w-5 h-5" />
         </div>
         {href && (
-          <ChevronRight className="w-4 h-4 text-light-textMuted dark:text-dark-textMuted mt-0.5 shrink-0" />
+          <ChevronRight className="w-4 h-4 text-vault-textTertiary mt-0.5 shrink-0" />
         )}
       </div>
       <div className="mt-4">
-        <p className={`text-3xl font-black tracking-tight ${c.value}`}>{value}</p>
-        <p className="text-sm font-semibold text-light-text dark:text-dark-text mt-1">{label}</p>
+        <p className="font-vault text-3xl font-semibold tracking-tight text-vault-text">{value}</p>
+        <p className="text-sm font-semibold text-vault-text mt-1">{label}</p>
         {sub && (
-          <p className="text-xs text-light-textMuted dark:text-dark-textMuted mt-0.5">{sub}</p>
+          <p className="text-xs text-vault-textTertiary mt-0.5">{sub}</p>
         )}
       </div>
     </div>
@@ -208,8 +179,8 @@ export default function DashboardPage() {
       <>
         {head}
         <Layout>
-          <div className="flex items-center justify-center py-32">
-            <Loader2 className="w-6 h-6 animate-spin text-light-textMuted dark:text-dark-textMuted" />
+          <div className="flex items-center justify-center bg-vault-bg py-32">
+            <Loader2 className="w-6 h-6 animate-spin text-vault-textTertiary" />
           </div>
         </Layout>
       </>
@@ -221,18 +192,20 @@ export default function DashboardPage() {
       <>
         {head}
         <Layout>
-          <div className="max-w-md mx-auto px-4 py-24 text-center">
-            <div className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface p-10 shadow">
-              <h1 className="text-2xl font-bold mb-2">Sign in required</h1>
-              <p className="text-light-textSecondary dark:text-dark-textSecondary text-sm">
-                You need to be logged in to view your dashboard.
-              </p>
-              <Link
-                href="/"
-                className="inline-block mt-6 px-5 py-2 rounded-xl bg-light-accent !text-white hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight"
-              >
-                Go to home
-              </Link>
+          <div className="min-h-screen bg-vault-bg">
+            <div className="max-w-md mx-auto px-4 py-24 text-center">
+              <div className="rounded-[14px] border border-vault-border bg-vault-surface p-10">
+                <h1 className="font-vault text-2xl font-semibold text-vault-text mb-2">Sign in required</h1>
+                <p className="text-vault-textSecondary text-sm">
+                  You need to be logged in to view your dashboard.
+                </p>
+                <Link
+                  href="/"
+                  className="inline-block mt-6 px-5 py-2 rounded-[10px] bg-vault-accent !text-vault-text hover:bg-vault-accentHover"
+                >
+                  Go to home
+                </Link>
+              </div>
             </div>
           </div>
         </Layout>
@@ -241,19 +214,23 @@ export default function DashboardPage() {
   }
 
   const bal = stats ? `£${Number(stats.balance).toFixed(2)}` : "—";
-  const shimmer = "animate-pulse bg-light-border/40 dark:bg-dark-border/40 rounded-lg";
+  const shimmer = "animate-pulse bg-vault-raised rounded-[6px]";
 
   return (
     <>
       {head}
       <Layout>
+      <div className="min-h-screen bg-vault-bg">
 
         {/* ── Page header ── */}
-        <div className="w-full px-4 pt-8 pb-6 border-b border-light-border dark:border-dark-border">
+        <div className="w-full px-4 pt-8 pb-6 border-b border-vault-border">
           <div className="max-w-6xl mx-auto">
-            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Dashboard</h1>
-            <p className="text-light-textSecondary dark:text-dark-textSecondary mt-1">
-              Welcome back, <span className="font-semibold text-light-text dark:text-dark-text">{user.username}</span>
+            <p className="mb-4 font-vault-body text-[11px] font-semibold uppercase tracking-[0.08em] text-vault-textTertiary">
+              Account
+            </p>
+            <h1 className="font-vault text-[32px] font-semibold tracking-tight text-vault-text">Dashboard</h1>
+            <p className="text-vault-textSecondary mt-1">
+              Welcome back, <span className="font-semibold text-vault-text">{user.username}</span>
             </p>
           </div>
         </div>
@@ -273,28 +250,24 @@ export default function DashboardPage() {
                   value={bal}
                   sub="Available to spend"
                   href="/account?tab=wallet"
-                  color="purple"
                 />
                 <StatCard
                   icon={LayoutList}
                   label="Active listings"
                   value={String(stats?.activeListings ?? 0)}
                   sub="Live on marketplace"
-                  color="teal"
                 />
                 <StatCard
                   icon={ShoppingBag}
                   label="Pending orders"
                   value={String(stats?.pendingOrders ?? 0)}
                   sub={`${stats?.totalOrders ?? 0} total orders`}
-                  color="amber"
                 />
                 <StatCard
                   icon={Tag}
                   label="Incoming offers"
                   value={String(stats?.incomingPending ?? 0)}
                   sub={stats?.sentActive ? `${stats.sentActive} sent awaiting reply` : "On your listings"}
-                  color="blue"
                 />
               </>
             )}
@@ -320,18 +293,18 @@ export default function DashboardPage() {
                     key={key}
                     onClick={() => switchView(key)}
                     className={`
-                      flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition
+                      flex items-center gap-2 px-5 py-2.5 rounded-[10px] text-sm font-semibold transition-colors
                       ${active
-                        ? "bg-light-accent dark:bg-dark-accent text-white shadow-md"
-                        : "bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border text-light-text dark:text-dark-text hover:bg-light-alt dark:hover:bg-dark-alt"}
+                        ? "bg-vault-accent text-vault-text"
+                        : "border border-vault-border bg-vault-surface text-vault-textSecondary hover:border-vault-borderStrong hover:text-vault-text"}
                     `}
                   >
                     <Icon className="w-4 h-4" />
                     {label}
                     {badge > 0 && (
                       <span className={`
-                        inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold
-                        ${active ? "bg-white/25 text-white" : "bg-light-accent/15 dark:bg-dark-accent/20 text-light-accent dark:text-dark-accent"}
+                        inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-[6px] text-[10px] font-bold
+                        ${active ? "bg-vault-text/20 text-vault-text" : "bg-vault-accent/15 text-vault-accent"}
                       `}>
                         {badge > 99 ? "99+" : badge}
                       </span>
@@ -345,7 +318,7 @@ export default function DashboardPage() {
             <div className="flex gap-2">
               <Link
                 href="/marketplace"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface hover:bg-light-alt dark:hover:bg-dark-alt text-sm text-light-textSecondary dark:text-dark-textSecondary transition"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-[10px] border border-vault-border bg-vault-surface hover:border-vault-borderStrong text-sm text-vault-textSecondary transition-colors"
               >
                 <ExternalLink className="w-3.5 h-3.5" /> Marketplace
               </Link>
@@ -353,7 +326,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Content panel */}
-          <div className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface shadow-sm overflow-hidden">
+          <div className="rounded-[14px] border border-vault-border bg-vault-surface overflow-hidden">
             {view === "orders"        && <OrdersTab token={token} embedded />}
             {view === "offers"        && <OffersTab token={token} embedded />}
             {view === "trades"        && <TradesTab token={token} myId={myId} embedded />}
@@ -362,6 +335,7 @@ export default function DashboardPage() {
           </div>
 
         </div>
+      </div>
       </Layout>
     </>
   );

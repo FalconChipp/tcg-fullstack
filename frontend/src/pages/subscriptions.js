@@ -117,7 +117,7 @@ function yearlySavingPct(monthlyPence, yearlyPence) {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 const ACCENT = {
-  neutral: { ring: "border-light-border dark:border-dark-border", badge: "", dot: "bg-neutral-400" },
+  neutral: { ring: "border-vault-border", badge: "", dot: "bg-neutral-400" },
   blue:    { ring: "border-blue-500/40 dark:border-blue-500/40",   badge: "bg-blue-500/10 text-blue-400 border border-blue-500/20", dot: "bg-blue-400" },
   violet:  { ring: "border-violet-500/50 dark:border-violet-500/50", badge: "bg-violet-500/10 text-violet-400 border border-violet-500/20", dot: "bg-violet-400" },
   amber:   { ring: "border-amber-500/40 dark:border-amber-500/40", badge: "bg-amber-500/10 text-amber-400 border border-amber-500/20", dot: "bg-amber-400" },
@@ -129,8 +129,8 @@ function FeeDot({ pct }) {
     pct <= 3 ? "bg-green-500" :
     pct <= 5 ? "bg-yellow-500" : "bg-orange-500";
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-black/20 dark:bg-white/[0.06] border border-white/10`}>
-      <span className={`w-2 h-2 rounded-full ${color} shrink-0`} />
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-xs font-bold bg-black/20 dark:bg-white/[0.06] border border-white/10`}>
+      <span className={`w-2 h-2 rounded-[6px] ${color} shrink-0`} />
       {pct}% fee
     </span>
   );
@@ -160,8 +160,8 @@ function PlanCard({ plan, monthly, yearly, isCurrent, billing, onSelect, checkou
       return (
         <span>
           <span className="text-4xl font-black">{yearlyMonthly(yearly.rawPrice)}</span>
-          <span className="text-sm text-light-textMuted dark:text-dark-textMuted ml-1">/mo</span>
-          <div className="text-xs text-light-textMuted dark:text-dark-textMuted mt-0.5">
+          <span className="text-sm text-vault-textTertiary ml-1">/mo</span>
+          <div className="text-xs text-vault-textTertiary mt-0.5">
             Billed {fmtPrice(yearly.rawPrice)}/yr
           </div>
         </span>
@@ -170,43 +170,43 @@ function PlanCard({ plan, monthly, yearly, isCurrent, billing, onSelect, checkou
     return (
       <span>
         <span className="text-4xl font-black">{fmtPrice(activePlan.rawPrice)}</span>
-        <span className="text-sm text-light-textMuted dark:text-dark-textMuted ml-1">/mo</span>
+        <span className="text-sm text-vault-textTertiary ml-1">/mo</span>
       </span>
     );
   };
 
   return (
-    <div className={`relative flex flex-col rounded-2xl border-2 ${accent.ring} bg-light-surface dark:bg-dark-surface p-6 transition-all duration-200 ${meta.popular ? "shadow-xl" : "shadow-sm"}`}>
+    <div className={`relative flex flex-col rounded-[10px] border-2 ${accent.ring} bg-vault-surface p-6 transition-all duration-200 ${meta.popular ? "" : ""}`}>
 
       {/* Badges */}
       <div className="flex items-start justify-between gap-2 mb-4">
         <div>
-          <h3 className="text-lg font-bold text-light-primary dark:text-dark-primary">{plan.name}</h3>
+          <h3 className="text-lg font-bold text-vault-accent dark:text-vault-accent">{plan.name}</h3>
           {meta.popular && (
-            <span className={`inline-block mt-1 text-[11px] font-semibold uppercase tracking-wide px-2.5 py-0.5 rounded-full ${accent.badge}`}>
+            <span className={`inline-block mt-1 text-[11px] font-semibold uppercase tracking-wide px-2.5 py-0.5 rounded-[6px] ${accent.badge}`}>
               Most popular
             </span>
           )}
           {meta.forSellers && (
-            <span className={`inline-block mt-1 text-[11px] font-semibold uppercase tracking-wide px-2.5 py-0.5 rounded-full ${accent.badge}`}>
+            <span className={`inline-block mt-1 text-[11px] font-semibold uppercase tracking-wide px-2.5 py-0.5 rounded-[6px] ${accent.badge}`}>
               For sellers
             </span>
           )}
         </div>
         {isCurrent && (
-          <span className="text-[11px] font-semibold uppercase tracking-wide px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap">
+          <span className="text-[11px] font-semibold uppercase tracking-wide px-2.5 py-0.5 rounded-[6px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap">
             Your plan
           </span>
         )}
         {billing === "yearly" && saving && !isCurrent && (
-          <span className="text-[11px] font-semibold uppercase tracking-wide px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap">
+          <span className="text-[11px] font-semibold uppercase tracking-wide px-2.5 py-0.5 rounded-[6px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap">
             Save {saving}%
           </span>
         )}
       </div>
 
       {/* Price */}
-      <div className="mb-1 text-light-primary dark:text-dark-primary">
+      <div className="mb-1 text-vault-accent dark:text-vault-accent">
         {priceDisplay()}
       </div>
 
@@ -218,7 +218,7 @@ function PlanCard({ plan, monthly, yearly, isCurrent, billing, onSelect, checkou
       )}
 
       {/* Highlight */}
-      <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary mb-4 leading-relaxed">
+      <p className="text-sm text-vault-textSecondary mb-4 leading-relaxed">
         {meta.highlight}
       </p>
 
@@ -231,12 +231,12 @@ function PlanCard({ plan, monthly, yearly, isCurrent, billing, onSelect, checkou
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             ) : (
-              <svg className="w-4 h-4 text-light-textMuted dark:text-dark-textMuted shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-4 h-4 text-vault-textTertiary shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <circle cx="12" cy="12" r="9" />
                 <path strokeLinecap="round" d="M12 8v4m0 4h.01" />
               </svg>
             )}
-            <span className={f.live ? "text-light-text dark:text-dark-text" : "text-light-textMuted dark:text-dark-textMuted"}>
+            <span className={f.live ? "text-vault-text" : "text-vault-textTertiary"}>
               {f.label}
               {!f.live && <span className="ml-1 text-[11px] opacity-70">(soon)</span>}
             </span>
@@ -246,23 +246,23 @@ function PlanCard({ plan, monthly, yearly, isCurrent, billing, onSelect, checkou
 
       {/* CTA */}
       {isCurrent ? (
-        <button disabled className="w-full py-2.5 rounded-xl text-sm font-semibold border border-light-border dark:border-dark-border text-light-textMuted dark:text-dark-textMuted bg-light-alt dark:bg-dark-alt cursor-default">
+        <button disabled className="w-full py-2.5 rounded-[10px] text-sm font-semibold border border-vault-border text-vault-textTertiary bg-vault-raised cursor-default">
           Current plan
         </button>
       ) : key === "free" ? (
-        <button disabled className="w-full py-2.5 rounded-xl text-sm font-semibold border border-light-border dark:border-dark-border text-light-textMuted dark:text-dark-textMuted bg-light-alt dark:bg-dark-alt cursor-default">
+        <button disabled className="w-full py-2.5 rounded-[10px] text-sm font-semibold border border-vault-border text-vault-textTertiary bg-vault-raised cursor-default">
           Free forever
         </button>
       ) : (
         <button
           onClick={() => onSelect?.(activePlan.id)}
           disabled={!!checkoutLoading}
-          className={`w-full py-2.5 rounded-xl text-sm font-semibold text-white transition disabled:opacity-60 disabled:cursor-wait
+          className={`w-full py-2.5 rounded-[10px] text-sm font-semibold text-vault-text transition disabled:opacity-60 disabled:cursor-wait
             ${meta.popular
               ? "bg-violet-600 hover:bg-violet-500"
               : meta.forSellers
               ? "bg-amber-600 hover:bg-amber-500"
-              : "bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight"
+              : "bg-vault-accent hover:bg-vault-accentHover dark:bg-vault-accent dark:hover:bg-vault-accentHover"
             }`}
         >
           {isLoading ? "Redirecting…" : meta.cta}
@@ -280,7 +280,7 @@ function CurrentPlanBanner({ subscription, onManage }) {
   const cancelling = status === "canceled";
 
   return (
-    <div className={`max-w-2xl mx-auto mb-10 rounded-2xl border px-5 py-4 flex items-center justify-between gap-4 text-sm
+    <div className={`max-w-2xl mx-auto mb-10 rounded-[10px] border px-5 py-4 flex items-center justify-between gap-4 text-sm
       ${cancelling
         ? "border-amber-500/30 bg-amber-500/[0.06] text-amber-300"
         : "border-emerald-500/30 bg-emerald-500/[0.06] text-emerald-300"}`}
@@ -321,36 +321,36 @@ function ComparisonTable({ plans }) {
 
   return (
     <section className="max-w-6xl mx-auto px-4 py-12">
-      <h2 className="text-center text-2xl md:text-3xl font-bold mb-8 text-light-primary dark:text-dark-primary">
+      <h2 className="text-center text-2xl md:text-3xl font-bold mb-8 text-vault-accent dark:text-vault-accent">
         Compare plans
       </h2>
-      <div className="overflow-x-auto rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface shadow-lg">
+      <div className="overflow-x-auto rounded-[10px] border border-vault-border bg-vault-surface ">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="bg-light-alt dark:bg-dark-alt border-b border-light-border dark:border-dark-border">
-              <th className="text-left px-5 py-3.5 font-semibold text-light-text dark:text-dark-text w-1/3">Feature</th>
+            <tr className="bg-vault-raised border-b border-vault-border">
+              <th className="text-left px-5 py-3.5 font-semibold text-vault-text w-1/3">Feature</th>
               {cols.map((p) => (
-                <th key={p.name} className="px-4 py-3.5 font-semibold text-center text-light-text dark:text-dark-text">
+                <th key={p.name} className="px-4 py-3.5 font-semibold text-center text-vault-text">
                   {colLabel(p.name)}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-light-border dark:divide-dark-border">
+          <tbody className="divide-y divide-vault-border dark:divide-vault-border">
             {COMPARISON_ROWS.map((row, i) => (
-              <tr key={i} className="hover:bg-light-alt/50 dark:hover:bg-dark-alt/30 transition-colors">
-                <td className="px-5 py-3 font-medium text-light-text dark:text-dark-text">{row.feature}</td>
+              <tr key={i} className="hover:bg-vault-raised/50 dark:hover:bg-vault-raised/30 transition-colors">
+                <td className="px-5 py-3 font-medium text-vault-text">{row.feature}</td>
                 {cols.map((p) => {
                   const k = p.name.toLowerCase();
                   const val = row[k];
                   const isTick = val === "✓";
                   const isDash = val === "—";
                   return (
-                    <td key={p.name} className="px-4 py-3 text-center text-light-textSecondary dark:text-dark-textSecondary">
+                    <td key={p.name} className="px-4 py-3 text-center text-vault-textSecondary">
                       {isTick ? (
                         <span className="text-emerald-500 font-bold">✓</span>
                       ) : isDash ? (
-                        <span className="text-light-textMuted dark:text-dark-textMuted">—</span>
+                        <span className="text-vault-textTertiary">—</span>
                       ) : (
                         val
                       )}
@@ -455,36 +455,36 @@ export default function SubscriptionsPage() {
 
           {/* ── Hero ─────────────────────────────────────────────────────── */}
           <section className="text-center px-4 pt-12 pb-10">
-            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-light-primary dark:text-dark-primary mb-4">
+            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-vault-accent dark:text-vault-accent mb-4">
               Simple, transparent pricing
             </h1>
-            <p className="max-w-xl mx-auto text-lg text-light-textSecondary dark:text-dark-textSecondary mb-8">
+            <p className="max-w-xl mx-auto text-lg text-vault-textSecondary mb-8">
               Start free. Upgrade for lower marketplace fees, more listings, and power tools.
             </p>
 
             {/* Billing toggle */}
-            <div className="inline-flex items-center rounded-xl border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt p-1 gap-1">
+            <div className="inline-flex items-center rounded-[10px] border border-vault-border bg-vault-raised p-1 gap-1">
               <button
                 onClick={() => setBilling("monthly")}
-                className={`px-5 py-2 rounded-lg text-sm font-semibold transition ${
+                className={`px-5 py-2 rounded-[6px] text-sm font-semibold transition ${
                   billing === "monthly"
-                    ? "bg-light-surface dark:bg-dark-surface text-light-primary dark:text-dark-primary shadow-sm"
-                    : "text-light-textMuted dark:text-dark-textMuted hover:text-light-text dark:hover:text-dark-text"
+                    ? "bg-vault-surface text-vault-accent dark:text-vault-accent "
+                    : "text-vault-textTertiary hover:text-vault-text dark:hover:text-vault-text"
                 }`}
               >
                 Monthly
               </button>
               <button
                 onClick={() => setBilling("yearly")}
-                className={`px-5 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 ${
+                className={`px-5 py-2 rounded-[6px] text-sm font-semibold transition flex items-center gap-2 ${
                   billing === "yearly"
-                    ? "bg-light-surface dark:bg-dark-surface text-light-primary dark:text-dark-primary shadow-sm"
-                    : "text-light-textMuted dark:text-dark-textMuted hover:text-light-text dark:hover:text-dark-text"
+                    ? "bg-vault-surface text-vault-accent dark:text-vault-accent "
+                    : "text-vault-textTertiary hover:text-vault-text dark:hover:text-vault-text"
                 }`}
               >
                 Yearly
                 {yearlySaving && (
-                  <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500">
+                  <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-[6px] bg-emerald-500/15 text-emerald-500">
                     -{yearlySaving}%
                   </span>
                 )}
@@ -495,17 +495,17 @@ export default function SubscriptionsPage() {
           {/* ── Banners ───────────────────────────────────────────────────── */}
           <div className="max-w-5xl mx-auto px-4 space-y-3 mb-4">
             {successBanner && (
-              <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-3 text-emerald-400 text-sm font-semibold">
+              <div className="rounded-[10px] border border-emerald-500/40 bg-emerald-500/10 px-5 py-3 text-emerald-400 text-sm font-semibold">
                 🎉 Subscription activated — welcome to your new plan!
               </div>
             )}
             {cancelledBanner && (
-              <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-5 py-3 text-amber-400 text-sm">
+              <div className="rounded-[10px] border border-amber-500/40 bg-amber-500/10 px-5 py-3 text-amber-400 text-sm">
                 Checkout cancelled — no charge was made.
               </div>
             )}
             {error && (
-              <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-5 py-3 text-rose-400 text-sm">
+              <div className="rounded-[10px] border border-rose-500/40 bg-rose-500/10 px-5 py-3 text-rose-400 text-sm">
                 {error}
               </div>
             )}
@@ -523,7 +523,7 @@ export default function SubscriptionsPage() {
             {loading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface p-6 h-96 animate-pulse" />
+                  <div key={i} className="rounded-[10px] border border-vault-border bg-vault-surface p-6 h-96 animate-pulse" />
                 ))}
               </div>
             ) : (
@@ -548,7 +548,7 @@ export default function SubscriptionsPage() {
                 })}
               </div>
             )}
-            <p className="text-center text-xs text-light-textMuted dark:text-dark-textMuted mt-5">
+            <p className="text-center text-xs text-vault-textTertiary mt-5">
               All prices in GBP. Marketplace fees apply to each completed sale.
             </p>
           </section>

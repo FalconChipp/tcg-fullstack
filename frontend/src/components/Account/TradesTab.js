@@ -103,14 +103,14 @@ const STATUS_META = {
   LOCKED:        { label: "Locked — ship now",color: "text-indigo-500",  bg: "bg-indigo-50 dark:bg-indigo-950/30",   border: "border-indigo-200 dark:border-indigo-800" },
   IN_TRANSIT:    { label: "In transit",       color: "text-sky-500",     bg: "bg-sky-50 dark:bg-sky-950/30",         border: "border-sky-200 dark:border-sky-800" },
   COMPLETED:     { label: "Completed",        color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/30", border: "border-emerald-200 dark:border-emerald-800" },
-  CANCELLED:     { label: "Cancelled",        color: "text-light-textMuted dark:text-dark-textMuted", bg: "bg-light-alt dark:bg-dark-alt", border: "border-light-border dark:border-dark-border" },
+  CANCELLED:     { label: "Cancelled",        color: "text-vault-textTertiary", bg: "bg-vault-raised", border: "border-vault-border" },
   DISPUTED:      { label: "Disputed",         color: "text-red-500",     bg: "bg-red-50 dark:bg-red-950/30",         border: "border-red-200 dark:border-red-800" },
 };
 
 function StatusBadge({ status }) {
   const meta = STATUS_META[status] || STATUS_META.INITIATED;
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.color} ${meta.bg} border ${meta.border}`}>
+    <span className={`inline-flex items-center rounded-[6px] px-2.5 py-0.5 text-xs font-semibold ${meta.color} ${meta.bg} border ${meta.border}`}>
       {meta.label}
     </span>
   );
@@ -303,33 +303,33 @@ function TradeRow({ trade, myId, onRefresh }) {
     );
   }
 
-  const cardCls   = "rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface overflow-hidden";
-  const headerCls = "flex items-center justify-between gap-3 px-4 py-3 cursor-pointer hover:bg-light-alt dark:hover:bg-dark-alt transition-colors";
-  const inputCls  = "w-full rounded-xl border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt px-3 py-2 text-sm text-light-strong dark:text-dark-strong focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent";
-  const btnPrimary   = "flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 transition-colors";
-  const btnDanger    = "flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2 text-sm font-medium border border-red-300 dark:border-red-700 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50 transition-colors";
-  const btnSecondary = "px-4 rounded-xl border border-light-border dark:border-dark-border text-sm text-light-textMuted dark:text-dark-textMuted hover:bg-light-alt dark:hover:bg-dark-alt transition-colors";
-  const btnBlue      = "flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 disabled:opacity-50 transition-colors";
-  const btnIndigo    = "flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-sm font-medium text-white bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 transition-colors";
-  const btnSky       = "flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-sm font-medium text-white bg-sky-500 hover:bg-sky-600 disabled:opacity-50 transition-colors";
-  const infoBox      = (col) => `flex items-center gap-2 rounded-xl ${col} px-3 py-2`;
+  const cardCls   = "rounded-[10px] border border-vault-border bg-vault-surface overflow-hidden";
+  const headerCls = "flex items-center justify-between gap-3 px-4 py-3 cursor-pointer hover:bg-vault-raised dark:hover:bg-vault-raised transition-colors";
+  const inputCls  = "w-full rounded-[10px] border border-vault-border bg-vault-raised px-3 py-2 text-sm text-vault-text focus:outline-none focus:ring-2 focus:ring-vault-accent dark:focus:ring-vault-accent";
+  const btnPrimary   = "flex-1 flex items-center justify-center gap-1.5 rounded-[10px] py-2 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 transition-colors";
+  const btnDanger    = "flex-1 flex items-center justify-center gap-1.5 rounded-[10px] py-2 text-sm font-medium border border-red-300 dark:border-red-700 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50 transition-colors";
+  const btnSecondary = "px-4 rounded-[10px] border border-vault-border text-sm text-vault-textTertiary hover:bg-vault-raised dark:hover:bg-vault-raised transition-colors";
+  const btnBlue      = "flex-1 flex items-center justify-center gap-1.5 rounded-[10px] py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 disabled:opacity-50 transition-colors";
+  const btnIndigo    = "flex items-center justify-center gap-1.5 rounded-[10px] px-4 py-2 text-sm font-medium text-white bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 transition-colors";
+  const btnSky       = "flex items-center justify-center gap-1.5 rounded-[10px] px-4 py-2 text-sm font-medium text-white bg-sky-500 hover:bg-sky-600 disabled:opacity-50 transition-colors";
+  const infoBox      = (col) => `flex items-center gap-2 rounded-[10px] ${col} px-3 py-2`;
 
   return (
     <div className={cardCls}>
       {/* Header */}
       <div className={headerCls} onClick={() => setOpen((o) => !o)}>
         <div className="flex items-center gap-3 min-w-0">
-          <ArrowLeftRight className="w-4 h-4 text-light-textMuted dark:text-dark-textMuted flex-shrink-0" />
+          <ArrowLeftRight className="w-4 h-4 text-vault-textTertiary flex-shrink-0" />
           <div className="min-w-0">
-            <p className="text-sm font-medium text-light-strong dark:text-dark-strong truncate">
+            <p className="text-sm font-medium text-vault-text truncate">
               Trade {isInitiator ? "you proposed" : "incoming"}
               {needsMyResponse && (
-                <span className="ml-2 inline-flex items-center rounded-full bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5">
+                <span className="ml-2 inline-flex items-center rounded-[6px] bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5">
                   Action needed
                 </span>
               )}
             </p>
-            <p className="text-xs text-light-textMuted dark:text-dark-textMuted">
+            <p className="text-xs text-vault-textTertiary">
               {myCards.length} card{myCards.length !== 1 ? "s" : ""} offered ·{" "}
               {theirCards.length} card{theirCards.length !== 1 ? "s" : ""} requested ·{" "}
               {fmt(trade.createdAt)}
@@ -339,27 +339,27 @@ function TradeRow({ trade, myId, onRefresh }) {
         <div className="flex items-center gap-2 flex-shrink-0">
           <StatusBadge status={trade.status} />
           {open
-            ? <ChevronUp   className="w-4 h-4 text-light-textMuted dark:text-dark-textMuted" />
-            : <ChevronDown className="w-4 h-4 text-light-textMuted dark:text-dark-textMuted" />
+            ? <ChevronUp   className="w-4 h-4 text-vault-textTertiary" />
+            : <ChevronDown className="w-4 h-4 text-vault-textTertiary" />
           }
         </div>
       </div>
 
       {/* Expanded */}
       {open && (
-        <div className="border-t border-light-border dark:border-dark-border px-4 py-4 flex flex-col gap-4">
+        <div className="border-t border-vault-border px-4 py-4 flex flex-col gap-4">
 
           {/* Cards side-by-side */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-light-textMuted dark:text-dark-textMuted mb-2">You offer</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-vault-textTertiary mb-2">You offer</p>
               {myCards.length === 0
-                ? <p className="text-xs text-light-textMuted dark:text-dark-textMuted italic">None</p>
+                ? <p className="text-xs text-vault-textTertiary italic">None</p>
                 : <div className="flex flex-col gap-1.5">
                     {myCards.map((c) => (
-                      <div key={c.id} className="rounded-lg bg-light-alt dark:bg-dark-alt px-3 py-2">
-                        <p className="text-xs font-medium text-light-strong dark:text-dark-strong">{c.cardId}</p>
-                        <p className="text-[10px] text-light-textMuted dark:text-dark-textMuted">
+                      <div key={c.id} className="rounded-[6px] bg-vault-raised px-3 py-2">
+                        <p className="text-xs font-medium text-vault-text">{c.cardId}</p>
+                        <p className="text-[10px] text-vault-textTertiary">
                           {[c.condition, c.variation, c.quantity > 1 ? `×${c.quantity}` : null].filter(Boolean).join(" · ")}
                         </p>
                       </div>
@@ -368,14 +368,14 @@ function TradeRow({ trade, myId, onRefresh }) {
               }
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-light-textMuted dark:text-dark-textMuted mb-2">They offer</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-vault-textTertiary mb-2">They offer</p>
               {theirCards.length === 0
-                ? <p className="text-xs text-light-textMuted dark:text-dark-textMuted italic">None</p>
+                ? <p className="text-xs text-vault-textTertiary italic">None</p>
                 : <div className="flex flex-col gap-1.5">
                     {theirCards.map((c) => (
-                      <div key={c.id} className="rounded-lg bg-light-alt dark:bg-dark-alt px-3 py-2">
-                        <p className="text-xs font-medium text-light-strong dark:text-dark-strong">{c.cardId}</p>
-                        <p className="text-[10px] text-light-textMuted dark:text-dark-textMuted">
+                      <div key={c.id} className="rounded-[6px] bg-vault-raised px-3 py-2">
+                        <p className="text-xs font-medium text-vault-text">{c.cardId}</p>
+                        <p className="text-[10px] text-vault-textTertiary">
                           {[c.condition, c.variation, c.quantity > 1 ? `×${c.quantity}` : null].filter(Boolean).join(" · ")}
                         </p>
                       </div>
@@ -387,17 +387,17 @@ function TradeRow({ trade, myId, onRefresh }) {
 
           {/* Top-up */}
           {trade.topUpAmount > 0 && (
-            <div className="rounded-xl bg-light-alt dark:bg-dark-alt px-3 py-2 text-xs">
-              <span className="text-light-textMuted dark:text-dark-textMuted">Cash top-up: </span>
-              <span className="font-semibold text-light-strong dark:text-dark-strong">£{Number(trade.topUpAmount).toFixed(2)}</span>
-              <span className="text-light-textMuted dark:text-dark-textMuted ml-1">
+            <div className="rounded-[10px] bg-vault-raised px-3 py-2 text-xs">
+              <span className="text-vault-textTertiary">Cash top-up: </span>
+              <span className="font-semibold text-vault-text">£{Number(trade.topUpAmount).toFixed(2)}</span>
+              <span className="text-vault-textTertiary ml-1">
                 paid by {trade.topUpPaidBy === myId ? "you" : "them"}
               </span>
             </div>
           )}
 
           {trade.counterCount > 0 && (
-            <p className="text-xs text-light-textMuted dark:text-dark-textMuted">
+            <p className="text-xs text-vault-textTertiary">
               {trade.counterCount} counter{trade.counterCount !== 1 ? "s" : ""} so far
             </p>
           )}
@@ -441,7 +441,7 @@ function TradeRow({ trade, myId, onRefresh }) {
                 className={inputCls} placeholder="Reason for declining (optional)" />
               <div className="flex gap-2">
                 <button onClick={handleDecline} disabled={busy}
-                  className="flex-1 rounded-xl py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 transition-colors">
+                  className="flex-1 rounded-[10px] py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 transition-colors">
                   {busy ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Confirm decline"}
                 </button>
                 <button onClick={() => setShowDecline(false)} className={btnSecondary}>Back</button>
@@ -451,7 +451,7 @@ function TradeRow({ trade, myId, onRefresh }) {
 
           {/* ── COUNTER FORM ── */}
           {showCounter && (
-            <div className="flex flex-col gap-3 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 p-3">
+            <div className="flex flex-col gap-3 rounded-[10px] border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 p-3">
               <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">Your counter offer — what are you offering?</p>
               {counterCards.map((row, i) => (
                 <div key={i} className="flex gap-2 items-center">
@@ -462,7 +462,7 @@ function TradeRow({ trade, myId, onRefresh }) {
                     onChange={(e) => setCounterCards((prev) => prev.map((r, j) => j === i ? { ...r, cardId: e.target.value } : r))}
                   />
                   <select
-                    className="rounded-xl border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt px-2 py-2 text-xs text-light-strong dark:text-dark-strong"
+                    className="rounded-[10px] border border-vault-border bg-vault-raised px-2 py-2 text-xs text-vault-text"
                     value={row.condition}
                     onChange={(e) => setCounterCards((prev) => prev.map((r, j) => j === i ? { ...r, condition: e.target.value } : r))}
                   >
@@ -470,7 +470,7 @@ function TradeRow({ trade, myId, onRefresh }) {
                   </select>
                   <input
                     type="number" min="1" max="99"
-                    className="w-14 rounded-xl border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt px-2 py-2 text-xs text-center text-light-strong dark:text-dark-strong"
+                    className="w-14 rounded-[10px] border border-vault-border bg-vault-raised px-2 py-2 text-xs text-center text-vault-text"
                     value={row.quantity}
                     onChange={(e) => setCounterCards((prev) => prev.map((r, j) => j === i ? { ...r, quantity: Number(e.target.value) || 1 } : r))}
                   />
@@ -499,7 +499,7 @@ function TradeRow({ trade, myId, onRefresh }) {
 
           {/* ── PROOF UPLOAD (AGREED or PROOF_PENDING) ── */}
           {["AGREED", "PROOF_PENDING"].includes(trade.status) && !done && (
-            <div className="flex flex-col gap-3 rounded-xl border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20 p-3">
+            <div className="flex flex-col gap-3 rounded-[10px] border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20 p-3">
               <div className="flex items-start gap-2">
                 <Camera className="w-4 h-4 text-purple-500 flex-shrink-0 mt-0.5" />
                 <div>
@@ -528,18 +528,18 @@ function TradeRow({ trade, myId, onRefresh }) {
 
               {proofPreview && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={proofPreview} alt="Proof preview" className="w-full max-h-48 object-contain rounded-lg border border-light-border dark:border-dark-border" />
+                <img src={proofPreview} alt="Proof preview" className="w-full max-h-48 object-contain rounded-[6px] border border-vault-border" />
               )}
 
               <div className="flex gap-2">
                 <button type="button" onClick={() => proofRef.current?.click()} disabled={busy}
-                  className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold border border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-950/40 transition-colors">
+                  className="flex items-center gap-1.5 rounded-[10px] px-3 py-2 text-xs font-semibold border border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-950/40 transition-colors">
                   <Camera className="w-3.5 h-3.5" />
                   {proofFile ? "Change photo" : "Choose photo"}
                 </button>
                 {proofFile && (
                   <button onClick={handleProofUpload} disabled={busy}
-                    className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-white bg-purple-500 hover:bg-purple-600 disabled:opacity-50 transition-colors">
+                    className="flex items-center gap-1.5 rounded-[10px] px-3 py-2 text-xs font-semibold text-white bg-purple-500 hover:bg-purple-600 disabled:opacity-50 transition-colors">
                     {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                     Submit proof
                   </button>
@@ -550,7 +550,7 @@ function TradeRow({ trade, myId, onRefresh }) {
 
           {/* ── SHIP (LOCKED or IN_TRANSIT) ── */}
           {(trade.status === "LOCKED" || (trade.status === "IN_TRANSIT" && !myAddressSet)) && !done && (
-            <div className="flex flex-col gap-3 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/20 p-3">
+            <div className="flex flex-col gap-3 rounded-[10px] border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/20 p-3">
               <div className="flex items-start gap-2">
                 <Truck className="w-4 h-4 text-indigo-500 flex-shrink-0 mt-0.5" />
                 <div>
@@ -641,7 +641,7 @@ function TradeRow({ trade, myId, onRefresh }) {
 
           {/* ── CONFIRM RECEIPT (IN_TRANSIT) ── */}
           {trade.status === "IN_TRANSIT" && !done && (
-            <div className="flex flex-col gap-3 rounded-xl border border-sky-200 dark:border-sky-800 bg-sky-50/50 dark:bg-sky-950/20 p-3">
+            <div className="flex flex-col gap-3 rounded-[10px] border border-sky-200 dark:border-sky-800 bg-sky-50/50 dark:bg-sky-950/20 p-3">
               <div className="flex items-start gap-2">
                 <PackageCheck className="w-4 h-4 text-sky-500 flex-shrink-0 mt-0.5" />
                 <div>
@@ -661,7 +661,7 @@ function TradeRow({ trade, myId, onRefresh }) {
           {/* ── CANCEL (initiator, not terminal) ── */}
           {canCancel && !needsMyResponse && isActive && !["AGREED","PROOF_PENDING","LOCKED","IN_TRANSIT"].includes(trade.status) && (
             <button onClick={handleCancel} disabled={busy}
-              className="self-start flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium border border-light-border dark:border-dark-border text-light-textMuted dark:text-dark-textMuted hover:bg-light-alt dark:hover:bg-dark-alt disabled:opacity-50 transition-colors">
+              className="self-start flex items-center gap-1.5 rounded-[10px] px-3 py-1.5 text-xs font-medium border border-vault-border text-vault-textTertiary hover:bg-vault-raised dark:hover:bg-vault-raised disabled:opacity-50 transition-colors">
               {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
               Cancel trade
             </button>
@@ -677,7 +677,7 @@ function TradeRow({ trade, myId, onRefresh }) {
             </div>
           )}
           {trade.status === "CANCELLED" && trade.cancelledReason && (
-            <p className="text-xs text-light-textMuted dark:text-dark-textMuted">
+            <p className="text-xs text-vault-textTertiary">
               Reason: {trade.cancelledReason}
             </p>
           )}
@@ -709,19 +709,19 @@ export default function TradesTab({ token, embedded = false, myId }) {
 
   const handleRefresh = useCallback(() => { refetch(); }, [refetch]);
 
-  const pillBase     = "px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border";
-  const pillActive   = "bg-light-accent dark:bg-dark-accent text-white border-transparent";
-  const pillInactive = "bg-transparent border-light-border dark:border-dark-border text-light-textMuted dark:text-dark-textMuted hover:bg-light-alt dark:hover:bg-dark-alt";
+  const pillBase     = "px-3 py-1.5 rounded-[6px] text-xs font-semibold transition-colors border";
+  const pillActive   = "bg-vault-accent text-white border-transparent";
+  const pillInactive = "bg-transparent border-vault-border text-vault-textTertiary hover:bg-vault-raised dark:hover:bg-vault-raised";
 
   return (
     <div className={`space-y-4 ${embedded ? "p-6" : ""}`}>
       {!embedded && (
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-light-strong dark:text-dark-strong">Trades</h2>
+          <h2 className="text-lg font-bold text-vault-text">Trades</h2>
           <button onClick={handleRefresh}
-            className="p-2 rounded-xl border border-light-border dark:border-dark-border hover:bg-light-alt dark:hover:bg-dark-alt transition-colors"
+            className="p-2 rounded-[10px] border border-vault-border hover:bg-vault-raised dark:hover:bg-vault-raised transition-colors"
             title="Refresh">
-            <RefreshCw className="w-4 h-4 text-light-textMuted dark:text-dark-textMuted" />
+            <RefreshCw className="w-4 h-4 text-vault-textTertiary" />
           </button>
         </div>
       )}
@@ -730,7 +730,7 @@ export default function TradesTab({ token, embedded = false, myId }) {
         <button onClick={() => setView("incoming")} className={`${pillBase} ${view === "incoming" ? pillActive : pillInactive}`}>
           Incoming
           {incoming.length > 0 && (
-            <span className={`ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold ${view === "incoming" ? "bg-white/20 text-white" : "bg-amber-500 text-white"}`}>
+            <span className={`ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-[6px] text-[10px] font-bold ${view === "incoming" ? "bg-white/20 text-white" : "bg-amber-500 text-white"}`}>
               {incoming.length}
             </span>
           )}
@@ -738,7 +738,7 @@ export default function TradesTab({ token, embedded = false, myId }) {
         <button onClick={() => setView("all")} className={`${pillBase} ${view === "all" ? pillActive : pillInactive}`}>
           All trades
           {active.length > 0 && (
-            <span className={`ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold ${view === "all" ? "bg-white/20 text-white" : "bg-light-textMuted dark:bg-dark-textMuted text-white"}`}>
+            <span className={`ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-[6px] text-[10px] font-bold ${view === "all" ? "bg-white/20 text-white" : "bg-vault-textTertiary dark:bg-vault-textTertiary text-white"}`}>
               {trades.length}
             </span>
           )}
@@ -747,19 +747,19 @@ export default function TradesTab({ token, embedded = false, myId }) {
 
       {loading && !data && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-light-textMuted dark:text-dark-textMuted" />
+          <Loader2 className="w-6 h-6 animate-spin text-vault-textTertiary" />
         </div>
       )}
       {error && (
-        <div className="flex items-center gap-2 rounded-2xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-4 py-3">
+        <div className="flex items-center gap-2 rounded-[10px] border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-4 py-3">
           <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
           <p className="text-sm text-red-600 dark:text-red-400">{error.message}</p>
         </div>
       )}
       {!loading && !error && displayed.length === 0 && (
         <div className="flex flex-col items-center justify-center py-12 gap-3">
-          <ArrowLeftRight className="w-8 h-8 text-light-textMuted dark:text-dark-textMuted" />
-          <p className="text-sm text-light-textMuted dark:text-dark-textMuted">
+          <ArrowLeftRight className="w-8 h-8 text-vault-textTertiary" />
+          <p className="text-sm text-vault-textTertiary">
             {view === "incoming" ? "No trades waiting for your response" : "No trades yet"}
           </p>
         </div>

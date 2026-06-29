@@ -124,35 +124,35 @@ export default function PriceAlertsTab() {
         <h2 className="text-lg font-semibold">Price alerts</h2>
         <button
           onClick={startCreate}
-          className="px-3 py-2 rounded-lg bg-light-accent dark:bg-dark-accent text-white font-semibold hover:bg-light-accentLight dark:hover:bg-dark-accentLight transition"
+          className="px-3 py-2 rounded-[6px] bg-vault-accent text-white font-semibold hover:bg-vault-accentHover transition"
         >
           New alert
         </button>
       </div>
 
       {/* List */}
-      <div className="rounded-xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface overflow-hidden">
+      <div className="rounded-[10px] border border-vault-border bg-vault-surface overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-light-alt dark:bg-dark-alt text-left">
+          <thead className="bg-vault-raised text-left">
             <tr>
-              <th className="px-4 py-3 border-b border-light-border dark:border-dark-border">Card ID</th>
-              <th className="px-4 py-3 border-b border-light-border dark:border-dark-border">Variation</th>
-              <th className="px-4 py-3 border-b border-light-border dark:border-dark-border">Condition</th>
-              <th className="px-4 py-3 border-b border-light-border dark:border-dark-border">Value</th>
-              <th className="px-4 py-3 border-b border-light-border dark:border-dark-border">Window</th>
-              <th className="px-4 py-3 border-b border-light-border dark:border-dark-border">Cooldown</th>
-              <th className="px-4 py-3 border-b border-light-border dark:border-dark-border">Active</th>
-              <th className="px-4 py-3 border-b border-light-border dark:border-dark-border"></th>
+              <th className="px-4 py-3 border-b border-vault-border">Card ID</th>
+              <th className="px-4 py-3 border-b border-vault-border">Variation</th>
+              <th className="px-4 py-3 border-b border-vault-border">Condition</th>
+              <th className="px-4 py-3 border-b border-vault-border">Value</th>
+              <th className="px-4 py-3 border-b border-vault-border">Window</th>
+              <th className="px-4 py-3 border-b border-vault-border">Cooldown</th>
+              <th className="px-4 py-3 border-b border-vault-border">Active</th>
+              <th className="px-4 py-3 border-b border-vault-border"></th>
             </tr>
           </thead>
           <tbody>
             {!rows.length && !loading ? (
-              <tr><td colSpan={8} className="px-4 py-6 text-center text-light-textSecondary dark:text-dark-textSecondary">No alerts yet.</td></tr>
+              <tr><td colSpan={8} className="px-4 py-6 text-center text-vault-textSecondary">No alerts yet.</td></tr>
             ) : null}
             {rows.map((r) => (
               <tr key={r.id} className="hover:bg-black/5 dark:hover:bg-white/5">
                 <td className="px-4 py-2">{r.cardId}</td>
-                <td className="px-4 py-2">{r.variation || <span className="text-light-textMuted dark:text-dark-textMuted">default</span>}</td>
+                <td className="px-4 py-2">{r.variation || <span className="text-vault-textTertiary">default</span>}</td>
                 <td className="px-4 py-2">{CONDITIONS.find(c => c.value === r.condition)?.label || r.condition}</td>
                 <td className="px-4 py-2">{(r.condition === 'pct_up' || r.condition === 'pct_down') ? `${r.value}%` : `£${Number(r.value).toFixed(2)}`}</td>
                 <td className="px-4 py-2">{r.windowHours}h</td>
@@ -162,8 +162,8 @@ export default function PriceAlertsTab() {
                 </td>
                 <td className="px-4 py-2 text-right">
                   <div className="flex gap-2 justify-end">
-                    <button onClick={() => startEdit(r)} className="px-2 py-1 rounded border border-light-border dark:border-dark-border hover:bg-black/5 dark:hover:bg:white/5">Edit</button>
-                    <button onClick={() => handleDelete(r)} className="px-2 py-1 rounded bg-light-error text-white dark:bg-dark-error hover:bg-light-error/90 dark:hover:bg-dark-error/90">Delete</button>
+                    <button onClick={() => startEdit(r)} className="px-2 py-1 rounded border border-vault-border hover:bg-black/5 dark:hover:bg:white/5">Edit</button>
+                    <button onClick={() => handleDelete(r)} className="px-2 py-1 rounded bg-vault-danger text-white dark:bg-vault-danger hover:bg-vault-danger/90 dark:hover:bg-vault-danger/90">Delete</button>
                   </div>
                 </td>
               </tr>
@@ -174,7 +174,7 @@ export default function PriceAlertsTab() {
 
       {/* Form */}
       {showForm && (
-        <div className="rounded-xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface p-4">
+        <div className="rounded-[10px] border border-vault-border bg-vault-surface p-4">
           <h3 className="font-semibold mb-3">{form.id ? "Edit alert" : "New alert"}</h3>
           <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={handleSave}>
             <div>
@@ -183,7 +183,7 @@ export default function PriceAlertsTab() {
                 type="text"
                 value={form.cardId}
                 onChange={(e) => setForm((f) => ({ ...f, cardId: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface"
+                className="w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-surface"
                 placeholder="e.g. sv05-052"
                 required
               />
@@ -194,7 +194,7 @@ export default function PriceAlertsTab() {
                 type="text"
                 value={form.variation}
                 onChange={(e) => setForm((f) => ({ ...f, variation: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface"
+                className="w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-surface"
                 placeholder="normal | reverse | holo ..."
               />
             </div>
@@ -203,7 +203,7 @@ export default function PriceAlertsTab() {
               <select
                 value={form.condition}
                 onChange={(e) => setForm((f) => ({ ...f, condition: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface"
+                className="w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-surface"
               >
                 {CONDITIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
@@ -215,7 +215,7 @@ export default function PriceAlertsTab() {
                 step="0.01"
                 value={form.value}
                 onChange={(e) => setForm((f) => ({ ...f, value: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface"
+                className="w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-surface"
               />
             </div>
             <div>
@@ -225,7 +225,7 @@ export default function PriceAlertsTab() {
                 value={form.windowHours}
                 min={1}
                 onChange={(e) => setForm((f) => ({ ...f, windowHours: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface"
+                className="w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-surface"
               />
             </div>
             <div>
@@ -235,7 +235,7 @@ export default function PriceAlertsTab() {
                 value={form.cooldownHours}
                 min={0}
                 onChange={(e) => setForm((f) => ({ ...f, cooldownHours: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface"
+                className="w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-surface"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -251,14 +251,14 @@ export default function PriceAlertsTab() {
               <button
                 type="submit"
                 disabled={saving}
-                className="px-4 py-2 rounded-lg bg-light-accent dark:bg-dark-accent text-white font-semibold hover:bg-light-accentLight dark:hover:bg-dark-accentLight transition disabled:opacity-50"
+                className="px-4 py-2 rounded-[6px] bg-vault-accent text-white font-semibold hover:bg-vault-accentHover transition disabled:opacity-50"
               >
                 {saving ? "Saving…" : "Save alert"}
               </button>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="px-4 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt hover:bg-light-surface dark:hover:bg-dark-surface"
+                className="px-4 py-2 rounded-[6px] border border-vault-border bg-vault-raised hover:bg-vault-surface dark:hover:bg-vault-surface"
               >
                 Cancel
               </button>

@@ -41,7 +41,7 @@ export default function MyListingsDrawer({ open, onClose, token, onCreateListing
         aria-label="My Listings"
         className={[
           "fixed top-0 right-0 z-50 h-full w-full max-w-xl",
-          "bg-[#0d0f17] border-l border-white/[0.08] shadow-2xl",
+          "bg-[#0d0f17] border-l border-white/[0.08] ",
           "flex flex-col",
           "transition-transform duration-300 ease-in-out",
           open ? "translate-x-0" : "translate-x-full",
@@ -57,7 +57,7 @@ export default function MyListingsDrawer({ open, onClose, token, onCreateListing
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="w-8 h-8 rounded-full flex items-center justify-center text-neutral-500 hover:text-neutral-100 hover:bg-white/[0.08] transition"
+            className="w-8 h-8 rounded-[6px] flex items-center justify-center text-neutral-500 hover:text-neutral-100 hover:bg-white/[0.08] transition"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />

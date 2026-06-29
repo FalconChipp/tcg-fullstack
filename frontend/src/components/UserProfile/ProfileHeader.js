@@ -127,9 +127,9 @@ const SUBSCRIPTION_TIERS = {
     label: "Member",
     icon: FaGem,
     wrapper:
-      "border-light-accent/35 bg-light-accent/10 text-light-accent dark:border-dark-accent/40 dark:bg-dark-accent/10 dark:text-dark-accent",
+      "border-vault-accent/35 bg-vault-accent/10 text-vault-accent dark:border-vault-accent/40 dark:bg-vault-accent/10 dark:text-vault-accent",
     iconBox:
-      "bg-light-accent text-white dark:bg-dark-accent dark:text-dark-bg",
+      "bg-vault-accent text-vault-text dark:bg-vault-accent dark:text-vault-bg",
   },
 };
 
@@ -199,16 +199,16 @@ function HeaderStatusBadge({
       className={`
         inline-flex h-7 items-center gap-1.5 rounded-md border
         px-1.5 pr-2 text-[11px] font-black leading-none
-        shadow-sm transition
-        hover:-translate-y-0.5 hover:shadow-md
-        ${onClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-light-accent/40 dark:focus:ring-dark-accent/40" : ""}
+         transition
+        hover:-translate-y-0.5 hover:
+        ${onClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-vault-accent/40 dark:focus:ring-vault-accent/40" : ""}
         ${wrapper}
       `}
     >
       <span
         className={`
           flex h-[18px] w-[18px] shrink-0 items-center justify-center
-          rounded-[5px] text-[9px] shadow-sm
+          rounded-[5px] text-[9px] 
           ${iconBox}
         `}
       >
@@ -565,17 +565,17 @@ export default function ProfileHeader({
   }, [favouritePokemon]);
 
   return (
-    <div className="w-full rounded-t-2xl overflow-hidden border-t border-x border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface shadow-lg">
-      <div className="h-1.5 w-full bg-gradient-to-r from-light-accent via-light-accentLight to-light-accent dark:from-dark-accent dark:via-dark-accentLight dark:to-dark-accent" />
+    <div className="w-full rounded-t-2xl overflow-hidden border-t border-x border-vault-border bg-vault-surface ">
+      <div className="h-1.5 w-full bg-gradient-to-r from-vault-accent via-vault-accentHover to-vault-accent dark:from-vault-accent dark:via-vault-accentHover dark:to-vault-accent" />
 
       <div className="px-6 sm:px-8 py-6 flex flex-col sm:flex-row gap-5 items-start">
         <div className="flex-shrink-0">
           <div
             className={`
-              relative w-20 h-20 sm:w-24 sm:h-24 rounded-full
-              ring-2 ring-light-accent/60 dark:ring-dark-accent/60
-              ring-offset-2 ring-offset-light-surface dark:ring-offset-dark-surface
-              shadow-lg overflow-hidden bg-light-alt dark:bg-dark-alt
+              relative w-20 h-20 sm:w-24 sm:h-24 rounded-[6px]
+              ring-2 ring-vault-accent/60 dark:ring-vault-accent/60
+              ring-offset-2 ring-offset-vault-surface dark:ring-offset-vault-surface
+               overflow-hidden bg-vault-raised
               ${isEditing ? "cursor-pointer" : ""}
             `}
             onClick={handleChooseImage}
@@ -609,7 +609,7 @@ export default function ProfileHeader({
         <div className="flex-1 min-w-0 flex flex-col gap-2.5">
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-extrabold text-light-accent dark:text-dark-accent leading-none">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-vault-accent leading-none">
                 {username}
               </h1>
             </div>
@@ -625,7 +625,7 @@ export default function ProfileHeader({
               {planName && <SubscriptionHeaderBadge name={planName} />}
 
               {tceBadge && (
-                <span className="inline-flex h-7 items-center rounded-md border border-light-accent/30 bg-light-accent/10 px-2 text-[11px] font-black uppercase tracking-wide text-light-accent dark:border-dark-accent/30 dark:bg-dark-accent/10 dark:text-dark-accent">
+                <span className="inline-flex h-7 items-center rounded-md border border-vault-accent/30 bg-vault-accent/10 px-2 text-[11px] font-black uppercase tracking-wide text-vault-accent dark:border-vault-accent/30 dark:bg-vault-accent/10 dark:text-vault-accent">
                   TCE
                 </span>
               )}
@@ -633,7 +633,7 @@ export default function ProfileHeader({
               {badges.map((badge, i) => (
                 <span
                   key={i}
-                  className="inline-flex h-7 items-center rounded-md border border-light-accent/20 bg-light-accentLight/10 px-2 text-[11px] font-black uppercase tracking-wide text-light-accent dark:border-dark-accent/30 dark:bg-dark-accentLight/10 dark:text-dark-accent"
+                  className="inline-flex h-7 items-center rounded-md border border-vault-accent/20 bg-vault-accentHover/10 px-2 text-[11px] font-black uppercase tracking-wide text-vault-accent dark:border-vault-accent/30 dark:bg-vault-accentHover/10 dark:text-vault-accent"
                 >
                   {badge}
                 </span>
@@ -643,9 +643,9 @@ export default function ProfileHeader({
 
           {!isEditing ? (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <p className="text-sm text-light-text dark:text-dark-text leading-relaxed">
+              <p className="text-sm text-vault-text leading-relaxed">
                 {bio || (
-                  <span className="text-light-textMuted dark:text-dark-textMuted italic">
+                  <span className="text-vault-textTertiary italic">
                     No bio yet.
                   </span>
                 )}
@@ -653,7 +653,7 @@ export default function ProfileHeader({
 
               {favouritePokemon && (
                 <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <span className="text-light-textMuted dark:text-dark-textMuted">
+                  <span className="text-vault-textTertiary">
                     ·
                   </span>
 
@@ -661,12 +661,12 @@ export default function ProfileHeader({
                     <img
                       src={favSprite}
                       alt={favouritePokemon}
-                      className="w-7 h-7 object-contain drop-shadow-sm"
+                      className="w-7 h-7 object-contain drop-"
                       style={{ imageRendering: "pixelated" }}
                     />
                   )}
 
-                  <span className="text-sm text-light-textSecondary dark:text-dark-textMuted">
+                  <span className="text-sm text-vault-textSecondary dark:text-vault-textTertiary">
                     {favouritePokemon}
                   </span>
                 </div>
@@ -680,7 +680,7 @@ export default function ProfileHeader({
                 rows={2}
                 placeholder="Write something about yourself…"
                 disabled={isSaving}
-                className="flex-1 px-3 py-2 rounded-lg text-sm border bg-light-alt dark:bg-dark-alt border-light-border dark:border-dark-border text-light-text dark:text-dark-text placeholder:text-light-textMuted dark:placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent transition resize-none"
+                className="flex-1 px-3 py-2 rounded-[6px] text-sm border bg-vault-raised border-vault-border text-vault-text placeholder:text-vault-textTertiary dark:placeholder:text-vault-textTertiary focus:outline-none focus:ring-2 focus:ring-vault-accent dark:focus:ring-vault-accent transition resize-none"
               />
 
               <input
@@ -689,14 +689,14 @@ export default function ProfileHeader({
                 onChange={(e) => setFavouritePokemon(e.target.value)}
                 placeholder="Favourite Pokémon…"
                 disabled={isSaving}
-                className="sm:w-48 px-3 py-2 rounded-lg text-sm border bg-light-alt dark:bg-dark-alt border-light-border dark:border-dark-border text-light-text dark:text-dark-text placeholder:text-light-textMuted dark:placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent transition"
+                className="sm:w-48 px-3 py-2 rounded-[6px] text-sm border bg-vault-raised border-vault-border text-vault-text placeholder:text-vault-textTertiary dark:placeholder:text-vault-textTertiary focus:outline-none focus:ring-2 focus:ring-vault-accent dark:focus:ring-vault-accent transition"
               />
             </div>
           )}
 
           <div className="flex flex-wrap items-center gap-3 mt-0.5">
             {collectionValue > 0 && !hideCollectionValue && (
-              <div className="flex items-center gap-2.5 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg">
+              <div className="flex items-center gap-2.5 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-[6px]">
                 <div className="flex flex-col leading-none">
                   <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide">
                     Est. collection value
@@ -717,7 +717,7 @@ export default function ProfileHeader({
             )}
 
             {isOwnProfile && hideCollectionValue && (
-              <div className="flex items-center gap-1.5 text-xs text-light-textMuted dark:text-dark-textMuted">
+              <div className="flex items-center gap-1.5 text-xs text-vault-textTertiary">
                 <FaEyeSlash className="opacity-60" />
                 <span>Value hidden</span>
               </div>
@@ -730,7 +730,7 @@ export default function ProfileHeader({
                 type="button"
                 onClick={handleSaveAllChanges}
                 disabled={isSaving}
-                className={`px-4 py-1.5 rounded-lg text-sm font-bold bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white transition ${
+                className={`px-4 py-1.5 rounded-[6px] text-sm font-bold bg-vault-accent hover:bg-vault-accentHover dark:bg-vault-accent dark:hover:bg-vault-accentHover text-white transition ${
                   isSaving ? "opacity-60 cursor-not-allowed" : ""
                 }`}
               >
@@ -748,7 +748,7 @@ export default function ProfileHeader({
                   setCurrentAvatar(profileData.avatar || null);
                   setIsEditing(false);
                 }}
-                className={`px-4 py-1.5 rounded-lg text-sm font-semibold border border-light-border dark:border-dark-border bg-transparent text-light-textSecondary dark:text-dark-textMuted hover:bg-light-alt dark:hover:bg-dark-alt transition ${
+                className={`px-4 py-1.5 rounded-[6px] text-sm font-semibold border border-vault-border bg-transparent text-vault-textSecondary dark:text-vault-textTertiary hover:bg-vault-raised dark:hover:bg-vault-raised transition ${
                   isSaving ? "opacity-60 cursor-not-allowed" : ""
                 }`}
               >
@@ -765,7 +765,7 @@ export default function ProfileHeader({
               onClick={handleMessageUser}
               disabled={!token}
               title={!token ? "Log in to message" : "Message this user"}
-              className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text hover:border-light-accent/50 dark:hover:border-dark-accent/50 hover:text-light-accent dark:hover:text-dark-accent disabled:opacity-50 disabled:cursor-not-allowed transition"
+              className="inline-flex items-center px-3 py-1.5 rounded-[6px] text-xs font-semibold border border-vault-border bg-vault-raised text-vault-text hover:border-vault-accent/50 dark:hover:border-vault-accent/50 hover:text-vault-accent dark:hover:text-vault-accent disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
               Message
             </button>
@@ -776,7 +776,7 @@ export default function ProfileHeader({
               type="button"
               onClick={() => setIsEditing(true)}
               disabled={isSaving}
-              className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight text-white shadow-sm transition"
+              className="inline-flex items-center px-3 py-1.5 rounded-[6px] text-xs font-semibold bg-vault-accent hover:bg-vault-accentHover dark:bg-vault-accent dark:hover:bg-vault-accentHover text-white  transition"
             >
               Edit Profile
             </button>

@@ -103,14 +103,14 @@ const STATUS_META = {
   accepted:  { label: "Accepted",  cls: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300" },
   declined:  { label: "Declined",  cls: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300" },
   countered: { label: "Countered", cls: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300" },
-  withdrawn: { label: "Withdrawn", cls: "bg-light-border/60 text-light-textMuted dark:bg-dark-border/60 dark:text-dark-textMuted" },
-  expired:   { label: "Expired",   cls: "bg-light-border/60 text-light-textMuted dark:bg-dark-border/60 dark:text-dark-textMuted" },
+  withdrawn: { label: "Withdrawn", cls: "bg-vault-border/60 text-vault-textTertiary dark:bg-vault-border/60 dark:text-vault-textTertiary" },
+  expired:   { label: "Expired",   cls: "bg-vault-border/60 text-vault-textTertiary dark:bg-vault-border/60 dark:text-vault-textTertiary" },
 };
 
 function StatusBadge({ status }) {
-  const m = STATUS_META[status] ?? { label: status, cls: "bg-light-border/60 text-light-textMuted" };
+  const m = STATUS_META[status] ?? { label: status, cls: "bg-vault-border/60 text-vault-textTertiary" };
   return (
-    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${m.cls}`}>
+    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-[6px] ${m.cls}`}>
       {m.label}
     </span>
   );
@@ -122,8 +122,8 @@ function CardThumb({ src, alt }) {
   const [err, setErr] = useState(false);
   if (!src || err) {
     return (
-      <div className="w-10 h-14 rounded bg-light-alt dark:bg-dark-alt flex items-center justify-center shrink-0">
-        <Package className="w-4 h-4 text-light-textMuted dark:text-dark-textMuted" />
+      <div className="w-10 h-14 rounded bg-vault-raised flex items-center justify-center shrink-0">
+        <Package className="w-4 h-4 text-vault-textTertiary" />
       </div>
     );
   }
@@ -141,8 +141,8 @@ function CounterForm({ onSubmit, onCancel, loading }) {
   const [msg, setMsg] = useState("");
 
   return (
-    <div className="mt-3 p-3 rounded-xl bg-light-alt dark:bg-dark-alt border border-light-border dark:border-dark-border space-y-2">
-      <p className="text-xs font-semibold text-light-textSecondary dark:text-dark-textSecondary">Counter offer</p>
+    <div className="mt-3 p-3 rounded-[10px] bg-vault-raised border border-vault-border space-y-2">
+      <p className="text-xs font-semibold text-vault-textSecondary">Counter offer</p>
       <input
         type="number"
         min="0.01"
@@ -150,27 +150,27 @@ function CounterForm({ onSubmit, onCancel, loading }) {
         placeholder="Counter amount (£)"
         value={amount}
         onChange={(e) => setAmount(e.target.value)}
-        className="w-full px-3 py-1.5 rounded-lg border border-light-border dark:border-dark-border bg-light-background dark:bg-dark-background text-sm"
+        className="w-full px-3 py-1.5 rounded-[6px] border border-vault-border bg-vault-bg text-sm"
       />
       <textarea
         rows={2}
         placeholder="Optional message…"
         value={msg}
         onChange={(e) => setMsg(e.target.value)}
-        className="w-full px-3 py-1.5 rounded-lg border border-light-border dark:border-dark-border bg-light-background dark:bg-dark-background text-sm resize-none"
+        className="w-full px-3 py-1.5 rounded-[6px] border border-vault-border bg-vault-bg text-sm resize-none"
       />
       <div className="flex gap-2">
         <button
           onClick={() => onSubmit(Number(amount), msg || null)}
           disabled={!amount || Number(amount) <= 0 || loading}
-          className="flex-1 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white text-sm font-semibold transition"
+          className="flex-1 py-1.5 rounded-[6px] bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white text-sm font-semibold transition"
         >
           {loading ? "Sending…" : "Send counter"}
         </button>
         <button
           onClick={onCancel}
           disabled={loading}
-          className="px-4 py-1.5 rounded-lg border border-light-border dark:border-dark-border text-sm hover:bg-light-alt dark:hover:bg-dark-alt transition"
+          className="px-4 py-1.5 rounded-[6px] border border-vault-border text-sm hover:bg-vault-raised dark:hover:bg-vault-raised transition"
         >
           Cancel
         </button>
@@ -209,20 +209,20 @@ function IncomingOfferRow({ offer, onAction }) {
   );
 
   return (
-    <div className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface overflow-hidden">
+    <div className="rounded-[10px] border border-vault-border bg-vault-surface overflow-hidden">
       {/* Header row */}
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-light-alt dark:hover:bg-dark-alt transition text-left"
+        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-vault-raised dark:hover:bg-vault-raised transition text-left"
       >
         <CardThumb src={img} alt={title} />
 
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold truncate">{title}</p>
-          <p className="text-xs text-light-textMuted dark:text-dark-textMuted">
+          <p className="text-xs text-vault-textTertiary">
             From{" "}
-            <span className="font-medium text-light-text dark:text-dark-text">
+            <span className="font-medium text-vault-text">
               {offer.buyer?.username ?? "buyer"}
             </span>
             {" · "}{timeAgo(offer.createdAt)}
@@ -235,21 +235,21 @@ function IncomingOfferRow({ offer, onAction }) {
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-sm font-bold">{fmt(offer.amount)}</span>
           <StatusBadge status={offer.status} />
-          {expanded ? <ChevronUp className="w-4 h-4 text-light-textMuted" /> : <ChevronDown className="w-4 h-4 text-light-textMuted" />}
+          {expanded ? <ChevronUp className="w-4 h-4 text-vault-textTertiary" /> : <ChevronDown className="w-4 h-4 text-vault-textTertiary" />}
         </div>
       </button>
 
       {/* Expanded detail */}
       {expanded && (
-        <div className="px-4 pb-4 border-t border-light-border dark:border-dark-border pt-3 space-y-3">
+        <div className="px-4 pb-4 border-t border-vault-border pt-3 space-y-3">
           {offer.message && (
-            <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary italic">
+            <p className="text-sm text-vault-textSecondary italic">
               "{offer.message}"
             </p>
           )}
 
           {offer.listing && (
-            <p className="text-xs text-light-textMuted dark:text-dark-textMuted">
+            <p className="text-xs text-vault-textTertiary">
               Listed at{" "}
               <span className="font-semibold">{fmt(offer.listing.price)}</span>
               {" · "}
@@ -273,7 +273,7 @@ function IncomingOfferRow({ offer, onAction }) {
               <button
                 onClick={() => act("accept")}
                 disabled={busy}
-                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-green-500 hover:bg-green-600 text-white text-sm font-semibold transition disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-[6px] bg-green-500 hover:bg-green-600 text-white text-sm font-semibold transition disabled:opacity-50"
               >
                 {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                 Accept
@@ -281,14 +281,14 @@ function IncomingOfferRow({ offer, onAction }) {
               <button
                 onClick={() => setShowCounter(true)}
                 disabled={busy}
-                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold transition disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-[6px] bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold transition disabled:opacity-50"
               >
                 <RotateCcw className="w-3.5 h-3.5" /> Counter
               </button>
               <button
                 onClick={() => act("decline")}
                 disabled={busy}
-                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg border border-light-border dark:border-dark-border hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 text-sm font-semibold transition disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-[6px] border border-vault-border hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 text-sm font-semibold transition disabled:opacity-50"
               >
                 <X className="w-3.5 h-3.5" /> Decline
               </button>
@@ -348,17 +348,17 @@ function SentOfferRow({ offer, onWithdraw }) {
   }, [offer.id, onWithdraw]);
 
   return (
-    <div className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface overflow-hidden">
+    <div className="rounded-[10px] border border-vault-border bg-vault-surface overflow-hidden">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-light-alt dark:hover:bg-dark-alt transition text-left"
+        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-vault-raised dark:hover:bg-vault-raised transition text-left"
       >
         <CardThumb src={img} alt={title} />
 
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold truncate">{title}</p>
-          <p className="text-xs text-light-textMuted dark:text-dark-textMuted">
+          <p className="text-xs text-vault-textTertiary">
             {timeAgo(offer.createdAt)}
             {exp && offer.status === "pending" && (
               <span className="ml-1 text-amber-600 dark:text-amber-400">· {exp}</span>
@@ -369,20 +369,20 @@ function SentOfferRow({ offer, onWithdraw }) {
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-sm font-bold">{fmt(offer.amount)}</span>
           <StatusBadge status={offer.status} />
-          {expanded ? <ChevronUp className="w-4 h-4 text-light-textMuted" /> : <ChevronDown className="w-4 h-4 text-light-textMuted" />}
+          {expanded ? <ChevronUp className="w-4 h-4 text-vault-textTertiary" /> : <ChevronDown className="w-4 h-4 text-vault-textTertiary" />}
         </div>
       </button>
 
       {expanded && (
-        <div className="px-4 pb-4 border-t border-light-border dark:border-dark-border pt-3 space-y-3">
+        <div className="px-4 pb-4 border-t border-vault-border pt-3 space-y-3">
           {offer.message && (
-            <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary italic">
+            <p className="text-sm text-vault-textSecondary italic">
               Your note: "{offer.message}"
             </p>
           )}
 
           {offer.status === "countered" && (
-            <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+            <div className="p-3 rounded-[10px] bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
               <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">
                 Seller countered at {fmt(offer.counterAmount)}
               </p>
@@ -405,7 +405,7 @@ function SentOfferRow({ offer, onWithdraw }) {
           )}
 
           {offer.listing && (
-            <p className="text-xs text-light-textMuted dark:text-dark-textMuted">
+            <p className="text-xs text-vault-textTertiary">
               Listed at <span className="font-semibold">{fmt(offer.listing.price)}</span>
               {" · "}
               <Link
@@ -427,7 +427,7 @@ function SentOfferRow({ offer, onWithdraw }) {
             <button
               onClick={handleWithdraw}
               disabled={busy}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg border border-light-border dark:border-dark-border hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 text-sm font-semibold transition disabled:opacity-50"
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-[6px] border border-vault-border hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 text-sm font-semibold transition disabled:opacity-50"
             >
               {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
               Withdraw offer
@@ -450,8 +450,8 @@ function SentOfferRow({ offer, onWithdraw }) {
 function Empty({ message }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-      <Tag className="w-10 h-10 text-light-border dark:text-dark-border" />
-      <p className="text-light-textMuted dark:text-dark-textMuted text-sm">{message}</p>
+      <Tag className="w-10 h-10 text-vault-border dark:text-vault-border" />
+      <p className="text-vault-textTertiary text-sm">{message}</p>
     </div>
   );
 }
@@ -510,7 +510,7 @@ export default function OffersTab({ token, embedded = false }) {
   /* ── Render ── */
   if (loading) {
     return (
-      <div className="p-8 flex items-center justify-center gap-2 text-light-textMuted dark:text-dark-textMuted">
+      <div className="p-8 flex items-center justify-center gap-2 text-vault-textTertiary">
         <Loader2 className="w-5 h-5 animate-spin" />
         <span className="text-sm">Loading offers…</span>
       </div>
@@ -523,7 +523,7 @@ export default function OffersTab({ token, embedded = false }) {
         <p className="text-red-500 text-sm mb-3">{error}</p>
         <button
           onClick={fetchAll}
-          className="px-4 py-2 rounded-lg bg-light-accent text-white text-sm font-semibold"
+          className="px-4 py-2 rounded-[6px] bg-vault-accent text-white text-sm font-semibold"
         >
           Retry
         </button>
@@ -538,13 +538,13 @@ export default function OffersTab({ token, embedded = false }) {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-extrabold">Offers</h2>
-            <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary mt-0.5">
+            <p className="text-sm text-vault-textSecondary mt-0.5">
               Manage offers you've received and sent
             </p>
           </div>
           <button
             onClick={fetchAll}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-light-border dark:border-dark-border hover:bg-light-alt dark:hover:bg-dark-alt text-sm transition"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] border border-vault-border hover:bg-vault-raised dark:hover:bg-vault-raised text-sm transition"
           >
             <RefreshCw className="w-3.5 h-3.5" /> Refresh
           </button>
@@ -552,7 +552,7 @@ export default function OffersTab({ token, embedded = false }) {
       )}
 
       {/* View toggle */}
-      <div className="flex gap-1 p-1 rounded-xl bg-light-alt dark:bg-dark-alt w-fit">
+      <div className="flex gap-1 p-1 rounded-[10px] bg-vault-raised w-fit">
         {[
           { key: "incoming", label: "Incoming", count: pendingIncoming },
           { key: "sent",     label: "Sent",     count: activeSent },
@@ -561,15 +561,15 @@ export default function OffersTab({ token, embedded = false }) {
             key={key}
             onClick={() => setView(key)}
             className={`
-              relative px-4 py-1.5 rounded-lg text-sm font-semibold transition
+              relative px-4 py-1.5 rounded-[6px] text-sm font-semibold transition
               ${view === key
-                ? "bg-light-surface dark:bg-dark-surface shadow text-light-text dark:text-dark-text"
-                : "text-light-textMuted dark:text-dark-textMuted hover:text-light-text dark:hover:text-dark-text"}
+                ? "bg-vault-surface  text-vault-text"
+                : "text-vault-textTertiary hover:text-vault-text dark:hover:text-vault-text"}
             `}
           >
             {label}
             {count > 0 && (
-              <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-light-accent dark:bg-dark-accent text-white text-[10px] font-bold">
+              <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-[6px] bg-vault-accent text-white text-[10px] font-bold">
                 {count > 9 ? "9+" : count}
               </span>
             )}

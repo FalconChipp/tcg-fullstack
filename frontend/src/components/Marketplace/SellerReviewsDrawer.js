@@ -23,7 +23,7 @@ function Stars({ rating, size = "sm" }) {
   return (
     <span className={`${sz} leading-none`} aria-label={`${rating} out of 5 stars`}>
       {[1, 2, 3, 4, 5].map((n) => (
-        <span key={n} className={n <= rating ? "text-amber-400" : "text-light-border dark:text-dark-border"}>
+        <span key={n} className={n <= rating ? "text-amber-400" : "text-vault-border dark:text-vault-border"}>
           ★
         </span>
       ))}
@@ -89,15 +89,15 @@ export default function SellerReviewsDrawer({ sellerId, sellerUsername, open, on
       />
 
       {/* Drawer */}
-      <div className="fixed inset-y-0 right-0 z-[61] w-full max-w-md flex flex-col bg-light-background dark:bg-dark-background shadow-2xl">
+      <div className="fixed inset-y-0 right-0 z-[61] w-full max-w-md flex flex-col bg-vault-bg ">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-light-border dark:border-dark-border flex-shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-vault-border flex-shrink-0">
           <div>
-            <h2 className="text-base font-bold text-light-strong dark:text-dark-strong">
+            <h2 className="text-base font-bold text-vault-text">
               {sellerUsername ? `${sellerUsername}'s reviews` : "Seller reviews"}
             </h2>
             {rep && (
-              <p className="text-xs text-light-muted dark:text-dark-muted mt-0.5">
+              <p className="text-xs text-vault-textTertiary mt-0.5">
                 {rep.completedMarketplace} sale{rep.completedMarketplace !== 1 ? "s" : ""} completed
               </p>
             )}
@@ -105,7 +105,7 @@ export default function SellerReviewsDrawer({ sellerId, sellerUsername, open, on
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-light-alt dark:hover:bg-dark-alt transition text-light-muted dark:text-dark-muted text-lg"
+            className="w-8 h-8 rounded-[6px] flex items-center justify-center hover:bg-vault-raised dark:hover:bg-vault-raised transition text-vault-textTertiary text-lg"
           >
             ✕
           </button>
@@ -113,9 +113,9 @@ export default function SellerReviewsDrawer({ sellerId, sellerUsername, open, on
 
         {/* Tier badge + reputation summary */}
         {rep && (
-          <div className="px-5 py-4 border-b border-light-border dark:border-dark-border flex-shrink-0 space-y-3">
+          <div className="px-5 py-4 border-b border-vault-border flex-shrink-0 space-y-3">
             {rep.flagged && (
-              <div className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-400/30 text-xs text-red-500 font-semibold">
+              <div className="px-3 py-2 rounded-[6px] bg-red-500/10 border border-red-400/30 text-xs text-red-500 font-semibold">
                 ⚠ This seller has been flagged by our moderation team.
               </div>
             )}
@@ -126,7 +126,7 @@ export default function SellerReviewsDrawer({ sellerId, sellerUsername, open, on
                 <span className="text-emerald-600 dark:text-emerald-400">
                   <span className="font-bold">{rep.positive}</span> positive
                 </span>
-                <span className="text-light-muted dark:text-dark-muted">
+                <span className="text-vault-textTertiary">
                   <span className="font-bold">{rep.neutral}</span> neutral
                 </span>
                 <span className="text-red-500">
@@ -142,16 +142,16 @@ export default function SellerReviewsDrawer({ sellerId, sellerUsername, open, on
           {loading && reviews.length === 0 && (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="rounded-xl border border-light-border dark:border-dark-border p-4 animate-pulse">
-                  <div className="h-4 w-24 bg-light-border/60 dark:bg-dark-border/60 rounded mb-2" />
-                  <div className="h-3 w-full bg-light-border/40 dark:bg-dark-border/40 rounded" />
+                <div key={i} className="rounded-[10px] border border-vault-border p-4 animate-pulse">
+                  <div className="h-4 w-24 bg-vault-border/60 dark:bg-vault-border/60 rounded mb-2" />
+                  <div className="h-3 w-full bg-vault-border/40 dark:bg-vault-border/40 rounded" />
                 </div>
               ))}
             </div>
           )}
 
           {!loading && error && (
-            <div className="rounded-xl border border-red-400/30 bg-red-500/5 p-4 text-sm text-red-500">
+            <div className="rounded-[10px] border border-red-400/30 bg-red-500/5 p-4 text-sm text-red-500">
               Failed to load reviews: {error}
             </div>
           )}
@@ -159,8 +159,8 @@ export default function SellerReviewsDrawer({ sellerId, sellerUsername, open, on
           {!loading && !error && reviews.length === 0 && (
             <div className="text-center py-12">
               <div className="text-4xl mb-3">⭐</div>
-              <p className="font-semibold text-light-strong dark:text-dark-strong">No reviews yet</p>
-              <p className="text-sm text-light-muted dark:text-dark-muted mt-1">
+              <p className="font-semibold text-vault-text">No reviews yet</p>
+              <p className="text-sm text-vault-textTertiary mt-1">
                 Reviews appear after a buyer confirms receipt.
               </p>
             </div>
@@ -169,23 +169,23 @@ export default function SellerReviewsDrawer({ sellerId, sellerUsername, open, on
           {reviews.map((r, i) => (
             <div
               key={i}
-              className="rounded-xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface p-4"
+              className="rounded-[10px] border border-vault-border bg-vault-surface p-4"
             >
               <div className="flex items-start justify-between gap-2 mb-2">
                 <Stars rating={r.rating} />
-                <span className="text-[10px] text-light-muted dark:text-dark-muted flex-shrink-0">
+                <span className="text-[10px] text-vault-textTertiary flex-shrink-0">
                   {fmtDate(r.createdAt)}
                 </span>
               </div>
               {r.review ? (
-                <p className="text-sm text-light-strong dark:text-dark-strong leading-relaxed">
+                <p className="text-sm text-vault-text leading-relaxed">
                   {r.review}
                 </p>
               ) : (
-                <p className="text-xs text-light-muted dark:text-dark-muted italic">No written review</p>
+                <p className="text-xs text-vault-textTertiary italic">No written review</p>
               )}
               {r.cardId && (
-                <p className="text-[10px] text-light-muted dark:text-dark-muted mt-2 font-mono">
+                <p className="text-[10px] text-vault-textTertiary mt-2 font-mono">
                   {r.cardId}
                 </p>
               )}
@@ -198,7 +198,7 @@ export default function SellerReviewsDrawer({ sellerId, sellerUsername, open, on
               type="button"
               onClick={() => load(offset)}
               disabled={loading}
-              className="w-full py-2.5 rounded-xl text-sm font-semibold border border-light-border dark:border-dark-border text-light-muted dark:text-dark-muted hover:bg-light-alt dark:hover:bg-dark-alt transition disabled:opacity-50"
+              className="w-full py-2.5 rounded-[10px] text-sm font-semibold border border-vault-border text-vault-textTertiary hover:bg-vault-raised dark:hover:bg-vault-raised transition disabled:opacity-50"
             >
               {loading ? "Loading…" : "Load more reviews"}
             </button>

@@ -7,13 +7,13 @@ import { Mail, Bug, Lightbulb } from "lucide-react";
 
 export default function SupportTab() {
   return (
-    <section className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface p-6 md:p-8 shadow">
+    <section className="rounded-[10px] border border-vault-border bg-vault-surface p-6 md:p-8 ">
       {/* Heading */}
       <header className="mb-6 md:mb-8">
-        <h2 className="text-xl md:text-2xl font-extrabold text-light-primary dark:text-dark-primary">
+        <h2 className="text-xl md:text-2xl font-extrabold text-vault-accent dark:text-vault-accent">
           Support & Help
         </h2>
-        <p className="mt-1 text-sm md:text-base text-light-textSecondary dark:text-dark-textSecondary">
+        <p className="mt-1 text-sm md:text-base text-vault-textSecondary">
           Get help fast, report issues, or request features. We usually reply within 24–48 hours.
         </p>
       </header>
@@ -79,23 +79,23 @@ export default function SupportTab() {
           Need quick answers? Check the{" "}
           <Link
             href="/help"
-            className="text-light-accent dark:text-dark-accent underline underline-offset-2"
+            className="text-vault-accent underline underline-offset-2"
           >
             FAQ
           </Link>
           .
         </p>
-        <p className="text-light-textSecondary dark:text-dark-textSecondary">
+        <p className="text-vault-textSecondary">
           Manage alerts in{" "}
           <Link
             href="/account?tab=notifications"
-            className="text-light-accent dark:text-dark-accent underline underline-offset-2"
+            className="text-vault-accent underline underline-offset-2"
           >
             Notification preferences
           </Link>
           .
         </p>
-        <p className="text-light-textMuted dark:text-dark-textMuted">
+        <p className="text-vault-textTertiary">
           Typical response time: <b>24–48 hours</b> (Mon–Fri).
         </p>
       </div>
@@ -114,15 +114,15 @@ function SupportCard({ icon, iconTint, title, description, cta, accent }) {
   return (
     <div
       className="
-        h-full rounded-xl border bg-light-alt dark:bg-dark-alt
-        border-light-border dark:border-dark-border
-        hover:shadow-md transition-shadow
+        h-full rounded-[10px] border bg-vault-raised
+        border-vault-border
+        hover: transition-
         p-5 flex flex-col
       "
       style={style}
     >
       <div
-        className="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-light-border/60 dark:border-dark-border/60 bg-light-surface dark:bg-dark-surface"
+        className="inline-flex items-center justify-center w-10 h-10 rounded-[6px] border border-vault-border/60 dark:border-vault-border/60 bg-vault-surface"
         style={iconTint ? { color: iconTint } : undefined}
       >
         {icon}
@@ -130,7 +130,7 @@ function SupportCard({ icon, iconTint, title, description, cta, accent }) {
 
       <div className="mt-3">
         <h3 className="font-semibold">{title}</h3>
-        <p className="mt-1 text-sm text-light-textSecondary dark:text-dark-textSecondary">
+        <p className="mt-1 text-sm text-vault-textSecondary">
           {description}
         </p>
       </div>
@@ -147,16 +147,16 @@ function SupportCard({ icon, iconTint, title, description, cta, accent }) {
    ========================================================================= */
 function CTA({ label, href, external, variant = "surface", icon }) {
   const base =
-    "inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 ring-offset-1 ring-offset-light-surface dark:ring-offset-dark-surface";
+    "inline-flex items-center justify-center gap-2 px-4 py-2 rounded-[6px] text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 ring-offset-1 ring-offset-vault-surface dark:ring-offset-vault-surface";
 
   const styles =
     variant === "accent"
-      ? "bg-light-accent hover:bg-light-accentLight text-white dark:bg-dark-accent dark:hover:bg-dark-accentLight dark:text-white shadow"
+      ? "bg-vault-accent hover:bg-vault-accentHover text-white dark:bg-vault-accent dark:hover:bg-vault-accentHover dark:text-white "
       : variant === "discord"
       ? 
-        "bg-[#5865F2] hover:bg-[#4854c1] text-white shadow"
+        "bg-[#5865F2] hover:bg-[#4854c1] text-white "
       : // surface (neutral)
-        "border border-light-border dark:border-dark-border bg-light-surface hover:bg-light-alt dark:bg-dark-surface dark:hover:bg-dark-alt text-light-text dark:text-dark-text";
+        "border border-vault-border bg-vault-surface hover:bg-vault-raised dark:bg-vault-surface dark:hover:bg-vault-raised text-vault-text";
 
   const props = {
     className: `${base} ${styles}`,

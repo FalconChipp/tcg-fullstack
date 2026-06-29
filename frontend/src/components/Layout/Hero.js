@@ -94,26 +94,12 @@ function CheckIcon({ className = "" }) {
   );
 }
 
-function FeaturePill({ children }) {
+function FeatureItem({ children }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-dark-border bg-dark-surface/80 px-3 py-1.5 text-xs font-bold text-dark-textMuted shadow-sm shadow-black/20">
-      <CheckIcon className="text-dark-accentLight" />
+    <span className="inline-flex items-center gap-1.5 text-[13px] font-medium text-vault-textTertiary">
+      <CheckIcon className="text-vault-textTertiary" />
       {children}
     </span>
-  );
-}
-
-function FlowStep({ number, title, text }) {
-  return (
-    <div className="rounded-3xl border border-dark-border bg-dark-surface/70 p-5 shadow-lg shadow-black/10 backdrop-blur">
-      <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-2xl bg-dark-accent/15 text-sm font-black text-dark-accentLight">
-        {number}
-      </div>
-
-      <h3 className="text-sm font-black text-dark-strong">{title}</h3>
-
-      <p className="mt-2 text-sm leading-6 text-dark-textMuted">{text}</p>
-    </div>
   );
 }
 
@@ -144,47 +130,27 @@ export default function HeroSection() {
   }
 
   return (
-    <section className="relative isolate overflow-hidden bg-dark-background px-5 sm:px-7">
-      {/* Background */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-1/2 top-[-160px] h-[620px] w-[620px] -translate-x-1/2 rounded-full bg-dark-accent/12 blur-3xl" />
-        <div className="absolute bottom-[-260px] left-[-180px] h-[520px] w-[520px] rounded-full bg-cyan-500/8 blur-3xl" />
-        <div className="absolute bottom-[-260px] right-[-180px] h-[520px] w-[520px] rounded-full bg-purple-500/10 blur-3xl" />
-
-        <div
-          className="absolute inset-0 opacity-[0.045]"
-          style={{
-            backgroundImage:
-              "linear-gradient(to right, rgba(255,255,255,0.22) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.22) 1px, transparent 1px)",
-            backgroundSize: "56px 56px",
-          }}
-        />
-
-        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-dark-background to-transparent" />
-      </div>
-
-      <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col justify-center py-24 lg:py-28">
-        {/* Main hero content */}
-        <div className="max-w-5xl">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-dark-border bg-dark-surface/80 px-3 py-1.5 text-xs font-bold text-dark-textMuted shadow-lg shadow-black/20">
-            <span className="h-2 w-2 rounded-full bg-dark-accentLight" />
+    <section className="relative isolate overflow-hidden bg-vault-bg px-5 sm:px-7">
+      <div className="relative mx-auto flex max-w-7xl flex-col py-28 lg:py-36">
+        <div className="max-w-3xl">
+          <p className="mb-5 font-vault-body text-[11px] font-semibold uppercase tracking-[0.08em] text-vault-textTertiary">
             Built for Pokémon TCG collectors
-          </div>
+          </p>
 
-          <h1 className="max-w-5xl text-5xl font-black tracking-tight text-dark-strong sm:text-6xl lg:text-7xl xl:text-8xl">
+          <h1 className="max-w-2xl font-vault text-[44px] font-semibold leading-[1.1] tracking-tight text-vault-text sm:text-5xl lg:text-[56px]">
             Organise your Pokémon cards like a real collection.
           </h1>
 
-          <p className="mt-6 max-w-2xl text-base leading-8 text-dark-textMuted sm:text-lg">
+          <p className="mt-5 max-w-xl text-[15px] leading-7 text-vault-textSecondary sm:text-base">
             Search cards, build digital binders, manage your wishlist, and keep
             your collection organised in one place.
           </p>
 
-          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+          <div className="mt-8 flex items-center gap-5">
             <button
               type="button"
               onClick={handlePrimaryClick}
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-dark-accent px-6 text-sm font-black text-white shadow-xl shadow-dark-accent/20 transition hover:bg-dark-accentLight"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-vault-accent px-5 text-sm font-semibold text-vault-text transition-colors hover:bg-vault-accentHover"
             >
               {user ? "Open dashboard" : "Create free account"}
               <ArrowIcon />
@@ -193,46 +159,19 @@ export default function HeroSection() {
             <button
               type="button"
               onClick={scrollToSearch}
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-dark-border bg-dark-surface px-6 text-sm font-black text-dark-strong transition hover:border-dark-accent hover:bg-dark-alt"
+              className="inline-flex h-10 items-center gap-1.5 text-sm font-semibold text-vault-textSecondary transition-colors hover:text-vault-text"
             >
               <SearchIcon />
               Search cards
             </button>
           </div>
 
-          <div className="mt-7 flex flex-wrap gap-2">
-            <FeaturePill>Card search</FeaturePill>
-            <FeaturePill>Digital binders</FeaturePill>
-            <FeaturePill>Wishlist</FeaturePill>
-            <FeaturePill>Marketplace</FeaturePill>
+          <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-vault-border pt-6">
+            <FeatureItem>Card search</FeatureItem>
+            <FeatureItem>Digital binders</FeatureItem>
+            <FeatureItem>Wishlist</FeatureItem>
+            <FeatureItem>Marketplace</FeatureItem>
           </div>
-        </div>
-
-        {/* Simple product flow instead of mockup */}
-        <div className="mt-14 grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <FlowStep
-            number="1"
-            title="Search cards"
-            text="Find cards by name, set, number, or expansion."
-          />
-
-          <FlowStep
-            number="2"
-            title="Add to collection"
-            text="Track what you own, want, and plan to collect next."
-          />
-
-          <FlowStep
-            number="3"
-            title="Build binders"
-            text="Organise cards visually around real collecting goals."
-          />
-
-          <FlowStep
-            number="4"
-            title="Browse listings"
-            text="Find cards listed by other collectors when ready."
-          />
         </div>
       </div>
     </section>

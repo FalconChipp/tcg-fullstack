@@ -116,7 +116,7 @@ function CollectionRow({ entry, selected, onSelect }) {
       type="button"
       onClick={() => onSelect(entry)}
       className={[
-        "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-left transition-colors text-xs",
+        "flex items-center gap-2.5 w-full rounded-[6px] px-2.5 py-2 text-left transition-colors text-xs",
         isSelected
           ? "bg-white/[0.12] border border-white/20"
           : "hover:bg-white/[0.06] border border-transparent",
@@ -154,7 +154,7 @@ function Chip({ active, onClick, children }) {
       type="button"
       onClick={onClick}
       className={[
-        "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium border transition-colors cursor-pointer select-none",
+        "inline-flex items-center rounded-[6px] px-3 py-1 text-xs font-medium border transition-colors cursor-pointer select-none",
         active
           ? "bg-indigo-600/80 border-indigo-500 text-white"
           : "bg-white/[0.04] border-white/10 text-neutral-400 hover:border-white/25 hover:text-neutral-200",
@@ -169,7 +169,7 @@ function CardPreviewPanel({ entry, priceSuggestion, priceLoading, apiPrices, api
   const card = entry?.card;
   if (!entry || !card) {
     return (
-      <div className="flex flex-col items-center justify-center h-full min-h-[280px] rounded-2xl border border-white/[0.06] bg-white/[0.02] text-neutral-600 gap-2">
+      <div className="flex flex-col items-center justify-center h-full min-h-[280px] rounded-[10px] border border-white/[0.06] bg-white/[0.02] text-neutral-600 gap-2">
         <svg className="w-10 h-10 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
           <rect x="3" y="3" width="18" height="18" rx="3" />
           <path d="M3 9h18M9 21V9" />
@@ -187,20 +187,20 @@ function CardPreviewPanel({ entry, priceSuggestion, priceLoading, apiPrices, api
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-2xl overflow-hidden bg-black/40 border border-white/[0.06] flex items-center justify-center" style={{ minHeight: 260 }}>
+      <div className="rounded-[10px] overflow-hidden bg-black/40 border border-white/[0.06] flex items-center justify-center" style={{ minHeight: 260 }}>
         {imgSrc ? (
           <img
             src={imgSrc}
             alt={card.name}
-            className="w-full max-w-[220px] mx-auto object-contain rounded-xl"
+            className="w-full max-w-[220px] mx-auto object-contain rounded-[10px]"
             style={{ aspectRatio: "2.5/3.5" }}
           />
         ) : (
-          <div className="w-40 h-56 rounded-xl bg-white/[0.04] flex items-center justify-center text-neutral-700 text-xs">No image</div>
+          <div className="w-40 h-56 rounded-[10px] bg-white/[0.04] flex items-center justify-center text-neutral-700 text-xs">No image</div>
         )}
       </div>
 
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 space-y-1.5">
+      <div className="rounded-[10px] border border-white/[0.06] bg-white/[0.02] px-4 py-3 space-y-1.5">
         <p className="text-sm font-semibold text-neutral-100">{card.name}</p>
         <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-neutral-500">
           {card.set?.name && <span>{card.set.name}</span>}
@@ -214,7 +214,7 @@ function CardPreviewPanel({ entry, priceSuggestion, priceLoading, apiPrices, api
       </div>
 
       {/* ── Marketplace price data ── */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 space-y-3">
+      <div className="rounded-[10px] border border-white/[0.06] bg-white/[0.02] px-4 py-3 space-y-3">
         <p className="text-[10px] uppercase tracking-wider text-neutral-600 font-semibold">Market price</p>
 
         {priceLoading ? (
@@ -474,7 +474,7 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
     : null;
 
   const inputCls =
-    "w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-neutral-100 " +
+    "w-full rounded-[10px] border border-white/10 bg-black/40 px-3 py-2 text-sm text-neutral-100 " +
     "placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-white/20 transition";
   const labelCls = "text-[10px] font-semibold uppercase tracking-wider text-neutral-500 mb-1.5 block";
 
@@ -484,7 +484,7 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
       role="dialog"
       aria-modal="true"
     >
-      <div className="relative w-full max-w-3xl rounded-3xl border border-white/[0.08] bg-[#0d0f17] shadow-2xl max-h-[92vh] overflow-y-auto">
+      <div className="relative w-full max-w-3xl rounded-[14px] border border-white/[0.08] bg-[#0d0f17]  max-h-[92vh] overflow-y-auto">
 
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-[#0d0f17]">
@@ -492,7 +492,7 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
           <button
             type="button"
             onClick={onClose}
-            className="w-7 h-7 rounded-full flex items-center justify-center text-neutral-500 hover:text-neutral-100 hover:bg-white/[0.08] transition text-xs"
+            className="w-7 h-7 rounded-[6px] flex items-center justify-center text-neutral-500 hover:text-neutral-100 hover:bg-white/[0.08] transition text-xs"
           >
             ✕
           </button>
@@ -502,7 +502,7 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
         {done && (
           <div className="flex flex-col items-center gap-5 py-12 px-6">
             {/* Icon */}
-            <div className="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+            <div className="w-14 h-14 rounded-[6px] bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
               <svg className="w-7 h-7 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -516,19 +516,19 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
             </div>
 
             {/* Proof explanation */}
-            <div className="w-full max-w-sm rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] px-5 py-4 space-y-3">
+            <div className="w-full max-w-sm rounded-[10px] border border-amber-500/20 bg-amber-500/[0.06] px-5 py-4 space-y-3">
               <p className="text-xs font-semibold text-amber-300 uppercase tracking-wide">What happens next?</p>
               <ol className="space-y-2 text-xs text-neutral-300 list-none">
                 <li className="flex gap-2.5 items-start">
-                  <span className="shrink-0 w-4 h-4 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold flex items-center justify-center mt-0.5">1</span>
+                  <span className="shrink-0 w-4 h-4 rounded-[6px] bg-amber-500/20 text-amber-400 text-[10px] font-bold flex items-center justify-center mt-0.5">1</span>
                   <span>Go to <strong className="text-neutral-100">My Listings</strong> and find your new listing.</span>
                 </li>
                 <li className="flex gap-2.5 items-start">
-                  <span className="shrink-0 w-4 h-4 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold flex items-center justify-center mt-0.5">2</span>
+                  <span className="shrink-0 w-4 h-4 rounded-[6px] bg-amber-500/20 text-amber-400 text-[10px] font-bold flex items-center justify-center mt-0.5">2</span>
                   <span>Take a photo of your card with the <strong className="text-neutral-100">proof code</strong> written on a piece of paper next to it.</span>
                 </li>
                 <li className="flex gap-2.5 items-start">
-                  <span className="shrink-0 w-4 h-4 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold flex items-center justify-center mt-0.5">3</span>
+                  <span className="shrink-0 w-4 h-4 rounded-[6px] bg-amber-500/20 text-amber-400 text-[10px] font-bold flex items-center justify-center mt-0.5">3</span>
                   <span>Upload the photo. Our team will verify it and activate your listing.</span>
                 </li>
               </ol>
@@ -543,14 +543,14 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
                   if (onViewListings) onViewListings();
                   else onClose();
                 }}
-                className="flex-1 rounded-xl py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 transition"
+                className="flex-1 rounded-[10px] py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 transition"
               >
                 View my listings
               </button>
               <button
                 type="button"
                 onClick={() => { if (onCreated) onCreated(); onClose(); }}
-                className="flex-1 rounded-xl py-2.5 text-sm font-medium text-neutral-400 border border-white/10 hover:bg-white/[0.04] transition"
+                className="flex-1 rounded-[10px] py-2.5 text-sm font-medium text-neutral-400 border border-white/10 hover:bg-white/[0.04] transition"
               >
                 Close
               </button>
@@ -581,14 +581,14 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
                     {collectionErr && <p className="text-xs text-red-400 mb-2">{collectionErr}</p>}
 
                     {!collectionLoading && collection.length === 0 && !collectionErr && (
-                      <p className="text-xs text-neutral-500 py-3 text-center border border-white/[0.06] rounded-xl">
+                      <p className="text-xs text-neutral-500 py-3 text-center border border-white/[0.06] rounded-[10px]">
                         Your collection is empty. Add cards first.
                       </p>
                     )}
 
                     {/* Selected card */}
                     {selectedEntry && (
-                      <div className="flex items-center gap-2.5 rounded-xl border border-indigo-500/30 bg-indigo-500/[0.06] px-3 py-2">
+                      <div className="flex items-center gap-2.5 rounded-[10px] border border-indigo-500/30 bg-indigo-500/[0.06] px-3 py-2">
                         {selectedEntry.card?.images?.small && (
                           <img src={selectedEntry.card.images.small} alt={selectedEntry.card.name} className="w-7 h-9 object-contain rounded shrink-0" />
                         )}
@@ -618,7 +618,7 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
                         {filteredEntries.length === 0 && query.trim() ? (
                           <p className="text-xs text-neutral-600 text-center py-3">No cards matching "{query}".</p>
                         ) : (
-                          <div className="grid grid-cols-4 gap-2 max-h-56 overflow-y-auto rounded-xl border border-white/[0.06] p-2 bg-black/20">
+                          <div className="grid grid-cols-4 gap-2 max-h-56 overflow-y-auto rounded-[10px] border border-white/[0.06] p-2 bg-black/20">
                             {filteredEntries.map((entry, i) => {
                               const imgUrl = entry.card?.images?.small;
                               const name = entry.card?.name ?? entry.cardId;
@@ -628,7 +628,7 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
                                   type="button"
                                   onClick={() => handleSelectEntry(entry)}
                                   title={`${name}${entry.condition ? ` · ${entry.condition}` : ""}`}
-                                  className="group relative aspect-[2/3] rounded-lg overflow-hidden border border-white/[0.06] hover:border-indigo-500/50 transition bg-black/40"
+                                  className="group relative aspect-[2/3] rounded-[6px] overflow-hidden border border-white/[0.06] hover:border-indigo-500/50 transition bg-black/40"
                                 >
                                   {imgUrl ? (
                                     <img src={imgUrl} alt={name} className="w-full h-full object-contain group-hover:scale-105 transition duration-200" />
@@ -651,7 +651,7 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
 
                   {/* ── Embargo warning ── */}
                   {embargoInfo && (
-                    <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-4 py-3 flex gap-3 items-start">
+                    <div className="rounded-[10px] border border-amber-500/30 bg-amber-500/[0.06] px-4 py-3 flex gap-3 items-start">
                       <svg className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                       </svg>
@@ -695,7 +695,7 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
                         <label className={labelCls}>Pricing</label>
                         <div className="flex gap-2 items-start">
                           {/* type toggle */}
-                          <div className="flex rounded-xl overflow-hidden border border-white/10 shrink-0">
+                          <div className="flex rounded-[10px] overflow-hidden border border-white/10 shrink-0">
                             {[{ v: false, l: "For sale" }, { v: true, l: "Trade only" }].map(({ v: val, l: lbl }) => (
                               <button
                                 key={String(val)}
@@ -817,7 +817,7 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
                   <button
                     type="submit"
                     disabled={busy || !selectedEntry || !!embargoInfo}
-                    className="w-full rounded-xl py-3 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-auto"
+                    className="w-full rounded-[10px] py-3 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-auto"
                   >
                     {busy ? "Creating listing…" : embargoInfo ? `Listings open ${embargoInfo.endsAt}` : "List for sale"}
                   </button>

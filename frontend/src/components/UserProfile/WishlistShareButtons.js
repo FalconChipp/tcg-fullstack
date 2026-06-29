@@ -95,7 +95,7 @@ export default function WishlistShareButtons({
         type="button"
         onClick={handleCopyLink}
         aria-label="Copy wishlist link"
-        className="inline-flex items-center justify-center rounded-xl bg-light-accent dark:bg-dark-accent px-4 py-2 text-sm font-semibold text-white hover:bg-light-accentLight dark:hover:bg-dark-accentLight transition"
+        className="inline-flex items-center justify-center rounded-[10px] bg-vault-accent px-4 py-2 text-sm font-semibold text-white hover:bg-vault-accentHover transition"
       >
         {copied === "link" ? "Copied!" : "Copy link"}
       </button>
@@ -104,7 +104,7 @@ export default function WishlistShareButtons({
         type="button"
         onClick={handleCopyDiscord}
         aria-label="Copy Discord-ready wishlist share text"
-        className="inline-flex items-center justify-center rounded-xl bg-light-surface dark:bg-dark-surface px-4 py-2 text-sm font-semibold text-light-text dark:text-white border border-light-border dark:border-dark-border hover:bg-light-alt dark:hover:bg-dark-alt transition"
+        className="inline-flex items-center justify-center rounded-[10px] bg-vault-surface px-4 py-2 text-sm font-semibold text-vault-text dark:text-white border border-vault-border hover:bg-vault-raised dark:hover:bg-vault-raised transition"
       >
         {copied === "discord" ? "Copied!" : "Copy Discord share"}
       </button>
@@ -115,12 +115,12 @@ export default function WishlistShareButtons({
         disabled={typeof onOpenShareImage !== "function"}
         aria-label="Preview & download wishlist share image"
         className={`
-          inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition
-          border border-light-border dark:border-dark-border
+          inline-flex items-center justify-center rounded-[10px] px-4 py-2 text-sm font-semibold transition
+          border border-vault-border
           ${
             typeof onOpenShareImage === "function"
-              ? "bg-light-surface dark:bg-dark-surface text-light-text dark:text-white hover:bg-light-alt dark:hover:bg-dark-alt"
-              : "bg-light-alt dark:bg-dark-alt text-light-textMuted dark:text-dark-textMuted cursor-not-allowed"
+              ? "bg-vault-surface text-vault-text dark:text-white hover:bg-vault-raised dark:hover:bg-vault-raised"
+              : "bg-vault-raised text-vault-textTertiary cursor-not-allowed"
           }
         `}
       >

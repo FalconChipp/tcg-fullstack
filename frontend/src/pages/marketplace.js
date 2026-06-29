@@ -120,14 +120,18 @@ function MarketplacePage() {
 
   return (
     <Layout>
-      <div className="mx-auto max-w-7xl px-4 py-8">
+      <div className="min-h-screen bg-vault-bg">
+        <div className="mx-auto max-w-7xl px-5 py-12 sm:px-7">
         {/* ── Heading ── */}
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-light-strong dark:text-dark-strong">
+            <p className="mb-4 font-vault-body text-[11px] font-semibold uppercase tracking-[0.08em] text-vault-textTertiary">
               Marketplace
+            </p>
+            <h1 className="font-vault text-[32px] font-semibold leading-[1.15] tracking-tight text-vault-text sm:text-[36px]">
+              Browse listings
             </h1>
-            <p className="text-sm text-light-muted dark:text-dark-muted mt-0.5">
+            <p className="mt-2 text-[15px] text-vault-textSecondary">
               Browse community-listed Pokémon cards.
             </p>
           </div>
@@ -137,7 +141,7 @@ function MarketplacePage() {
               <button
                 type="button"
                 onClick={() => setShowMyListings(true)}
-                className="rounded-full px-4 py-2 text-sm font-medium text-light-muted dark:text-dark-muted border border-light-border dark:border-dark-border hover:bg-light-surface dark:hover:bg-dark-surface transition-colors"
+                className="rounded-[10px] border border-vault-border px-4 py-2 text-sm font-semibold text-vault-textSecondary transition-colors hover:border-vault-borderStrong hover:text-vault-text"
               >
                 My listings
               </button>
@@ -146,14 +150,14 @@ function MarketplacePage() {
                   <button
                     type="button"
                     onClick={() => setShowBulkListing(true)}
-                    className="rounded-full px-4 py-2 text-sm font-medium text-light-muted dark:text-dark-muted border border-light-border dark:border-dark-border hover:bg-light-surface dark:hover:bg-dark-surface transition-colors"
+                    className="rounded-[10px] border border-vault-border px-4 py-2 text-sm font-semibold text-vault-textSecondary transition-colors hover:border-vault-borderStrong hover:text-vault-text"
                   >
                     Bulk list
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowCreateListing(true)}
-                    className="rounded-full px-5 py-2 text-sm font-semibold text-white bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight transition-colors"
+                    className="rounded-[10px] bg-vault-accent px-5 py-2 text-sm font-semibold text-vault-text transition-colors hover:bg-vault-accentHover"
                   >
                     + List a card
                   </button>
@@ -179,6 +183,7 @@ function MarketplacePage() {
           pageSize={24}
           onListingClick={(listing) => setDetailListing(listing)}
         />
+        </div>
       </div>
 
       {/* ── Modals ── */}

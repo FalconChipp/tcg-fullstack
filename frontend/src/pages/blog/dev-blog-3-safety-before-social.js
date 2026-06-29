@@ -27,6 +27,7 @@ export default function DevBlog3Page() {
   return (
     <Layout>
       <BlogPostLayout
+        slug="dev-blog-3-safety-before-social"
         title="Dev Blog #3 — Safety Before Social: Preparing SixByFive for Community Features"
         subtitle="Social updates, sharing, and community tools are coming — but first SixByFive needs the safety rails that make those features safe for everyone."
         date="31 January 2026"

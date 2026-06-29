@@ -669,10 +669,10 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
   return (
     <div className="space-y-10">
       {/* SAFETY / PARENT APPROVAL */}
-      <section className="bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border rounded-2xl px-6 py-8 shadow">
-        <h2 className="text-xl font-bold mb-2 text-light-primary dark:text-dark-primary">Safety & Parent Approval</h2>
+      <section className="bg-vault-surface border border-vault-border rounded-[10px] px-6 py-8 ">
+        <h2 className="text-xl font-bold mb-2 text-vault-accent dark:text-vault-accent">Safety & Parent Approval</h2>
 
-        <p className="text-sm text-light-textMuted dark:text-dark-textMuted mb-6">
+        <p className="text-sm text-vault-textTertiary mb-6">
           Some community features (messaging, trading, Discord linking/sharing) will require parent/guardian approval for
           under-16 accounts.
         </p>
@@ -680,12 +680,12 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
         <div className="mb-4 text-sm">
           <div className="flex flex-wrap gap-x-6 gap-y-2">
             <div>
-              <span className="text-light-textMuted dark:text-dark-textMuted">Restriction level:</span>{" "}
+              <span className="text-vault-textTertiary">Restriction level:</span>{" "}
               <span className="font-semibold">{restrictionLevel}</span>
             </div>
 
             <div>
-              <span className="text-light-textMuted dark:text-dark-textMuted">Parent verified:</span>{" "}
+              <span className="text-vault-textTertiary">Parent verified:</span>{" "}
               <span className="font-semibold">{parentVerifiedAt ? `Yes (${formatDateTime(parentVerifiedAt)})` : "No"}</span>
             </div>
 
@@ -700,7 +700,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
         <form onSubmit={handleSaveSafetyProfile} className="space-y-5">
           {/* DOB */}
           <div>
-            <label className="block mb-1 font-semibold text-light-text dark:text-dark-text">
+            <label className="block mb-1 font-semibold text-vault-text">
               Date of birth {dobLocked ? "(locked)" : "(optional)"}
             </label>
 
@@ -709,15 +709,15 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
               value={dobLocked ? (toInputDateValue(user?.dob) || dobLockedValue || "") : safetyFields.dob}
               disabled={dobLocked}
               onChange={(e) => setSafetyFields((f) => ({ ...f, dob: e.target.value }))}
-              className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text transition disabled:opacity-60"
+              className="w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-raised text-vault-text transition disabled:opacity-60"
             />
 
             {dobLocked ? (
-              <div className="mt-1 text-xs text-light-textMuted dark:text-dark-textMuted">
+              <div className="mt-1 text-xs text-vault-textTertiary">
                 Your date of birth is locked once set. If this is incorrect, contact support.
               </div>
             ) : (
-              <div className="mt-1 text-xs text-light-textMuted dark:text-dark-textMuted">
+              <div className="mt-1 text-xs text-vault-textTertiary">
                 If you leave this blank, your account will be treated as restricted by default.
               </div>
             )}
@@ -726,7 +726,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
           {/* Parent email (only show when actually required + known) */}
           {showParentEmail ? (
             <div>
-              <label className="block mb-1 font-semibold text-light-text dark:text-dark-text">
+              <label className="block mb-1 font-semibold text-vault-text">
                 Parent/guardian email (only required if under 16)
               </label>
               <input
@@ -734,11 +734,11 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
                 value={safetyFields.parentEmail}
                 onChange={(e) => setSafetyFields((f) => ({ ...f, parentEmail: e.target.value }))}
                 placeholder="parent@example.com"
-                className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text transition"
+                className="w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-raised text-vault-text transition"
               />
             </div>
           ) : (
-            <div className="text-xs text-light-textMuted dark:text-dark-textMuted">
+            <div className="text-xs text-vault-textTertiary">
               {!hasDob
                 ? "Add your date of birth first to determine if parent/guardian approval is required."
                 : requiresParentApproval
@@ -751,7 +751,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
             <button
               type="submit"
               disabled={safetyLoading}
-              className="bg-light-accent dark:bg-dark-accent text-white px-6 py-2.5 rounded-xl font-bold hover:bg-light-primary dark:hover:bg-dark-accentLight transition disabled:opacity-50"
+              className="bg-vault-accent text-white px-6 py-2.5 rounded-[10px] font-bold hover:bg-vault-accent dark:hover:bg-vault-accentHover transition disabled:opacity-50"
             >
               {safetyLoading ? "Saving…" : "Save"}
             </button>
@@ -760,7 +760,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
               type="button"
               disabled={safetyLoading || !showParentEmail || !safetyFields.parentEmail || !!parentVerifiedAt}
               onClick={handleRequestParentVerification}
-              className="px-6 py-2.5 rounded-xl font-bold border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text hover:bg-light-surface dark:hover:bg-dark-surface transition disabled:opacity-50"
+              className="px-6 py-2.5 rounded-[10px] font-bold border border-vault-border bg-vault-raised text-vault-text hover:bg-vault-surface dark:hover:bg-vault-surface transition disabled:opacity-50"
             >
               {parentVerifiedAt ? "Already verified" : safetyLoading ? "Sending…" : "Send approval email"}
             </button>
@@ -774,7 +774,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
 
           {/* Capability preview (useful during testing) */}
           {capabilities && (
-            <div className="mt-4 text-xs text-light-textMuted dark:text-dark-textMuted">
+            <div className="mt-4 text-xs text-vault-textTertiary">
               <div className="font-semibold mb-1">Feature access:</div>
               <div className="flex flex-wrap gap-x-6 gap-y-1">
                 <span>Messaging: {capabilities.canMessage ? "✅" : "❌"}</span>
@@ -788,15 +788,15 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
       </section>
 
       {/* CONNECTED ACCOUNTS */}
-      <section className="bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border rounded-2xl px-6 py-8 shadow">
-        <h2 className="text-xl font-bold mb-6 text-light-primary dark:text-dark-primary">Connected Accounts</h2>
+      <section className="bg-vault-surface border border-vault-border rounded-[10px] px-6 py-8 ">
+        <h2 className="text-xl font-bold mb-6 text-vault-accent dark:text-vault-accent">Connected Accounts</h2>
 
-        <ul className="divide-y divide-light-border dark:divide-dark-border">
+        <ul className="divide-y divide-vault-border dark:divide-vault-border">
           {/* Discord row */}
           <li className="flex items-center justify-between py-5">
             <div className="flex items-center gap-3">
               <span
-                className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-light-border dark:border-dark-border"
+                className="inline-flex items-center justify-center w-9 h-9 rounded-[6px] border border-vault-border"
                 style={{ color: "#5865F2" }}
               >
                 <FaDiscord className="text-current text-lg" />
@@ -811,14 +811,14 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
                 )}
 
                 {discordLinked ? (
-                  <div className="mt-0.5 text-sm text-light-textMuted dark:text-dark-textMuted">
+                  <div className="mt-0.5 text-sm text-vault-textTertiary">
                     Connected as{" "}
-                    <span className="font-semibold text-light-primary dark:text-dark-accent">
+                    <span className="font-semibold text-vault-accent dark:text-vault-accent">
                       {discordUsername || "your Discord account"}
                     </span>
                   </div>
                 ) : (
-                  <div className="mt-0.5 text-sm text-light-textMuted dark:text-dark-textMuted">Link your Discord account</div>
+                  <div className="mt-0.5 text-sm text-vault-textTertiary">Link your Discord account</div>
                 )}
               </div>
             </div>
@@ -828,7 +828,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
                 type="button"
                 onClick={handleUnlinkDiscord}
                 disabled={connLoading === "discord"}
-                className="px-5 py-2 rounded-lg font-semibold border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text hover:bg-light-surface dark:hover:bg-dark-surface transition disabled:opacity-50"
+                className="px-5 py-2 rounded-[6px] font-semibold border border-vault-border bg-vault-raised text-vault-text hover:bg-vault-surface dark:hover:bg-vault-surface transition disabled:opacity-50"
               >
                 {connLoading === "discord" ? "Unlinking…" : "Unlink"}
               </button>
@@ -837,7 +837,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
                 type="button"
                 onClick={handleLinkDiscord}
                 disabled={connLoading === "discord" || !canConnectDiscord}
-                className="px-5 py-2 rounded-lg font-semibold bg-light-accent dark:bg-dark-accent text-white dark:text-black hover:bg-light-primary dark:hover:bg-dark-primary transition disabled:opacity-50"
+                className="px-5 py-2 rounded-[6px] font-semibold bg-vault-accent text-white dark:text-black hover:bg-vault-accent dark:hover:bg-vault-accent transition disabled:opacity-50"
               >
                 {connLoading === "discord" ? "Opening…" : "Link Discord"}
               </button>
@@ -856,63 +856,63 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
       {/* PASSWORD CHANGE */}
       <form
         onSubmit={handlePasswordUpdate}
-        className="bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border rounded-2xl px-6 py-8 shadow"
+        className="bg-vault-surface border border-vault-border rounded-[10px] px-6 py-8 "
       >
-        <h2 className="text-xl font-bold mb-6 text-light-primary dark:text-dark-primary">Change Password</h2>
+        <h2 className="text-xl font-bold mb-6 text-vault-accent dark:text-vault-accent">Change Password</h2>
         <div className="mb-6">
-          <label className="block mb-1 font-semibold text-light-text dark:text-dark-text">Current Password</label>
+          <label className="block mb-1 font-semibold text-vault-text">Current Password</label>
           <input
             type="password"
             value={pwFields.current}
             disabled={isOAuth}
             onChange={(e) => setPwFields((f) => ({ ...f, current: e.target.value }))}
-            className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text transition"
+            className="w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-raised text-vault-text transition"
             autoComplete="current-password"
           />
         </div>
         <div className="mb-6">
-          <label className="block mb-1 font-semibold text-light-text dark:text-dark-text">New Password</label>
+          <label className="block mb-1 font-semibold text-vault-text">New Password</label>
           <input
             type="password"
             value={pwFields.new}
             disabled={isOAuth}
             onChange={(e) => setPwFields((f) => ({ ...f, new: e.target.value }))}
-            className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text transition"
+            className="w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-raised text-vault-text transition"
             autoComplete="new-password"
           />
           <ul className="text-sm mb-2 mt-2">
-            <li className={pwRules.length ? "text-green-600" : "text-light-textMuted dark:text-dark-textMuted"}>
+            <li className={pwRules.length ? "text-green-600" : "text-vault-textTertiary"}>
               {pwRules.length ? "✅" : "❌"} At least 8 characters
             </li>
-            <li className={pwRules.upper ? "text-green-600" : "text-light-textMuted dark:text-dark-textMuted"}>
+            <li className={pwRules.upper ? "text-green-600" : "text-vault-textTertiary"}>
               {pwRules.upper ? "✅" : "❌"} At least one uppercase letter
             </li>
-            <li className={pwRules.lower ? "text-green-600" : "text-light-textMuted dark:text-dark-textMuted"}>
+            <li className={pwRules.lower ? "text-green-600" : "text-vault-textTertiary"}>
               {pwRules.lower ? "✅" : "❌"} At least one lowercase letter
             </li>
-            <li className={pwRules.number ? "text-green-600" : "text-light-textMuted dark:text-dark-textMuted"}>
+            <li className={pwRules.number ? "text-green-600" : "text-vault-textTertiary"}>
               {pwRules.number ? "✅" : "❌"} At least one number
             </li>
-            <li className={pwRules.special ? "text-green-600" : "text-light-textMuted dark:text-dark-textMuted"}>
+            <li className={pwRules.special ? "text-green-600" : "text-vault-textTertiary"}>
               {pwRules.special ? "✅" : "❌"} At least one special character
             </li>
           </ul>
         </div>
         <div className="mb-6">
-          <label className="block mb-1 font-semibold text-light-text dark:text-dark-text">Confirm New Password</label>
+          <label className="block mb-1 font-semibold text-vault-text">Confirm New Password</label>
           <input
             type="password"
             value={pwFields.confirm}
             disabled={isOAuth}
             onChange={(e) => setPwFields((f) => ({ ...f, confirm: e.target.value }))}
-            className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text transition"
+            className="w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-raised text-vault-text transition"
             autoComplete="new-password"
           />
         </div>
         <button
           type="submit"
           disabled={isOAuth}
-          className="bg-light-accent dark:bg-dark-accent text-white px-6 py-2.5 rounded-xl font-bold hover:bg-light-primary dark:hover:bg-dark-accentLight transition disabled:opacity-50"
+          className="bg-vault-accent text-white px-6 py-2.5 rounded-[10px] font-bold hover:bg-vault-accent dark:hover:bg-vault-accentHover transition disabled:opacity-50"
         >
           Change Password
         </button>
@@ -926,35 +926,35 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
       {/* EMAIL CHANGE */}
       <form
         onSubmit={handleEmailUpdate}
-        className="bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border rounded-2xl px-6 py-8 shadow"
+        className="bg-vault-surface border border-vault-border rounded-[10px] px-6 py-8 "
       >
-        <h2 className="text-xl font-bold mb-6 text-light-primary dark:text-dark-primary">Change Email</h2>
+        <h2 className="text-xl font-bold mb-6 text-vault-accent dark:text-vault-accent">Change Email</h2>
         <div className="mb-6">
-          <label className="block mb-1 font-semibold text-light-text dark:text-dark-text">New Email</label>
+          <label className="block mb-1 font-semibold text-vault-text">New Email</label>
           <input
             type="email"
             value={emailFields.email}
             disabled={isOAuth}
             onChange={(e) => setEmailFields((f) => ({ ...f, email: e.target.value }))}
-            className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text transition"
+            className="w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-raised text-vault-text transition"
             autoComplete="email"
           />
         </div>
         <div className="mb-6">
-          <label className="block mb-1 font-semibold text-light-text dark:text-dark-text">Current Password</label>
+          <label className="block mb-1 font-semibold text-vault-text">Current Password</label>
           <input
             type="password"
             value={emailFields.currentPassword}
             disabled={isOAuth}
             onChange={(e) => setEmailFields((f) => ({ ...f, currentPassword: e.target.value }))}
-            className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text transition"
+            className="w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-raised text-vault-text transition"
             autoComplete="current-password"
           />
         </div>
         <button
           type="submit"
           disabled={isOAuth}
-          className="bg-light-accent dark:bg-dark-accent px-6 py-2.5 rounded-xl font-bold hover:bg-light-primary dark:hover:bg-dark-accentLight transition disabled:opacity-50"
+          className="bg-vault-accent px-6 py-2.5 rounded-[10px] font-bold hover:bg-vault-accent dark:hover:bg-vault-accentHover transition disabled:opacity-50"
         >
           Change Email
         </button>
@@ -966,8 +966,8 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
       </form>
 
       {/* TWO-FACTOR AUTH */}
-      <div className="bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border rounded-2xl px-6 py-8 shadow">
-        <h2 className="text-xl font-bold mb-6 text-light-primary dark:text-dark-primary">Two-Factor Authentication</h2>
+      <div className="bg-vault-surface border border-vault-border rounded-[10px] px-6 py-8 ">
+        <h2 className="text-xl font-bold mb-6 text-vault-accent dark:text-vault-accent">Two-Factor Authentication</h2>
         {twoFA.enabled ? (
           <div>
             <p className="mb-2 text-green-600">
@@ -977,7 +977,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
               type="button"
               disabled={twoFA.loading}
               onClick={handleDisable2FA}
-              className="bg-light-warning dark:bg-dark-warning text-light-text dark:text-dark-text px-6 py-2.5 rounded-xl font-bold hover:bg-light-accent dark:hover:bg-dark-accentLight transition"
+              className="bg-vault-warning dark:bg-vault-warning text-vault-text px-6 py-2.5 rounded-[10px] font-bold hover:bg-vault-accent dark:hover:bg-vault-accentHover transition"
             >
               Disable 2FA
             </button>
@@ -992,14 +992,14 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
             </p>
             <img src={twoFA.qrCode} alt="2FA QR Code" className="mb-4 w-40 h-40" />
             <div className="mb-3">
-              <label className="block mb-1 font-semibold text-light-text dark:text-dark-text">
+              <label className="block mb-1 font-semibold text-vault-text">
                 Enter the 6-digit code from your authenticator app:
               </label>
               <input
                 type="text"
                 value={twoFA.verifyCode}
                 onChange={(e) => setTwoFA((s) => ({ ...s, verifyCode: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text transition"
+                className="w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-raised text-vault-text transition"
                 maxLength={6}
                 inputMode="numeric"
                 pattern="\\d*"
@@ -1009,7 +1009,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
             <button
               type="submit"
               disabled={twoFA.loading || !twoFA.verifyCode}
-              className="bg-light-accent dark:bg-dark-accent text-white dark:text-black px-6 py-2.5 rounded-xl font-bold hover:bg-light-primary dark:hover:bg-dark-primary transition"
+              className="bg-vault-accent text-white dark:text-black px-6 py-2.5 rounded-[10px] font-bold hover:bg-vault-accent dark:hover:bg-vault-accent transition"
             >
               Verify & Enable 2FA
             </button>
@@ -1032,7 +1032,7 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
               type="button"
               disabled={twoFA.loading}
               onClick={handleStart2FA}
-              className="bg-light-accent dark:bg-dark-accent px-6 py-2.5 rounded-xl font-bold hover:bg-light-primary dark:hover:bg-dark-accentLight transition"
+              className="bg-vault-accent px-6 py-2.5 rounded-[10px] font-bold hover:bg-vault-accent dark:hover:bg-vault-accentHover transition"
             >
               Enable 2FA
             </button>

@@ -15,25 +15,25 @@ import { getCardImageUrl } from "@/utils/imageUtils"; // CHANGED
 const TRADE_STATUS = {
   pending: {
     color:
-      "bg-light-warning/30 text-light-warning dark:bg-dark-warning/30 dark:text-dark-warning",
+      "bg-vault-warning/30 text-vault-warning dark:bg-vault-warning/30 dark:text-vault-warning",
     label: "Pending",
     icon: <Loader className="w-5 h-5 animate-spin" />,
   },
   shipped: {
     color:
-      "bg-light-primary/20 text-light-primary dark:bg-dark-primary/30 dark:text-dark-primary",
+      "bg-vault-accent/20 text-vault-accent dark:bg-vault-accent/30 dark:text-vault-accent",
     label: "Shipped",
     icon: <Package className="w-5 h-5" />,
   },
   completed: {
     color:
-      "bg-light-success/20 text-light-success dark:bg-dark-success/40 dark:text-dark-success",
+      "bg-vault-success/20 text-vault-success dark:bg-vault-success/40 dark:text-vault-success",
     label: "Completed",
     icon: <CheckCircle className="w-5 h-5" />,
   },
   cancelled: {
     color:
-      "bg-light-error/20 text-light-error dark:bg-dark-error/40 dark:text-dark-error",
+      "bg-vault-danger/20 text-vault-danger dark:bg-vault-danger/40 dark:text-vault-danger",
     label: "Cancelled",
     icon: <XCircle className="w-5 h-5" />,
   },
@@ -59,11 +59,11 @@ export default function ProfileTradesPanel({ trades = [], onAction, dark }) {
           <button
             key={f}
             className={`
-              px-4 py-1.5 rounded-full font-semibold transition
+              px-4 py-1.5 rounded-[6px] font-semibold transition
               ${
                 activeFilter === f
                   ? "bg-purple-800 text-white"
-                  : "bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text hover:bg-light-border dark:hover:bg-purple-950"
+                  : "bg-vault-raised text-vault-text hover:bg-vault-border dark:hover:bg-purple-950"
               }
             `}
             onClick={() => setActiveFilter(f)}
@@ -75,7 +75,7 @@ export default function ProfileTradesPanel({ trades = [], onAction, dark }) {
       {/* Trade list */}
       <div className="flex flex-col gap-4">
         {filteredTrades.length === 0 && (
-          <div className="text-light-textSecondary dark:text-dark-textSecondary py-12 text-center">
+          <div className="text-vault-textSecondary py-12 text-center">
             No {activeFilter} trades to show.
           </div>
         )}
@@ -83,8 +83,8 @@ export default function ProfileTradesPanel({ trades = [], onAction, dark }) {
           <div
             key={trade.id}
             className={`
-              rounded-xl shadow-sm px-4 py-4 flex flex-col sm:flex-row sm:items-center gap-3 
-              bg-light-surface dark:bg-dark-surface border border-transparent hover:border-purple-400 transition
+              rounded-[10px]  px-4 py-4 flex flex-col sm:flex-row sm:items-center gap-3 
+              bg-vault-surface border border-transparent hover:border-purple-400 transition
               cursor-pointer
             `}
             onClick={() => setSelectedTrade(trade)}
@@ -100,14 +100,14 @@ export default function ProfileTradesPanel({ trades = [], onAction, dark }) {
                 alt={trade.otherUser?.name || "User"}
                 width={38}
                 height={38}
-                className="rounded-full border border-light-border dark:border-dark-border object-cover"
+                className="rounded-[6px] border border-vault-border object-cover"
               />
               <span className="font-semibold text-base">
                 {trade.otherUser?.name || "User"}
               </span>
             </div>
             {/* Arrow */}
-            <ArrowRight className="hidden sm:block w-6 h-6 text-light-border dark:text-dark-border mx-2" />
+            <ArrowRight className="hidden sm:block w-6 h-6 text-vault-border dark:text-vault-border mx-2" />
             {/* Cards */}
             <div className="flex-1 flex flex-wrap gap-2">
               {/* You give */}
@@ -126,16 +126,16 @@ export default function ProfileTradesPanel({ trades = [], onAction, dark }) {
                       alt={card.name}
                       width={28}
                       height={38}
-                      className="rounded shadow"
+                      className="rounded "
                     />
                   );
                 })}
                 {trade.cardsSent.length > 2 && (
-                  <span className="text-xs text-light-textSecondary dark:text-dark-textSecondary ml-2">
+                  <span className="text-xs text-vault-textSecondary ml-2">
                     +{trade.cardsSent.length - 2} more
                   </span>
                 )}
-                <span className="ml-2 text-xs text-light-textSecondary dark:text-dark-textSecondary">
+                <span className="ml-2 text-xs text-vault-textSecondary">
                   sent
                 </span>
               </div>
@@ -156,16 +156,16 @@ export default function ProfileTradesPanel({ trades = [], onAction, dark }) {
                       alt={card.name}
                       width={28}
                       height={38}
-                      className="rounded shadow"
+                      className="rounded "
                     />
                   );
                 })}
                 {trade.cardsReceived.length > 2 && (
-                  <span className="text-xs text-light-textSecondary dark:text-dark-textSecondary ml-2">
+                  <span className="text-xs text-vault-textSecondary ml-2">
                     +{trade.cardsReceived.length - 2} more
                   </span>
                 )}
-                <span className="ml-2 text-xs text-light-textSecondary dark:text-dark-textSecondary">
+                <span className="ml-2 text-xs text-vault-textSecondary">
                   received
                 </span>
               </div>
@@ -173,7 +173,7 @@ export default function ProfileTradesPanel({ trades = [], onAction, dark }) {
             {/* Status */}
             <div className="flex items-center gap-2 min-w-[110px]">
               <span
-                className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${TRADE_STATUS[trade.status]?.color}`}
+                className={`px-3 py-1 rounded-[6px] text-xs font-semibold flex items-center gap-1 ${TRADE_STATUS[trade.status]?.color}`}
               >
                 {TRADE_STATUS[trade.status]?.icon}
                 {TRADE_STATUS[trade.status]?.label || trade.status}
@@ -200,12 +200,12 @@ export default function ProfileTradesPanel({ trades = [], onAction, dark }) {
 function TradeDetailsModal({ trade, onClose, onAction, dark }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-      <div className="relative bg-light-surface dark:bg-dark-surface rounded-xl max-w-2xl w-full p-6 shadow-xl">
+      <div className="relative bg-vault-surface rounded-[10px] max-w-2xl w-full p-6 ">
         <button
-          className="absolute top-4 right-4 p-1 bg-light-alt dark:bg-dark-alt rounded-full hover:bg-light-border dark:hover:bg-dark-border transition"
+          className="absolute top-4 right-4 p-1 bg-vault-raised rounded-[6px] hover:bg-vault-border dark:hover:bg-vault-border transition"
           onClick={onClose}
         >
-          <XCircle className="w-5 h-5 text-light-textSecondary dark:text-dark-textSecondary" />
+          <XCircle className="w-5 h-5 text-vault-textSecondary" />
         </button>
         <div className="flex items-center gap-4 mb-6">
           <Image
@@ -213,13 +213,13 @@ function TradeDetailsModal({ trade, onClose, onAction, dark }) {
             alt={trade.otherUser?.name || "User"}
             width={44}
             height={44}
-            className="rounded-full border border-light-border dark:border-dark-border"
+            className="rounded-[6px] border border-vault-border"
           />
           <span className="text-lg font-bold">
             {trade.otherUser?.name || "User"}
           </span>
           <span
-            className={`ml-auto px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${TRADE_STATUS[trade.status]?.color}`}
+            className={`ml-auto px-3 py-1 rounded-[6px] text-xs font-semibold flex items-center gap-1 ${TRADE_STATUS[trade.status]?.color}`}
           >
             {TRADE_STATUS[trade.status]?.icon}
             {TRADE_STATUS[trade.status]?.label || trade.status}
@@ -236,7 +236,7 @@ function TradeDetailsModal({ trade, onClose, onAction, dark }) {
                     alt={card.name}
                     width={42}
                     height={58}
-                    className="rounded shadow"
+                    className="rounded "
                   />
                   <span className="text-xs mt-1">
                     {card.name} x{card.quantity}
@@ -255,7 +255,7 @@ function TradeDetailsModal({ trade, onClose, onAction, dark }) {
                     alt={card.name}
                     width={42}
                     height={58}
-                    className="rounded shadow"
+                    className="rounded "
                   />
                   <span className="text-xs mt-1">
                     {card.name} x{card.quantity}
@@ -270,13 +270,13 @@ function TradeDetailsModal({ trade, onClose, onAction, dark }) {
           {trade.status === "pending" && (
             <>
               <button
-                className="bg-purple-800 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition"
+                className="bg-purple-800 text-white px-4 py-2 rounded-[6px] font-semibold hover:bg-purple-700 transition"
                 onClick={() => onAction("accept", trade)}
               >
                 Accept Trade
               </button>
               <button
-                className="bg-light-error text-white px-4 py-2 rounded-lg font-semibold hover:bg-light-error/80 dark:bg-dark-error dark:hover:bg-dark-error/90 transition"
+                className="bg-vault-danger text-white px-4 py-2 rounded-[6px] font-semibold hover:bg-vault-danger/80 dark:bg-vault-danger dark:hover:bg-vault-danger/90 transition"
                 onClick={() => onAction("cancel", trade)}
               >
                 Cancel
@@ -286,7 +286,7 @@ function TradeDetailsModal({ trade, onClose, onAction, dark }) {
           {trade.status === "shipped" && (
             <a
               href={`https://track.royalmail.com/track-your-item#/tracking-results/${trade.trackingNumber}`}
-              className="text-light-primary dark:text-dark-primary hover:underline font-semibold flex items-center gap-2"
+              className="text-vault-accent dark:text-vault-accent hover:underline font-semibold flex items-center gap-2"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -295,17 +295,17 @@ function TradeDetailsModal({ trade, onClose, onAction, dark }) {
             </a>
           )}
           {trade.status === "completed" && (
-            <span className="text-light-success dark:text-dark-success font-semibold flex items-center gap-2">
+            <span className="text-vault-success dark:text-vault-success font-semibold flex items-center gap-2">
               <CheckCircle className="w-5 h-5" /> Trade Complete
             </span>
           )}
           {trade.status === "cancelled" && (
-            <span className="text-light-error dark:text-dark-error font-semibold flex items-center gap-2">
+            <span className="text-vault-danger dark:text-vault-danger font-semibold flex items-center gap-2">
               <XCircle className="w-5 h-5" /> Cancelled
             </span>
           )}
           <button
-            className="ml-auto flex items-center gap-1 text-light-primary dark:text-dark-primary font-semibold hover:underline"
+            className="ml-auto flex items-center gap-1 text-vault-accent dark:text-vault-accent font-semibold hover:underline"
             onClick={() => onAction("message", trade)}
           >
             <Mail className="w-5 h-5" /> Message User

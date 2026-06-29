@@ -17,13 +17,13 @@ export default function SizeSelector(props) {
   if (!options || options.length === 0) return null;
 
   var labelCls =
-    "text-xs font-semibold uppercase tracking-wide text-light-textMuted dark:text-dark-textMuted mb-2";
+    "text-xs font-semibold uppercase tracking-wide text-vault-textTertiary mb-2";
 
   var rowCls =
     "flex flex-wrap gap-2 overflow-x-auto pb-1";
 
   var pillBaseCls =
-    "inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-xs sm:text-sm " +
+    "inline-flex items-center justify-center rounded-[6px] border px-3 py-1.5 text-xs sm:text-sm " +
     "transition-colors whitespace-nowrap";
 
   return React.createElement(
@@ -38,10 +38,10 @@ export default function SizeSelector(props) {
         var pillCls =
           pillBaseCls +
           (isSelected
-            ? " border-light-accent bg-light-accent text-white " +
-              "dark:border-dark-accent dark:bg-dark-accent dark:text-white"
-            : " border-light-border bg-light-surface text-light-text " +
-              "dark:border-dark-border dark:bg-dark-surface dark:text-dark-text hover:bg-light-alt dark:hover:bg-dark-alt");
+            ? " border-vault-accent bg-vault-accent text-white " +
+              "dark:border-vault-accent dark:bg-vault-accent dark:text-white"
+            : " border-vault-border bg-vault-surface text-vault-text " +
+              "dark:border-vault-border dark:bg-vault-surface dark:text-vault-text hover:bg-vault-raised dark:hover:bg-vault-raised");
 
         return React.createElement(
           "button",

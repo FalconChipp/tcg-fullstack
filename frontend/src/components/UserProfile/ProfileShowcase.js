@@ -16,7 +16,7 @@ export default function ProfileShowcase({
   // Helpers for sections
   const Section = ({ title, items, fallbackImg, render, emptyText }) => (
     <div className="w-full md:w-auto flex-1 min-w-[200px]">
-      <h3 className="text-lg font-black text-center mb-3 uppercase tracking-wider text-light-accent dark:text-dark-accent">
+      <h3 className="text-lg font-black text-center mb-3 uppercase tracking-wider text-vault-accent">
         {title}
       </h3>
       {items.length === 0 ? (
@@ -26,7 +26,7 @@ export default function ProfileShowcase({
             alt={emptyText}
             width={80}
             height={80}
-            className="rounded-xl object-contain mb-2"
+            className="rounded-[10px] object-contain mb-2"
           />
           <span>{emptyText}</span>
         </div>
@@ -41,11 +41,11 @@ export default function ProfileShowcase({
   return (
     <section
       className={`
-        relative w-full rounded-3xl mb-10
-        shadow-xl border
+        relative w-full rounded-[14px] mb-10
+         border
         ${dark
-          ? "bg-gradient-to-br from-dark-surface via-[#222239] to-dark-background border-dark-border"
-          : "bg-gradient-to-br from-white via-light-background to-light-alt border-light-border"}
+          ? "bg-gradient-to-br from-vault-surface via-[#222239] to-vault-bg border-vault-border"
+          : "bg-gradient-to-br from-white via-vault-bg to-vault-raised border-vault-border"}
         px-4 sm:px-10 py-7 overflow-hidden
       `}
     >
@@ -53,10 +53,10 @@ export default function ProfileShowcase({
       {isOwnProfile && (
         <button
           className={`
-            absolute top-4 right-6 z-10 flex items-center gap-1 px-4 py-2 rounded-xl font-semibold text-xs shadow-lg
+            absolute top-4 right-6 z-10 flex items-center gap-1 px-4 py-2 rounded-[10px] font-semibold text-xs 
             ${dark
-              ? "bg-dark-accent hover:bg-dark-accentLight text-white"
-              : "bg-light-accentLight hover:bg-light-accent text-light-accent"}
+              ? "bg-vault-accent hover:bg-vault-accentHover text-white"
+              : "bg-vault-accentHover hover:bg-vault-accent text-vault-accent"}
             transition
           `}
           onClick={onEditShowcase}
@@ -68,7 +68,7 @@ export default function ProfileShowcase({
       )}
 
       {/* Section header */}
-      <h2 className="mb-8 text-2xl font-black tracking-tight text-center text-light-accent dark:text-dark-accent drop-shadow-sm uppercase">
+      <h2 className="mb-8 text-2xl font-black tracking-tight text-center text-vault-accent drop- uppercase">
         Showcase
       </h2>
 
@@ -80,8 +80,8 @@ export default function ProfileShowcase({
           fallbackImg={fallbackCard}
           emptyText="No cards selected"
           render={(card, i) => (
-            <div key={i} className="flex flex-col items-center glassy-card rounded-2xl p-2 shadow-md border border-light-accent/20 dark:border-dark-accent/20 bg-light-alt/60 dark:bg-dark-alt/80 group transition hover:scale-105 w-32">
-              <div className="relative w-24 h-36 rounded-lg overflow-hidden border-4 border-yellow-300/60 shadow-lg bg-white dark:bg-dark-surface mb-2">
+            <div key={i} className="flex flex-col items-center glassy-card rounded-[10px] p-2  border border-vault-accent/20 dark:border-vault-accent/20 bg-vault-raised/60 dark:bg-vault-raised/80 group transition hover:scale-105 w-32">
+              <div className="relative w-24 h-36 rounded-[6px] overflow-hidden border-4 border-yellow-300/60  bg-white dark:bg-vault-surface mb-2">
                 <Image
                   src={card?.image || fallbackCard}
                   alt={card?.name || "Favorite Card"}
@@ -92,7 +92,7 @@ export default function ProfileShowcase({
                 <span className="absolute -top-2 -left-2 text-yellow-300 text-xl animate-pulse"><FaTrophy /></span>
               </div>
               <div className="text-xs font-bold text-center text-yellow-800 dark:text-yellow-200 truncate">{card?.name || "No Name"}</div>
-              <div className="text-xs text-light-textMuted dark:text-dark-textMuted text-center truncate">{card?.setName || ""}</div>
+              <div className="text-xs text-vault-textTertiary text-center truncate">{card?.setName || ""}</div>
             </div>
           )}
         />
@@ -103,8 +103,8 @@ export default function ProfileShowcase({
           fallbackImg={fallbackBinder}
           emptyText="No binders selected"
           render={(binder, i) => (
-            <div key={i} className="flex flex-col items-center glassy-card rounded-2xl p-2 shadow-md border border-light-accent/20 dark:border-dark-accent/20 bg-light-background/60 dark:bg-dark-alt/80 group transition hover:scale-105 w-28">
-              <div className="relative w-24 h-16 aspect-[16/11] rounded-lg overflow-hidden border-4 border-light-accent/40 dark:border-dark-accent/40 shadow-lg bg-white dark:bg-dark-surface mb-2">
+            <div key={i} className="flex flex-col items-center glassy-card rounded-[10px] p-2  border border-vault-accent/20 dark:border-vault-accent/20 bg-vault-bg/60 dark:bg-vault-raised/80 group transition hover:scale-105 w-28">
+              <div className="relative w-24 h-16 aspect-[16/11] rounded-[6px] overflow-hidden border-4 border-vault-accent/40 dark:border-vault-accent/40  bg-white dark:bg-vault-surface mb-2">
                 <Image
                   src={binder?.coverImage || fallbackBinder}
                   alt={binder?.name || "Favorite Binder"}
@@ -113,8 +113,8 @@ export default function ProfileShowcase({
                   sizes="90px"
                 />
               </div>
-              <div className="text-xs font-bold text-center text-light-accent dark:text-dark-accent truncate">{binder?.name || "No Name"}</div>
-              <div className="text-xs text-light-textMuted dark:text-dark-textMuted text-center truncate">
+              <div className="text-xs font-bold text-center text-vault-accent truncate">{binder?.name || "No Name"}</div>
+              <div className="text-xs text-vault-textTertiary text-center truncate">
                 {binder?.cardCount ? `${binder.cardCount} cards` : ""}
               </div>
             </div>
@@ -127,8 +127,8 @@ export default function ProfileShowcase({
           fallbackImg={fallbackBadge}
           emptyText="No achievements yet"
           render={(badge, i) => (
-            <div key={i} className="flex flex-col items-center glassy-card rounded-2xl p-2 shadow-md border border-light-accent/20 dark:border-dark-accent/20 bg-light-alt/80 dark:bg-dark-surface/80 group transition hover:scale-105 w-24">
-              <div className="relative w-16 h-16 rounded-full overflow-hidden border-4 border-light-accent/40 dark:border-dark-accent/40 shadow bg-white dark:bg-dark-surface mb-2">
+            <div key={i} className="flex flex-col items-center glassy-card rounded-[10px] p-2  border border-vault-accent/20 dark:border-vault-accent/20 bg-vault-raised/80 dark:bg-vault-surface/80 group transition hover:scale-105 w-24">
+              <div className="relative w-16 h-16 rounded-[6px] overflow-hidden border-4 border-vault-accent/40 dark:border-vault-accent/40  bg-white dark:bg-vault-surface mb-2">
                 <Image
                   src={badge?.image || fallbackBadge}
                   alt={badge?.title || "Achievement"}
@@ -136,9 +136,9 @@ export default function ProfileShowcase({
                   className="object-contain"
                   sizes="60px"
                 />
-                <span className="absolute top-0 right-0 text-light-accent dark:text-dark-accent text-lg animate-pulse"><FaTrophy /></span>
+                <span className="absolute top-0 right-0 text-vault-accent text-lg animate-pulse"><FaTrophy /></span>
               </div>
-              <div className="text-xs font-bold text-center text-light-accent dark:text-dark-accent truncate">{badge?.title || "No Title"}</div>
+              <div className="text-xs font-bold text-center text-vault-accent truncate">{badge?.title || "No Title"}</div>
             </div>
           )}
         />
@@ -147,9 +147,9 @@ export default function ProfileShowcase({
       {motto && (
         <div className="
           mt-8 text-center italic text-lg px-2 py-3 mx-auto max-w-xl
-          bg-light-accent/5 dark:bg-dark-accent/10
-          rounded-lg border border-light-accent/20 dark:border-dark-accent/20
-          text-light-text dark:text-dark-text shadow-inner
+          bg-vault-accent/5 dark:bg-vault-accent/10
+          rounded-[6px] border border-vault-accent/20 dark:border-vault-accent/20
+          text-vault-text -inner
         ">
           “{motto}”
         </div>

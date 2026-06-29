@@ -320,9 +320,9 @@ export default function BuyButton(props) {
       onChange: onQtyChange,
       "aria-label": "Quantity",
       className:
-        "w-16 rounded-md border border-light-border dark:border-dark-border " +
-        "bg-light-surface dark:bg-dark-surface px-2 py-1 text-sm " +
-        "text-light-strong dark:text-dark-strong",
+        "w-16 rounded-md border border-vault-border " +
+        "bg-vault-surface px-2 py-1 text-sm " +
+        "text-vault-text",
     });
 
   var btnLabel;
@@ -341,9 +341,9 @@ export default function BuyButton(props) {
       onClick: handleAddToCart,
       disabled: adding || (!inStock && !isProduct),
       className:
-        "rounded-lg px-4 py-2 text-sm font-medium text-white " +
-        "bg-light-accent hover:bg-light-accentLight " +
-        "dark:bg-dark-accent dark:hover:bg-dark-accentLight " +
+        "rounded-[6px] px-4 py-2 text-sm font-medium text-white " +
+        "bg-vault-accent hover:bg-vault-accentHover " +
+        "dark:bg-vault-accent dark:hover:bg-vault-accentHover " +
         "disabled:opacity-50 disabled:cursor-not-allowed",
     },
     btnLabel
@@ -353,13 +353,13 @@ export default function BuyButton(props) {
   if (added && !err) {
     statusNode = React.createElement(
       "span",
-      { className: "text-xs text-light-textMuted dark:text-dark-textMuted" },
+      { className: "text-xs text-vault-textTertiary" },
       "Added to cart"
     );
   } else if (err) {
     statusNode = React.createElement(
       "span",
-      { className: "text-xs text-light-error dark:text-dark-error" },
+      { className: "text-xs text-vault-danger dark:text-vault-danger" },
       err
     );
   }

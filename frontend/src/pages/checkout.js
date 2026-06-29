@@ -196,23 +196,23 @@ function PaymentForm({ orders, currency, onSuccess }) {
   return (
     <form onSubmit={handlePay} className="flex flex-col gap-4">
       <div>
-        <label className="text-xs font-semibold uppercase tracking-wide text-light-textMuted dark:text-dark-textMuted mb-2 block">
+        <label className="text-xs font-semibold uppercase tracking-wide text-vault-textTertiary mb-2 block">
           Card details
         </label>
-        <div className="rounded-xl border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt px-4 py-3.5">
+        <div className="rounded-[10px] border border-vault-border bg-vault-raised px-4 py-3.5">
           <CardElement options={cardStyle} />
         </div>
       </div>
 
       {err && (
-        <div className="flex items-start gap-2 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-4 py-3">
+        <div className="flex items-start gap-2 rounded-[10px] border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-4 py-3">
           <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
           <p className="text-sm text-red-600 dark:text-red-400">{err}</p>
         </div>
       )}
 
       {busy && progress && (
-        <p className="text-sm text-center text-light-textMuted dark:text-dark-textMuted">
+        <p className="text-sm text-center text-vault-textTertiary">
           {progress}
         </p>
       )}
@@ -220,7 +220,7 @@ function PaymentForm({ orders, currency, onSuccess }) {
       <button
         type="submit"
         disabled={busy || !stripe}
-        className="w-full rounded-xl py-3.5 text-sm font-semibold text-white bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight disabled:opacity-50 transition-colors"
+        className="w-full rounded-[10px] py-3.5 text-sm font-semibold text-vault-text bg-vault-accent hover:bg-vault-accentHover text-vault-text disabled:opacity-50 transition-colors"
       >
         {busy ? (
           <span className="flex items-center justify-center gap-2">
@@ -376,13 +376,13 @@ export default function CheckoutPage() {
     .reduce((s, o) => s + Number(o.totalAmount ?? o.salePrice ?? 0) - (o.walletAmountPence ?? 0) / 100, 0);
 
   const inputCls = (hasErr) =>
-    `w-full rounded-xl border px-3 py-2.5 text-sm ` +
-    `text-light-strong dark:text-dark-strong ` +
-    `bg-light-alt dark:bg-dark-alt ` +
-    `focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent ` +
+    `w-full rounded-[10px] border px-3 py-2.5 text-sm ` +
+    `text-vault-text ` +
+    `bg-vault-raised ` +
+    `focus:outline-none focus:ring-2 focus:ring-vault-accent dark:focus:ring-vault-accent ` +
     (hasErr
       ? "border-red-400 dark:border-red-600"
-      : "border-light-border dark:border-dark-border");
+      : "border-vault-border");
 
   /* ── Not logged in ──────────────────────────────────────────────────────── */
   if (hydrated && !isAuthenticated) {
@@ -390,14 +390,14 @@ export default function CheckoutPage() {
       <Layout>
         <Head><title>Checkout · Six by Five</title></Head>
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
-          <ShoppingBag className="w-12 h-12 text-light-textMuted dark:text-dark-textMuted" />
+          <ShoppingBag className="w-12 h-12 text-vault-textTertiary" />
           <div>
-            <h1 className="text-xl font-bold text-light-strong dark:text-dark-strong mb-1">Sign in to checkout</h1>
-            <p className="text-sm text-light-textMuted dark:text-dark-textMuted">You need an account to place marketplace orders.</p>
+            <h1 className="text-xl font-bold text-vault-text mb-1">Sign in to checkout</h1>
+            <p className="text-sm text-vault-textTertiary">You need an account to place marketplace orders.</p>
           </div>
           <Link
             href="/login?next=/checkout"
-            className="px-5 py-2.5 rounded-xl bg-light-accent dark:bg-dark-accent text-white text-sm font-semibold"
+            className="px-5 py-2.5 rounded-[10px] bg-vault-accent text-vault-text text-sm font-semibold"
           >
             Sign in
           </Link>
@@ -412,14 +412,14 @@ export default function CheckoutPage() {
       <Layout>
         <Head><title>Order confirmed · Six by Five</title></Head>
         <div className="max-w-lg mx-auto px-4 py-16 flex flex-col items-center gap-6 text-center">
-          <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+          <div className="w-16 h-16 rounded-[6px] bg-vault-success/10 flex items-center justify-center">
             <CheckCircle2 className="w-8 h-8 text-emerald-500" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-light-strong dark:text-dark-strong mb-2">
+            <h1 className="text-2xl font-bold text-vault-text mb-2">
               Order{orders.length !== 1 ? "s" : ""} confirmed!
             </h1>
-            <p className="text-light-textMuted dark:text-dark-textMuted">
+            <p className="text-vault-textTertiary">
               {orders.every((o) => !o.clientSecret)
                 ? "Payment taken from your wallet. "
                 : "Your payment is authorised and held securely. "}
@@ -430,13 +430,13 @@ export default function CheckoutPage() {
           <div className="flex flex-col gap-3 w-full">
             <Link
               href="/dashboard?tab=orders"
-              className="w-full rounded-xl py-3 text-sm font-semibold text-white bg-light-accent dark:bg-dark-accent hover:bg-light-accentLight dark:hover:bg-dark-accentLight text-center"
+              className="w-full rounded-[10px] py-3 text-sm font-semibold text-vault-text bg-vault-accent hover:bg-vault-accentHover text-center"
             >
               View my orders
             </Link>
             <Link
               href="/marketplace"
-              className="w-full rounded-xl py-3 text-sm font-medium text-center border border-light-border dark:border-dark-border text-light-textMuted dark:text-dark-textMuted hover:text-light-strong dark:hover:text-dark-strong transition-colors"
+              className="w-full rounded-[10px] py-3 text-sm font-medium text-center border border-vault-border text-vault-textTertiary hover:text-vault-text dark:hover:text-vault-text transition-colors"
             >
               Continue shopping
             </Link>
@@ -452,14 +452,14 @@ export default function CheckoutPage() {
       <Layout>
         <Head><title>Checkout · Six by Five</title></Head>
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
-          <ShoppingBag className="w-12 h-12 text-light-textMuted dark:text-dark-textMuted" />
+          <ShoppingBag className="w-12 h-12 text-vault-textTertiary" />
           <div>
-            <h1 className="text-xl font-bold text-light-strong dark:text-dark-strong mb-1">Your cart is empty</h1>
-            <p className="text-sm text-light-textMuted dark:text-dark-textMuted">Browse the marketplace to find cards to buy.</p>
+            <h1 className="text-xl font-bold text-vault-text mb-1">Your cart is empty</h1>
+            <p className="text-sm text-vault-textTertiary">Browse the marketplace to find cards to buy.</p>
           </div>
           <Link
             href="/marketplace"
-            className="px-5 py-2.5 rounded-xl bg-light-accent dark:bg-dark-accent text-white text-sm font-semibold"
+            className="px-5 py-2.5 rounded-[10px] bg-vault-accent text-vault-text text-sm font-semibold"
           >
             Browse marketplace
           </Link>
@@ -482,23 +482,23 @@ export default function CheckoutPage() {
             <button
               type="button"
               onClick={() => setStep("summary")}
-              className="p-2 rounded-xl border border-light-border dark:border-dark-border hover:bg-light-alt dark:hover:bg-dark-alt transition-colors"
+              className="p-2 rounded-[10px] border border-vault-border hover:bg-vault-raised dark:hover:bg-vault-raised transition-colors"
             >
-              <ArrowLeft className="w-4 h-4 text-light-textMuted dark:text-dark-textMuted" />
+              <ArrowLeft className="w-4 h-4 text-vault-textTertiary" />
             </button>
           ) : (
             <Link
               href="/marketplace"
-              className="p-2 rounded-xl border border-light-border dark:border-dark-border hover:bg-light-alt dark:hover:bg-dark-alt transition-colors"
+              className="p-2 rounded-[10px] border border-vault-border hover:bg-vault-raised dark:hover:bg-vault-raised transition-colors"
             >
-              <ArrowLeft className="w-4 h-4 text-light-textMuted dark:text-dark-textMuted" />
+              <ArrowLeft className="w-4 h-4 text-vault-textTertiary" />
             </Link>
           )}
           <div>
-            <h1 className="text-2xl font-bold text-light-strong dark:text-dark-strong">
+            <h1 className="text-2xl font-bold text-vault-text">
               {step === "payment" ? "Payment" : "Checkout"}
             </h1>
-            <p className="text-sm text-light-textMuted dark:text-dark-textMuted">
+            <p className="text-sm text-vault-textTertiary">
               {step === "payment"
                 ? "Enter your card details to authorise payment"
                 : "Review your items and enter a delivery address"}
@@ -510,17 +510,17 @@ export default function CheckoutPage() {
         <div className="flex items-center gap-2 mb-6">
           {["summary", "payment"].map((s, i) => (
             <React.Fragment key={s}>
-              <div className={`flex items-center gap-2 text-sm font-medium ${step === s ? "text-light-accent dark:text-dark-accent" : "text-light-textMuted dark:text-dark-textMuted"}`}>
-                <span className={`w-6 h-6 rounded-full text-xs flex items-center justify-center font-bold
-                  ${step === s ? "bg-light-accent dark:bg-dark-accent text-white" :
-                    (s === "summary" && step === "payment") ? "bg-emerald-500 text-white" :
-                    "bg-light-alt dark:bg-dark-alt"}`}
+              <div className={`flex items-center gap-2 text-sm font-medium ${step === s ? "text-vault-accent" : "text-vault-textTertiary"}`}>
+                <span className={`w-6 h-6 rounded-[6px] text-xs flex items-center justify-center font-bold
+                  ${step === s ? "bg-vault-accent text-vault-text" :
+                    (s === "summary" && step === "payment") ? "bg-vault-success text-vault-text" :
+                    "bg-vault-raised"}`}
                 >
                   {s === "summary" && step === "payment" ? "✓" : i + 1}
                 </span>
                 {s === "summary" ? "Details" : "Payment"}
               </div>
-              {i < 1 && <div className="flex-1 h-px bg-light-border dark:bg-dark-border" />}
+              {i < 1 && <div className="flex-1 h-px bg-vault-border dark:bg-vault-border" />}
             </React.Fragment>
           ))}
         </div>
@@ -531,11 +531,11 @@ export default function CheckoutPage() {
           <div className="flex flex-col gap-5">
 
             {/* Cart items */}
-            <div className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface p-5">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-light-textMuted dark:text-dark-textMuted mb-4">
+            <div className="rounded-[10px] border border-vault-border bg-vault-surface p-5">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-vault-textTertiary mb-4">
                 Items ({cart.length})
               </h2>
-              <div className="flex flex-col divide-y divide-light-border dark:divide-dark-border">
+              <div className="flex flex-col divide-y divide-vault-border dark:divide-vault-border">
                 {cart.map((item) => (
                   <div
                     key={item.listingId || item.id}
@@ -545,24 +545,24 @@ export default function CheckoutPage() {
                       <img
                         src={item.imageUrl}
                         alt={item.title}
-                        className="w-12 h-16 object-contain rounded-lg bg-light-alt dark:bg-dark-alt flex-shrink-0"
+                        className="w-12 h-16 object-contain rounded-[6px] bg-vault-raised flex-shrink-0"
                       />
                     ) : (
-                      <div className="w-12 h-16 rounded-lg bg-light-alt dark:bg-dark-alt flex-shrink-0 flex items-center justify-center">
-                        <Package className="w-5 h-5 text-light-textMuted dark:text-dark-textMuted" />
+                      <div className="w-12 h-16 rounded-[6px] bg-vault-raised flex-shrink-0 flex items-center justify-center">
+                        <Package className="w-5 h-5 text-vault-textTertiary" />
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-light-strong dark:text-dark-strong truncate">
+                      <p className="text-sm font-medium text-vault-text truncate">
                         {item.title}
                       </p>
                       {item.subtitle && (
-                        <p className="text-xs text-light-textMuted dark:text-dark-textMuted">
+                        <p className="text-xs text-vault-textTertiary">
                           {item.subtitle}
                         </p>
                       )}
                     </div>
-                    <p className="text-sm font-semibold text-light-strong dark:text-dark-strong flex-shrink-0">
+                    <p className="text-sm font-semibold text-vault-text flex-shrink-0">
                       {fmt(Number(item.price) * (Number(item.qty) || 1), item.currency)}
                     </p>
                   </div>
@@ -572,7 +572,7 @@ export default function CheckoutPage() {
 
             {/* Partial order errors */}
             {orderErrors.length > 0 && (
-              <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-4 py-3">
+              <div className="rounded-[10px] border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-4 py-3">
                 <p className="text-sm font-semibold text-amber-700 dark:text-amber-400 mb-1">
                   Some items could not be ordered
                 </p>
@@ -587,13 +587,13 @@ export default function CheckoutPage() {
             {/* Step 1: Delivery address + wallet */}
             {step === "summary" && (
               <>
-                <div className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface p-5">
-                  <h2 className="text-xs font-semibold uppercase tracking-wide text-light-textMuted dark:text-dark-textMuted mb-4">
+                <div className="rounded-[10px] border border-vault-border bg-vault-surface p-5">
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-vault-textTertiary mb-4">
                     Delivery address
                   </h2>
                   <form id="checkout-form" onSubmit={handleContinue} className="flex flex-col gap-3">
                     <div>
-                      <label className="text-xs font-medium text-light-textMuted dark:text-dark-textMuted mb-1 block">
+                      <label className="text-xs font-medium text-vault-textTertiary mb-1 block">
                         Address line 1 *
                       </label>
                       <input
@@ -607,7 +607,7 @@ export default function CheckoutPage() {
                       )}
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-light-textMuted dark:text-dark-textMuted mb-1 block">
+                      <label className="text-xs font-medium text-vault-textTertiary mb-1 block">
                         Address line 2
                       </label>
                       <input
@@ -619,7 +619,7 @@ export default function CheckoutPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs font-medium text-light-textMuted dark:text-dark-textMuted mb-1 block">
+                        <label className="text-xs font-medium text-vault-textTertiary mb-1 block">
                           City *
                         </label>
                         <input
@@ -633,7 +633,7 @@ export default function CheckoutPage() {
                         )}
                       </div>
                       <div>
-                        <label className="text-xs font-medium text-light-textMuted dark:text-dark-textMuted mb-1 block">
+                        <label className="text-xs font-medium text-vault-textTertiary mb-1 block">
                           Postcode *
                         </label>
                         <input
@@ -648,7 +648,7 @@ export default function CheckoutPage() {
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-light-textMuted dark:text-dark-textMuted mb-1 block">
+                      <label className="text-xs font-medium text-vault-textTertiary mb-1 block">
                         Country
                       </label>
                       <input
@@ -662,19 +662,19 @@ export default function CheckoutPage() {
 
                 {/* Wallet section */}
                 {walletBalancePence > 0 && (
-                  <div className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface p-5">
+                  <div className="rounded-[10px] border border-vault-border bg-vault-surface p-5">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">
-                        <Wallet className="w-4 h-4 text-light-accent dark:text-dark-accent" />
-                        <h2 className="text-sm font-semibold text-light-strong dark:text-dark-strong">
+                        <Wallet className="w-4 h-4 text-vault-accent" />
+                        <h2 className="text-sm font-semibold text-vault-text">
                           Wallet balance
                         </h2>
                       </div>
-                      <span className="text-sm font-semibold text-light-strong dark:text-dark-strong">
+                      <span className="text-sm font-semibold text-vault-text">
                         {fmtPence(walletBalancePence, walletCurrency)}
                       </span>
                     </div>
-                    <p className="text-xs text-light-textMuted dark:text-dark-textMuted mb-3">
+                    <p className="text-xs text-vault-textTertiary mb-3">
                       Apply wallet credit to reduce your card payment.
                     </p>
 
@@ -686,10 +686,10 @@ export default function CheckoutPage() {
                           checked={useWallet}
                           onChange={(e) => setUseWallet(e.target.checked)}
                         />
-                        <div className={`w-10 h-6 rounded-full transition-colors ${useWallet ? "bg-light-accent dark:bg-dark-accent" : "bg-light-border dark:bg-dark-border"}`} />
-                        <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${useWallet ? "translate-x-4" : ""}`} />
+                        <div className={`w-10 h-6 rounded-[6px] transition-colors ${useWallet ? "bg-vault-accent" : "bg-vault-border dark:bg-vault-border"}`} />
+                        <div className={`absolute top-1 left-1 w-4 h-4 rounded-[6px] bg-white  transition-transform ${useWallet ? "translate-x-4" : ""}`} />
                       </div>
-                      <span className="text-sm text-light-strong dark:text-dark-strong">
+                      <span className="text-sm text-vault-text">
                         Use wallet balance
                       </span>
                     </label>
@@ -697,7 +697,7 @@ export default function CheckoutPage() {
                     {useWallet && (
                       <div className="mt-3 flex flex-col gap-2">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-light-textMuted dark:text-dark-textMuted w-24">Amount (£)</span>
+                          <span className="text-xs text-vault-textTertiary w-24">Amount (£)</span>
                           <input
                             type="number"
                             min="0"
@@ -716,7 +716,7 @@ export default function CheckoutPage() {
                             <span className="text-emerald-600 dark:text-emerald-400">
                               Wallet: −{fmtPence(walletAppliedPence, walletCurrency)}
                             </span>
-                            <span className="text-light-textMuted dark:text-dark-textMuted">
+                            <span className="text-vault-textTertiary">
                               {cardDisplayPence > 0
                                 ? `Card: ${fmtPence(cardDisplayPence, currency)}`
                                 : "No card payment needed"}
@@ -732,12 +732,12 @@ export default function CheckoutPage() {
 
             {/* Step 2: Payment */}
             {step === "payment" && orders.some((o) => o.clientSecret) && (
-              <div className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface p-5">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-light-textMuted dark:text-dark-textMuted mb-4">
+              <div className="rounded-[10px] border border-vault-border bg-vault-surface p-5">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-vault-textTertiary mb-4">
                   Card payment
                 </h2>
                 {orderWalletPence > 0 && (
-                  <div className="mb-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 px-3 py-2.5 flex items-center gap-2">
+                  <div className="mb-4 rounded-[10px] bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 px-3 py-2.5 flex items-center gap-2">
                     <Wallet className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
                     <p className="text-xs text-emerald-700 dark:text-emerald-400">
                       {fmtPence(orderWalletPence, walletCurrency)} applied from your wallet.
@@ -758,23 +758,23 @@ export default function CheckoutPage() {
 
           {/* ── RIGHT column — order summary ─────────────────────────────── */}
           <div>
-            <div className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface p-5 sticky top-4">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-light-textMuted dark:text-dark-textMuted mb-4">
+            <div className="rounded-[10px] border border-vault-border bg-vault-surface p-5 sticky top-4">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-vault-textTertiary mb-4">
                 Order summary
               </h2>
 
               <div className="flex flex-col gap-2.5 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-light-textMuted dark:text-dark-textMuted">
+                  <span className="text-vault-textTertiary">
                     Subtotal ({cart.length} item{cart.length !== 1 ? "s" : ""})
                   </span>
-                  <span className="font-medium text-light-strong dark:text-dark-strong">
+                  <span className="font-medium text-vault-text">
                     {fmt(subtotal, currency)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-light-textMuted dark:text-dark-textMuted">Shipping</span>
-                  <span className="text-light-textMuted dark:text-dark-textMuted text-xs">
+                  <span className="text-vault-textTertiary">Shipping</span>
+                  <span className="text-vault-textTertiary text-xs">
                     Set by seller
                   </span>
                 </div>
@@ -795,11 +795,11 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
-                <div className="border-t border-light-border dark:border-dark-border pt-2.5 mt-0.5 flex justify-between font-semibold text-base">
-                  <span className="text-light-strong dark:text-dark-strong">
+                <div className="border-t border-vault-border pt-2.5 mt-0.5 flex justify-between font-semibold text-base">
+                  <span className="text-vault-text">
                     {step === "payment" && orderWalletPence > 0 ? "Card total" : "Total"}
                   </span>
-                  <span className="text-light-strong dark:text-dark-strong">
+                  <span className="text-vault-text">
                     {step === "payment"
                       ? fmtPence(Math.round(orderCardTotal * 100), currency)
                       : fmt(cardDisplayPence / 100, currency)}
@@ -808,20 +808,20 @@ export default function CheckoutPage() {
               </div>
 
               {/* How payment works callout */}
-              <div className="mt-4 rounded-xl bg-light-alt dark:bg-dark-alt px-3 py-2.5 text-xs text-light-textMuted dark:text-dark-textMuted leading-relaxed">
+              <div className="mt-4 rounded-[10px] bg-vault-raised px-3 py-2.5 text-xs text-vault-textTertiary leading-relaxed">
                 {isFullyWallet
                   ? "This order will be paid entirely from your wallet balance. The seller will ship once it's confirmed."
                   : "Payment is "}
                 {!isFullyWallet && (
                   <>
-                    <strong className="text-light-strong dark:text-dark-strong">authorised now</strong>
+                    <strong className="text-vault-text">authorised now</strong>
                     {" and only released to the seller when you confirm receipt. Raise a dispute if there's a problem."}
                   </>
                 )}
               </div>
 
               {err && (
-                <div className="mt-4 flex items-start gap-2 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-3 py-2.5">
+                <div className="mt-4 flex items-start gap-2 rounded-[10px] border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-3 py-2.5">
                   <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-red-600 dark:text-red-400">{err}</p>
                 </div>
@@ -832,7 +832,7 @@ export default function CheckoutPage() {
                   form="checkout-form"
                   type="submit"
                   disabled={busy || !cart.length}
-                  className="mt-4 w-full rounded-xl py-3.5 text-sm font-semibold text-white bg-light-accent dark:bg-dark-accent hover:bg-light-accentLight dark:hover:bg-dark-accentLight disabled:opacity-50 transition-colors"
+                  className="mt-4 w-full rounded-[10px] py-3.5 text-sm font-semibold text-vault-text bg-vault-accent hover:bg-vault-accentHover disabled:opacity-50 transition-colors"
                 >
                   {busy ? (
                     <span className="flex items-center justify-center gap-2">
@@ -847,7 +847,7 @@ export default function CheckoutPage() {
                 </button>
               )}
 
-              <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-light-textMuted dark:text-dark-textMuted">
+              <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-vault-textTertiary">
                 <Lock className="w-3 h-3" />
                 Secured by Stripe
               </div>

@@ -96,10 +96,10 @@ function HeaderNavLink({ href, children, isActive, onClick, mobile = false }) {
         href={href}
         onClick={onClick}
         aria-current={isActive ? "page" : undefined}
-        className={`header-clickable flex items-center justify-between rounded-2xl px-4 py-3 text-base font-semibold transition ${safeFocusClass()} ${
+        className={`header-clickable flex items-center justify-between rounded-[10px] px-4 py-3 text-base font-semibold transition-colors ${safeFocusClass()} ${
           isActive
-            ? "bg-dark-accent/15 text-dark-accentLight"
-            : "text-dark-text hover:bg-dark-alt hover:text-dark-strong active:bg-dark-alt"
+            ? "bg-vault-raised text-vault-accent"
+            : "text-vault-textSecondary hover:bg-vault-raised hover:text-vault-text active:bg-vault-raised"
         }`}
       >
         {children}
@@ -112,10 +112,10 @@ function HeaderNavLink({ href, children, isActive, onClick, mobile = false }) {
       href={href}
       onClick={onClick}
       aria-current={isActive ? "page" : undefined}
-      className={`header-clickable inline-flex h-11 items-center rounded-2xl px-4 text-sm font-bold transition ${safeFocusClass()} ${
+      className={`header-clickable relative inline-flex h-20 items-center px-4 font-vault text-sm font-semibold transition-colors ${safeFocusClass()} ${
         isActive
-          ? "bg-dark-accent/15 text-dark-accentLight"
-          : "text-dark-textMuted hover:bg-dark-alt hover:text-dark-strong active:bg-dark-alt"
+          ? "text-vault-text after:absolute after:bottom-0 after:left-4 after:right-4 after:h-[2px] after:bg-vault-accent"
+          : "text-vault-textSecondary hover:text-vault-text"
       }`}
     >
       {children}
@@ -128,10 +128,10 @@ function HeaderAccountLink({ href, children, isActive }) {
     <Link
       href={href}
       aria-current={isActive ? "page" : undefined}
-      className={`header-clickable hidden h-11 items-center rounded-xl px-2 text-sm font-bold transition ${safeFocusClass()} xl:inline-flex ${
+      className={`header-clickable hidden h-11 items-center rounded-[6px] px-2 text-sm font-semibold transition-colors ${safeFocusClass()} xl:inline-flex ${
         isActive
-          ? "text-dark-accentLight"
-          : "text-dark-textMuted hover:text-dark-strong active:text-dark-strong"
+          ? "text-vault-accent"
+          : "text-vault-textSecondary hover:text-vault-text active:text-vault-text"
       }`}
     >
       {children}
@@ -279,10 +279,10 @@ export default function Header({ onStartTour }) {
     <>
       <header
         id="main-header"
-        className={`fixed left-0 top-0 z-50 w-full border-b transition-all duration-300 ${
+        className={`fixed left-0 top-0 z-50 w-full border-b transition-colors duration-200 ${
           isScrolled
-            ? "border-dark-border bg-dark-surface/92 shadow-xl backdrop-blur"
-            : "border-transparent bg-dark-surface/98"
+            ? "border-vault-border bg-vault-surface"
+            : "border-transparent bg-vault-bg"
         }`}
       >
         <div className="mx-auto max-w-7xl px-5 sm:px-7">
@@ -290,7 +290,7 @@ export default function Header({ onStartTour }) {
             {/* Logo */}
             <Link
               href="/"
-              className={`header-clickable flex shrink-0 items-center rounded-xl ${safeFocusClass()}`}
+              className={`header-clickable flex shrink-0 items-center ${safeFocusClass()}`}
               aria-label="SixByFive TCG Home"
             >
               <Image
@@ -305,7 +305,7 @@ export default function Header({ onStartTour }) {
 
             {/* Left desktop nav */}
             <nav
-              className="hidden items-center gap-2 lg:flex"
+              className="hidden h-full items-center lg:flex"
               aria-label="Primary navigation"
             >
               {desktopNav.map((item) => (
@@ -355,13 +355,13 @@ export default function Header({ onStartTour }) {
               )}
 
               {loading ? (
-                <div className="hidden h-11 w-28 animate-pulse rounded-2xl bg-dark-border sm:block" />
+                <div className="hidden h-11 w-28 animate-pulse rounded-[10px] bg-vault-raised sm:block" />
               ) : user ? (
                 <div className="relative hidden sm:block" ref={dropdownRef}>
                   <button
                     type="button"
                     onClick={() => setUserDropdownOpen((v) => !v)}
-                    className={`header-clickable inline-flex h-11 items-center gap-2 rounded-2xl border border-dark-border bg-dark-surface px-4 text-sm font-black text-dark-strong transition hover:border-dark-accent hover:bg-dark-alt active:bg-dark-alt ${safeFocusClass()}`}
+                    className={`header-clickable inline-flex h-11 items-center gap-2 rounded-[10px] border border-vault-border bg-transparent px-4 text-sm font-semibold text-vault-text transition-colors hover:border-vault-borderStrong ${safeFocusClass()}`}
                     aria-expanded={userDropdownOpen}
                     aria-haspopup="true"
                   >
@@ -377,12 +377,12 @@ export default function Header({ onStartTour }) {
                   </button>
 
                   {userDropdownOpen && (
-                    <div className="absolute right-0 mt-3 w-60 overflow-hidden rounded-2xl border border-dark-border bg-dark-surface py-2 shadow-2xl animate-fadeIn">
-                      <div className="border-b border-dark-border px-4 pb-3 pt-1">
-                        <p className="text-xs text-dark-textMuted">
+                    <div className="absolute right-0 mt-3 w-60 overflow-hidden rounded-[10px] border border-vault-border bg-vault-overlay py-2 shadow-[0_8px_24px_rgba(0,0,0,0.4)] animate-fadeIn">
+                      <div className="border-b border-vault-border px-4 pb-3 pt-1">
+                        <p className="text-xs text-vault-textTertiary">
                           Signed in as
                         </p>
-                        <p className="truncate text-sm font-bold text-dark-strong">
+                        <p className="truncate text-sm font-semibold text-vault-text">
                           {user.username}
                         </p>
                       </div>
@@ -390,7 +390,7 @@ export default function Header({ onStartTour }) {
                       <Link
                         href="/account"
                         onClick={() => setUserDropdownOpen(false)}
-                        className={`header-clickable block px-4 py-2.5 text-sm font-medium text-dark-text transition hover:bg-dark-alt active:bg-dark-alt ${safeFocusClass()}`}
+                        className={`header-clickable block px-4 py-2.5 text-sm font-medium text-vault-textSecondary transition-colors hover:bg-vault-raised hover:text-vault-text ${safeFocusClass()}`}
                       >
                         Account settings
                       </Link>
@@ -401,17 +401,17 @@ export default function Header({ onStartTour }) {
                           onStartTour?.();
                           setUserDropdownOpen(false);
                         }}
-                        className={`header-clickable block w-full px-4 py-2.5 text-left text-sm font-medium text-dark-text transition hover:bg-dark-alt active:bg-dark-alt ${safeFocusClass()}`}
+                        className={`header-clickable block w-full px-4 py-2.5 text-left text-sm font-medium text-vault-textSecondary transition-colors hover:bg-vault-raised hover:text-vault-text ${safeFocusClass()}`}
                       >
                         Redo onboarding tour
                       </button>
 
-                      <div className="my-1 border-t border-dark-border" />
+                      <div className="my-1 border-t border-vault-border" />
 
                       <button
                         type="button"
                         onClick={handleSignOut}
-                        className={`header-clickable block w-full px-4 py-2.5 text-left text-sm font-bold text-red-400 transition hover:bg-red-900/20 active:bg-red-900/20 ${safeFocusClass()}`}
+                        className={`header-clickable block w-full px-4 py-2.5 text-left text-sm font-semibold text-vault-danger transition-colors hover:bg-vault-raised ${safeFocusClass()}`}
                       >
                         Sign out
                       </button>
@@ -422,7 +422,7 @@ export default function Header({ onStartTour }) {
                 <button
                   type="button"
                   onClick={openAuthModal}
-                  className={`header-clickable hidden h-11 rounded-2xl bg-dark-accent px-5 text-sm font-black text-white transition hover:bg-dark-accentLight active:bg-dark-accentLight sm:inline-flex sm:items-center ${safeFocusClass()}`}
+                  className={`header-clickable hidden h-11 rounded-[10px] bg-vault-accent px-5 text-sm font-semibold text-vault-text transition-colors hover:bg-vault-accentHover sm:inline-flex sm:items-center ${safeFocusClass()}`}
                 >
                   Sign In / Sign Up
                 </button>
@@ -432,7 +432,7 @@ export default function Header({ onStartTour }) {
               <button
                 type="button"
                 onClick={() => setMenuOpen((v) => !v)}
-                className={`header-clickable inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-dark-border bg-dark-surface text-dark-text transition hover:border-dark-accent hover:bg-dark-alt active:bg-dark-alt lg:hidden ${safeFocusClass()}`}
+                className={`header-clickable inline-flex h-11 w-11 items-center justify-center rounded-[10px] border border-vault-border bg-transparent text-vault-text transition-colors hover:border-vault-borderStrong lg:hidden ${safeFocusClass()}`}
                 aria-label={menuOpen ? "Close menu" : "Open menu"}
                 aria-expanded={menuOpen}
               >
@@ -446,14 +446,14 @@ export default function Header({ onStartTour }) {
       {/* Mobile overlay */}
       {menuOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-black/60 lg:hidden"
           onClick={() => setMenuOpen(false)}
         />
       )}
 
       {/* Mobile menu */}
       <aside
-        className={`fixed right-0 top-0 z-50 h-full w-80 max-w-[90vw] transform border-l border-dark-border bg-dark-surface shadow-2xl transition-transform duration-300 lg:hidden ${
+        className={`fixed right-0 top-0 z-50 h-full w-80 max-w-[90vw] transform border-l border-vault-border bg-vault-overlay shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-transform duration-300 lg:hidden ${
           menuOpen ? "translate-x-0" : "translate-x-full"
         }`}
         aria-hidden={!menuOpen}
@@ -463,7 +463,7 @@ export default function Header({ onStartTour }) {
             <Link
               href="/"
               onClick={() => setMenuOpen(false)}
-              className={`header-clickable flex items-center rounded-xl ${safeFocusClass()}`}
+              className={`header-clickable flex items-center ${safeFocusClass()}`}
               aria-label="SixByFive TCG Home"
             >
               <Image
@@ -479,7 +479,7 @@ export default function Header({ onStartTour }) {
             <button
               type="button"
               onClick={() => setMenuOpen(false)}
-              className={`header-clickable inline-flex h-11 w-11 items-center justify-center rounded-2xl text-dark-text hover:bg-dark-alt active:bg-dark-alt ${safeFocusClass()}`}
+              className={`header-clickable inline-flex h-11 w-11 items-center justify-center rounded-[10px] text-vault-text hover:bg-vault-raised ${safeFocusClass()}`}
               aria-label="Close menu"
             >
               <CloseIcon />
@@ -500,12 +500,12 @@ export default function Header({ onStartTour }) {
             ))}
           </nav>
 
-          <div className="mt-auto border-t border-dark-border pt-5">
+          <div className="mt-auto border-t border-vault-border pt-5">
             {user ? (
               <div className="space-y-3">
-                <div className="rounded-2xl bg-dark-alt p-4">
-                  <p className="text-xs text-dark-textMuted">Signed in as</p>
-                  <p className="truncate text-base font-bold text-dark-strong">
+                <div className="rounded-[10px] bg-vault-raised p-4">
+                  <p className="text-xs text-vault-textTertiary">Signed in as</p>
+                  <p className="truncate text-base font-semibold text-vault-text">
                     {user.username}
                   </p>
                 </div>
@@ -513,7 +513,7 @@ export default function Header({ onStartTour }) {
                 <button
                   type="button"
                   onClick={handleSignOut}
-                  className={`header-clickable w-full rounded-2xl bg-red-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-red-600 active:bg-red-600 ${safeFocusClass()}`}
+                  className={`header-clickable w-full rounded-[10px] border border-vault-danger/40 px-4 py-3 text-sm font-semibold text-vault-danger transition-colors hover:bg-vault-danger/10 ${safeFocusClass()}`}
                 >
                   Sign out
                 </button>
@@ -522,7 +522,7 @@ export default function Header({ onStartTour }) {
               <button
                 type="button"
                 onClick={openAuthModal}
-                className={`header-clickable w-full rounded-2xl bg-dark-accent px-4 py-3 text-sm font-black text-white transition hover:bg-dark-accentLight active:bg-dark-accentLight ${safeFocusClass()}`}
+                className={`header-clickable w-full rounded-[10px] bg-vault-accent px-4 py-3 text-sm font-semibold text-vault-text transition-colors hover:bg-vault-accentHover ${safeFocusClass()}`}
               >
                 Sign In / Sign Up
               </button>

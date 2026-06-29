@@ -454,70 +454,70 @@ export default function CartModal(props) {
     "bg-black/40 backdrop-blur-sm";
 
   var modalCls =
-    "relative z-50 w-full max-w-3xl rounded-3xl border border-light-border " +
-    "dark:border-dark-border bg-light-surface dark:bg-dark-surface " +
-    "shadow-xl max-h-[90vh] overflow-hidden flex flex-col";
+    "relative z-50 w-full max-w-3xl rounded-[14px] border border-vault-border " +
+    "dark:border-vault-border bg-vault-surface " +
+    " max-h-[90vh] overflow-hidden flex flex-col";
 
   var headerCls =
-    "px-4 sm:px-6 py-3 border-b border-light-border dark:border-dark-border " +
+    "px-4 sm:px-6 py-3 border-b border-vault-border " +
     "flex items-center justify-between gap-3";
   var titleCls =
-    "text-base sm:text-lg font-semibold text-light-strong dark:text-dark-strong";
+    "text-base sm:text-lg font-semibold text-vault-text";
   var closeBtnCls =
-    "text-xs font-medium text-light-textMuted dark:text-dark-textMuted " +
-    "hover:text-light-strong dark:hover:text-dark-strong";
+    "text-xs font-medium text-vault-textTertiary " +
+    "hover:text-vault-text dark:hover:text-vault-text";
 
   var bodyCls =
     "flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 flex flex-col gap-4 sm:gap-5";
 
   var footerCls =
-    "px-4 sm:px-6 py-3 border-t border-light-border dark:border-dark-border " +
+    "px-4 sm:px-6 py-3 border-t border-vault-border " +
     "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3";
 
   var lineItemCls =
-    "flex items-start gap-3 rounded-2xl border border-light-border dark:border-dark-border " +
-    "bg-light-elevated dark:bg-dark-elevated p-3";
+    "flex items-start gap-3 rounded-[10px] border border-vault-border " +
+    "bg-vault-raised dark:bg-vault-raised p-3";
 
   var thumbnailCls =
-    "h-14 w-14 flex-shrink-0 rounded-xl overflow-hidden bg-light-alt dark:bg-dark-alt border " +
-    "border-light-border dark:border-dark-border";
+    "h-14 w-14 flex-shrink-0 rounded-[10px] overflow-hidden bg-vault-raised border " +
+    "border-vault-border";
 
   var qtyInputCls =
-    "w-16 rounded-md border border-light-border dark:border-dark-border " +
-    "bg-light-surface dark:bg-dark-surface px-2 py-1 text-xs sm:text-sm " +
-    "text-light-strong dark:text-dark-strong";
+    "w-16 rounded-md border border-vault-border " +
+    "bg-vault-surface px-2 py-1 text-xs sm:text-sm " +
+    "text-vault-text";
 
   var removeBtnCls =
-    "text-[11px] text-light-textMuted dark:text-dark-textMuted hover:text-light-error " +
-    "dark:hover:text-dark-error";
+    "text-[11px] text-vault-textTertiary hover:text-vault-danger " +
+    "dark:hover:text-vault-danger";
 
   var subtotalLabelCls =
-    "text-xs font-medium uppercase tracking-wide text-light-textMuted dark:text-dark-textMuted";
+    "text-xs font-medium uppercase tracking-wide text-vault-textTertiary";
   var subtotalValueCls =
-    "text-base sm:text-lg font-semibold text-light-strong dark:text-dark-strong";
+    "text-base sm:text-lg font-semibold text-vault-text";
 
   var btnPrimaryCls =
-    "inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold " +
-    "text-white bg-light-accent hover:bg-light-accentLight " +
-    "dark:bg-dark-accent dark:hover:bg-dark-accentLight " +
+    "inline-flex items-center justify-center rounded-[6px] px-4 py-2 text-sm font-semibold " +
+    "text-white bg-vault-accent hover:bg-vault-accentHover " +
+    "dark:bg-vault-accent dark:hover:bg-vault-accentHover " +
     "disabled:opacity-50 disabled:cursor-not-allowed";
 
   var btnSecondaryCls =
-    "inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium " +
-    "text-light-text dark:text-dark-text bg-light-alt dark:bg-dark-alt " +
-    "hover:bg-light-elevated dark:hover:bg-dark-elevated";
+    "inline-flex items-center justify-center rounded-[6px] px-3 py-2 text-sm font-medium " +
+    "text-vault-text bg-vault-raised " +
+    "hover:bg-vault-raised dark:hover:bg-vault-raised";
 
   var formLabelCls =
-    "text-xs font-semibold uppercase tracking-wide text-light-textMuted dark:text-dark-textMuted";
+    "text-xs font-semibold uppercase tracking-wide text-vault-textTertiary";
   var formInputCls =
-    "mt-1 w-full rounded-md border border-light-border dark:border-dark-border " +
-    "bg-light-surface dark:bg-dark-surface px-3 py-1.5 text-sm " +
-    "text-light-strong dark:text-dark-strong";
+    "mt-1 w-full rounded-md border border-vault-border " +
+    "bg-vault-surface px-3 py-1.5 text-sm " +
+    "text-vault-text";
   var formTextareaCls =
-    "mt-1 w-full rounded-md border border-light-border dark:border-dark-border " +
-    "bg-light-surface dark:bg-dark-surface px-3 py-1.5 text-sm " +
-    "text-light-strong dark:text-dark-strong resize-none min-h-[70px]";
-  var formErrorCls = "mt-0.5 text-[11px] text-light-error dark:text-dark-error";
+    "mt-1 w-full rounded-md border border-vault-border " +
+    "bg-vault-surface px-3 py-1.5 text-sm " +
+    "text-vault-text resize-none min-h-[70px]";
+  var formErrorCls = "mt-0.5 text-[11px] text-vault-danger dark:text-vault-danger";
 
   // Note when clothing + 3D are mixed
   var shippingNote = null;
@@ -560,7 +560,7 @@ export default function CartModal(props) {
               "p",
               {
                 className:
-                  "text-sm text-light-textMuted dark:text-dark-textMuted",
+                  "text-sm text-vault-textTertiary",
               },
               "Your cart is empty."
             )
@@ -602,7 +602,7 @@ export default function CartModal(props) {
                         {
                           className:
                             "h-full w-full flex items-center justify-center text-[10px] " +
-                            "text-light-textMuted dark:text-dark-textMuted",
+                            "text-vault-textTertiary",
                         },
                         "No image"
                       )
@@ -623,7 +623,7 @@ export default function CartModal(props) {
                         "p",
                         {
                           className:
-                            "text-sm font-medium text-light-strong dark:text-dark-strong truncate",
+                            "text-sm font-medium text-vault-text truncate",
                         },
                         title
                       ),
@@ -632,7 +632,7 @@ export default function CartModal(props) {
                           "p",
                           {
                             className:
-                              "text-xs text-light-textMuted dark:text-dark-textMuted truncate",
+                              "text-xs text-vault-textTertiary truncate",
                           },
                           metaLine
                         ),
@@ -641,7 +641,7 @@ export default function CartModal(props) {
                           "p",
                           {
                             className:
-                              "text-xs text-light-textMuted dark:text-dark-textMuted truncate",
+                              "text-xs text-vault-textTertiary truncate",
                           },
                           description
                         )
@@ -650,7 +650,7 @@ export default function CartModal(props) {
                       "div",
                       {
                         className:
-                          "text-sm font-semibold text-light-strong dark:text-dark-strong",
+                          "text-sm font-semibold text-vault-text",
                       },
                       formatMoney(lineTotal)
                     )
@@ -662,7 +662,7 @@ export default function CartModal(props) {
                       "label",
                       {
                         className:
-                          "flex items-center gap-1 text-[11px] text-light-textMuted dark:text-dark-textMuted",
+                          "flex items-center gap-1 text-[11px] text-vault-textTertiary",
                       },
                       "Qty",
                       React.createElement("input", {
@@ -698,14 +698,14 @@ export default function CartModal(props) {
             "div",
             {
               className:
-                "mt-2 rounded-2xl border border-light-border dark:border-dark-border " +
-                "bg-light-surface dark:bg-dark-surface p-3 sm:p-4 flex flex-col gap-3",
+                "mt-2 rounded-[10px] border border-vault-border " +
+                "bg-vault-surface p-3 sm:p-4 flex flex-col gap-3",
             },
             React.createElement(
               "h2",
               {
                 className:
-                  "text-sm font-semibold text-light-strong dark:text-dark-strong",
+                  "text-sm font-semibold text-vault-text",
               },
               "Checkout details"
             ),
@@ -937,8 +937,8 @@ export default function CartModal(props) {
                 type: "button",
                 onClick: handleClearCart,
                 className:
-                  "mt-1 text-[11px] text-light-textMuted dark:text-dark-textMuted " +
-                  "hover:text-light-error dark:hover:text-dark-error text-left",
+                  "mt-1 text-[11px] text-vault-textTertiary " +
+                  "hover:text-vault-danger dark:hover:text-vault-danger text-left",
               },
               "Clear cart"
             ),
@@ -947,7 +947,7 @@ export default function CartModal(props) {
               "p",
               {
                 className:
-                  "mt-2 text-[11px] text-light-textMuted dark:text-dark-textMuted",
+                  "mt-2 text-[11px] text-vault-textTertiary",
               },
               shippingNote
             ),
@@ -955,7 +955,7 @@ export default function CartModal(props) {
             "p",
             {
               className:
-                "mt-2 text-[11px] text-light-textMuted dark:text-dark-textMuted",
+                "mt-2 text-[11px] text-vault-textTertiary",
             },
             "Shipping is automatically applied when you complete payment via Stripe - usually cheaper"
           ),
@@ -964,7 +964,7 @@ export default function CartModal(props) {
               "p",
               {
                 className:
-                  "mt-1 text-xs text-light-error dark:text-dark-error",
+                  "mt-1 text-xs text-vault-danger dark:text-vault-danger",
               },
               error
             )

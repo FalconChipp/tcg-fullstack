@@ -508,7 +508,7 @@ export default function ListingGrid(props) {
       "div",
       {
         className:
-          "py-10 text-sm text-center text-light-textMuted dark:text-dark-textMuted",
+          "py-10 text-sm text-center text-vault-textTertiary",
       },
       "Loading marketplace listings…"
     );
@@ -531,7 +531,7 @@ export default function ListingGrid(props) {
       "div",
       {
         className:
-          "flex items-center justify-between gap-3 text-xs text-light-textMuted dark:text-dark-textMuted",
+          "flex items-center justify-between gap-3 text-xs text-vault-textTertiary",
       },
       React.createElement("span", null, "Marketplace listings"),
       React.createElement("span", null, countLabel)
@@ -544,10 +544,10 @@ export default function ListingGrid(props) {
         "div",
         {
           className:
-            "py-3 text-xs text-center rounded-xl border border-dashed " +
-            "border-light-border dark:border-dark-border " +
-            "bg-light-surface/40 dark:bg-dark-surface/40 " +
-            "text-light-textMuted dark:text-dark-textMuted",
+            "py-3 text-xs text-center rounded-[10px] border border-dashed " +
+            "border-vault-border " +
+            "bg-vault-surface/40 dark:bg-vault-surface/40 " +
+            "text-vault-textTertiary",
         },
         error
           ? "Live listings unavailable — showing sample data."
@@ -561,10 +561,10 @@ export default function ListingGrid(props) {
         "div",
         {
           className:
-            "py-8 text-sm text-center rounded-xl border border-dashed " +
-            "border-light-border dark:border-dark-border " +
-            "bg-light-surface/40 dark:bg-dark-surface/40 " +
-            "text-light-textMuted dark:text-dark-textMuted",
+            "py-8 text-sm text-center rounded-[10px] border border-dashed " +
+            "border-vault-border " +
+            "bg-vault-surface/40 dark:bg-vault-surface/40 " +
+            "text-vault-textTertiary",
         },
         "No cards found for “",
         search,
@@ -578,10 +578,10 @@ export default function ListingGrid(props) {
         "div",
         {
           className:
-            "py-8 text-sm text-center rounded-xl border border-dashed " +
-            "border-light-border dark:border-dark-border " +
-            "bg-light-surface/40 dark:bg-dark-surface/40 " +
-            "text-light-textMuted dark:text-dark-textMuted",
+            "py-8 text-sm text-center rounded-[10px] border border-dashed " +
+            "border-vault-border " +
+            "bg-vault-surface/40 dark:bg-vault-surface/40 " +
+            "text-vault-textTertiary",
         },
         "No marketplace listings found."
       ),
@@ -613,7 +613,7 @@ export default function ListingGrid(props) {
         "div",
         {
           className:
-            "flex items-center justify-between gap-3 pt-5 border-t border-light-border dark:border-dark-border",
+            "flex items-center justify-between gap-3 pt-5 border-t border-vault-border",
         },
         /* Previous */
         React.createElement(
@@ -623,11 +623,11 @@ export default function ListingGrid(props) {
             disabled: page === 0 || loading,
             onClick: function () { setPage(function (p) { return p - 1; }); },
             className:
-              "inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium " +
-              "border border-light-border dark:border-dark-border " +
-              "bg-light-surface dark:bg-dark-surface " +
-              "text-light-strong dark:text-dark-strong " +
-              "hover:bg-light-elevated dark:hover:bg-dark-elevated " +
+              "inline-flex items-center gap-1.5 rounded-[6px] px-4 py-2 text-sm font-medium " +
+              "border border-vault-border " +
+              "bg-vault-surface " +
+              "text-vault-text " +
+              "hover:bg-vault-raised dark:hover:bg-vault-raised " +
               "disabled:opacity-40 disabled:cursor-not-allowed transition-colors",
           },
           "← Previous"
@@ -637,7 +637,7 @@ export default function ListingGrid(props) {
           "span",
           {
             className:
-              "text-sm text-light-textMuted dark:text-dark-textMuted tabular-nums",
+              "text-sm text-vault-textTertiary tabular-nums",
           },
           loading ? "Loading…" : "Page " + (page + 1)
         ),
@@ -649,11 +649,11 @@ export default function ListingGrid(props) {
             disabled: listings.length < limit || loading,
             onClick: function () { setPage(function (p) { return p + 1; }); },
             className:
-              "inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium " +
-              "border border-light-border dark:border-dark-border " +
-              "bg-light-surface dark:bg-dark-surface " +
-              "text-light-strong dark:text-dark-strong " +
-              "hover:bg-light-elevated dark:hover:bg-dark-elevated " +
+              "inline-flex items-center gap-1.5 rounded-[6px] px-4 py-2 text-sm font-medium " +
+              "border border-vault-border " +
+              "bg-vault-surface " +
+              "text-vault-text " +
+              "hover:bg-vault-raised dark:hover:bg-vault-raised " +
               "disabled:opacity-40 disabled:cursor-not-allowed transition-colors",
           },
           "Next →"

@@ -106,10 +106,10 @@ function CollectionRow({ entry, selected, onToggle }) {
       type="button"
       onClick={() => onToggle(entry)}
       className={
-        "flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-left transition-colors border " +
+        "flex items-center gap-3 w-full rounded-[10px] px-3 py-2.5 text-left transition-colors border " +
         (isSelected
-          ? "border-light-accent dark:border-dark-accent bg-light-accent/5 dark:bg-dark-accent/5"
-          : "border-transparent hover:bg-light-alt dark:hover:bg-dark-alt")
+          ? "border-vault-accent dark:border-vault-accent bg-vault-accent/5 dark:bg-vault-accent/5"
+          : "border-transparent hover:bg-vault-raised dark:hover:bg-vault-raised")
       }
     >
       {/* Card thumbnail */}
@@ -117,16 +117,16 @@ function CollectionRow({ entry, selected, onToggle }) {
         {imgUrl ? (
           <img src={imgUrl} alt={card.name} className="w-full h-full object-contain" />
         ) : (
-          <div className="w-full h-full bg-light-alt dark:bg-dark-alt" />
+          <div className="w-full h-full bg-vault-raised" />
         )}
       </div>
 
       {/* Info */}
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-medium text-light-strong dark:text-dark-strong truncate">
+        <div className="text-sm font-medium text-vault-text truncate">
           {card.name || entry.cardId}
         </div>
-        <div className="text-[11px] text-light-muted dark:text-dark-muted truncate">
+        <div className="text-[11px] text-vault-textTertiary truncate">
           {[card.set?.name, card.number ? `#${card.number}` : null]
             .filter(Boolean)
             .join(" · ")}
@@ -137,7 +137,7 @@ function CollectionRow({ entry, selected, onToggle }) {
 
       {/* Qty badge */}
       {entry.quantity > 1 && (
-        <span className="flex-shrink-0 text-[10px] font-semibold text-light-muted dark:text-dark-muted">
+        <span className="flex-shrink-0 text-[10px] font-semibold text-vault-textTertiary">
           ×{entry.quantity}
         </span>
       )}
@@ -145,10 +145,10 @@ function CollectionRow({ entry, selected, onToggle }) {
       {/* Checkbox */}
       <div
         className={
-          "flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors " +
+          "flex-shrink-0 w-5 h-5 rounded-[6px] border-2 flex items-center justify-center transition-colors " +
           (isSelected
-            ? "border-light-accent dark:border-dark-accent bg-light-accent dark:bg-dark-accent"
-            : "border-light-border dark:border-dark-border")
+            ? "border-vault-accent dark:border-vault-accent bg-vault-accent"
+            : "border-vault-border")
         }
       >
         {isSelected && (
@@ -336,14 +336,14 @@ export default function ProposeTradeModal({ listing, onClose }) {
     "fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 " +
     "bg-black/60 backdrop-blur-sm";
   const modal =
-    "relative w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl overflow-hidden " +
-    "bg-light-surface dark:bg-dark-surface shadow-2xl flex flex-col max-h-[92vh]";
+    "relative w-full sm:max-w-2xl rounded-t-3xl sm:rounded-[14px] overflow-hidden " +
+    "bg-vault-surface  flex flex-col max-h-[92vh]";
   const sectionLabel =
-    "text-[10px] font-bold uppercase tracking-widest text-light-muted dark:text-dark-muted mb-2";
+    "text-[10px] font-bold uppercase tracking-widest text-vault-textTertiary mb-2";
   const inputCls =
-    "w-full rounded-xl border border-light-border dark:border-dark-border " +
-    "bg-light-alt dark:bg-dark-alt px-3 py-2 text-sm text-light-strong dark:text-dark-strong " +
-    "focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent";
+    "w-full rounded-[10px] border border-vault-border " +
+    "bg-vault-raised px-3 py-2 text-sm text-vault-text " +
+    "focus:outline-none focus:ring-2 focus:ring-vault-accent dark:focus:ring-vault-accent";
 
   return (
     <div className={overlay} role="dialog" aria-modal="true"
@@ -351,38 +351,38 @@ export default function ProposeTradeModal({ listing, onClose }) {
       <div className={modal}>
 
         {/* Header */}
-        <div className="flex-shrink-0 border-b border-light-border dark:border-dark-border">
+        <div className="flex-shrink-0 border-b border-vault-border">
           <div className="flex items-center justify-between px-5 pt-5 pb-3">
             <div>
-              <h2 className="text-base font-bold text-light-strong dark:text-dark-strong">
+              <h2 className="text-base font-bold text-vault-text">
                 Propose a trade
               </h2>
               {seller.username && (
-                <p className="text-xs text-light-muted dark:text-dark-muted mt-0.5">
-                  with <span className="font-medium text-light-strong dark:text-dark-strong">{seller.username}</span>
+                <p className="text-xs text-vault-textTertiary mt-0.5">
+                  with <span className="font-medium text-vault-text">{seller.username}</span>
                 </p>
               )}
             </div>
             <button type="button" onClick={onClose}
-              className="rounded-full bg-light-alt dark:bg-dark-alt px-3 py-1 text-xs font-medium text-light-muted dark:text-dark-muted hover:text-light-strong dark:hover:text-dark-strong transition">
+              className="rounded-[6px] bg-vault-raised px-3 py-1 text-xs font-medium text-vault-textTertiary hover:text-vault-text dark:hover:text-vault-text transition">
               Close
             </button>
           </div>
 
           {/* Wallet balance strip */}
-          <div className="mx-5 mb-3 flex items-center justify-between rounded-xl bg-light-elevated dark:bg-dark-elevated border border-light-border dark:border-dark-border px-4 py-2.5">
+          <div className="mx-5 mb-3 flex items-center justify-between rounded-[10px] bg-vault-raised dark:bg-vault-raised border border-vault-border px-4 py-2.5">
             <div className="flex items-center gap-2">
               <span className="text-base">👛</span>
-              <span className="text-xs font-semibold uppercase tracking-wide text-light-muted dark:text-dark-muted">
+              <span className="text-xs font-semibold uppercase tracking-wide text-vault-textTertiary">
                 Wallet balance
               </span>
             </div>
             {walletBalance != null ? (
-              <span className="text-sm font-bold text-light-strong dark:text-dark-strong">
+              <span className="text-sm font-bold text-vault-text">
                 {fmt(walletBalance, walletCurrency)}
               </span>
             ) : (
-              <span className="text-xs text-light-muted dark:text-dark-muted">
+              <span className="text-xs text-vault-textTertiary">
                 {loadingCollection ? "Loading…" : "—"}
               </span>
             )}
@@ -393,13 +393,13 @@ export default function ProposeTradeModal({ listing, onClose }) {
         {done && (
           <div className="flex flex-col items-center gap-4 p-10">
             <div className="text-5xl">🤝</div>
-            <h3 className="text-xl font-bold text-light-strong dark:text-dark-strong">Trade proposed!</h3>
-            <p className="text-sm text-center text-light-muted dark:text-dark-muted">
+            <h3 className="text-xl font-bold text-vault-text">Trade proposed!</h3>
+            <p className="text-sm text-center text-vault-textTertiary">
               Your offer has been sent to <strong>{seller.username || "the seller"}</strong>.<br />
               They can accept, counter, or decline from their trades inbox.
             </p>
             <button onClick={onClose}
-              className="mt-2 rounded-xl px-8 py-3 text-sm font-semibold text-white bg-light-accent dark:bg-dark-accent hover:opacity-90 transition">
+              className="mt-2 rounded-[10px] px-8 py-3 text-sm font-semibold text-white bg-vault-accent hover:opacity-90 transition">
               Done
             </button>
           </div>
@@ -410,35 +410,35 @@ export default function ProposeTradeModal({ listing, onClose }) {
             <div className="flex-1 overflow-y-auto">
 
               {/* ── Two-column trade summary ── */}
-              <div className="grid grid-cols-2 gap-px bg-light-border dark:bg-dark-border border-b border-light-border dark:border-dark-border">
+              <div className="grid grid-cols-2 gap-px bg-vault-border dark:bg-vault-border border-b border-vault-border">
 
                 {/* They get (wanted) */}
-                <div className="bg-light-surface dark:bg-dark-surface p-4">
+                <div className="bg-vault-surface p-4">
                   <div className={sectionLabel}>They send you</div>
                   <div className="flex items-center gap-3">
-                    <div className="flex-shrink-0 w-10 h-14 rounded-lg overflow-hidden bg-black">
+                    <div className="flex-shrink-0 w-10 h-14 rounded-[6px] overflow-hidden bg-black">
                       {imageUrl
                         ? <img src={imageUrl} alt={info.name} className="w-full h-full object-contain" />
-                        : <div className="w-full h-full bg-light-alt dark:bg-dark-alt" />
+                        : <div className="w-full h-full bg-vault-raised" />
                       }
                     </div>
                     <div className="min-w-0">
-                      <div className="text-sm font-semibold text-light-strong dark:text-dark-strong truncate">
+                      <div className="text-sm font-semibold text-vault-text truncate">
                         {info.name || listing?.cardId || "Card"}
                       </div>
                       {(info.setName || info.number) && (
-                        <div className="text-[11px] text-light-muted dark:text-dark-muted">
+                        <div className="text-[11px] text-vault-textTertiary">
                           {[info.setName, info.number ? `#${info.number}` : null].filter(Boolean).join(" · ")}
                         </div>
                       )}
                       <div className="flex gap-1 mt-1">
                         {listing?.condition && (
-                          <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${COND_CLS[listing.condition] || "bg-gray-500 text-white"}`}>
+                          <span className={`rounded-[6px] px-1.5 py-0.5 text-[9px] font-bold ${COND_CLS[listing.condition] || "bg-gray-500 text-white"}`}>
                             {listing.condition}
                           </span>
                         )}
                         {listing?.variation && listing.variation !== "Standard" && (
-                          <span className="rounded-full px-1.5 py-0.5 text-[9px] font-medium bg-light-alt dark:bg-dark-alt text-light-muted dark:text-dark-muted border border-light-border dark:border-dark-border">
+                          <span className="rounded-[6px] px-1.5 py-0.5 text-[9px] font-medium bg-vault-raised text-vault-textTertiary border border-vault-border">
                             {listing.variation}
                           </span>
                         )}
@@ -448,31 +448,31 @@ export default function ProposeTradeModal({ listing, onClose }) {
                 </div>
 
                 {/* You offer */}
-                <div className="bg-light-surface dark:bg-dark-surface p-4">
+                <div className="bg-vault-surface p-4">
                   <div className={sectionLabel}>
                     You offer
                     {selected.size > 0 && (
-                      <span className="ml-1.5 rounded-full bg-light-accent dark:bg-dark-accent text-white px-1.5 py-0.5 text-[9px]">
+                      <span className="ml-1.5 rounded-[6px] bg-vault-accent text-white px-1.5 py-0.5 text-[9px]">
                         {selected.size}
                       </span>
                     )}
                   </div>
                   {selected.size === 0 ? (
-                    <p className="text-xs text-light-muted dark:text-dark-muted">
+                    <p className="text-xs text-vault-textTertiary">
                       Select cards below ↓
                     </p>
                   ) : (
                     <div className="flex flex-wrap gap-1.5">
                       {[...selected.values()].map((e) => (
-                        <div key={e.id} className="flex items-center gap-1 rounded-lg bg-light-alt dark:bg-dark-alt px-2 py-1">
+                        <div key={e.id} className="flex items-center gap-1 rounded-[6px] bg-vault-raised px-2 py-1">
                           {e.card?.images?.small && (
                             <img src={e.card.images.small} alt={e.card.name} className="w-5 h-7 object-contain rounded" />
                           )}
-                          <span className="text-[11px] font-medium text-light-strong dark:text-dark-strong truncate max-w-[80px]">
+                          <span className="text-[11px] font-medium text-vault-text truncate max-w-[80px]">
                             {e.card?.name || e.cardId}
                           </span>
                           <button type="button" onClick={() => toggleEntry(e)}
-                            className="text-light-muted dark:text-dark-muted hover:text-red-500 text-xs ml-0.5">
+                            className="text-vault-textTertiary hover:text-red-500 text-xs ml-0.5">
                             ✕
                           </button>
                         </div>
@@ -483,7 +483,7 @@ export default function ProposeTradeModal({ listing, onClose }) {
               </div>
 
               {/* ── Collection picker ── */}
-              <div className="p-4 border-b border-light-border dark:border-dark-border">
+              <div className="p-4 border-b border-vault-border">
                 <div className={sectionLabel}>Your collection — pick cards to offer</div>
                 <input
                   type="text"
@@ -493,17 +493,17 @@ export default function ProposeTradeModal({ listing, onClose }) {
                   className={inputCls + " mb-3"}
                 />
                 {loadingCollection ? (
-                  <p className="text-xs text-light-muted dark:text-dark-muted py-4 text-center">
+                  <p className="text-xs text-vault-textTertiary py-4 text-center">
                     Loading your collection…
                   </p>
                 ) : filtered.length === 0 ? (
-                  <p className="text-xs text-light-muted dark:text-dark-muted py-4 text-center">
+                  <p className="text-xs text-vault-textTertiary py-4 text-center">
                     {collection.length === 0
                       ? "Your collection is empty. Add cards to trade them."
                       : "No cards match your search."}
                   </p>
                 ) : (
-                  <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5 rounded-xl border border-light-border dark:border-dark-border p-1">
+                  <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5 rounded-[10px] border border-vault-border p-1">
                     {filtered.map((entry) => (
                       <CollectionRow
                         key={entry.id}
@@ -517,20 +517,20 @@ export default function ProposeTradeModal({ listing, onClose }) {
               </div>
 
               {/* ── Cash sweetener ── */}
-              <div className="p-4 border-b border-light-border dark:border-dark-border">
+              <div className="p-4 border-b border-vault-border">
                 <div className="mb-2">
                   <div className={sectionLabel + " mb-0"}>Cash sweetener (optional)</div>
                 </div>
 
                 {!addingTopUp ? (
                   <button type="button" onClick={() => setAddingTopUp(true)}
-                    className="text-xs font-medium text-light-accent dark:text-dark-accent hover:underline">
+                    className="text-xs font-medium text-vault-accent hover:underline">
                     + Add cash to sweeten the deal
                   </button>
                 ) : (
                   <div className="flex items-center gap-3">
                     <div className="relative flex-1">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-light-muted dark:text-dark-muted">£</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-vault-textTertiary">£</span>
                       <input
                         type="number" min="0.01" step="0.01"
                         value={topUp}
@@ -541,7 +541,7 @@ export default function ProposeTradeModal({ listing, onClose }) {
                       />
                     </div>
                     <button type="button" onClick={() => { setTopUp(""); setAddingTopUp(false); }}
-                      className="text-xs text-light-muted dark:text-dark-muted hover:text-red-500">
+                      className="text-xs text-vault-textTertiary hover:text-red-500">
                       Remove
                     </button>
                   </div>
@@ -552,7 +552,7 @@ export default function ProposeTradeModal({ listing, onClose }) {
                   </p>
                 )}
                 {topUpNum > 0 && !topUpExceedsBalance && (
-                  <p className="text-xs text-light-muted dark:text-dark-muted mt-1.5">
+                  <p className="text-xs text-vault-textTertiary mt-1.5">
                     {fmt(topUpNum)} will be held from your wallet when the seller accepts.
                   </p>
                 )}
@@ -561,15 +561,15 @@ export default function ProposeTradeModal({ listing, onClose }) {
             </div>
 
             {/* ── Footer ── */}
-            <div className="p-4 flex flex-col gap-3 border-t border-light-border dark:border-dark-border flex-shrink-0">
+            <div className="p-4 flex flex-col gap-3 border-t border-vault-border flex-shrink-0">
               {err && <p className="text-xs text-red-400">{err}</p>}
 
               {/* Trade summary line */}
               {(selected.size > 0 || topUpNum > 0) && (
-                <div className="rounded-xl bg-light-elevated dark:bg-dark-elevated px-3 py-2 text-xs text-light-muted dark:text-dark-muted flex flex-wrap gap-1 items-center">
+                <div className="rounded-[10px] bg-vault-raised dark:bg-vault-raised px-3 py-2 text-xs text-vault-textTertiary flex flex-wrap gap-1 items-center">
                   <span>You offer:</span>
                   {[...selected.values()].map((e) => (
-                    <span key={e.id} className="font-medium text-light-strong dark:text-dark-strong">
+                    <span key={e.id} className="font-medium text-vault-text">
                       {e.card?.name || e.cardId}
                     </span>
                   ))}
@@ -577,7 +577,7 @@ export default function ProposeTradeModal({ listing, onClose }) {
                     <span className="font-medium text-emerald-500">+ {fmt(topUpNum)}</span>
                   )}
                   <span className="mx-1">→</span>
-                  <span className="font-medium text-light-strong dark:text-dark-strong">
+                  <span className="font-medium text-vault-text">
                     {info.name || listing?.cardId}
                   </span>
                 </div>
@@ -585,33 +585,33 @@ export default function ProposeTradeModal({ listing, onClose }) {
 
               {/* Value context */}
               {(wantedMarketPrice || listing?.price > 0 || selected.size > 0) && (
-                <div className="rounded-xl border border-light-border dark:border-dark-border px-3 py-2 text-xs text-light-muted dark:text-dark-muted space-y-0.5">
+                <div className="rounded-[10px] border border-vault-border px-3 py-2 text-xs text-vault-textTertiary space-y-0.5">
                   {/* Card they're sending */}
                   {listing?.price > 0 && (
                     <div className="flex justify-between">
                       <span>Listing price</span>
-                      <span className="font-semibold text-light-strong dark:text-dark-strong">{fmt(listing.price, listing.currency)}</span>
+                      <span className="font-semibold text-vault-text">{fmt(listing.price, listing.currency)}</span>
                     </div>
                   )}
                   {wantedMarketPrice && (
                     <div className="flex justify-between">
                       <span>Their card market value</span>
-                      <span className="font-semibold text-light-strong dark:text-dark-strong">{fmt(wantedMarketPrice)}</span>
+                      <span className="font-semibold text-vault-text">{fmt(wantedMarketPrice)}</span>
                     </div>
                   )}
 
                   {/* Divider before your offer */}
                   {selected.size > 0 && (
-                    <div className="border-t border-light-border dark:border-dark-border pt-1 mt-1 space-y-0.5">
+                    <div className="border-t border-vault-border pt-1 mt-1 space-y-0.5">
                       {offeredCardTotal > 0 ? (
                         <div className="flex justify-between">
                           <span>Your cards value <span className="opacity-60">(est.)</span></span>
-                          <span className="font-semibold text-light-strong dark:text-dark-strong">{fmt(offeredCardTotal)}</span>
+                          <span className="font-semibold text-vault-text">{fmt(offeredCardTotal)}</span>
                         </div>
                       ) : (
                         <div className="flex justify-between">
                           <span>Your cards</span>
-                          <span className="font-semibold text-light-muted dark:text-dark-muted">
+                          <span className="font-semibold text-vault-textTertiary">
                             {selected.size} card{selected.size !== 1 ? "s" : ""} — fetching value…
                           </span>
                         </div>
@@ -623,8 +623,8 @@ export default function ProposeTradeModal({ listing, onClose }) {
                         </div>
                       )}
                       {totalOfferedValue > 0 && (topUpNum > 0 || offeredCardTotal > 0) && (
-                        <div className="flex justify-between border-t border-light-border dark:border-dark-border pt-1 mt-1">
-                          <span className="font-semibold text-light-strong dark:text-dark-strong">Your total offer value</span>
+                        <div className="flex justify-between border-t border-vault-border pt-1 mt-1">
+                          <span className="font-semibold text-vault-text">Your total offer value</span>
                           <span className={`font-bold ${wantedMarketPrice && totalOfferedValue < wantedMarketPrice * 0.7 ? "text-amber-400" : "text-emerald-500"}`}>
                             {fmt(totalOfferedValue)}
                           </span>
@@ -638,7 +638,7 @@ export default function ProposeTradeModal({ listing, onClose }) {
               <button
                 type="submit"
                 disabled={busy || selected.size === 0 || topUpExceedsBalance}
-                className="w-full rounded-xl py-3.5 text-sm font-bold text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg shadow-violet-600/20"
+                className="w-full rounded-[10px] py-3.5 text-sm font-bold text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors  -violet-600/20"
               >
                 {busy ? "Sending proposal…" : `Send trade proposal to ${seller.username || "seller"}`}
               </button>

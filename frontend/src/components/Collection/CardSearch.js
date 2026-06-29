@@ -914,7 +914,7 @@ export default function CardSearch({ variant = "search" }) {
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
               <div>
                 <h2 className="text-3xl font-black tracking-tight text-dark-strong sm:text-4xl">
-                  Find the exact card you mean.
+                  Find the exact card you need.
                 </h2>
 
                 <p className="mt-3 max-w-2xl text-base leading-7 text-dark-textMuted">

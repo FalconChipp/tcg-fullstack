@@ -24,12 +24,12 @@ export default function SellerTierBadge({ reputation, size = "sm", onClick }) {
         type={onClick ? "button" : undefined}
         onClick={onClick}
         className={[
-          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold transition",
+          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] border text-xs font-semibold transition",
           tier.bg, tier.border, tier.text, tier.glow,
           onClick ? "cursor-pointer hover:opacity-80" : "cursor-default",
         ].join(" ")}
       >
-        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${tier.dot}`} />
+        <span className={`w-2 h-2 rounded-[6px] flex-shrink-0 ${tier.dot}`} />
         {tier.label}
         <span className="opacity-60 font-normal">·</span>
         <span className="opacity-80 font-normal">{sales} sale{sales !== 1 ? "s" : ""}</span>
@@ -45,13 +45,13 @@ export default function SellerTierBadge({ reputation, size = "sm", onClick }) {
         onClick={onClick}
         title={`${tier.label} seller · ${sales} sales${totalRatings > 0 ? ` · ${positiveRate}% positive` : ""}. Click to view reviews.`}
         className={[
-          "inline-flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-full border border-transparent outline-none transition-all",
+          "inline-flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-[6px] border border-transparent outline-none transition-all",
           tier.bg, tier.border, tier.glow,
           onClick ? "cursor-pointer hover:opacity-90 active:scale-95" : "cursor-default",
         ].join(" ")}
       >
         {/* Tier dot */}
-        <span className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${tier.dot}`}>
+        <span className={`w-5 h-5 rounded-[6px] flex items-center justify-center flex-shrink-0 ${tier.dot}`}>
           <svg width="11" height="11" viewBox="0 0 24 24" fill="white" aria-hidden="true">
             <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
           </svg>
@@ -71,11 +71,11 @@ export default function SellerTierBadge({ reputation, size = "sm", onClick }) {
 
   /* ── Full card (used in SellerReviewsDrawer) ──────────────────────────────── */
   return (
-    <div className={`rounded-2xl border p-4 space-y-3 ${tier.bg} ${tier.border} ${tier.glow}`}>
+    <div className={`rounded-[10px] border p-4 space-y-3 ${tier.bg} ${tier.border} ${tier.glow}`}>
       {/* Tier row */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <span className={`w-3 h-3 rounded-full flex-shrink-0 ${tier.dot}`} />
+          <span className={`w-3 h-3 rounded-[6px] flex-shrink-0 ${tier.dot}`} />
           <span className={`text-base font-extrabold tracking-tight ${tier.text}`}>
             {tier.label}
           </span>
@@ -88,12 +88,12 @@ export default function SellerTierBadge({ reputation, size = "sm", onClick }) {
       {/* Positive rate */}
       {totalRatings > 0 && (
         <div className="flex items-center justify-between text-xs">
-          <span className="text-light-muted dark:text-dark-muted">
+          <span className="text-vault-textTertiary">
             Positive feedback
           </span>
           <span className={`font-bold ${positiveRate >= 90 ? "text-emerald-500" : positiveRate >= 75 ? "text-amber-500" : "text-red-500"}`}>
             {positiveRate}%
-            <span className="font-normal text-light-muted dark:text-dark-muted ml-1">
+            <span className="font-normal text-vault-textTertiary ml-1">
               ({totalRatings} rating{totalRatings !== 1 ? "s" : ""})
             </span>
           </span>
@@ -103,13 +103,13 @@ export default function SellerTierBadge({ reputation, size = "sm", onClick }) {
       {/* Progress to next tier */}
       {nextTier && (
         <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-[10px] text-light-muted dark:text-dark-muted">
+          <div className="flex items-center justify-between text-[10px] text-vault-textTertiary">
             <span>Progress to <span className="font-semibold">{nextTier.label}</span></span>
             <span>{sales} / {nextTier.minSales} sales{nextTier.minRate > 0 ? ` · ${nextTier.minRate}% positive needed` : ""}</span>
           </div>
-          <div className="h-1.5 rounded-full bg-light-border dark:bg-dark-border overflow-hidden">
+          <div className="h-1.5 rounded-[6px] bg-vault-border dark:bg-vault-border overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all ${tier.dot}`}
+              className={`h-full rounded-[6px] transition-all ${tier.dot}`}
               style={{ width: `${progressPct}%` }}
             />
           </div>

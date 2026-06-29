@@ -89,7 +89,7 @@ export default function PriceHistoryChart({ data = [], height = 180, dark = fals
 
   if (!view.points.length) {
     return (
-      <div className="flex flex-col items-center justify-center h-[160px] text-sm text-light-textMuted dark:text-dark-textMuted">
+      <div className="flex flex-col items-center justify-center h-[160px] text-sm text-vault-textTertiary">
         <span>No price history yet</span>
       </div>
     );
@@ -114,25 +114,25 @@ export default function PriceHistoryChart({ data = [], height = 180, dark = fals
       {/* Hover tooltip / current price header */}
       <div className="flex items-baseline justify-between px-0.5 mb-1">
         <div className="flex items-baseline gap-2">
-          <span className={`text-lg font-bold tabular-nums ${dark ? "text-white" : "text-light-primary"}`}>
+          <span className={`text-lg font-bold tabular-nums ${dark ? "text-white" : "text-vault-accent"}`}>
             {hovered ? fmt(hovered.value) : fmt(last.value)}
           </span>
           {!hovered && (
             <span
               className={`text-xs font-semibold ${
-                trend === "up" ? "text-emerald-500" : trend === "down" ? "text-rose-500" : dark ? "text-dark-textMuted" : "text-light-textMuted"
+                trend === "up" ? "text-emerald-500" : trend === "down" ? "text-rose-500" : dark ? "text-vault-textTertiary" : "text-vault-textTertiary"
               }`}
             >
               {trend === "up" ? "▲" : trend === "down" ? "▼" : "—"}
             </span>
           )}
           {hovered && (
-            <span className={`text-xs ${dark ? "text-dark-textMuted" : "text-light-textMuted"}`}>
+            <span className={`text-xs ${dark ? "text-vault-textTertiary" : "text-vault-textTertiary"}`}>
               {formatAxisLabel(hovered.date)}
             </span>
           )}
         </div>
-        <div className={`text-xs ${dark ? "text-dark-textMuted" : "text-light-textMuted"}`}>
+        <div className={`text-xs ${dark ? "text-vault-textTertiary" : "text-vault-textTertiary"}`}>
           <span>
             {fmt(view.min)} – {fmt(view.max)}
           </span>
@@ -147,7 +147,7 @@ export default function PriceHistoryChart({ data = [], height = 180, dark = fals
           aria-label="Price history chart"
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
-          className="w-full rounded-xl"
+          className="w-full rounded-[10px]"
           style={{ height, cursor: "crosshair" }}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
@@ -226,20 +226,20 @@ export default function PriceHistoryChart({ data = [], height = 180, dark = fals
           className="absolute inset-y-0 left-0 flex flex-col justify-between pointer-events-none pl-1"
           style={{ fontSize: 9 }}
         >
-          <span className={dark ? "text-dark-textMuted/60" : "text-light-textMuted/60"}>
+          <span className={dark ? "text-vault-textTertiary/60" : "text-vault-textTertiary/60"}>
             {fmt(view.max)}
           </span>
-          <span className={dark ? "text-dark-textMuted/60" : "text-light-textMuted/60"}>
+          <span className={dark ? "text-vault-textTertiary/60" : "text-vault-textTertiary/60"}>
             {fmt(midValue)}
           </span>
-          <span className={dark ? "text-dark-textMuted/60" : "text-light-textMuted/60"}>
+          <span className={dark ? "text-vault-textTertiary/60" : "text-vault-textTertiary/60"}>
             {fmt(view.min)}
           </span>
         </div>
       </div>
 
       {/* X-axis date labels */}
-      <div className={`flex items-center justify-between text-[10px] px-0.5 ${dark ? "text-dark-textMuted/70" : "text-light-textMuted/70"}`}>
+      <div className={`flex items-center justify-between text-[10px] px-0.5 ${dark ? "text-vault-textTertiary/70" : "text-vault-textTertiary/70"}`}>
         <span>{formatAxisLabel(first?.date)}</span>
         {view.points.length > 2 && (
           <span>{formatAxisLabel(view.points[Math.floor(view.points.length / 2)]?.date)}</span>

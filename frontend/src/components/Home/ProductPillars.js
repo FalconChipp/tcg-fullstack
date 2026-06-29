@@ -11,7 +11,7 @@ const pillars = [
         <path d="M21 21l-4.35-4.35" />
       </svg>
     ),
-    title: "Find the exact card you mean",
+    title: "Find the exact card you need",
     description:
       "Search by name, set, number, or expansion. Narrow down to the exact printing instantly — whether it's a 1st edition base set or last month's special art rare.",
   },

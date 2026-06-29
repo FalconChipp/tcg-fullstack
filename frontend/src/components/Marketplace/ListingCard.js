@@ -56,11 +56,10 @@ function CardListingCard({ listing, onClick }) {
   return (
     <article
       className="
-        group relative flex flex-col rounded-2xl overflow-hidden cursor-pointer
-        border border-light-border dark:border-dark-border
-        bg-light-surface dark:bg-dark-surface
-        shadow-sm hover:shadow-xl
-        transition-all duration-200 hover:-translate-y-1
+        group relative flex flex-col rounded-[10px] overflow-hidden cursor-pointer
+        border border-vault-border
+        bg-vault-surface
+        transition-colors duration-200 hover:border-vault-borderStrong
       "
       onClick={onClick}
     >
@@ -73,7 +72,7 @@ function CardListingCard({ listing, onClick }) {
             className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-xs text-light-muted dark:text-dark-muted">
+          <div className="w-full h-full flex items-center justify-center text-xs text-vault-textTertiary">
             No image
           </div>
         )}
@@ -81,7 +80,7 @@ function CardListingCard({ listing, onClick }) {
         {/* Condition badge — top left only */}
         {condition && (
           <span
-            className={`absolute top-2 left-2 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide shadow ${condCls}`}
+            className={`absolute top-2 left-2 rounded-[6px] px-2 py-0.5 text-[10px] font-bold tracking-wide ${condCls}`}
           >
             {condition}
           </span>
@@ -90,13 +89,13 @@ function CardListingCard({ listing, onClick }) {
         {/* Top-right badges — stacked vertically */}
         <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
           {listing.moderationResult === "approved" && (
-            <span className="rounded-full bg-emerald-600/90 text-white px-2 py-0.5 text-[10px] font-semibold shadow flex items-center gap-0.5">
+            <span className="rounded-[6px] bg-vault-success/90 text-vault-text px-2 py-0.5 text-[10px] font-semibold flex items-center gap-0.5">
               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
               Verified
             </span>
           )}
           {listing.willTrade && (
-            <span className="rounded-full bg-violet-600 text-white px-2 py-0.5 text-[10px] font-semibold shadow">
+            <span className="rounded-[6px] bg-vault-accent text-vault-text px-2 py-0.5 text-[10px] font-semibold">
               Will Trade
             </span>
           )}
@@ -107,11 +106,11 @@ function CardListingCard({ listing, onClick }) {
       <div className="flex flex-col gap-1 px-3 py-2.5">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-light-strong dark:text-dark-strong truncate leading-tight">
+            <h3 className="text-sm font-semibold text-vault-text truncate leading-tight">
               {info.name || listing.cardId || "Card"}
             </h3>
             {(info.setName || info.number || (variation && variation !== "Standard")) && (
-              <p className="text-[11px] text-light-muted dark:text-dark-muted truncate mt-0.5">
+              <p className="text-[11px] text-vault-textTertiary truncate mt-0.5">
                 {[
                   info.setName,
                   info.number ? `#${info.number}` : null,
@@ -122,7 +121,7 @@ function CardListingCard({ listing, onClick }) {
               </p>
             )}
           </div>
-          <span className="flex-shrink-0 text-sm font-bold text-light-strong dark:text-dark-strong">
+          <span className="flex-shrink-0 text-sm font-bold text-vault-text">
             {isTradeOnly
               ? <span className="text-violet-400 font-semibold text-xs">Trade only</span>
               : fmt(price, currency)
@@ -133,12 +132,12 @@ function CardListingCard({ listing, onClick }) {
         {/* Seller + view details */}
         <div className="flex items-center justify-between gap-2 mt-0.5">
           {seller.username ? (
-            <span className="text-[11px] text-light-muted dark:text-dark-muted truncate">
+            <span className="text-[11px] text-vault-textTertiary truncate">
               {seller.avatar ? (
                 <img
                   src={seller.avatar}
                   alt={seller.username}
-                  className="inline w-3.5 h-3.5 rounded-full mr-1 align-middle"
+                  className="inline w-3.5 h-3.5 rounded-[6px] mr-1 align-middle"
                 />
               ) : null}
               {seller.username}
@@ -146,7 +145,7 @@ function CardListingCard({ listing, onClick }) {
           ) : (
             <span />
           )}
-          <span className="flex-shrink-0 text-[11px] font-semibold text-light-accent dark:text-dark-accent group-hover:underline">
+          <span className="flex-shrink-0 text-[11px] font-semibold text-vault-accent group-hover:underline">
             View details →
           </span>
         </div>
@@ -175,16 +174,15 @@ function ProductListingCard({ listing }) {
   return (
     <article
       className="
-        group flex flex-col rounded-2xl overflow-hidden
-        border border-light-border dark:border-dark-border
-        bg-light-surface dark:bg-dark-surface
-        shadow-sm hover:shadow-lg
-        transition-all duration-200 hover:-translate-y-0.5
+        group flex flex-col rounded-[10px] overflow-hidden
+        border border-vault-border
+        bg-vault-surface
+        transition-colors duration-200 hover:border-vault-borderStrong
       "
     >
       <Link href={href} className="flex flex-col h-full">
         {/* Image */}
-        <div className="aspect-[4/3] w-full overflow-hidden bg-light-alt dark:bg-dark-alt">
+        <div className="aspect-[4/3] w-full overflow-hidden bg-vault-raised">
           {imageUrl ? (
             <img
               src={imageUrl}
@@ -192,7 +190,7 @@ function ProductListingCard({ listing }) {
               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-xs text-light-muted dark:text-dark-muted">
+            <div className="w-full h-full flex items-center justify-center text-xs text-vault-textTertiary">
               No image
             </div>
           )}
@@ -200,19 +198,19 @@ function ProductListingCard({ listing }) {
 
         {/* Info */}
         <div className="flex flex-col gap-1.5 px-3 py-3 flex-1">
-          <h3 className="text-sm font-semibold text-light-strong dark:text-dark-strong line-clamp-2 leading-snug">
+          <h3 className="text-sm font-semibold text-vault-text line-clamp-2 leading-snug">
             {listing.title || "Product"}
           </h3>
           {listing.description && (
-            <p className="text-xs text-light-muted dark:text-dark-muted line-clamp-2">
+            <p className="text-xs text-vault-textTertiary line-clamp-2">
               {listing.description}
             </p>
           )}
           <div className="mt-auto flex items-center justify-between pt-1">
-            <span className="text-sm font-bold text-light-strong dark:text-dark-strong">
+            <span className="text-sm font-bold text-vault-text">
               {fmt(price, currency)}
             </span>
-            <span className="text-[11px] font-semibold text-light-accent dark:text-dark-accent group-hover:underline">
+            <span className="text-[11px] font-semibold text-vault-accent group-hover:underline">
               View →
             </span>
           </div>

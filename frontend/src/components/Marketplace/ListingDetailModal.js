@@ -161,16 +161,16 @@ function PaymentForm({ clientSecret, price, currency, onSuccess, onCancel }) {
 
   return (
     <form onSubmit={handlePay} className="flex flex-col gap-3">
-      <div className="rounded-xl border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt px-4 py-3">
+      <div className="rounded-[10px] border border-vault-border bg-vault-raised px-4 py-3">
         <CardElement options={cardStyle} />
       </div>
       {err && <p className="text-xs text-red-400">{err}</p>}
       <button type="submit" disabled={busy || !stripe}
-        className="w-full rounded-xl py-3 text-sm font-semibold text-white bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight disabled:opacity-50 transition-colors">
+        className="w-full rounded-[10px] py-3 text-sm font-semibold text-white bg-vault-accent hover:bg-vault-accentHover dark:bg-vault-accent dark:hover:bg-vault-accentHover disabled:opacity-50 transition-colors">
         {busy ? "Processing…" : `Confirm payment · ${fmt(price, currency)}`}
       </button>
       <button type="button" onClick={onCancel}
-        className="w-full rounded-xl py-2 text-sm text-light-muted dark:text-dark-muted hover:text-light-strong dark:hover:text-dark-strong transition-colors">
+        className="w-full rounded-[10px] py-2 text-sm text-vault-textTertiary hover:text-vault-text dark:hover:text-vault-text transition-colors">
         Cancel
       </button>
     </form>
@@ -222,18 +222,18 @@ function OfferForm({ listing, token, onDone, onCancel, marketPrice }) {
   }
 
   const inputCls =
-    "w-full rounded-xl border border-light-border dark:border-dark-border " +
-    "bg-light-alt dark:bg-dark-alt px-3 py-2 text-sm text-light-strong dark:text-dark-strong " +
-    "focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent";
+    "w-full rounded-[10px] border border-vault-border " +
+    "bg-vault-raised px-3 py-2 text-sm text-vault-text " +
+    "focus:outline-none focus:ring-2 focus:ring-vault-accent dark:focus:ring-vault-accent";
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
       <div>
-        <label className="text-xs font-semibold uppercase tracking-wide text-light-muted dark:text-dark-muted mb-1 block">
+        <label className="text-xs font-semibold uppercase tracking-wide text-vault-textTertiary mb-1 block">
           Your offer
         </label>
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-light-muted dark:text-dark-muted">£</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-vault-textTertiary">£</span>
           <input
             type="number" min="0.01" step="0.01"
             value={amount} onChange={(e) => setAmount(e.target.value)}
@@ -243,7 +243,7 @@ function OfferForm({ listing, token, onDone, onCancel, marketPrice }) {
         </div>
         {/* Market value context */}
         {marketPrice && (
-          <p className="text-xs text-light-muted dark:text-dark-muted mt-1">
+          <p className="text-xs text-vault-textTertiary mt-1">
             Market value: {fmt(marketPrice)}
             {marketPctOff !== null && marketPctOff > 10 && (
               <span className={marketPctOff > 30 ? " text-amber-400 font-medium" : ""}>
@@ -256,13 +256,13 @@ function OfferForm({ listing, token, onDone, onCancel, marketPrice }) {
           </p>
         )}
         {!marketPrice && pctOff !== null && pctOff > 0 && (
-          <p className="text-xs text-light-muted dark:text-dark-muted mt-1">
+          <p className="text-xs text-vault-textTertiary mt-1">
             {pctOff}% below asking price
           </p>
         )}
       </div>
       <div>
-        <label className="text-xs font-semibold uppercase tracking-wide text-light-muted dark:text-dark-muted mb-1 block">
+        <label className="text-xs font-semibold uppercase tracking-wide text-vault-textTertiary mb-1 block">
           Message (optional)
         </label>
         <textarea
@@ -273,21 +273,21 @@ function OfferForm({ listing, token, onDone, onCancel, marketPrice }) {
         />
       </div>
       {/* Delivery address notice */}
-      <div className="rounded-xl border border-light-border dark:border-dark-border bg-light-elevated dark:bg-dark-elevated px-3 py-2.5 text-xs text-light-muted dark:text-dark-muted">
+      <div className="rounded-[10px] border border-vault-border bg-vault-raised dark:bg-vault-raised px-3 py-2.5 text-xs text-vault-textTertiary">
         <p className="font-semibold uppercase tracking-wide mb-1">Ship to</p>
         {deliveryAddress?.address1 ? (
           <p className="leading-5">
             {[deliveryAddress.address1, deliveryAddress.address2, deliveryAddress.city, deliveryAddress.postcode]
               .filter(Boolean).join(", ")}
             {" · "}
-            <a href="/account?tab=marketplace" className="underline hover:text-light-strong dark:hover:text-dark-strong">
+            <a href="/account?tab=marketplace" className="underline hover:text-vault-text dark:hover:text-vault-text">
               Change
             </a>
           </p>
         ) : (
           <p>
             No delivery address saved.{" "}
-            <a href="/account?tab=marketplace" className="underline hover:text-light-strong dark:hover:text-dark-strong">
+            <a href="/account?tab=marketplace" className="underline hover:text-vault-text dark:hover:text-vault-text">
               Add one in account settings
             </a>
             {" "}before making an offer.
@@ -296,11 +296,11 @@ function OfferForm({ listing, token, onDone, onCancel, marketPrice }) {
       </div>
       {err && <p className="text-xs text-red-400">{err}</p>}
       <button type="submit" disabled={busy || !deliveryAddress?.address1}
-        className="w-full rounded-xl py-3 text-sm font-semibold text-white bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight disabled:opacity-50 transition-colors">
+        className="w-full rounded-[10px] py-3 text-sm font-semibold text-white bg-vault-accent hover:bg-vault-accentHover dark:bg-vault-accent dark:hover:bg-vault-accentHover disabled:opacity-50 transition-colors">
         {busy ? "Sending…" : "Send offer"}
       </button>
       <button type="button" onClick={onCancel}
-        className="w-full rounded-xl py-2 text-sm text-light-muted dark:text-dark-muted hover:text-light-strong dark:hover:text-dark-strong transition-colors">
+        className="w-full rounded-[10px] py-2 text-sm text-vault-textTertiary hover:text-vault-text dark:hover:text-vault-text transition-colors">
         Cancel
       </button>
     </form>
@@ -390,10 +390,10 @@ export default function ListingDetailModal({ listing, onClose }) {
       role="dialog" aria-modal="true"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="relative w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl overflow-hidden bg-light-surface dark:bg-dark-surface shadow-2xl flex flex-col max-h-[92vh]">
+      <div className="relative w-full sm:max-w-2xl rounded-t-3xl sm:rounded-[14px] overflow-hidden bg-vault-surface  flex flex-col max-h-[92vh]">
 
         <button type="button" onClick={onClose}
-          className="absolute top-3 right-4 z-10 rounded-full bg-black/30 backdrop-blur-sm text-white px-3 py-1 text-xs font-medium hover:bg-black/50 transition">
+          className="absolute top-3 right-4 z-10 rounded-[6px] bg-black/30 backdrop-blur-sm text-white px-3 py-1 text-xs font-medium hover:bg-black/50 transition">
           Close
         </button>
 
@@ -403,12 +403,12 @@ export default function ListingDetailModal({ listing, onClose }) {
             <div className="text-5xl">
               {phase === "done" ? "🎉" : phase === "offered" ? "📨" : "🛒"}
             </div>
-            <h2 className="text-xl font-bold text-light-strong dark:text-dark-strong">
+            <h2 className="text-xl font-bold text-vault-text">
               {phase === "done"         ? "Payment successful!" :
                phase === "offered"      ? "Offer sent!"         :
                                           "Added to cart!"}
             </h2>
-            <p className="text-sm text-center text-light-muted dark:text-dark-muted">
+            <p className="text-sm text-center text-vault-textTertiary">
               {phase === "done"
                 ? `Order #${order?.orderNumber || order?.id} confirmed. The seller will be notified to ship.`
                 : phase === "offered"
@@ -418,20 +418,20 @@ export default function ListingDetailModal({ listing, onClose }) {
 
             {/* Guest nudge — sign in to complete purchase */}
             {phase === "carted_guest" && (
-              <div className="w-full rounded-2xl bg-light-elevated dark:bg-dark-elevated border border-light-border dark:border-dark-border p-4 flex flex-col gap-3 text-center">
-                <p className="text-xs text-light-muted dark:text-dark-muted">
+              <div className="w-full rounded-[10px] bg-vault-raised dark:bg-vault-raised border border-vault-border p-4 flex flex-col gap-3 text-center">
+                <p className="text-xs text-vault-textTertiary">
                   Sign in to complete your purchase. Your cart will be waiting.
                 </p>
                 <div className="flex gap-2 justify-center">
                   <a
                     href="/login?redirect=/marketplace"
-                    className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white bg-light-accent dark:bg-dark-accent hover:opacity-90 transition"
+                    className="rounded-[10px] px-5 py-2.5 text-sm font-semibold text-white bg-vault-accent hover:opacity-90 transition"
                   >
                     Sign in
                   </a>
                   <a
                     href="/register?redirect=/marketplace"
-                    className="rounded-xl px-5 py-2.5 text-sm font-semibold border border-light-border dark:border-dark-border text-light-strong dark:text-dark-strong hover:bg-light-surface dark:hover:bg-dark-surface transition"
+                    className="rounded-[10px] px-5 py-2.5 text-sm font-semibold border border-vault-border text-vault-text hover:bg-vault-surface dark:hover:bg-vault-surface transition"
                   >
                     Create account
                   </a>
@@ -440,7 +440,7 @@ export default function ListingDetailModal({ listing, onClose }) {
             )}
 
             <button onClick={onClose}
-              className="mt-2 rounded-xl px-8 py-3 text-sm font-semibold text-white bg-light-accent dark:bg-dark-accent hover:opacity-90 transition">
+              className="mt-2 rounded-[10px] px-8 py-3 text-sm font-semibold text-white bg-vault-accent hover:opacity-90 transition">
               {(phase === "carted" || phase === "carted_guest") ? "Continue browsing" : "Done"}
             </button>
           </div>
@@ -459,29 +459,29 @@ export default function ListingDetailModal({ listing, onClose }) {
                   <img
                     src={proofImgSrc}
                     alt="Proof photo"
-                    className="w-full rounded-xl shadow-2xl object-contain max-h-[240px] sm:max-h-none cursor-zoom-in"
+                    className="w-full rounded-[10px]  object-contain max-h-[240px] sm:max-h-none cursor-zoom-in"
                   />
-                  <div className="absolute inset-0 flex items-center justify-center rounded-xl opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
-                    <span className="bg-black/60 backdrop-blur-sm text-white text-xs font-medium px-3 py-1.5 rounded-full">Click to enlarge</span>
+                  <div className="absolute inset-0 flex items-center justify-center rounded-[10px] opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
+                    <span className="bg-black/60 backdrop-blur-sm text-white text-xs font-medium px-3 py-1.5 rounded-[6px]">Click to enlarge</span>
                   </div>
                 </div>
               ) : imageUrl ? (
                 <>
                   <img src={imageUrl} alt={info.name || "Card"}
-                    className="relative z-10 w-full rounded-xl shadow-2xl"
-                    style={{ filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.6))" }}
+                    className="relative z-10 w-full rounded-[10px] "
+                    style={{ filter: "drop-(0 8px 24px rgba(0,0,0,0.6))" }}
                   />
                   <div className="absolute inset-0 opacity-20 blur-2xl scale-75"
                     style={{ backgroundImage: `url(${imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}
                   />
                 </>
               ) : (
-                <div className="w-32 h-44 rounded-xl bg-white/10 flex items-center justify-center text-xs text-white/50">No image</div>
+                <div className="w-32 h-44 rounded-[10px] bg-white/10 flex items-center justify-center text-xs text-white/50">No image</div>
               )}
               {/* Toggle label */}
               {proofImgSrc && (
                 <div className="absolute bottom-3 left-0 right-0 flex justify-center">
-                  <span className="text-[10px] font-medium text-white/60 bg-black/40 backdrop-blur-sm rounded-full px-3 py-1">
+                  <span className="text-[10px] font-medium text-white/60 bg-black/40 backdrop-blur-sm rounded-[6px] px-3 py-1">
                     {imgSlide === 0 ? "Tap to view proof photo" : "Tap to view card"}
                   </span>
                 </div>
@@ -493,34 +493,34 @@ export default function ListingDetailModal({ listing, onClose }) {
 
               {/* Name + meta */}
               <div>
-                <h2 className="text-xl font-bold text-light-strong dark:text-dark-strong leading-tight">
+                <h2 className="text-xl font-bold text-vault-text leading-tight">
                   {info.name || listing.cardId || "Card"}
                 </h2>
                 {(info.setName || info.number) && (
-                  <p className="text-sm text-light-muted dark:text-dark-muted mt-0.5">
+                  <p className="text-sm text-vault-textTertiary mt-0.5">
                     {[info.setName, info.number ? `#${info.number}` : null].filter(Boolean).join(" · ")}
                   </p>
                 )}
                 {info.rarity && (
-                  <p className="text-xs text-light-muted dark:text-dark-muted mt-0.5">{info.rarity}</p>
+                  <p className="text-xs text-vault-textTertiary mt-0.5">{info.rarity}</p>
                 )}
               </div>
 
               {/* Badges */}
               <div className="flex flex-wrap gap-2">
                 {listing.condition && cond && (
-                  <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${cond.bg} ${cond.text}`}>
-                    <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
+                  <span className={`inline-flex items-center gap-1.5 rounded-[6px] px-3 py-1 text-xs font-bold ${cond.bg} ${cond.text}`}>
+                    <span className="w-1.5 h-1.5 rounded-[6px] bg-current opacity-60" />
                     {listing.condition} · {cond.label}
                   </span>
                 )}
                 {listing.variation && listing.variation !== "Standard" && (
-                  <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium border border-light-border dark:border-dark-border text-light-muted dark:text-dark-muted">
+                  <span className="inline-flex items-center rounded-[6px] px-3 py-1 text-xs font-medium border border-vault-border text-vault-textTertiary">
                     {listing.variation}
                   </span>
                 )}
                 {listing.moderationResult === "approved" && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold bg-emerald-600/20 border border-emerald-500/40 text-emerald-400">
+                  <span className="inline-flex items-center gap-1.5 rounded-[6px] px-3 py-1 text-xs font-semibold bg-emerald-600/20 border border-emerald-500/40 text-emerald-400">
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
                     Card verified
                   </span>
@@ -530,7 +530,7 @@ export default function ListingDetailModal({ listing, onClose }) {
                     type="button"
                     title="Click to view proof photo — check this code appears written in the image"
                     onClick={() => proofImgSrc && setImgSlide(1)}
-                    className="inline-flex items-center rounded-full px-3 py-1 text-xs font-mono border border-light-border dark:border-dark-border text-light-muted dark:text-dark-muted hover:border-emerald-500/50 hover:text-emerald-400 transition-colors"
+                    className="inline-flex items-center rounded-[6px] px-3 py-1 text-xs font-mono border border-vault-border text-vault-textTertiary hover:border-emerald-500/50 hover:text-emerald-400 transition-colors"
                   >
                     Code: {listing.proofCode}
                   </button>
@@ -540,7 +540,7 @@ export default function ListingDetailModal({ listing, onClose }) {
                 <button
                   type="button"
                   onClick={() => setImgSlide(s => s === 0 ? 1 : 0)}
-                  className="flex items-start gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2.5 text-left hover:bg-emerald-500/10 transition-colors w-full"
+                  className="flex items-start gap-2 rounded-[10px] border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2.5 text-left hover:bg-emerald-500/10 transition-colors w-full"
                 >
                   <svg className="mt-0.5 shrink-0 text-emerald-400" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                   <p className="text-[11px] text-emerald-300/80 leading-snug">
@@ -550,13 +550,13 @@ export default function ListingDetailModal({ listing, onClose }) {
               )}
               <div className="flex flex-wrap gap-2">
                 {listing.willTrade && (
-                  <span className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold bg-violet-600 text-white">
+                  <span className="inline-flex items-center gap-1 rounded-[6px] px-3 py-1 text-xs font-semibold bg-violet-600 text-white">
                     {isTradeOnly ? "⇄ Trade Only" : "⇄ Will Trade"}
                   </span>
                 )}
                 {listing.pendingOfferCount > 0 && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold bg-orange-500/20 border border-orange-400/40 text-orange-300">
-                    <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+                  <span className="inline-flex items-center gap-1.5 rounded-[6px] px-3 py-1 text-xs font-semibold bg-orange-500/20 border border-orange-400/40 text-orange-300">
+                    <span className="w-1.5 h-1.5 rounded-[6px] bg-orange-400" />
                     Under Offer
                   </span>
                 )}
@@ -564,22 +564,22 @@ export default function ListingDetailModal({ listing, onClose }) {
 
               {/* Seller notes */}
               {listing.description && (
-                <div className="rounded-xl border border-light-border dark:border-dark-border bg-light-elevated dark:bg-dark-elevated px-4 py-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-light-muted dark:text-dark-muted mb-1.5">Seller notes</p>
-                  <p className="text-sm text-light-strong dark:text-dark-strong whitespace-pre-wrap leading-relaxed">{listing.description}</p>
+                <div className="rounded-[10px] border border-vault-border bg-vault-raised dark:bg-vault-raised px-4 py-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-vault-textTertiary mb-1.5">Seller notes</p>
+                  <p className="text-sm text-vault-text whitespace-pre-wrap leading-relaxed">{listing.description}</p>
                 </div>
               )}
 
               {/* Price + seller */}
-              <div className="rounded-2xl bg-light-elevated dark:bg-dark-elevated border border-light-border dark:border-dark-border p-4 flex items-center justify-between gap-4">
+              <div className="rounded-[10px] bg-vault-raised dark:bg-vault-raised border border-vault-border p-4 flex items-center justify-between gap-4">
                 <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-widest text-light-muted dark:text-dark-muted mb-1">
+                  <div className="text-[10px] font-semibold uppercase tracking-widest text-vault-textTertiary mb-1">
                     {isTradeOnly ? "Listing type" : "Listed price"}
                   </div>
                   {isTradeOnly ? (
                     <div className="text-2xl font-extrabold text-violet-400 tracking-tight">Trade Only</div>
                   ) : (
-                    <div className="text-3xl font-extrabold text-light-strong dark:text-dark-strong tracking-tight">
+                    <div className="text-3xl font-extrabold text-vault-text tracking-tight">
                       {fmt(price, currency)}
                     </div>
                   )}
@@ -587,14 +587,14 @@ export default function ListingDetailModal({ listing, onClose }) {
                 {seller.username && (
                   <div className="flex items-center gap-2.5">
                     {seller.avatar ? (
-                      <img src={seller.avatar} alt={seller.username} className="w-10 h-10 rounded-full object-cover border-2 border-light-border dark:border-dark-border" />
+                      <img src={seller.avatar} alt={seller.username} className="w-10 h-10 rounded-[6px] object-cover border-2 border-vault-border" />
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-light-accent/20 dark:bg-dark-accent/20 border-2 border-light-border dark:border-dark-border flex items-center justify-center text-sm font-bold text-light-accent dark:text-dark-accent">
+                      <div className="w-10 h-10 rounded-[6px] bg-vault-accent/20 dark:bg-vault-accent/20 border-2 border-vault-border flex items-center justify-center text-sm font-bold text-vault-accent">
                         {seller.username[0].toUpperCase()}
                       </div>
                     )}
                     <div>
-                      <div className="text-sm font-semibold text-light-strong dark:text-dark-strong">{seller.username}</div>
+                      <div className="text-sm font-semibold text-vault-text">{seller.username}</div>
                       <div className="mt-1">
                         {reputation ? (
                           <SellerTierBadge
@@ -603,7 +603,7 @@ export default function ListingDetailModal({ listing, onClose }) {
                             onClick={() => setShowReviews(true)}
                           />
                         ) : (
-                          <div className="text-[10px] text-light-muted dark:text-dark-muted">Seller</div>
+                          <div className="text-[10px] text-vault-textTertiary">Seller</div>
                         )}
                       </div>
                     </div>
@@ -622,11 +622,11 @@ export default function ListingDetailModal({ listing, onClose }) {
                       {isLoggedIn ? (
                         <button type="button"
                           onClick={() => setShowTrade(true)}
-                          className="w-full rounded-xl py-3.5 text-sm font-bold border-2 border-violet-600 text-violet-400 hover:bg-violet-600 hover:text-white transition-colors">
+                          className="w-full rounded-[10px] py-3.5 text-sm font-bold border-2 border-violet-600 text-violet-400 hover:bg-violet-600 hover:text-white transition-colors">
                           ⇄ Propose a trade
                         </button>
                       ) : (
-                        <p className="text-xs text-center text-light-muted dark:text-dark-muted">
+                        <p className="text-xs text-center text-vault-textTertiary">
                           Sign in to propose a trade.
                         </p>
                       )}
@@ -635,19 +635,19 @@ export default function ListingDetailModal({ listing, onClose }) {
                     <>
                       {/* Primary: buy now */}
                       <button type="button" onClick={handleBuy} disabled={busy || !isLoggedIn}
-                        className="w-full rounded-xl py-3.5 text-sm font-bold text-white bg-light-accent hover:bg-light-accentLight dark:bg-dark-accent dark:hover:bg-dark-accentLight disabled:opacity-50 transition-colors shadow-lg shadow-light-accent/20 dark:shadow-dark-accent/20">
+                        className="w-full rounded-[10px] py-3.5 text-sm font-bold text-white bg-vault-accent hover:bg-vault-accentHover dark:bg-vault-accent dark:hover:bg-vault-accentHover disabled:opacity-50 transition-colors  -vault-accent/20 dark:-vault-accent/20">
                         {busy ? "Preparing checkout…" : !isLoggedIn ? "Sign in to buy" : `Buy now · ${fmt(price, currency)}`}
                       </button>
 
                       {/* Secondary row: Add to cart + Make an offer */}
                       <div className="grid gap-2" style={{ gridTemplateColumns: listing.allowOffers && isLoggedIn ? "1fr 1fr" : "1fr" }}>
                         <button type="button" onClick={handleAddToCart}
-                          className="rounded-xl py-2.5 text-sm font-semibold border-2 border-light-border dark:border-dark-border text-light-strong dark:text-dark-strong hover:border-light-accent dark:hover:border-dark-accent hover:text-light-accent dark:hover:text-dark-accent transition-colors">
+                          className="rounded-[10px] py-2.5 text-sm font-semibold border-2 border-vault-border text-vault-text hover:border-vault-borderStrong hover:text-vault-accent dark:hover:text-vault-accent transition-colors">
                           🛒 Add to cart
                         </button>
                         {listing.allowOffers && isLoggedIn && (
                           <button type="button" onClick={() => setPhase("offer")}
-                            className="rounded-xl py-2.5 text-sm font-semibold border-2 border-light-border dark:border-dark-border text-light-strong dark:text-dark-strong hover:border-amber-500 hover:text-amber-500 transition-colors">
+                            className="rounded-[10px] py-2.5 text-sm font-semibold border-2 border-vault-border text-vault-text hover:border-amber-500 hover:text-amber-500 transition-colors">
                             💬 Make an offer
                           </button>
                         )}
@@ -657,7 +657,7 @@ export default function ListingDetailModal({ listing, onClose }) {
                       {listing.willTrade && isLoggedIn && (
                         <button type="button"
                           onClick={() => setShowTrade(true)}
-                          className="w-full rounded-xl py-2.5 text-sm font-semibold border-2 border-violet-600 text-violet-600 dark:text-violet-400 dark:border-violet-500 hover:bg-violet-600 hover:text-white dark:hover:bg-violet-600 dark:hover:text-white transition-colors">
+                          className="w-full rounded-[10px] py-2.5 text-sm font-semibold border-2 border-violet-600 text-violet-600 dark:text-violet-400 dark:border-violet-500 hover:bg-violet-600 hover:text-white dark:hover:bg-violet-600 dark:hover:text-white transition-colors">
                           ⇄ Propose a trade
                         </button>
                       )}
@@ -716,7 +716,7 @@ export default function ListingDetailModal({ listing, onClose }) {
         <button
           type="button"
           onClick={() => setLightbox(false)}
-          className="absolute top-4 right-4 rounded-full bg-white/10 hover:bg-white/20 text-white p-2 transition-colors"
+          className="absolute top-4 right-4 rounded-[6px] bg-white/10 hover:bg-white/20 text-white p-2 transition-colors"
           aria-label="Close"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -726,7 +726,7 @@ export default function ListingDetailModal({ listing, onClose }) {
         <img
           src={proofImgSrc}
           alt="Proof photo"
-          className="max-w-full max-h-[80vh] rounded-2xl shadow-2xl object-contain"
+          className="max-w-full max-h-[80vh] rounded-[10px]  object-contain"
           onClick={(e) => e.stopPropagation()}
         />
 
@@ -734,7 +734,7 @@ export default function ListingDetailModal({ listing, onClose }) {
         <div className="mt-4 flex flex-col items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
           <p className="text-white/50 text-xs">Check the handwritten code matches the listing code</p>
           {listing.proofCode && (
-            <span className="font-mono font-bold tracking-[0.25em] text-white text-lg bg-white/10 rounded-xl px-5 py-2">
+            <span className="font-mono font-bold tracking-[0.25em] text-white text-lg bg-white/10 rounded-[10px] px-5 py-2">
               {listing.proofCode}
             </span>
           )}

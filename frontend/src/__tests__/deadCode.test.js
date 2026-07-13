@@ -15,7 +15,8 @@
 const fs   = require('fs');
 const path = require('path');
 
-const SRC_DIR = path.resolve(__dirname, '..');
+const SRC_DIR  = path.resolve(__dirname, '..');
+const APP_DIR  = path.resolve(SRC_DIR, '../app');   // Next.js App Router — also a consumer
 
 const EXEMPT_PATHS = new Set([
   // 'styles/globals.css',  // imported via _app.js string import, not a JS import
@@ -49,8 +50,9 @@ test('no dead source files', () => {
   // Files that should be imported by something
   const candidates = allFiles.filter(f => !isExempt(f));
 
-  // All source content that could contain import statements (pages included, tests excluded)
-  const allContent = allFiles
+  // Consumer content: src/ files + app/ (App Router) files, excluding tests
+  const appFiles = fs.existsSync(APP_DIR) ? collectFiles(APP_DIR) : [];
+  const allContent = [...allFiles, ...appFiles]
     .filter(f => !f.endsWith('.test.js') && !f.endsWith('.spec.js') && !f.includes('__tests__'))
     .map(f => { try { return fs.readFileSync(f, 'utf8'); } catch { return ''; } })
     .join('\n');

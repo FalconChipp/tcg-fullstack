@@ -12,7 +12,8 @@
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
-import { useQuery, gql } from "@apollo/client";
+import { useQuery } from "@apollo/client";
+import { LISTINGS_QUERY } from '@/graphql/marketplace';
 import ListingCard from "./ListingCard";
 import { devError } from "@/utils/devLog";
 
@@ -86,87 +87,6 @@ function normaliseListing(listing) {
 
 /* ----------------- GraphQL ----------------- */
 
-const LISTINGS_QUERY = gql`
-  query Listings(
-    $type: ListingType
-    $status: ListingStatus
-    $condition: String
-    $variation: String
-    $sort: String
-    $minPrice: Float
-    $maxPrice: Float
-    $limit: Int
-    $offset: Int
-  ) {
-    listings(
-      type: $type
-      status: $status
-      condition: $condition
-      variation: $variation
-      sort: $sort
-      minPrice: $minPrice
-      maxPrice: $maxPrice
-      limit: $limit
-      offset: $offset
-    ) {
-      __typename
-      id
-      type
-      price
-      currency
-      quantity
-      allowOffers
-      status
-      createdAt
-      updatedAt
-
-      ... on CardListing {
-        cardId
-        condition
-        variation
-        description
-        allowOffers
-        willTrade
-        moderationResult
-        proofCode
-        proofImageUrl
-        pendingOfferCount
-        seller {
-          id
-          username
-          avatar
-        }
-        cardInfo {
-          id
-          name
-          number
-          rarity
-          setName
-          imageSmall
-          imageLarge
-        }
-      }
-
-      ... on ProductListing {
-        title
-        description
-        imageUrl
-        imagesJson
-        inventory {
-          id
-          onHand
-          reserved
-          sold
-        }
-        seller {
-          id
-          username
-          avatar
-        }
-      }
-    }
-  }
-`;
 
 /* ----------------- Mock data ----------------- */
 

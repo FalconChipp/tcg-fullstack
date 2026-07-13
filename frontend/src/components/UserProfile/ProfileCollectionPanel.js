@@ -15,6 +15,7 @@ import CardSkeleton from "@/components/UI/CardSkeleton";
 
 import useProfileCollection from "@/hooks/useProfileCollection";
 import useProfileCardActions from "@/hooks/useProfileCardActions";
+import { formatCurrency } from "@/utils/formatCurrency";
 
 const SORT_OPTIONS = [
   { value: "name-asc", label: "Name (A-Z)" },
@@ -28,14 +29,6 @@ const SORT_OPTIONS = [
   { value: "quantity-asc", label: "Quantity (Low to High)" },
   { value: "quantity-desc", label: "Quantity (High to Low)" },
 ];
-
-const currencyFmt = new Intl.NumberFormat("en-GB", {
-  style: "currency",
-  currency: "GBP",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-const formatCurrency = (v) => currencyFmt.format(v);
 
 /* ---------------------------------------------
    Pricing helpers (handle all shapes you might get)

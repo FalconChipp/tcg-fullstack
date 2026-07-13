@@ -10,72 +10,15 @@
 "use client";
 
 import React, { useContext, useEffect, useMemo, useState } from "react";
-import { gql } from "@apollo/client";
 import { AuthContext } from "@/components/Auth/AuthProvider";
-
-// ─── GQL ─────────────────────────────────────────────────────────────────────
-
-const MY_COLLECTION_QUERY = gql`
-  query MyCollectionForTrade {
-    myCollection {
-      id
-      cardId
-      quantity
-      condition
-      variation
-      card {
-        id
-        name
-        number
-        rarity
-        images { small large }
-        set { name }
-      }
-    }
-  }
-`;
-
-const MY_WALLET_QUERY = gql`
-  query MyWalletForTrade {
-    myWallet(limit: 1) {
-      balance
-      held
-      currency
-    }
-  }
-`;
-
-const INITIATE_TRADE_MUTATION = gql`
-  mutation InitiateTrade(
-    $userId: ID!
-    $offeredCards: [TradeCardInput!]
-    $wantedCards: [TradeCardInput!]
-    $topUpAmount: Float
-  ) {
-    initiateTrade(
-      userId: $userId
-      offeredCards: $offeredCards
-      wantedCards: $wantedCards
-      topUpAmount: $topUpAmount
-    ) {
-      id
-      status
-      createdAt
-    }
-  }
-`;
+import { MY_COLLECTION_QUERY } from '@/graphql/collection';
+import { MY_WALLET_QUERY, INITIATE_TRADE_MUTATION } from '@/graphql/trades';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 import { gqlFetch } from "@/utils/apiClient";
 
-const CARD_MARKET_PRICE_QUERY = gql`
-  query CardMarketPriceForTrade($id: ID!) {
-    cardsearchCard(id: $id) {
-      latestPrices { variation currency gbp market }
-    }
-  }
-`;
+import { CARD_MARKET_PRICE_QUERY } from '@/graphql/cards';
 
 function fmt(amount, currency = "GBP") {
   try {

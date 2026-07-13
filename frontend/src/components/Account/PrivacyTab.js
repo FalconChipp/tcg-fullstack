@@ -96,11 +96,25 @@ export default function PrivacyTab({ user, token }) {
       );
 
       const result = data?.exportUserData;
-      setExportStatus({ type: "success", msg: "Your data export is ready." });
 
-      if (typeof result === "string" && /^https?:\/\//i.test(result)) {
-        window.open(result, "_blank");
+      if (typeof result === "string") {
+        if (/^https?:\/\//i.test(result)) {
+          window.open(result, "_blank");
+        } else {
+          // Backend returns the export as a JSON string — trigger browser download
+          const blob = new Blob([result], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "my-data-export.json";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }
       }
+
+      setExportStatus({ type: "success", msg: "Your data export has been downloaded." });
       setExportPwd("");
     } catch (err) {
       setExportStatus({ type: "error", msg: err.message });

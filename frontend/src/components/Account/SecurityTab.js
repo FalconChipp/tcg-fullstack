@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect, useContext, useCallback } from "react";
 import StatusMessage from "@/components/UI/StatusMessage";
+import { PasswordSection, EmailSection, TwoFASection } from "./SecurityTabParts";
 import { FaDiscord } from "react-icons/fa";
 import { AuthContext } from "../Auth/AuthProvider";
 import { getApiBase, getGraphqlUrl } from "@/utils/apiClient";
@@ -854,200 +855,34 @@ export default function SecurityTab({ user: userProp, token: tokenProp }) {
       </section>
 
       {/* PASSWORD CHANGE */}
-      <form
-        onSubmit={handlePasswordUpdate}
-        className="bg-vault-surface border border-vault-border rounded-[10px] px-6 py-8 "
-      >
-        <h2 className="text-xl font-bold mb-6 text-vault-accent dark:text-vault-accent">Change Password</h2>
-        <div className="mb-6">
-          <label className="block mb-1 font-semibold text-vault-text">Current Password</label>
-          <input
-            type="password"
-            value={pwFields.current}
-            disabled={isOAuth}
-            onChange={(e) => setPwFields((f) => ({ ...f, current: e.target.value }))}
-            className="w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-raised text-vault-text transition"
-            autoComplete="current-password"
-          />
-        </div>
-        <div className="mb-6">
-          <label className="block mb-1 font-semibold text-vault-text">New Password</label>
-          <input
-            type="password"
-            value={pwFields.new}
-            disabled={isOAuth}
-            onChange={(e) => setPwFields((f) => ({ ...f, new: e.target.value }))}
-            className="w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-raised text-vault-text transition"
-            autoComplete="new-password"
-          />
-          <ul className="text-sm mb-2 mt-2">
-            <li className={pwRules.length ? "text-green-600" : "text-vault-textTertiary"}>
-              {pwRules.length ? "✅" : "❌"} At least 8 characters
-            </li>
-            <li className={pwRules.upper ? "text-green-600" : "text-vault-textTertiary"}>
-              {pwRules.upper ? "✅" : "❌"} At least one uppercase letter
-            </li>
-            <li className={pwRules.lower ? "text-green-600" : "text-vault-textTertiary"}>
-              {pwRules.lower ? "✅" : "❌"} At least one lowercase letter
-            </li>
-            <li className={pwRules.number ? "text-green-600" : "text-vault-textTertiary"}>
-              {pwRules.number ? "✅" : "❌"} At least one number
-            </li>
-            <li className={pwRules.special ? "text-green-600" : "text-vault-textTertiary"}>
-              {pwRules.special ? "✅" : "❌"} At least one special character
-            </li>
-          </ul>
-        </div>
-        <div className="mb-6">
-          <label className="block mb-1 font-semibold text-vault-text">Confirm New Password</label>
-          <input
-            type="password"
-            value={pwFields.confirm}
-            disabled={isOAuth}
-            onChange={(e) => setPwFields((f) => ({ ...f, confirm: e.target.value }))}
-            className="w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-raised text-vault-text transition"
-            autoComplete="new-password"
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={isOAuth}
-          className="bg-vault-accent text-white px-6 py-2.5 rounded-[10px] font-bold hover:bg-vault-accent dark:hover:bg-vault-accentHover transition disabled:opacity-50"
-        >
-          Change Password
-        </button>
-        {pwStatus && (
-          <div className="mt-4">
-            <StatusMessage type={pwStatus.type} message={pwStatus.msg} onClose={() => setPwStatus(null)} />
-          </div>
-        )}
-      </form>
+      <PasswordSection
+        pwFields={pwFields}
+        setPwFields={setPwFields}
+        pwStatus={pwStatus}
+        setPwStatus={setPwStatus}
+        isOAuth={isOAuth}
+        pwRules={pwRules}
+        handlePasswordUpdate={handlePasswordUpdate}
+      />
 
       {/* EMAIL CHANGE */}
-      <form
-        onSubmit={handleEmailUpdate}
-        className="bg-vault-surface border border-vault-border rounded-[10px] px-6 py-8 "
-      >
-        <h2 className="text-xl font-bold mb-6 text-vault-accent dark:text-vault-accent">Change Email</h2>
-        <div className="mb-6">
-          <label className="block mb-1 font-semibold text-vault-text">New Email</label>
-          <input
-            type="email"
-            value={emailFields.email}
-            disabled={isOAuth}
-            onChange={(e) => setEmailFields((f) => ({ ...f, email: e.target.value }))}
-            className="w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-raised text-vault-text transition"
-            autoComplete="email"
-          />
-        </div>
-        <div className="mb-6">
-          <label className="block mb-1 font-semibold text-vault-text">Current Password</label>
-          <input
-            type="password"
-            value={emailFields.currentPassword}
-            disabled={isOAuth}
-            onChange={(e) => setEmailFields((f) => ({ ...f, currentPassword: e.target.value }))}
-            className="w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-raised text-vault-text transition"
-            autoComplete="current-password"
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={isOAuth}
-          className="bg-vault-accent px-6 py-2.5 rounded-[10px] font-bold hover:bg-vault-accent dark:hover:bg-vault-accentHover transition disabled:opacity-50"
-        >
-          Change Email
-        </button>
-        {emailStatus && (
-          <div className="mt-4">
-            <StatusMessage type={emailStatus.type} message={emailStatus.msg} onClose={() => setEmailStatus(null)} />
-          </div>
-        )}
-      </form>
+      <EmailSection
+        emailFields={emailFields}
+        setEmailFields={setEmailFields}
+        emailStatus={emailStatus}
+        setEmailStatus={setEmailStatus}
+        isOAuth={isOAuth}
+        handleEmailUpdate={handleEmailUpdate}
+      />
 
       {/* TWO-FACTOR AUTH */}
-      <div className="bg-vault-surface border border-vault-border rounded-[10px] px-6 py-8 ">
-        <h2 className="text-xl font-bold mb-6 text-vault-accent dark:text-vault-accent">Two-Factor Authentication</h2>
-        {twoFA.enabled ? (
-          <div>
-            <p className="mb-2 text-green-600">
-              2FA is currently <strong>ENABLED</strong> on your account.
-            </p>
-            <button
-              type="button"
-              disabled={twoFA.loading}
-              onClick={handleDisable2FA}
-              className="bg-vault-warning dark:bg-vault-warning text-vault-text px-6 py-2.5 rounded-[10px] font-bold hover:bg-vault-accent dark:hover:bg-vault-accentHover transition"
-            >
-              Disable 2FA
-            </button>
-          </div>
-        ) : twoFA.showSetup ? (
-          <form onSubmit={handleVerify2FA}>
-            <p className="mb-2">
-              Scan this QR code with your authenticator app (Google Authenticator, Authy, etc), or enter this code
-              manually:
-              <br />
-              <span className="break-all text-sm font-mono">{twoFA.setupUrl}</span>
-            </p>
-            <img src={twoFA.qrCode} alt="2FA QR Code" className="mb-4 w-40 h-40" />
-            <div className="mb-3">
-              <label className="block mb-1 font-semibold text-vault-text">
-                Enter the 6-digit code from your authenticator app:
-              </label>
-              <input
-                type="text"
-                value={twoFA.verifyCode}
-                onChange={(e) => setTwoFA((s) => ({ ...s, verifyCode: e.target.value }))}
-                className="w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-raised text-vault-text transition"
-                maxLength={6}
-                inputMode="numeric"
-                pattern="\\d*"
-                autoComplete="off"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={twoFA.loading || !twoFA.verifyCode}
-              className="bg-vault-accent text-white dark:text-black px-6 py-2.5 rounded-[10px] font-bold hover:bg-vault-accent dark:hover:bg-vault-accent transition"
-            >
-              Verify & Enable 2FA
-            </button>
-            {twoFA.verifyStatus && (
-              <div className="mt-4">
-                <StatusMessage
-                  type={twoFA.verifyStatus.type}
-                  message={twoFA.verifyStatus.msg}
-                  onClose={() => setTwoFA((s) => ({ ...s, verifyStatus: null }))}
-                />
-              </div>
-            )}
-          </form>
-        ) : (
-          <div>
-            <p className="mb-2 text-red-600">
-              2FA is currently <strong>DISABLED</strong> on your account.
-            </p>
-            <button
-              type="button"
-              disabled={twoFA.loading}
-              onClick={handleStart2FA}
-              className="bg-vault-accent px-6 py-2.5 rounded-[10px] font-bold hover:bg-vault-accent dark:hover:bg-vault-accentHover transition"
-            >
-              Enable 2FA
-            </button>
-          </div>
-        )}
-        {twoFA.generalStatus && (
-          <div className="mt-4">
-            <StatusMessage
-              type={twoFA.generalStatus.type}
-              message={twoFA.generalStatus.msg}
-              onClose={() => setTwoFA((s) => ({ ...s, generalStatus: null }))}
-            />
-          </div>
-        )}
-      </div>
+      <TwoFASection
+        twoFA={twoFA}
+        setTwoFA={setTwoFA}
+        handleStart2FA={handleStart2FA}
+        handleVerify2FA={handleVerify2FA}
+        handleDisable2FA={handleDisable2FA}
+      />
     </div>
   );
 }

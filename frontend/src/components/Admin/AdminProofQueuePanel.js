@@ -1,42 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { gql, useQuery, useMutation } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client";
 import { getApiBase } from "@/utils/apiClient";
-
-const PROOF_QUEUE_QUERY = gql`
-  query AdminProofQueue {
-    adminProofQueue {
-      id
-      cardId
-      title
-      condition
-      variation
-      price
-      currency
-      proofCode
-      moderationResult
-      proofImagePath
-      createdAt
-      seller {
-        id
-        username
-      }
-    }
-  }
-`;
-
-const APPROVE_PROOF = gql`
-  mutation AdminApproveProof($id: ID!) {
-    adminApproveProof(id: $id)
-  }
-`;
-
-const REJECT_PROOF = gql`
-  mutation AdminRejectProof($id: ID!, $reason: String) {
-    adminRejectProof(id: $id, reason: $reason)
-  }
-`;
+import { ADMIN_PROOF_QUEUE_QUERY as PROOF_QUEUE_QUERY, ADMIN_APPROVE_PROOF as APPROVE_PROOF, ADMIN_REJECT_PROOF as REJECT_PROOF } from '@/graphql/admin';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

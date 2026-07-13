@@ -6,7 +6,8 @@
 import React, { useContext, useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/router";
-import { gql, useQuery } from "@apollo/client";
+import { useQuery } from "@apollo/client";
+import { HAS_AGREED_QUERY, GET_LISTING_BY_ID } from '@/graphql/marketplace';
 
 import Layout from "@/components/Layout/Layout";
 import SecondaryHeader from "@/components/Marketplace/SecondaryHeader";
@@ -19,25 +20,6 @@ import MyListingsDrawer from "@/components/Marketplace/MyListingsDrawer";
 import BulkListingModal from "@/components/Marketplace/BulkListingModal";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 
-const HAS_AGREED_QUERY = gql`
-  query HasAgreedToMarketplaceRules {
-    hasAgreedToMarketplaceRules
-  }
-`;
-
-// Used when a notification link lands on /marketplace?listing=<id>
-const GET_LISTING_BY_ID = gql`
-  query GetListingById($id: ID!) {
-    listing(id: $id) {
-      __typename id type price currency quantity allowOffers status createdAt updatedAt
-      ... on CardListing {
-        cardId condition variation allowOffers willTrade moderationResult proofCode proofImageUrl pendingOfferCount
-        seller { id username avatar }
-        cardInfo { id name number rarity setName imageSmall imageLarge }
-      }
-    }
-  }
-`;
 
 function MarketplacePage() {
   const auth = useContext(AuthContext) || {};

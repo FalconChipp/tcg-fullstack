@@ -1,28 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { gql, useQuery, useMutation } from "@apollo/client";
-
-const REVIEW_QUEUE_QUERY = gql`
-  query AdminReviewQueue($status: String, $limit: Int, $offset: Int) {
-    adminReviewQueue(status: $status, limit: $limit, offset: $offset) {
-      id
-      sellerId
-      cardId
-      rating
-      review
-      reviewStatus
-      disputeReason
-      updatedAt
-    }
-  }
-`;
-
-const RESOLVE_REVIEW = gql`
-  mutation AdminResolveReview($listingId: ID!, $action: String!) {
-    adminResolveReview(listingId: $listingId, action: $action)
-  }
-`;
+import { useQuery, useMutation } from "@apollo/client";
+import { ADMIN_REVIEW_QUEUE_QUERY as REVIEW_QUEUE_QUERY, ADMIN_RESOLVE_REVIEW as RESOLVE_REVIEW } from '@/graphql/admin';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

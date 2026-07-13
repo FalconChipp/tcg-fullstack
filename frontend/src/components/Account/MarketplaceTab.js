@@ -12,23 +12,12 @@ import {
 /* ─── GQL / API helper ───────────────────────────────────────────────────────── */
 
 import { gqlFetch } from "@/utils/apiClient";
+import {
+  SELLER_STATUS_QUERY,
+  UPDATE_SELLER_ADDRESS,
+  UPDATE_DELIVERY_ADDRESS,
+} from "@/graphql/orders";
 const gql = (token, query, variables = {}) => gqlFetch(query, variables, token);
-
-const SELLER_STATUS_QUERY = `
-  query SellerStatus {
-    sellerStatus { connected complete url }
-    myWallet(limit: 1) { balance currency }
-    myCapabilities { platformFeePercent maxActiveListings }
-    sellerAddress { name line1 line2 city postcode country phone email }
-    myDeliveryAddress { address1 address2 city postcode state country }
-  }
-`;
-
-const UPDATE_SELLER_ADDRESS = `
-  mutation UpdateSellerAddress($input: SellerAddressInput!) {
-    updateSellerAddress(input: $input)
-  }
-`;
 
 const LS_KEY = "sixbyfive:marketplace_prefs:v2";
 
@@ -221,16 +210,6 @@ function PayoutsSection({ walletBalance, walletCurrency, token }) {
 }
 
 /* ─── Delivery address section ───────────────────────────────────────────────── */
-
-const UPDATE_DELIVERY_ADDRESS = `
-  mutation UpdateDeliveryAddress(
-    $address1: String $address2: String $city: String $postcode: String $state: String $country: String
-  ) {
-    updateProfile(address1: $address1 address2: $address2 city: $city postcode: $postcode state: $state country: $country) {
-      address1 address2 city postcode state country
-    }
-  }
-`;
 
 function DeliveryAddressSection({ token, initialAddress }) {
   const empty = { address1: "", address2: "", city: "", postcode: "", country: "GB" };

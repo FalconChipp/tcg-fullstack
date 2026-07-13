@@ -1,29 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { gql, useQuery, useMutation } from "@apollo/client";
-
-const ADMIN_LISTINGS_QUERY = gql`
-  query AdminListings($status: String, $limit: Int, $offset: Int) {
-    adminListings(status: $status, limit: $limit, offset: $offset) {
-      id
-      cardId
-      title
-      sellerId
-      price
-      quantity
-      condition
-      status
-      createdAt
-    }
-  }
-`;
-
-const DELETE_LISTING = gql`
-  mutation AdminDeleteListing($id: ID!) {
-    deleteListing(id: $id)
-  }
-`;
+import { useQuery, useMutation } from "@apollo/client";
+import { ADMIN_LISTINGS_QUERY, ADMIN_DELETE_CARD_LISTING as DELETE_LISTING } from '@/graphql/admin';
 
 const PAGE_SIZE = 100;
 

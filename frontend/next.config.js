@@ -7,8 +7,6 @@ const BOT_UA_REGEX = "(?i:Googlebot|bingbot|DuckDuckBot|Applebot|YandexBot|Baidu
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
-  experimental: { appDir: true },
-
   images: {
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [360, 414, 640, 768, 1024, 1280, 1536],

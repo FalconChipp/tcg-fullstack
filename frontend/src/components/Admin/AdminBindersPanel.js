@@ -1,26 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { gql, useQuery, useMutation } from "@apollo/client";
-
-const BINDERS_QUERY = gql`
-  query AdminBinders {
-    adminBinders {
-      id
-      userId
-      name
-      visibility
-      isDeleted
-      createdAt
-    }
-  }
-`;
-
-const DELETE_BINDER = gql`
-  mutation AdminDeleteBinder($id: ID!) {
-    adminDeleteBinder(id: $id)
-  }
-`;
+import { useQuery, useMutation } from "@apollo/client";
+import { ADMIN_BINDERS_QUERY as BINDERS_QUERY, ADMIN_DELETE_BINDER as DELETE_BINDER } from '@/graphql/admin';
 
 function fmt(v) {
   if (!v) return "—";

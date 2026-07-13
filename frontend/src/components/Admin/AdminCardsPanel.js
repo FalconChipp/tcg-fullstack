@@ -1,19 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { gql, useQuery } from "@apollo/client";
-
-const COLLECTIONS_QUERY = gql`
-  query AdminUserCollections($limit: Int, $search: String) {
-    adminUserCollections(limit: $limit, search: $search) {
-      userId
-      username
-      email
-      totalCards
-      distinctCards
-    }
-  }
-`;
+import { useQuery } from "@apollo/client";
+import { ADMIN_USER_COLLECTIONS_QUERY as COLLECTIONS_QUERY } from '@/graphql/admin';
 
 const LIMIT = 200;
 

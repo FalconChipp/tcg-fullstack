@@ -1,69 +1,16 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useContext } from "react";
-import { getGraphqlUrl } from "@/utils/apiClient";
+import { gqlFetch } from "@/utils/apiClient";
 import { AuthContext } from "@/components/Auth/AuthProvider";
-
-/* ─── GQL ────────────────────────────────────────────────────────────────── */
-
-const ADMIN_TRADES_QUERY = `
-  query AdminTrades($page: Int, $pageSize: Int, $status: TradeStatus, $userId: ID) {
-    adminTrades(page: $page, pageSize: $pageSize, status: $status, userId: $userId) {
-      id partyAId partyBId status counterCount topUpAmount
-      createdAt completedAt cancelledAt cancelledReason disputeId adminNotes
-    }
-  }
-`;
-
-const ADMIN_DISPUTES_QUERY = `
-  query AdminTradeDisputes($status: String) {
-    adminTradeDisputes(status: $status) {
-      id tradeId raisedById reason status resolution resolvedAt createdAt
-    }
-  }
-`;
-
-const ADMIN_BANS_QUERY = `
-  query AdminTradeBans {
-    adminTradeBans {
-      userId reason bannedBy bannedAt
-    }
-  }
-`;
-
-const RESOLVE_DISPUTE_MUTATION = `
-  mutation AdminResolveTradeDispute($id: ID!, $resolution: String!, $resolvedInFavourOf: String) {
-    adminResolveTradeDispute(id: $id, resolution: $resolution, resolvedInFavourOf: $resolvedInFavourOf) {
-      id status
-    }
-  }
-`;
-
-const BAN_USER_MUTATION = `
-  mutation AdminBanUserFromTrading($userId: ID!, $reason: String) {
-    adminBanUserFromTrading(userId: $userId, reason: $reason)
-  }
-`;
-
-const UNBAN_USER_MUTATION = `
-  mutation AdminUnbanUserFromTrading($userId: ID!) {
-    adminUnbanUserFromTrading(userId: $userId)
-  }
-`;
-
-async function gql(query, variables, token) {
-  const res = await fetch(getGraphqlUrl(), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify({ query, variables }),
-  });
-  const json = await res.json();
-  if (json.errors?.length) throw new Error(json.errors[0].message);
-  return json.data;
-}
+import {
+  ADMIN_TRADES_QUERY,
+  ADMIN_TRADE_DISPUTES_QUERY,
+  ADMIN_TRADE_BANS_QUERY,
+  ADMIN_RESOLVE_TRADE_DISPUTE,
+  ADMIN_BAN_FROM_TRADING,
+  ADMIN_UNBAN_FROM_TRADING,
+} from "@/graphql/admin";
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
 
@@ -184,7 +131,7 @@ function TradesTab({ token }) {
   const load = useCallback(async (pg = 1) => {
     setLoading(true); setError(null);
     try {
-      const data = await gql(ADMIN_TRADES_QUERY, {
+      const data = await gqlFetch(ADMIN_TRADES_QUERY, {
         page: pg, pageSize: PAGE_SIZE,
         ...(status ? { status } : {}),
         ...(userId.trim() ? { userId: userId.trim() } : {}),
@@ -287,7 +234,7 @@ function DisputesTab({ token }) {
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const data = await gql(ADMIN_DISPUTES_QUERY, { status: statusFilter || undefined }, token);
+      const data = await gqlFetch(ADMIN_TRADE_DISPUTES_QUERY, { status: statusFilter || undefined }, token);
       setDisputes(data?.adminTradeDisputes ?? []);
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
@@ -298,7 +245,7 @@ function DisputesTab({ token }) {
   async function handleResolve(resolution, resolvedInFavourOf) {
     setActionBusy(resolveItem.id);
     try {
-      await gql(RESOLVE_DISPUTE_MUTATION, { id: resolveItem.id, resolution, resolvedInFavourOf }, token);
+      await gqlFetch(ADMIN_RESOLVE_TRADE_DISPUTE, { id: resolveItem.id, resolution, resolvedInFavourOf }, token);
       setResolveItem(null);
       showToast("Dispute resolved.");
       load();
@@ -397,7 +344,7 @@ function BansTab({ token }) {
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const data = await gql(ADMIN_BANS_QUERY, {}, token);
+      const data = await gqlFetch(ADMIN_TRADE_BANS_QUERY, {}, token);
       setBans(data?.adminTradeBans ?? []);
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
@@ -408,7 +355,7 @@ function BansTab({ token }) {
   async function handleBan(userId, reason) {
     setActionBusy("ban");
     try {
-      await gql(BAN_USER_MUTATION, { userId, reason: reason || undefined }, token);
+      await gqlFetch(ADMIN_BAN_FROM_TRADING, { userId, reason: reason || undefined }, token);
       setShowBanModal(false);
       showToast("User banned from trading.");
       load();
@@ -419,7 +366,7 @@ function BansTab({ token }) {
   async function handleUnban(userId) {
     setActionBusy(userId);
     try {
-      await gql(UNBAN_USER_MUTATION, { userId }, token);
+      await gqlFetch(ADMIN_UNBAN_FROM_TRADING, { userId }, token);
       showToast("User unbanned.");
       load();
     } catch (e) { showToast(`Error: ${e.message}`); }

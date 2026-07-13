@@ -11,7 +11,8 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import Layout from "@/components/Layout/Layout";
 import { AuthContext } from "@/components/Auth/AuthProvider";
-import { getApiBase, getGraphqlUrl } from "@/utils/apiClient";
+import { getApiBase, gqlFetch } from "@/utils/apiClient";
+import { GET_WALLET_BALANCE, CREATE_CART_ORDERS } from "@/graphql/orders";
 import {
   ShoppingBag, ArrowLeft, Package, CheckCircle2, AlertCircle, Loader2, Lock, Wallet,
 } from "lucide-react";
@@ -57,34 +58,7 @@ function clearCart() {
   } catch { /* ignore */ }
 }
 
-async function gql(token, query, variables = {}) {
-  const res = await fetch(getGraphqlUrl(), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify({ query, variables }),
-  });
-  const json = await res.json();
-  if (json.errors?.length) throw new Error(json.errors[0].message);
-  return json.data;
-}
-
-const GET_WALLET_BALANCE = `
-  query MyWalletBalance {
-    myWallet(limit: 0) { balancePence balance currency }
-  }
-`;
-
-const CREATE_CART_ORDERS = `
-  mutation CreateCartOrders($items: [CartItemInput!]!, $walletAmountPence: Int) {
-    createCartOrders(items: $items, walletAmountPence: $walletAmountPence) {
-      orders { id clientSecret salePrice totalAmount currency walletAmountPence }
-      errors { listingId error }
-    }
-  }
-`;
+const gql = (token, query, variables = {}) => gqlFetch(query, variables, token);
 
 /* ─── useDark ─────────────────────────────────────────────────────────────── */
 

@@ -1,65 +1,17 @@
 "use client";
 
 import React, { useState } from "react";
-import { gql, useQuery, useMutation } from "@apollo/client";
-
-// ─── GQL ─────────────────────────────────────────────────────────────────────
-
-const SUBSCRIPTIONS_QUERY = gql`
-  query AdminSubscriptions($status: String, $page: Int, $pageSize: Int) {
-    adminSubscriptions(status: $status, page: $page, pageSize: $pageSize) {
-      total
-      page
-      pageSize
-      subscriptions {
-        id
-        userId
-        status
-        cancelAtPeriodEnd
-        currentPeriodStart
-        currentPeriodEnd
-        cancelledAt
-        stripeSubscriptionId
-        createdAt
-        plan {
-          id
-          name
-          price
-          interval
-        }
-      }
-    }
-  }
-`;
-
-const PLANS_QUERY = gql`
-  query AdminPlans {
-    adminPlans {
-      id
-      name
-      price
-      interval
-      active
-      platformFeePercent
-      maxBinders
-      maxActiveListings
-      maxActiveTrades
-    }
-  }
-`;
-
-const CANCEL_SUB    = gql`mutation AdminCancelSub($id: ID!) { adminCancelSubscription(id: $id) }`;
-const RESUME_SUB    = gql`mutation AdminResumeSub($id: ID!) { adminResumeSubscription(id: $id) }`;
-const CHANGE_PLAN   = gql`mutation AdminChangePlan($id: ID!, $planId: ID!) { adminChangePlan(id: $id, planId: $planId) }`;
-const GRANT_SUB     = gql`mutation AdminGrantSub($userId: ID!, $planId: ID!, $periodDays: Int) { adminGrantSubscription(userId: $userId, planId: $planId, periodDays: $periodDays) }`;
-const REVOKE_SUB    = gql`mutation AdminRevokeSub($id: ID!) { adminRevokeSubscription(id: $id) }`;
-const UPDATE_PLAN   = gql`
-  mutation AdminUpdatePlan($id: ID!, $input: PlanInput!) {
-    adminUpdatePlan(id: $id, input: $input) {
-      id name price interval active platformFeePercent maxBinders maxActiveListings maxActiveTrades
-    }
-  }
-`;
+import { useQuery, useMutation } from "@apollo/client";
+import {
+  ADMIN_SUBSCRIPTIONS_QUERY as SUBSCRIPTIONS_QUERY,
+  ADMIN_PLANS_QUERY as PLANS_QUERY,
+  ADMIN_CANCEL_SUB as CANCEL_SUB,
+  ADMIN_RESUME_SUB as RESUME_SUB,
+  ADMIN_CHANGE_PLAN as CHANGE_PLAN,
+  ADMIN_GRANT_SUB as GRANT_SUB,
+  ADMIN_REVOKE_SUB as REVOKE_SUB,
+  ADMIN_UPDATE_PLAN as UPDATE_PLAN,
+} from '@/graphql/admin';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

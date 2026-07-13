@@ -1,19 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { gql, useQuery, useMutation } from "@apollo/client";
-
-const RULES_QUERY = gql`
-  query MarketplaceRules {
-    marketplaceRules
-  }
-`;
-
-const AGREE_MUTATION = gql`
-  mutation AgreeToMarketplaceRules {
-    agreeToMarketplaceRules
-  }
-`;
+import { useQuery, useMutation } from "@apollo/client";
+import { MARKETPLACE_RULES_QUERY as RULES_QUERY, AGREE_TO_MARKETPLACE_RULES_MUTATION as AGREE_MUTATION } from '@/graphql/marketplace';
 
 export default function MarketplaceRulesModal({ onAgreed, isLoggedIn = false }) {
   const [confirmed, setConfirmed] = useState(false);

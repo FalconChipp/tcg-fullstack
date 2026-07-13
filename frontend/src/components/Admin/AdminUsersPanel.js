@@ -1,27 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { gql, useQuery } from "@apollo/client";
-
-const USERS_QUERY = gql`
-  query AdminUsers($limit: Int) {
-    allUsers(limit: $limit) {
-      id
-      username
-      email
-      isAdmin
-      isBanned
-      emailVerified
-      createdAt
-      lastLogin
-      profile {
-        country
-        status
-        favouritePokemon
-      }
-    }
-  }
-`;
+import { useQuery } from "@apollo/client";
+import { ADMIN_USERS_QUERY as USERS_QUERY } from '@/graphql/admin';
 
 function fmt(v) {
   if (!v) return "—";

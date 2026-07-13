@@ -1,13 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { gql, useQuery, useMutation } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client";
 import { ADMIN_REPORTED_USERS_QUERY } from "@/graphql/adminOverview";
-
-const CLEAR_REPORT  = gql`mutation AdminClearUserReport($userId: ID!) { adminClearUserReport(userId: $userId) }`;
-const BAN_FROM_CHAT = gql`mutation AdminBanUserFromChat($userId: ID!, $reason: String) { adminBanUserFromChat(userId: $userId, reason: $reason) }`;
-const UNBAN_CHAT    = gql`mutation AdminUnbanUserFromChat($userId: ID!) { adminUnbanUserFromChat(userId: $userId) }`;
-const SEND_MSG      = gql`mutation AdminSendSystemMessage($receiverId: ID!, $content: String!, $meta: JSON) { adminSendSystemMessage(receiverId: $receiverId, content: $content, meta: $meta) }`;
+import { ADMIN_CLEAR_REPORT as CLEAR_REPORT, ADMIN_BAN_FROM_CHAT as BAN_FROM_CHAT, ADMIN_UNBAN_CHAT as UNBAN_CHAT, ADMIN_SEND_SYSTEM_MESSAGE as SEND_MSG } from '@/graphql/admin';
 
 function fmt(v) {
   if (!v) return "—";

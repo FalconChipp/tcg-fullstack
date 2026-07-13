@@ -9,89 +9,17 @@
 "use client";
 
 import React, { useRef, useState, useCallback } from "react";
-import { useQuery, useMutation, useApolloClient, gql } from "@apollo/client";
+import { useQuery, useMutation, useApolloClient } from "@apollo/client";
 import {
   ArrowLeftRight, RefreshCw, Loader2, ChevronDown, ChevronUp,
   CheckCircle2, XCircle, RotateCcw, AlertCircle, Clock,
   Camera, Truck, PackageCheck, Plus, Trash2,
 } from "lucide-react";
-
-/* ─── GQL ─────────────────────────────────────────────────────────────────── */
-
-const MY_TRADES_QUERY = gql`
-  query MyTrades($status: TradeStatus) {
-    myTrades(pageSize: 100, status: $status) {
-      id status initiatorId partyAId partyBId
-      lastCounterBy counterCount topUpAmount topUpPaidBy
-      addressASet addressBSet
-      trackingNumberA trackingNumberB
-      createdAt updatedAt agreedAt completedAt cancelledAt cancelledReason
-      cards { id tradeId userId cardId quantity condition variation }
-    }
-  }
-`;
-
-const RESPOND_TO_TRADE = gql`
-  mutation RespondToTrade($id: ID!, $accept: Boolean!, $counterCards: [TradeCardInput!], $reason: String) {
-    respondToTrade(id: $id, accept: $accept, counterCards: $counterCards, reason: $reason) {
-      id status
-    }
-  }
-`;
-
-const CANCEL_TRADE = gql`
-  mutation CancelTrade($id: ID!, $reason: String) {
-    cancelTrade(id: $id, reason: $reason) {
-      id status
-    }
-  }
-`;
-
-const UPLOAD_TRADE_PROOF = gql`
-  mutation UploadTradeProof($id: ID!, $proofImage: String!, $proofCode: String) {
-    uploadTradeProof(id: $id, proofImage: $proofImage, proofCode: $proofCode) {
-      trade { id status }
-    }
-  }
-`;
-
-const SUBMIT_TRADE_TRACKING = gql`
-  mutation SubmitTradeTracking($id: ID!, $trackingNumber: String!) {
-    submitTradeTracking(id: $id, trackingNumber: $trackingNumber) {
-      id status
-    }
-  }
-`;
-
-const SET_TRADE_ADDRESS = gql`
-  mutation SetTradeShippingAddress($id: ID!, $address: JSON!) {
-    setTradeShippingAddress(id: $id, address: $address)
-  }
-`;
-
-const QUOTE_TRADE_SHIPPING = gql`
-  query QuoteTradeShipping($id: ID!) {
-    quoteTradeShipping(id: $id) {
-      amountPence amount currency carrier service
-    }
-  }
-`;
-
-const SHIP_TRADE = gql`
-  mutation ShipTrade($id: ID!, $parcelSize: String) {
-    shipTrade(id: $id, parcelSize: $parcelSize) {
-      ok trackingNumber trackingUrl labelUrl carrier service labelCost labelCostPence
-    }
-  }
-`;
-
-const CONFIRM_TRADE_RECEIVED = gql`
-  mutation ConfirmTradeReceived($id: ID!) {
-    confirmTradeReceived(id: $id) {
-      id status completedAt
-    }
-  }
-`;
+import {
+  MY_TRADES_QUERY, RESPOND_TO_TRADE, CANCEL_TRADE, UPLOAD_TRADE_PROOF,
+  SUBMIT_TRADE_TRACKING, SET_TRADE_ADDRESS, QUOTE_TRADE_SHIPPING,
+  SHIP_TRADE, CONFIRM_TRADE_RECEIVED,
+} from '@/graphql/trades';
 
 /* ─── Helpers ─────────────────────────────────────────────────────────────── */
 

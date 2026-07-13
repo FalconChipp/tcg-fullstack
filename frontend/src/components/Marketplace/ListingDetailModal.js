@@ -4,9 +4,9 @@
 import React, { useContext, useEffect, useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
-import { gql } from "@apollo/client";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 import ProposeTradeModal from "./ProposeTradeModal";
+import { CREATE_ORDER_FROM_LISTING_MUTATION as CREATE_ORDER_MUTATION, CREATE_OFFER_MUTATION } from '@/graphql/marketplace';
 
 // ─── Stripe ──────────────────────────────────────────────────────────────────
 
@@ -16,24 +16,6 @@ function getStripe() {
     stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
   return stripePromise;
 }
-
-// ─── GQL ─────────────────────────────────────────────────────────────────────
-
-const CREATE_ORDER_MUTATION = gql`
-  mutation CreateOrderFromListing($input: CreateOrderFromListingInput!) {
-    createOrderFromListing(input: $input) {
-      id orderNumber status paymentStatus clientSecret total currency createdAt
-    }
-  }
-`;
-
-const CREATE_OFFER_MUTATION = gql`
-  mutation CreateOffer($listingId: ID!, $amount: Float!, $message: String) {
-    createOffer(listingId: $listingId, amount: $amount, message: $message) {
-      id amount status createdAt
-    }
-  }
-`;
 
 import { gqlFetch, getApiBase } from "@/utils/apiClient";
 import SellerReviewsDrawer from "./SellerReviewsDrawer";

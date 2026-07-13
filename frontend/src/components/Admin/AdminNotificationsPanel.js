@@ -1,13 +1,8 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { gql, useMutation } from "@apollo/client";
-
-const SEND_BROADCAST = gql`
-  mutation AdminSendBroadcastNotification($input: BroadcastNotificationInput!) {
-    adminSendBroadcastNotification(input: $input)
-  }
-`;
+import { useMutation } from "@apollo/client";
+import { ADMIN_SEND_BROADCAST as SEND_BROADCAST } from '@/graphql/admin';
 
 const TYPE_OPTS = [
   { value: "info",    label: "Info",    cls: "text-sky-300" },

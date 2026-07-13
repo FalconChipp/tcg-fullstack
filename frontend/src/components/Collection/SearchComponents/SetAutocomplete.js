@@ -1,22 +1,10 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import { gql, useApolloClient } from "@apollo/client";
+import { useApolloClient } from "@apollo/client";
 import { useTheme } from "@/hooks/ThemeProvider";
 import { getSetLogo } from "@/utils/setLogos";
 import fallbackSetList from "@/utils/setList";
 import { normalizeSearchText } from "@/utils/normalizeSearchText";
-
-const CARDSEARCH_SETS_QUERY = gql`
-  query CardsearchSetAutocomplete($limit: Int!, $offset: Int!) {
-    cardsearchSets(limit: $limit, offset: $offset) {
-      code
-      abbr
-      name
-      series
-      releasedAt
-      lang
-    }
-  }
-`;
+import { CARDSEARCH_SETS_QUERY } from '@/graphql/collection';
 
 const CARDSEARCH_SET_PAGE_SIZE = 500;
 const CARDSEARCH_SET_MAX_PAGES = 5;

@@ -3,62 +3,10 @@
 "use client";
 
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { gql } from "@apollo/client";
 import { AuthContext } from "@/components/Auth/AuthProvider";
-
-// ─── GQL ─────────────────────────────────────────────────────────────────────
-
-const MY_COLLECTION_QUERY = gql`
-  query MyCollectionForListing {
-    myCollection {
-      cardId
-      quantity
-      condition
-      variation
-      card {
-        id
-        name
-        number
-        rarity
-        set { name releaseDate }
-        images { small large }
-      }
-    }
-  }
-`;
-
-const PRICE_SUGGESTION_QUERY = gql`
-  query PriceSuggestion($cardId: String!) {
-    listings(type: CARD, status: ACTIVE, cardId: $cardId, limit: 30) {
-      price
-      condition
-    }
-  }
-`;
-
-const CARD_DETAIL_QUERY = gql`
-  query CardDetail($id: ID!) {
-    cardsearchCard(id: $id) {
-      variants { key label default }
-      latestPrices { variation currency gbp market }
-    }
-  }
-`;
-
-const CREATE_LISTING_MUTATION = gql`
-  mutation CreateListing($input: CreateListingInput!) {
-    createListing(input: $input) {
-      id
-      cardId
-      price
-      currency
-      condition
-      variation
-      status
-      createdAt
-    }
-  }
-`;
+import { MY_COLLECTION_QUERY } from '@/graphql/collection';
+import { PRICE_SUGGESTION_QUERY, CREATE_LISTING_MUTATION } from '@/graphql/marketplace';
+import { CARD_DETAIL_QUERY } from '@/graphql/cards';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

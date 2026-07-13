@@ -1,65 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { gql, useQuery, useMutation } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client";
 import { devError } from "@/utils/devLog";
-
-// ─── GQL ─────────────────────────────────────────────────────────────────────
-
-const ADMIN_ORDERS_QUERY = gql`
-  query AdminOrders($limit: Int, $offset: Int) {
-    adminOrders(limit: $limit, offset: $offset) {
-      id
-      orderNumber
-      createdAt
-      fulfilmentStatus
-      paymentStatus
-      totalAmount
-      currency
-      buyerEmail
-      shippingAddressJson
-      buyer { id username }
-      seller { id username }
-      listing {
-        __typename
-        ... on ProductListing { id title fulfilmentType }
-        ... on CardListing    { id cardId condition variation }
-      }
-    }
-  }
-`;
-
-const ADMIN_UPDATE_FULFILMENT = gql`
-  mutation AdminUpdateOrderFulfilmentStatus($orderId: ID!, $status: String!) {
-    adminUpdateOrderFulfilmentStatus(orderId: $orderId, status: $status) {
-      id
-      fulfilmentStatus
-    }
-  }
-`;
-
-const ADMIN_DISPUTES_QUERY = gql`
-  query AdminOrderDisputes($status: String) {
-    adminOrderDisputes(status: $status) {
-      id
-      orderId
-      raisedBy
-      reason
-      status
-      resolution
-      resolvedInFavourOf
-      escrowActionTaken
-      resolvedAt
-      createdAt
-    }
-  }
-`;
-
-const ADMIN_RESOLVE_DISPUTE = gql`
-  mutation AdminResolveDispute($id: ID!, $resolution: String!, $resolvedInFavourOf: String!) {
-    adminResolveDispute(id: $id, resolution: $resolution, resolvedInFavourOf: $resolvedInFavourOf)
-  }
-`;
+import { ADMIN_ORDERS_QUERY, ADMIN_UPDATE_FULFILMENT, ADMIN_DISPUTES_QUERY, ADMIN_RESOLVE_DISPUTE } from '@/graphql/admin';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

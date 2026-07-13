@@ -1,59 +1,8 @@
 "use client";
 
 import React from "react";
-import { gql, useQuery } from "@apollo/client";
-
-// ─── GQL ─────────────────────────────────────────────────────────────────────
-
-const REVENUE_SUMMARY_QUERY = gql`
-  query AdminRevenueSummary {
-    adminRevenueSummary {
-      totalRevenue
-      revenue30d
-      revenue7d
-      subRevenue
-      productRevenue
-      refunds
-      currency
-    }
-    adminMarketplaceRevenue {
-      gmv
-      platformFees
-      shippingCollected
-      walletUsed
-      refundedTotal
-      stripeFeeEstimate
-      gmv30d
-      gmv7d
-      platformFees30d
-      totalOrders
-      completedOrders
-      openDisputes
-      resolvedDisputes
-      monthly { month gmv fees orders }
-      currency
-    }
-  }
-`;
-
-const TRANSACTIONS_QUERY = gql`
-  query AdminAllTransactions($page: Int, $pageSize: Int, $type: String) {
-    adminAllTransactions(page: $page, pageSize: $pageSize, type: $type) {
-      total
-      transactions {
-        id
-        userId
-        type
-        amount
-        currency
-        status
-        description
-        stripePaymentIntentId
-        createdAt
-      }
-    }
-  }
-`;
+import { useQuery } from "@apollo/client";
+import { ADMIN_REVENUE_SUMMARY_QUERY as REVENUE_SUMMARY_QUERY, ADMIN_TRANSACTIONS_QUERY as TRANSACTIONS_QUERY } from '@/graphql/admin';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

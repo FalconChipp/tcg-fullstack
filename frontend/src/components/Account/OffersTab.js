@@ -12,58 +12,13 @@ import Link from "next/link";
 /* ─── GraphQL helper ─────────────────────────────────────────────────────────── */
 
 import { gqlFetch } from "@/utils/apiClient";
+import {
+  MY_INCOMING_OFFERS_QUERY,
+  MY_OFFERS_QUERY,
+  RESPOND_TO_OFFER,
+  WITHDRAW_OFFER,
+} from "@/graphql/orders";
 const gql = (token, query, variables = {}) => gqlFetch(query, variables, token);
-
-/* ─── Queries / Mutations ────────────────────────────────────────────────────── */
-
-const OFFER_FIELDS = `
-  id listingId buyerId amount message status
-  expiresAt respondedAt counterAmount counterMessage
-  createdAt updatedAt
-  buyer { id username avatar }
-  listing {
-    id title price cardId
-    cardInfo { name imageSmall setName }
-  }
-`;
-
-const MY_INCOMING_OFFERS_QUERY = `
-  query MyIncomingOffers {
-    myIncomingOffers { ${OFFER_FIELDS} }
-  }
-`;
-
-const MY_OFFERS_QUERY = `
-  query MyOffers {
-    myOffers { ${OFFER_FIELDS} }
-  }
-`;
-
-const RESPOND_TO_OFFER = `
-  mutation RespondToOffer(
-    $offerId: ID!
-    $action: String!
-    $counterAmount: Float
-    $counterMessage: String
-    $buyerAddress: JSON
-  ) {
-    respondToOffer(
-      offerId: $offerId
-      action: $action
-      counterAmount: $counterAmount
-      counterMessage: $counterMessage
-      buyerAddress: $buyerAddress
-    ) {
-      ok status orderId clientSecret totalAmount counterAmount
-    }
-  }
-`;
-
-const WITHDRAW_OFFER = `
-  mutation WithdrawOffer($offerId: ID!) {
-    withdrawOffer(offerId: $offerId)
-  }
-`;
 
 /* ─── Helpers ────────────────────────────────────────────────────────────────── */
 

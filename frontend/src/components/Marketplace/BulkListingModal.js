@@ -1,52 +1,10 @@
 "use client";
 
 import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { gql, useApolloClient } from "@apollo/client";
+import { useApolloClient } from "@apollo/client";
 import { AuthContext } from "@/components/Auth/AuthProvider";
-
-// ─── GQL ─────────────────────────────────────────────────────────────────────
-
-const MY_COLLECTION_QUERY = gql`
-  query MyCollectionForBulkListing {
-    myCollection {
-      cardId
-      quantity
-      condition
-      variation
-      card {
-        id
-        name
-        number
-        rarity
-        set { name releaseDate }
-        images { small large }
-      }
-    }
-  }
-`;
-
-const CREATE_BULK_LISTINGS = gql`
-  mutation CreateBulkListings($listings: [BulkListingItemInput!]!) {
-    createBulkListings(listings: $listings) {
-      batchId
-      proofCode
-      proofCodeExpiresAt
-      count
-      listings { id cardId title status }
-    }
-  }
-`;
-
-const SUBMIT_BULK_PROOF = gql`
-  mutation SubmitBulkProof($batchId: ID!, $image: String!) {
-    submitBulkProof(batchId: $batchId, image: $image) {
-      ok
-      result
-      activated
-      newProofCode
-    }
-  }
-`;
+import { MY_COLLECTION_QUERY } from '@/graphql/collection';
+import { CREATE_BULK_LISTINGS, SUBMIT_BULK_PROOF } from '@/graphql/marketplace';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

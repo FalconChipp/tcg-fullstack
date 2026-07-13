@@ -11,92 +11,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { gql, useMutation, useQuery } from "@apollo/client";
-
-// --- GraphQL: create product listing (admin-only) ----------------------------
-
-const ADMIN_CREATE_PRODUCT_LISTING = gql`
-  mutation AdminCreateProductListing($input: ProductListingInput!) {
-    adminCreateProductListing(input: $input) {
-      id
-      title
-      description
-      price
-      currency
-      quantity
-      status
-      fulfilmentType
-      fulfilmentProvider
-      fulfilmentExternalId
-      imagesJson
-      colourVariantsJson
-      createdAt
-    }
-  }
-`;
-
-// --- GraphQL: update product listing (admin-only) ----------------------------
-// NEW: allows editing existing ProductListing rows.
-
-const ADMIN_UPDATE_PRODUCT_LISTING = gql`
-  mutation AdminUpdateProductListing($id: ID!, $input: ProductListingInput!) {
-    adminUpdateProductListing(id: $id, input: $input) {
-      id
-      title
-      description
-      price
-      currency
-      quantity
-      status
-      fulfilmentType
-      fulfilmentProvider
-      fulfilmentExternalId
-      imageUrl
-      imagesJson
-      colourVariantsJson
-      createdAt
-    }
-  }
-`;
-
-// --- GraphQL: list product listings -----------------------------------------
-// NOTE: we now accept a $status variable and pass it into listings(...)
-
-const ADMIN_PRODUCT_LISTINGS = gql`
-  query AdminProductListings(
-    $limit: Int
-    $offset: Int
-    $status: ListingStatus
-  ) {
-    listings(type: PRODUCT, status: $status, limit: $limit, offset: $offset) {
-      __typename
-      ... on ProductListing {
-        id
-        title
-        description
-        imageUrl
-        price
-        currency
-        quantity
-        status
-        fulfilmentType
-        fulfilmentProvider
-        fulfilmentExternalId
-        imagesJson
-        colourVariantsJson
-        createdAt
-      }
-    }
-  }
-`;
-
-// --- GraphQL: delete listing (shared marketplace mutation) -------------------
-
-const DELETE_LISTING = gql`
-  mutation DeleteListing($id: ID!) {
-    deleteListing(id: $id)
-  }
-`;
+import { useMutation, useQuery } from "@apollo/client";
+import {
+  ADMIN_CREATE_PRODUCT_LISTING,
+  ADMIN_UPDATE_PRODUCT_LISTING,
+  ADMIN_PRODUCT_LISTINGS_QUERY as ADMIN_PRODUCT_LISTINGS,
+  ADMIN_DELETE_PRODUCT_LISTING as DELETE_LISTING,
+} from '@/graphql/admin';
 
 const DEFAULT_STATUS = "active"; // ListingStatus enum in schema
 const DEFAULT_FULFILMENT = "INTERNAL"; // must match Listing.fulfilmentType enum

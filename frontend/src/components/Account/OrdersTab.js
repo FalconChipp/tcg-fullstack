@@ -8,83 +8,18 @@ import { Elements, CardElement, useStripe, useElements } from "@stripe/react-str
 /* ─── GraphQL ─────────────────────────────────────────────────────────────────── */
 
 import { gqlFetch } from "@/utils/apiClient";
+import {
+  MY_ORDERS_QUERY,
+  GET_WALLET_BALANCE,
+  APPLY_WALLET_TO_ORDER,
+  SHIP_ORDER,
+  CONFIRM_RECEIVED,
+  RAISE_DISPUTE,
+  CANCEL_ORDER,
+  LEAVE_FEEDBACK,
+  DISPUTE_REVIEW,
+} from "@/graphql/orders";
 const gql = (token, query, variables = {}) => gqlFetch(query, variables, token);
-
-const MY_ORDERS_QUERY = `
-  query MyOrders($role: String, $limit: Int) {
-    myOrders(role: $role, limit: $limit) {
-      id orderNumber totalAmount salePrice shippingCost currency
-      paymentStatus fulfilmentStatus walletAmountPence clientSecret
-      trackingNumber trackingCarrier
-      buyerId sellerId
-      createdAt shippedAt completedAt cancelledAt
-      buyer  { id username avatar }
-      seller { id username avatar }
-      listing {
-        ... on CardListing {
-          id title rating
-          cardInfo { name imageSmall setName }
-        }
-      }
-    }
-  }
-`;
-
-const GET_WALLET_BALANCE = `
-  query MyWalletBalance { myWallet(limit: 0) { balancePence currency } }
-`;
-
-const APPLY_WALLET_TO_ORDER = `
-  mutation ApplyWalletToOrder($orderId: ID!, $walletAmountPence: Int!) {
-    applyWalletToOrder(orderId: $orderId, walletAmountPence: $walletAmountPence) {
-      ok clientSecret walletAmountPence cardTotal
-    }
-  }
-`;
-
-const SHIP_ORDER = `
-  mutation ShipOrder($id: ID!) {
-    shipOrder(id: $id) {
-      ok trackingNumber trackingUrl labelUrl labelBase64 carrier service labelCost
-    }
-  }
-`;
-
-const CONFIRM_RECEIVED = `
-  mutation ConfirmOrderReceived($id: ID!) {
-    confirmOrderReceived(id: $id) {
-      id fulfilmentStatus paymentStatus completedAt
-    }
-  }
-`;
-
-const RAISE_DISPUTE = `
-  mutation RaiseOrderDispute($id: ID!, $reason: String!) {
-    raiseOrderDispute(id: $id, reason: $reason) {
-      id fulfilmentStatus
-    }
-  }
-`;
-
-const CANCEL_ORDER = `
-  mutation CancelOrder($id: ID!, $reason: String) {
-    cancelOrder(id: $id, reason: $reason) {
-      id fulfilmentStatus paymentStatus cancelledAt
-    }
-  }
-`;
-
-const LEAVE_FEEDBACK = `
-  mutation LeaveOrderFeedback($id: ID!, $rating: Int!, $review: String) {
-    leaveOrderFeedback(id: $id, rating: $rating, review: $review)
-  }
-`;
-
-const DISPUTE_REVIEW = `
-  mutation DisputeOrderReview($id: ID!, $reason: String) {
-    disputeOrderReview(id: $id, reason: $reason)
-  }
-`;
 
 /* ─── Status helpers ──────────────────────────────────────────────────────────── */
 

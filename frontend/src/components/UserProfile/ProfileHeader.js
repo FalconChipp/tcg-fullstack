@@ -19,6 +19,8 @@ import { useMessenger } from "@/components/Messenger/MessengerContext";
 import { getApiBase, getGraphqlUrl, gqlFetch } from "@/utils/apiClient";
 import { devError } from "@/utils/devLog";
 import SellerReviewsDrawer from "@/components/Marketplace/SellerReviewsDrawer";
+import { getSellerTier as computeSellerTier } from "@/utils/sellerTier";
+import { formatCurrency } from "@/utils/formatCurrency";
 
 /* ─── Header status badges ──────────────────────────────────────────────────
    Changed:
@@ -29,48 +31,47 @@ import SellerReviewsDrawer from "@/components/Marketplace/SellerReviewsDrawer";
    - Both badges share the same size, shape, spacing, and visual language.
 ──────────────────────────────────────────────────────────────────────────── */
 
-const SELLER_TIERS = {
-  seller: {
+// Visual-only map: keys match SELLER_TIERS[*].key from utils/sellerTier.js
+const SELLER_TIER_DISPLAY = {
+  new: {
     label: "Seller",
     icon: FaStore,
-    minCompleted: 1,
-    minScore: 0,
-    wrapper:
-      "border-slate-600/70 bg-slate-800/70 text-slate-200 dark:border-slate-600/70 dark:bg-slate-800/70 dark:text-slate-200",
+    wrapper: "border-slate-600/70 bg-slate-800/70 text-slate-200 dark:border-slate-600/70 dark:bg-slate-800/70 dark:text-slate-200",
     iconBox: "bg-slate-600 text-white",
   },
-
+  bronze: {
+    label: "Seller",
+    icon: FaStore,
+    wrapper: "border-slate-600/70 bg-slate-800/70 text-slate-200 dark:border-slate-600/70 dark:bg-slate-800/70 dark:text-slate-200",
+    iconBox: "bg-slate-600 text-white",
+  },
   silver: {
     label: "Silver Seller",
     shortLabel: "Silver",
     icon: FaShieldAlt,
-    minCompleted: 5,
-    minScore: 80,
-    wrapper:
-      "border-zinc-400/40 bg-zinc-500/10 text-zinc-200 dark:border-zinc-400/40 dark:bg-zinc-500/10 dark:text-zinc-200",
+    wrapper: "border-zinc-400/40 bg-zinc-500/10 text-zinc-200 dark:border-zinc-400/40 dark:bg-zinc-500/10 dark:text-zinc-200",
     iconBox: "bg-zinc-300 text-zinc-950",
   },
-
   gold: {
     label: "Gold Seller",
     shortLabel: "Gold",
     icon: FaCheckCircle,
-    minCompleted: 20,
-    minScore: 90,
-    wrapper:
-      "border-amber-400/45 bg-amber-500/10 text-amber-200 dark:border-amber-400/45 dark:bg-amber-500/10 dark:text-amber-200",
+    wrapper: "border-amber-400/45 bg-amber-500/10 text-amber-200 dark:border-amber-400/45 dark:bg-amber-500/10 dark:text-amber-200",
     iconBox: "bg-amber-400 text-amber-950",
   },
-
   platinum: {
     label: "Platinum Seller",
     shortLabel: "Platinum",
     icon: FaStar,
-    minCompleted: 75,
-    minScore: 95,
-    wrapper:
-      "border-cyan-300/45 bg-cyan-400/10 text-cyan-100 dark:border-cyan-300/45 dark:bg-cyan-400/10 dark:text-cyan-100",
+    wrapper: "border-cyan-300/45 bg-cyan-400/10 text-cyan-100 dark:border-cyan-300/45 dark:bg-cyan-400/10 dark:text-cyan-100",
     iconBox: "bg-cyan-300 text-cyan-950",
+  },
+  elite: {
+    label: "Elite Seller",
+    shortLabel: "Elite",
+    icon: FaStar,
+    wrapper: "border-violet-400/45 bg-violet-500/10 text-violet-200 dark:border-violet-400/45 dark:bg-violet-500/10 dark:text-violet-200",
+    iconBox: "bg-violet-400 text-violet-950",
   },
 };
 
@@ -133,43 +134,6 @@ const SUBSCRIPTION_TIERS = {
   },
 };
 
-/**
- * Tier is driven by completedMarketplace count alone.
- * Positive rate (from review counts) only acts as a downgrade guard:
- * if a seller has ≥5 reviews AND a positive rate below 50 % they drop
- * one tier — avoiding promoting someone with genuinely terrible feedback.
- */
-function positiveRate(reputation) {
-  const positive = reputation?.positive ?? 0;
-  const negative = reputation?.negative ?? 0;
-  const neutral  = reputation?.neutral  ?? 0;
-  const total    = positive + negative + neutral;
-  if (total < 5) return 100; // too few reviews to penalise
-  return (positive / total) * 100;
-}
-
-function getSellerTier(reputation) {
-  const completed = reputation?.completedMarketplace ?? 0;
-  const rate      = positiveRate(reputation);
-  const penalise  = rate < 50; // genuinely bad feedback → drop one tier
-
-  // Determine tier by completed count
-  let tier;
-  if (completed >= SELLER_TIERS.platinum.minCompleted) tier = 'platinum';
-  else if (completed >= SELLER_TIERS.gold.minCompleted)    tier = 'gold';
-  else if (completed >= SELLER_TIERS.silver.minCompleted)  tier = 'silver';
-  else                                                      tier = 'seller';
-
-  // Downgrade one step if feedback is poor
-  if (penalise) {
-    const order = ['seller', 'silver', 'gold', 'platinum'];
-    const idx = order.indexOf(tier);
-    tier = order[Math.max(0, idx - 1)];
-  }
-
-  return SELLER_TIERS[tier];
-}
-
 function formatScore(reputation) {
   const positive = reputation?.positive ?? 0;
   const negative = reputation?.negative ?? 0;
@@ -230,7 +194,8 @@ function HeaderStatusBadge({
 function SellerHeaderBadge({ reputation, onClick }) {
   if (!reputation) return null;
 
-  const tier = getSellerTier(reputation);
+  const { tier: tierData } = computeSellerTier(reputation);
+  const tier = SELLER_TIER_DISPLAY[tierData.key] ?? SELLER_TIER_DISPLAY.bronze;
   const Icon = tier.icon;
 
   const completed = reputation?.completedMarketplace ?? 0;
@@ -285,14 +250,6 @@ const REPUTATION_QUERY = `
     }
   }
 `;
-
-const formatCurrency = (value) =>
-  new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "GBP",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value || 0);
 
 function formatUpdatedAgo(iso) {
   if (!iso) return null;

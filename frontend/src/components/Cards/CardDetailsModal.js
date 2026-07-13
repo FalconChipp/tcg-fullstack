@@ -10,7 +10,8 @@
 
 import React from "react";
 import Image from "next/image";
-import { gql, useApolloClient } from "@apollo/client";
+import { useApolloClient } from "@apollo/client";
+import { PRICE_INSIGHTS_QUERY } from '@/graphql/cards';
 import { getCardImageUrl } from "@/utils/imageUtils";
 import { formatVariation } from "@/utils/formatVariation";
 import { formatCondition, getConditionClass } from "@/utils/formatCondition";
@@ -20,8 +21,14 @@ import PriceHistoryChart from "@/components/UserProfile/PriceHistoryChart";
 import { fetchMyAlerts, upsertAlert } from "@/graphql/priceAlerts";
 import { executeMutation } from "@/utils/graphqlUtils";
 
-// ✅ NEW: externalized Discord share dialog
 import ShareToDiscordDialog from "@/components/UserProfile/ShareToDiscordDialog";
+import {
+  safeLocalStorageGet,
+  safeLocalStorageSet,
+  inferSourceTypeFromCard,
+  normalizeShareEntry,
+  postDiscordShare,
+} from "@/utils/discordShareUtils";
 
 // Optional: only used if your project exposes it
 let useThemeHook;
@@ -35,177 +42,9 @@ const FALLBACK_CARD_IMAGE = "/images/card-placeholder.svg";
 const GBP_SYMBOL = "\u00A3";
 
 /* ========================================================================== */
-/*                      Minimal Discord Share helpers (KEPT)                   */
-/* ========================================================================== */
-
-function safeLocalStorageGet(key) {
-  try {
-    if (typeof window === "undefined") return null;
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-function safeLocalStorageSet(key, value) {
-  try {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(key, value);
-  } catch {}
-}
-
-function inferSourceTypeFromCard(card) {
-  // Your collection rows have `wishlist: false`
-  // Your wishlist entries might not, so prefer explicit prop if you pass it.
-  if (!card) return "collection";
-  if (card.wishlist === true) return "wishlist";
-  return "collection";
-}
-
-function normalizeLatestPriceGBP(card, variation) {
-  const list = Array.isArray(card?.latestPrices) ? card.latestPrices : [];
-  if (!list.length) return null;
-
-  const desired = String(variation || "normal").toLowerCase();
-  const exact = list.find((p) => String(p?.variation || "").toLowerCase() === desired);
-  const row = exact || list.find((p) => String(p?.variation || "").toLowerCase() === "normal") || list[0];
-
-  const v = row?.gbp ?? row?.market ?? row?.mid ?? null;
-  const n = typeof v === "string" ? parseFloat(v) : v;
-  return Number.isFinite(n) ? n : null;
-}
-
-function normalizeShareEntry({ type, card, sourceEntry, selectedVar }) {
-  // We send a consistent shape to backend so backend can post to bot.
-  // We keep it close to what your bot expects (card + collection/wishlist context).
-  const c = sourceEntry?.card || card?.card || card || {};
-  const entry = sourceEntry || card || {};
-
-  const variation =
-    entry?.variation ||
-    entry?.variationKey ||
-    c?.variation ||
-    selectedVar ||
-    "normal";
-
-  const priceGBP = normalizeLatestPriceGBP(c, variation);
-
-  return {
-    type, // "collection" | "wishlist"
-    entryId: entry?.id ?? null,
-    cardId: entry?.cardId ?? c?.id ?? c?.cardId ?? card?.cardId ?? card?.id ?? null,
-    variation: variation ?? null,
-
-    // Context
-    collection:
-      type === "collection"
-        ? {
-            quantity: Number(entry?.quantity || 1),
-            condition: entry?.condition ?? null,
-            binderName: entry?.binderName ?? null,
-          }
-        : undefined,
-
-    wishlist:
-      type === "wishlist"
-        ? {
-            status: entry?.status ?? null,
-            priority: entry?.priority ?? null,
-            quantity: Number(entry?.quantity || 1),
-          }
-        : undefined,
-
-    // Card fields the bot embed builder cares about
-    card: {
-      id: c?.id ?? null,
-      cardId: entry?.cardId ?? c?.id ?? null,
-      name: c?.name ?? card?.name ?? card?.tcgName ?? null,
-      number: c?.number ?? card?.number ?? null,
-      setCode: c?.setCode ?? card?.setCode ?? null,
-      setName: c?.set?.name ?? card?.setName ?? card?.setName ?? null,
-      rarity: c?.rarity ?? card?.rarity ?? card?.tcgRarity ?? null,
-      images: {
-        small: c?.images?.small ?? null,
-        large: c?.images?.large ?? null,
-      },
-      variant: variation ?? null,
-      variants: Array.isArray(c?.variants) ? c.variants : undefined,
-    },
-
-    pricing: {
-      priceGBP,
-      currency: "GBP",
-    },
-  };
-}
-
-async function postDiscordShare({ token, channelId, message, payload, requestedByUsername, viewUrl }) {
-  const url = "/api/discord/share-entry";
-
-  const r = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify({
-      channelId,
-      type: payload.type,
-      message: message || null,
-      requestedBy: requestedByUsername ? String(requestedByUsername) : undefined,
-      viewUrl: viewUrl ? String(viewUrl) : null,
-      links: viewUrl ? { view: String(viewUrl) } : undefined,
-      entry: payload,
-    }),
-  });
-
-  const json = await r.json().catch(() => null);
-  if (!r.ok) {
-    const msg = json?.error || json?.message || `Share failed: HTTP ${r.status} ${r.statusText}`;
-    throw new Error(msg);
-  }
-  if (!json?.ok) {
-    throw new Error(json?.error || "Share failed");
-  }
-  return json;
-}
-
-/* ========================================================================== */
 /*                                 GraphQL                                     */
 /* ========================================================================== */
 
-const PRICE_INSIGHTS_QUERY = gql`
-  query CardPriceInsights($cardId: ID!, $variant: String, $historyLimit: Int!) {
-    history: cardsearchPriceObservations(cardId: $cardId, variant: $variant, limit: $historyLimit) {
-      date
-      market
-      mid
-      low
-      high
-    }
-    rollups: cardsearchPriceRollups(cardId: $cardId, variant: $variant) {
-      currency
-      latest {
-        date
-        market
-      }
-      d7 {
-        avg
-        change
-        changePct
-      }
-      d30 {
-        avg
-        change
-        changePct
-      }
-      d90 {
-        avg
-        change
-        changePct
-      }
-    }
-  }
-`;
 
 const HISTORY_RANGE_OPTIONS = [
   { label: "1d", value: 1 },

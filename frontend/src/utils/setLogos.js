@@ -128,6 +128,7 @@ export const SET_LOGOS = {
   'Ascended Heroes' : 'ascended-heroes-logo.png',
   'Perfect Order' : 'perfect-order-logo.png',
   'Chaos Rising' : 'chaos-rising-logo.png',
+  'Pitch Black' : 'pitch-black-logo.png',
 
   // Trainer Kits, Vaults, Classic, Special, etc.
   'Detective Pikachu': 'detective-pikachu-logo.png',

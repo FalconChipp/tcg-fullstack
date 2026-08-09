@@ -11,7 +11,7 @@ const REFRESH_INTERVAL_MS = 13 * 60 * 1000;
 
 // Cookie lifetime for the JS-readable authToken — match the refresh token window
 // so the cookie never expires while the session is still valid.
-const AUTH_COOKIE_DAYS = 30;
+const AUTH_COOKIE_DAYS = 7;
 
 function deleteCookie(name) {
   document.cookie = `${name}=; Max-Age=-99999999; path=/;`;

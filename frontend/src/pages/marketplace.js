@@ -24,7 +24,7 @@ import { AuthContext } from "@/components/Auth/AuthProvider";
 function MarketplacePage() {
   const auth = useContext(AuthContext) || {};
   const token = auth.token || null;
-  const isLoggedIn = !!(auth.user || token);
+  const isLoggedIn = !!auth.user;
 
   const router = useRouter();
 

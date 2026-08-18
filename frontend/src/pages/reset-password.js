@@ -14,8 +14,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 import { useSearchParams } from "next/navigation";
-
-const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+import { getGraphqlUrl } from "@/utils/apiClient";
 
 export default function ResetPasswordPage() {
   const searchParams = useSearchParams();
@@ -140,7 +139,7 @@ export default function ResetPasswordPage() {
     };
 
     try {
-      const res = await fetch(WP_GRAPHQL_URL, {
+      const res = await fetch(getGraphqlUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query, variables }),
@@ -172,7 +171,7 @@ export default function ResetPasswordPage() {
       <>
         {head}
         <div className="min-h-[calc(100vh-80px)] flex items-center justify-center bg-light-background dark:bg-dark-background pt-20">
-          <div className="w-full max-w-md mx-auto p-7 rounded-2xl bg-white dark:bg-[#181822] border border-light-border dark:border-dark-border shadow-xl">
+          <div className="w-full max-w-md mx-auto p-7 rounded-2xl bg-white dark:bg-dark-surface border border-light-border dark:border-dark-border shadow-xl">
             <h1 className="text-2xl font-bold mb-2 text-light-primary dark:text-dark-primary text-center">
               Reset Password
             </h1>
@@ -191,7 +190,7 @@ export default function ResetPasswordPage() {
       <>
         {head}
         <div className="min-h-[calc(100vh-80px)] flex items-center justify-center bg-light-background dark:bg-dark-background pt-20">
-          <div className="w-full max-w-md mx-auto p-7 rounded-2xl bg-white dark:bg-[#181822] border border-light-border dark:border-dark-border shadow-xl">
+          <div className="w-full max-w-md mx-auto p-7 rounded-2xl bg-white dark:bg-dark-surface border border-light-border dark:border-dark-border shadow-xl">
             <h1 className="text-2xl font-bold mb-4 text-light-primary dark:text-dark-primary text-center">
               Reset Password
             </h1>
@@ -208,7 +207,7 @@ export default function ResetPasswordPage() {
     <>
       {head}
       <div className="min-h-[calc(100vh-80px)] flex items-center justify-center bg-light-background dark:bg-dark-background pt-20">
-        <div className="w-full max-w-md mx-auto p-7 rounded-2xl bg-white dark:bg-[#181822] border border-light-border dark:border-dark-border shadow-xl">
+        <div className="w-full max-w-md mx-auto p-7 rounded-2xl bg-white dark:bg-dark-surface border border-light-border dark:border-dark-border shadow-xl">
           <h1 className="text-2xl font-bold mb-4 text-light-primary dark:text-dark-primary text-center">
             Reset Your Password
           </h1>

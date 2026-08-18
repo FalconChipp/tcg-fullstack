@@ -1,13 +1,15 @@
 // frontend/src/pages/search.js
-// Batch Add to Collection workbench, now using the same cardsearch
-// paging strategy as src/components/Collection/CardSearch.js
+// Batch Add to Collection workbench
 //
-// UPDATED:
-// - Replaced legacy addToCollection mutation + AddToCollectionInput with cardsearchBulkAddToCollection (CardsearchBulkAddInput)
-// - Switched handleAddAllToCollection to submit ONE bulk request (much faster, fewer network calls)
-// - Added per-item error handling + lightweight UI feedback (no blocking alerts)
-// - Kept existing selection logic intact
-// - NEW: Added StatusMessage toast feedback for search + preset + bulk-add success/failures
+// Redesigned:
+// - Cleaner dark-only workbench layout
+// - Better header and purpose explanation
+// - Search panel separated from results
+// - Results grid + sticky selected batch sidebar
+// - Kept paging strategy
+// - Kept smart presets
+// - Kept bulk mutation
+// - Kept toast feedback
 
 "use client";
 
@@ -16,133 +18,76 @@ import React, {
   useMemo,
   useCallback,
   useRef,
+  useContext,
   startTransition,
   useEffect,
 } from "react";
-import { gql, useLazyQuery, useMutation } from "@apollo/client";
+import { devError } from "@/utils/devLog";
+import { useLazyQuery, useMutation } from "@apollo/client";
+import { CARDSEARCH_QUERY, CARDSEARCH_BULK_ADD_TO_COLLECTION } from '@/graphql/collection';
+import {
+  pos, pickDisplayPrice, getBestPriceRow, formatGBP,
+  canonicalCardKey, mergeCardLists, makeQueryKey, applyFiltersAndSort,
+  GBP_SYMBOL, FALLBACK_SYMBOL_IMAGE, CARDSEARCH_PAGE_SIZE, CARDSEARCH_EXACT_LIMIT,
+} from '@/utils/cardSearchUtils';
 import Image from "next/image";
 
 import Layout from "@/components/Layout/Layout";
 import PokemonAutocomplete from "@/components/Collection/SearchComponents/PokemonAutocomplete";
 import SetAutocomplete from "@/components/Collection/SearchComponents/SetAutocomplete";
 import AdvancedFilters from "@/components/Collection/SearchComponents/AdvancedFilters";
-import StatusMessage from "@/components/UI/StatusMessage"; // NEW: Toast UI
+import StatusMessage from "@/components/UI/StatusMessage";
+import { AuthContext } from "@/components/Auth/AuthProvider";
+import AuthModal from "@/components/Auth/AuthModal";
+import CardDetailsModal from "@/components/Cards/CardDetailsModal";
 import { getSetLogo } from "@/utils/setLogos";
 import { formatVariation } from "@/utils/formatVariation";
 
-// ---------------- GraphQL: cardsearch module ----------------
+// Matches the auth-service/collections-service session-rejection messages
+// (e.g. "Authentication required", "Invalid or expired session") so we can
+// show a login prompt instead of a raw error string.
+const isAuthError = (message) => /authentic|session/i.test(message || "");
 
-const CARDSEARCH_QUERY = gql`
-  query CardsearchCollectionSearch($input: CardSearchInput!) {
-    searchCards: cardsearchSearchCards(input: $input) {
-      total
-      limit
-      offset
-      items {
-        cardId
-        id
-        setCode
-        number
-        name
-        rarity
-        images {
-          large
-        }
-        set {
-          code
-          name
-        }
-        variants {
-          key
-          default
-          label
-        }
-        latestPrices {
-          variation
-          currency
-          gbp
-          market
-          mid
-          low
-          high
-          updatedAt
-          provider
-        }
-      }
-    }
-  }
-`;
+/* ---------------- GraphQL ---------------- */
 
-// UPDATED: use new bulk-add mutation from cardsearch module
-const CARDSEARCH_BULK_ADD_TO_COLLECTION = gql`
-  mutation CardsearchBulkAddToCollection($input: CardsearchBulkAddInput!) {
-    cardsearchBulkAddToCollection(input: $input) {
-      ok
-      message
-      items {
-        cardId
-        quantity
-        created
-        previousQuantity
-        newQuantity
-        error
-      }
-    }
-  }
-`;
 
-const FALLBACK_SYMBOL_IMAGE = "https://placehold.co/50x50/webp?text=Icon";
-const GBP_SYMBOL = "\u00A3";
 
-// Match the main CardSearch paging behaviour
-const CARDSEARCH_PAGE_SIZE = 48;
-const CARDSEARCH_EXACT_LIMIT = 12;
+const INITIAL_FILTERS = {
+  minPrice: "",
+  maxPrice: "",
+  rarities: [],
+  variations: [],
+  sortBy: "relevance",
+  onlyHasPrices: false,
+  onlyHasReverse: false,
+};
 
-// ---------------- Helpers ----------------
+const SORT_OPTIONS = [
+  { value: "relevance", label: "Sort: Relevance" },
+  { value: "price-asc", label: "Price: Low → High" },
+  { value: "price-desc", label: "Price: High → Low" },
+  { value: "rarity-asc", label: "Rarity: Low → High" },
+  { value: "rarity-desc", label: "Rarity: High → Low" },
+  { value: "number-asc", label: "Card No: Ascending" },
+  { value: "number-desc", label: "Card No: Descending" },
+  { value: "name-asc", label: "Name: A → Z" },
+  { value: "name-desc", label: "Name: Z → A" },
+];
 
-function pos(n) {
-  return typeof n === "number" && Number.isFinite(n) && n > 0;
-}
-
-function pickDisplayPrice(entry) {
-  if (!entry) return null;
-  if (pos(entry.gbp)) return entry.gbp;
-  if (pos(entry.market)) return entry.market;
-  if (pos(entry.mid)) return entry.mid;
-  if (pos(entry.low)) return entry.low;
-  if (pos(entry.high)) return entry.high;
-  return null;
-}
-
-function getBestPriceRow(prices) {
-  if (!Array.isArray(prices) || prices.length === 0) return null;
-  const pref = ["normal", "holofoil", "reverseHolofoil"];
-  for (const key of pref) {
-    const row = prices.find(
-      (p) =>
-        (p?.variation || "").toLowerCase() === key.toLowerCase() &&
-        pickDisplayPrice(p) != null
-    );
-    if (row) return row;
-  }
-  return prices.find((p) => pickDisplayPrice(p) != null) || null;
-}
-
-function formatGBP(value) {
-  if (value == null || Number.isNaN(value)) return `${GBP_SYMBOL}--`;
-  return `${GBP_SYMBOL}${Number(value).toFixed(2)}`;
-}
 
 function mapCardsearchItems(items) {
   if (!Array.isArray(items) || items.length === 0) return [];
+
   return items.map((it, idx) => {
     const setRecord = it.set || {};
     const setCode = it.setCode || setRecord.code || "";
     const number = it.number || "";
+
     const id =
       it.cardId ||
       it.id ||
       (setCode && number ? `${setCode}-${number}` : `card-${idx}`);
+
     const image = it.images?.large || null;
 
     const variants = Array.isArray(it.variants)
@@ -168,184 +113,7 @@ function mapCardsearchItems(items) {
   });
 }
 
-// Same key + merge logic as CardSearch for deduped paging
-function canonicalCardKey(card, fallbackIndex = 0) {
-  if (!card) return `card-${fallbackIndex}`;
-  const id = card.cardId || card.id;
-  if (id) return id;
-  const setCode = card.set || card.setCode;
-  const number = card.number;
-  if (setCode || number) {
-    const setPart = setCode ? String(setCode).toLowerCase() : "set";
-    const numPart = number ? String(number).toLowerCase() : "card";
-    return `${setPart}-${numPart}`;
-  }
-  if (card.name) {
-    return `${String(card.name).toLowerCase()}-${fallbackIndex}`;
-  }
-  return `card-${fallbackIndex}`;
-}
 
-function mergeCardLists(existing, incoming) {
-  const base = Array.isArray(existing) ? [...existing] : [];
-  if (!Array.isArray(incoming) || incoming.length === 0) return base;
-
-  const indexByKey = new Map();
-  base.forEach((card, idx) => {
-    indexByKey.set(canonicalCardKey(card, idx), idx);
-  });
-
-  incoming.forEach((card, idx) => {
-    const key = canonicalCardKey(card, base.length + idx);
-    if (indexByKey.has(key)) {
-      base[indexByKey.get(key)] = card;
-    } else {
-      indexByKey.set(key, base.length);
-      base.push(card);
-    }
-  });
-
-  return base;
-}
-
-function makeQueryKey({ name, setCode, number }) {
-  return JSON.stringify({
-    name: (name || "").trim().toLowerCase(),
-    set: (setCode || "").trim().toLowerCase(),
-    number: (number || "").trim(),
-  });
-}
-
-// Filters + sort (same as CardSearch.js AdvancedFilters)
-function applyFiltersAndSort(cards, filters) {
-  if (!Array.isArray(cards) || cards.length === 0 || !filters) return cards;
-
-  const {
-    minPrice,
-    maxPrice,
-    rarities,
-    variations,
-    sortBy,
-    onlyHasPrices,
-    onlyHasReverse,
-  } = filters;
-
-  const min = minPrice !== "" ? parseFloat(minPrice) : null;
-  const max = maxPrice !== "" ? parseFloat(maxPrice) : null;
-
-  const raritySet = new Set(rarities || []);
-  const variationSet = new Set(variations || []);
-
-  const hasRarityFilter = raritySet.size > 0;
-  const hasVariationFilter = variationSet.size > 0;
-
-  const rarityOrder = {
-    Common: 1,
-    "Common ": 1,
-    Uncommon: 2,
-    Rare: 3,
-    "Double rare": 4,
-    "Ultra rare": 5,
-    "Illustration rare": 6,
-    "Special Illustration Rare": 7,
-    "Hyper rare": 8,
-  };
-
-  let filtered = cards.filter((card) => {
-    const bestRow = getBestPriceRow(card.prices);
-    const price = pickDisplayPrice(bestRow);
-
-    if (onlyHasPrices && (price == null || Number.isNaN(price))) {
-      return false;
-    }
-
-    if (min != null && price != null && price < min) return false;
-    if (max != null && price != null && price > max) return false;
-
-    if (hasRarityFilter) {
-      const r = card.rarity || "";
-      if (!raritySet.has(r)) return false;
-    }
-
-    if (onlyHasReverse) {
-      const hasReverse =
-        Array.isArray(card.variations) &&
-        card.variations.some((v) => String(v).toLowerCase().includes("reverse"));
-      if (!hasReverse) return false;
-    }
-
-    if (hasVariationFilter) {
-      const hasAny =
-        Array.isArray(card.variations) &&
-        card.variations.some((v) => variationSet.has(v));
-      if (!hasAny) return false;
-    }
-
-    return true;
-  });
-
-  if (!sortBy || sortBy === "relevance") {
-    return filtered;
-  }
-
-  const sorted = [...filtered];
-
-  sorted.sort((a, b) => {
-    const aBest = getBestPriceRow(a.prices);
-    const bBest = getBestPriceRow(b.prices);
-    const aPrice = pickDisplayPrice(aBest);
-    const bPrice = pickDisplayPrice(bBest);
-
-    const aRarity = a.rarity || "";
-    const bRarity = b.rarity || "";
-    const aRarityRank = rarityOrder[aRarity] ?? 999;
-    const bRarityRank = rarityOrder[bRarity] ?? 999;
-
-    const aNum = parseInt(a.number, 10);
-    const bNum = parseInt(b.number, 10);
-
-    switch (sortBy) {
-      case "price-asc": {
-        if (aPrice == null && bPrice == null) return 0;
-        if (aPrice == null) return 1;
-        if (bPrice == null) return -1;
-        return aPrice - bPrice;
-      }
-      case "price-desc": {
-        if (aPrice == null && bPrice == null) return 0;
-        if (aPrice == null) return 1;
-        if (bPrice == null) return -1;
-        return bPrice - aPrice;
-      }
-      case "rarity-asc":
-        return aRarityRank - bRarityRank || aRarity.localeCompare(bRarity);
-      case "rarity-desc":
-        return bRarityRank - aRarityRank || bRarity.localeCompare(aRarity);
-      case "number-asc": {
-        if (Number.isNaN(aNum) && Number.isNaN(bNum)) return 0;
-        if (Number.isNaN(aNum)) return 1;
-        if (Number.isNaN(bNum)) return -1;
-        return aNum - bNum;
-      }
-      case "number-desc": {
-        if (Number.isNaN(aNum) && Number.isNaN(bNum)) return 0;
-        if (Number.isNaN(aNum)) return 1;
-        if (Number.isNaN(bNum)) return -1;
-        return bNum - aNum;
-      }
-      case "name-asc":
-        return String(a.name).localeCompare(String(b.name));
-      case "name-desc":
-        return String(b.name).localeCompare(String(a.name));
-      default:
-        return 0;
-    }
-  });
-
-  return sorted;
-}
-
-// Helper to merge cards into the selection without clobbering existing quantities
 function selectIntoBatch(prevSelection, cards, predicate) {
   const next = { ...prevSelection };
 
@@ -359,7 +127,6 @@ function selectIntoBatch(prevSelection, cards, predicate) {
 
     if (!key) return;
 
-    // Don’t stomp existing quantities – if user already adjusted, leave it.
     if (!next[key]) {
       next[key] = { card, quantity: 1 };
     }
@@ -368,23 +135,51 @@ function selectIntoBatch(prevSelection, cards, predicate) {
   return next;
 }
 
-// -----------------------------------------------------------------------------
-// Main page component
-// -----------------------------------------------------------------------------
+/* ---------------- Small UI ---------------- */
 
-// Keep initial filters in one place so reset is easy
-const INITIAL_FILTERS = {
-  minPrice: "",
-  maxPrice: "",
-  rarities: [],
-  variations: [],
-  sortBy: "relevance",
-  onlyHasPrices: false,
-  onlyHasReverse: false,
-};
+function StatPill({ label, value }) {
+  return (
+    <div className="rounded-[10px] border border-vault-border bg-vault-raised px-4 py-3">
+      <p className="font-vault-body text-[11px] font-semibold uppercase tracking-[0.06em] text-vault-textTertiary">
+        {label}
+      </p>
+      <p className="mt-1 font-vault text-lg font-semibold text-vault-text">{value}</p>
+    </div>
+  );
+}
+
+function WorkbenchButton({
+  children,
+  onClick,
+  disabled,
+  variant = "secondary",
+  type = "button",
+}) {
+  const cls =
+    variant === "primary"
+      ? "bg-vault-accent text-vault-text hover:bg-vault-accentHover disabled:opacity-50"
+      : variant === "danger"
+      ? "border border-vault-danger/30 bg-vault-danger/10 text-vault-danger hover:bg-vault-danger/20 disabled:opacity-40"
+      : "border border-vault-border bg-transparent text-vault-textSecondary hover:border-vault-borderStrong hover:text-vault-text disabled:opacity-40";
+
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={`inline-flex items-center justify-center rounded-[10px] px-4 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed ${cls}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+/* ---------------- Page ---------------- */
 
 export default function CardSearchWorkbenchPage() {
-  // Search fields (same as CardSearch.js)
+  const { user } = useContext(AuthContext);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+
   const [name, setName] = useState("");
   const [setCode, setSetCode] = useState("");
   const [number, setNumber] = useState("");
@@ -396,19 +191,17 @@ export default function CardSearchWorkbenchPage() {
   const [searchError, setSearchError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Existing submission feedback (kept for item-level details)
   const [submitResult, setSubmitResult] = useState(null);
   const [submitErrors, setSubmitErrors] = useState([]);
-
-  // NEW: Toast feedback state (StatusMessage)
+  const [expandedCard, setExpandedCard] = useState(null);
   const [toast, setToast] = useState(null);
 
-  // Bucketed paging & infinite scroll (same shape as CardSearch)
   const bucketsRef = useRef(new Map());
   const lastKeyRef = useRef(null);
   const loadingMoreRef = useRef(false);
   const loadMoreTriggerRef = useRef(null);
   const observerRef = useRef(null);
+
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
@@ -424,34 +217,36 @@ export default function CardSearchWorkbenchPage() {
     returnPartialData: false,
   });
 
-  // Selection state
   const [selectedCards, setSelectedCards] = useState({});
+  const [batchPanelOpen, setBatchPanelOpen] = useState(false);
 
-  // UPDATED: bulk mutation hook
   const [bulkAddToCollection, { loading: adding }] = useMutation(
     CARDSEARCH_BULK_ADD_TO_COLLECTION
   );
 
-  // NEW: tiny helper to show a toast consistently
   const showToast = useCallback((type, message) => {
     setToast({ type, message });
   }, []);
 
   const availableRarities = useMemo(() => {
     const s = new Set();
+
     results.forEach((card) => {
       if (card.rarity) s.add(card.rarity);
     });
+
     return Array.from(s).sort();
   }, [results]);
 
   const availableVariations = useMemo(() => {
     const s = new Set();
+
     results.forEach((card) => {
       if (Array.isArray(card.variations)) {
         card.variations.forEach((v) => v && s.add(v));
       }
     });
+
     return Array.from(s).sort();
   }, [results]);
 
@@ -471,40 +266,40 @@ export default function CardSearchWorkbenchPage() {
     if (observerRef.current) {
       try {
         observerRef.current.disconnect();
-      } catch {
-        // ignore
-      }
+      } catch {}
+
       observerRef.current = null;
     }
   }, []);
 
   useEffect(() => {
-    // Reset error/loading when the query fields change
     setSearchError(null);
     setSubmitting(false);
     loadingMoreRef.current = false;
-
-    // Clear submit feedback when changing search params
     setSubmitResult(null);
     setSubmitErrors([]);
-
-    // NEW: clear toast when changing query params (prevents stale messages)
     setToast(null);
-  }, [name, setCode, number]);
+    // Stop any in-progress pagination so loadMoreResults can't fire with the
+    // old lastKeyRef while the inputs have already changed to something new.
+    setHasMore(false);
+    setIsLoadingMore(false);
+    disconnectObserver();
+  }, [name, setCode, number, disconnectObserver]);
 
   const handleSearch = useCallback(
     async (e) => {
       if (e?.preventDefault) e.preventDefault();
+
       setHasSearched(true);
 
       const key = makeQueryKey({ name, setCode, number });
       lastKeyRef.current = key;
       loadingMoreRef.current = false;
 
-      // Reset intersection observer so new search starts fresh
       disconnectObserver();
 
       const bucket = bucketsRef.current.get(key);
+
       if (bucket) {
         startTransition(() => {
           setResults(bucket.items);
@@ -535,12 +330,15 @@ export default function CardSearchWorkbenchPage() {
 
       setSearchError(null);
       setSubmitting(true);
+
       try {
         const res = await runSearch({
           variables,
           context: { queryDeduplication: false },
         });
+
         const payload = res?.data?.searchCards;
+
         if (!payload) {
           if (bucket) setHasMore(bucket.hasNextPage);
           return;
@@ -558,6 +356,13 @@ export default function CardSearchWorkbenchPage() {
           totalCount,
           nextOffset,
           pageSize,
+          // Record the exact params used for this search so loadMoreResults
+          // always paginates against the same query, not the current input state.
+          queryParams: {
+            name: name || undefined,
+            set: setCode || undefined,
+            number: number || undefined,
+          },
         };
 
         bucketsRef.current.set(key, bucketNext);
@@ -571,8 +376,6 @@ export default function CardSearchWorkbenchPage() {
         }
       } catch (err) {
         setSearchError(err instanceof Error ? err : new Error(String(err)));
-
-        // NEW: Toast feedback for search failure
         showToast("error", "Search failed. Please try again.");
 
         if (bucket) setHasMore(bucket.hasNextPage);
@@ -591,119 +394,129 @@ export default function CardSearchWorkbenchPage() {
     ]
   );
 
-  const loadMoreResults = useCallback(
-    async () => {
-      if (loadingMoreRef.current || !hasMore) return;
-      loadingMoreRef.current = true;
-      setIsLoadingMore(true);
+  const loadMoreResults = useCallback(async () => {
+    if (loadingMoreRef.current || !hasMore) return;
 
-      try {
-        const key = lastKeyRef.current || currentKey;
-        const prev = bucketsRef.current.get(key);
-        const totalCount = Number(prev?.totalCount ?? 0);
-        const pageSize = Number(prev?.pageSize ?? CARDSEARCH_PAGE_SIZE);
-        const currentCount = Array.isArray(prev?.items) ? prev.items.length : 0;
-        const nextOffset = Number(prev?.nextOffset ?? currentCount);
+    loadingMoreRef.current = true;
+    setIsLoadingMore(true);
 
-        if (!prev || nextOffset >= totalCount) {
-          if (prev) {
-            const merged = { ...prev, hasNextPage: false, nextOffset };
-            bucketsRef.current.set(key, merged);
-          }
-          if (lastKeyRef.current === key) {
-            startTransition(() => setHasMore(false));
-          }
-          return;
-        }
+    try {
+      const key = lastKeyRef.current || currentKey;
+      const prev = bucketsRef.current.get(key);
+      const totalCount = Number(prev?.totalCount ?? 0);
+      const pageSize = Number(prev?.pageSize ?? CARDSEARCH_PAGE_SIZE);
+      const currentCount = Array.isArray(prev?.items) ? prev.items.length : 0;
+      const nextOffset = Number(prev?.nextOffset ?? currentCount);
 
-        const vars = {
-          input: {
-            name: name || undefined,
-            set: setCode || undefined,
-            number: number || undefined,
-            limit: pageSize,
-            offset: nextOffset,
-          },
-        };
-
-        const res = await fetchMore({ variables: vars });
-        const payload = res?.data?.searchCards;
-        if (!payload) {
+      if (!prev || nextOffset >= totalCount) {
+        if (prev) {
           const merged = { ...prev, hasNextPage: false, nextOffset };
           bucketsRef.current.set(key, merged);
-          if (lastKeyRef.current === key) {
-            startTransition(() => setHasMore(false));
-          }
-          return;
         }
 
-        const newItems = mapCardsearchItems(payload.items);
-        const combined = mergeCardLists(prev.items, newItems);
-        const mergedTotal = Number(
-          payload.total ?? prev.totalCount ?? combined.length
-        );
-        const mergedOffset = Math.min(nextOffset + newItems.length, mergedTotal);
-        const merged = {
-          ...prev,
-          items: combined,
-          totalCount: mergedTotal,
-          nextOffset: mergedOffset,
-          pageSize: Number(payload.limit ?? pageSize),
-          hasNextPage: mergedOffset < mergedTotal,
-        };
+        if (lastKeyRef.current === key) {
+          startTransition(() => setHasMore(false));
+        }
+
+        return;
+      }
+
+      // Use the params stored when this bucket was created, not the current
+      // input state — the user may have changed inputs since the last Search.
+      const vars = {
+        input: {
+          name: prev.queryParams?.name,
+          set: prev.queryParams?.set,
+          number: prev.queryParams?.number,
+          limit: pageSize,
+          offset: nextOffset,
+        },
+      };
+
+      const res = await fetchMore({ variables: vars });
+      const payload = res?.data?.searchCards;
+
+      if (!payload) {
+        const merged = { ...prev, hasNextPage: false, nextOffset };
+        bucketsRef.current.set(key, merged);
+
+        if (lastKeyRef.current === key) {
+          startTransition(() => setHasMore(false));
+        }
+
+        return;
+      }
+
+      const newItems = mapCardsearchItems(payload.items);
+      const combined = mergeCardLists(prev.items, newItems);
+      const mergedTotal = Number(
+        payload.total ?? prev.totalCount ?? combined.length
+      );
+      const mergedOffset = Math.min(nextOffset + newItems.length, mergedTotal);
+
+      const merged = {
+        ...prev,
+        items: combined,
+        totalCount: mergedTotal,
+        nextOffset: mergedOffset,
+        pageSize: Number(payload.limit ?? pageSize),
+        hasNextPage: mergedOffset < mergedTotal,
+      };
+
+      bucketsRef.current.set(key, merged);
+
+      if (lastKeyRef.current === key) {
+        startTransition(() => {
+          setResults(combined);
+          setHasMore(merged.hasNextPage);
+          setIsLoadingMore(false);
+        });
+      }
+    } catch (err) {
+      setSearchError(err instanceof Error ? err : new Error(String(err)));
+      showToast("error", "Couldn’t load more cards. Please try again.");
+
+      const key = lastKeyRef.current || currentKey;
+
+      if (key) {
+        const prev = bucketsRef.current.get(key);
+
+        const merged = prev
+          ? { ...prev, hasNextPage: false }
+          : {
+              items: [],
+              hasNextPage: false,
+              totalCount: 0,
+              nextOffset: 0,
+              pageSize: CARDSEARCH_PAGE_SIZE,
+            };
+
         bucketsRef.current.set(key, merged);
 
         if (lastKeyRef.current === key) {
           startTransition(() => {
-            setResults(combined);
-            setHasMore(merged.hasNextPage);
+            setHasMore(false);
             setIsLoadingMore(false);
           });
         }
-      } catch (err) {
-        setSearchError(err instanceof Error ? err : new Error(String(err)));
-
-        // NEW: Toast feedback for paging error (non-blocking)
-        showToast("error", "Couldn’t load more cards. Please try again.");
-
-        const key = lastKeyRef.current || currentKey;
-        if (key) {
-          const prev = bucketsRef.current.get(key);
-          const merged = prev
-            ? { ...prev, hasNextPage: false }
-            : {
-                items: [],
-                hasNextPage: false,
-                totalCount: 0,
-                nextOffset: 0,
-                pageSize: CARDSEARCH_PAGE_SIZE,
-              };
-          bucketsRef.current.set(key, merged);
-          if (lastKeyRef.current === key) {
-            startTransition(() => {
-              setHasMore(false);
-              setIsLoadingMore(false);
-            });
-          }
-        }
-      } finally {
-        loadingMoreRef.current = false;
-        setIsLoadingMore(false);
       }
-    },
-    [fetchMore, hasMore, currentKey, name, setCode, number, showToast]
-  );
+    } finally {
+      loadingMoreRef.current = false;
+      setIsLoadingMore(false);
+    }
+  }, [fetchMore, hasMore, currentKey, showToast]);
 
-  // Set up infinite scroll observer like CardSearch
   useEffect(() => {
     if (!hasMore) {
       disconnectObserver();
       return;
     }
+
     const node = loadMoreTriggerRef.current;
     if (!node) return;
 
     disconnectObserver();
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -717,6 +530,7 @@ export default function CardSearchWorkbenchPage() {
 
     observerRef.current = observer;
     observer.observe(node);
+
     return () => disconnectObserver();
   }, [
     hasMore,
@@ -726,8 +540,7 @@ export default function CardSearchWorkbenchPage() {
     disconnectObserver,
   ]);
 
-  // Reset search + filters (does NOT clear selection)
-  const handleResetSearch = () => {
+  function handleResetSearch() {
     setName("");
     setSetCode("");
     setNumber("");
@@ -740,20 +553,17 @@ export default function CardSearchWorkbenchPage() {
     bucketsRef.current.clear();
     lastKeyRef.current = null;
     disconnectObserver();
-
-    // Clear submit feedback
     setSubmitResult(null);
     setSubmitErrors([]);
-
-    // NEW: clear toast
     setToast(null);
-  };
+  }
 
   const handleCardSelect = useCallback((card) => {
     setSelectedCards((prev) => {
       const key = card.cardId || card.id;
       const existing = prev[key];
       const nextQty = existing ? existing.quantity + 1 : 1;
+
       return {
         ...prev,
         [key]: { card, quantity: nextQty },
@@ -761,42 +571,44 @@ export default function CardSearchWorkbenchPage() {
     });
   }, []);
 
-  const handleQuantityChange = (key, quantity) => {
+  function handleQuantityChange(key, quantity) {
     setSelectedCards((prev) => {
       if (!prev[key]) return prev;
+
       const q = Math.max(0, Number(quantity) || 0);
+
       if (q === 0) {
         const clone = { ...prev };
         delete clone[key];
         return clone;
       }
+
       return {
         ...prev,
         [key]: { ...prev[key], quantity: q },
       };
     });
-  };
+  }
 
-  const handleRemove = (key) => {
+  function handleRemove(key) {
     setSelectedCards((prev) => {
       if (!prev[key]) return prev;
+
       const clone = { ...prev };
       delete clone[key];
+
       return clone;
     });
-  };
+  }
 
-  const handleClearAll = () => {
+  function handleClearAll() {
     if (Object.keys(selectedCards).length === 0) return;
 
-    // UPDATED: no blocking confirm — treat as intentional UI action
     setSelectedCards({});
     setSubmitResult(null);
     setSubmitErrors([]);
-
-    // NEW: small feedback toast
     showToast("info", "Selection cleared.");
-  };
+  }
 
   const selectedList = useMemo(
     () => Object.values(selectedCards),
@@ -804,35 +616,38 @@ export default function CardSearchWorkbenchPage() {
   );
 
   const selectedCount = selectedList.length;
+
   const totalQuantity = selectedList.reduce(
     (sum, entry) => sum + (entry.quantity || 0),
     0
   );
 
-  // Estimated batch value (for display only)
   const estimatedBatchValue = useMemo(() => {
     return selectedList.reduce((sum, entry) => {
       const { card, quantity } = entry;
       const bestRow = getBestPriceRow(card.prices);
       const unit = pickDisplayPrice(bestRow);
+
       if (!unit || !quantity) return sum;
+
       return sum + unit * quantity;
     }, 0);
   }, [selectedList]);
 
-  // Helper to fully load a set bucket (used by smart presets)
   const loadAllPagesForKey = useCallback(
     async (key, baseInput) => {
       let bucket = bucketsRef.current.get(key);
 
       if (!bucket) {
         const limit = CARDSEARCH_PAGE_SIZE;
+
         const res = await runSearch({
           variables: {
             input: { ...baseInput, limit, offset: 0 },
           },
           context: { queryDeduplication: false },
         });
+
         const payload = res?.data?.searchCards;
         const itemsRaw = payload?.items || [];
         const items = mapCardsearchItems(itemsRaw);
@@ -848,10 +663,10 @@ export default function CardSearchWorkbenchPage() {
           nextOffset,
           pageSize,
         };
+
         bucketsRef.current.set(key, bucket);
       }
 
-      // Pull remaining pages using the same fetchMore logic
       while (bucket.hasNextPage) {
         const res = await fetchMore({
           variables: {
@@ -862,7 +677,9 @@ export default function CardSearchWorkbenchPage() {
             },
           },
         });
+
         const payload = res?.data?.searchCards;
+
         if (!payload) {
           bucket = { ...bucket, hasNextPage: false };
           bucketsRef.current.set(key, bucket);
@@ -878,6 +695,7 @@ export default function CardSearchWorkbenchPage() {
           bucket.nextOffset + newItems.length,
           mergedTotal
         );
+
         bucket = {
           ...bucket,
           items: combined,
@@ -886,6 +704,7 @@ export default function CardSearchWorkbenchPage() {
           pageSize: Number(payload.limit ?? bucket.pageSize),
           hasNextPage: mergedOffset < mergedTotal,
         };
+
         bucketsRef.current.set(key, bucket);
       }
 
@@ -902,21 +721,20 @@ export default function CardSearchWorkbenchPage() {
     [runSearch, fetchMore]
   );
 
-  // SMART PRESETS -----------------------------------------------------------
-
-  // Fetch all cards for the current set (all pages) using the same paging method.
   const fetchSetCards = useCallback(async () => {
     if (!setCode) return [];
+
     const key = makeQueryKey({ name: "", setCode, number: "" });
     lastKeyRef.current = key;
+
     const baseInput = { set: setCode };
     const items = await loadAllPagesForKey(key, baseInput);
+
     return items;
-  }, [setCode, loadAllPagesForKey, number]);
+  }, [setCode, loadAllPagesForKey]);
 
   const handlePresetFullSet = useCallback(async () => {
     if (!setCode) {
-      // NEW: toast feedback instead of only inline submitResult
       showToast("info", "Pick a set first to use this preset.");
       setSubmitResult({
         ok: false,
@@ -926,6 +744,7 @@ export default function CardSearchWorkbenchPage() {
     }
 
     setSubmitting(true);
+
     try {
       const cards = await fetchSetCards();
       if (!cards.length) return;
@@ -933,7 +752,7 @@ export default function CardSearchWorkbenchPage() {
       setSelectedCards((prev) => selectIntoBatch(prev, cards, () => true));
       showToast("success", `Added ${setCode} set cards to selection.`);
     } catch (err) {
-      console.error(err);
+      devError(err);
       setSearchError(err instanceof Error ? err : new Error(String(err)));
       showToast("error", "Preset failed. Please try again.");
     } finally {
@@ -954,6 +773,7 @@ export default function CardSearchWorkbenchPage() {
     const allowed = new Set(["Common", "Uncommon", "Common ", "Uncommon "]);
 
     setSubmitting(true);
+
     try {
       const cards = await fetchSetCards();
       if (!cards.length) return;
@@ -963,7 +783,7 @@ export default function CardSearchWorkbenchPage() {
       );
       showToast("success", "Added Commons / Uncommons to selection.");
     } catch (err) {
-      console.error(err);
+      devError(err);
       setSearchError(err instanceof Error ? err : new Error(String(err)));
       showToast("error", "Preset failed. Please try again.");
     } finally {
@@ -978,24 +798,26 @@ export default function CardSearchWorkbenchPage() {
       selectIntoBatch(prev, filteredResults, () => true)
     );
 
-    // NEW: toast feedback
     showToast("success", "Added visible results to selection.");
   }, [filteredResults, showToast]);
 
-  // "Select all results" in the Results section (uses currently visible filteredResults)
   const handleSelectAllVisible = useCallback(() => {
     if (!filteredResults.length) return;
+
     setSelectedCards((prev) =>
       selectIntoBatch(prev, filteredResults, () => true)
     );
 
-    // NEW: toast feedback
     showToast("success", "Selected all visible results.");
   }, [filteredResults, showToast]);
 
-  // UPDATED: Submit as ONE bulk mutation call
-  const handleAddAllToCollection = async () => {
+  async function handleAddAllToCollection() {
     if (selectedList.length === 0) return;
+
+    if (!user) {
+      setAuthModalOpen(true);
+      return;
+    }
 
     setSubmitResult(null);
     setSubmitErrors([]);
@@ -1005,15 +827,17 @@ export default function CardSearchWorkbenchPage() {
         const { card, quantity } = entry;
         const cardId = card?.cardId || card?.id || null;
         const qty = Number(quantity || 0);
+
         if (!cardId || !Number.isFinite(qty) || qty <= 0) return null;
+
         return { cardId, quantity: qty };
       })
       .filter(Boolean);
 
     if (!items.length) {
-      const msg = "No valid items to add (missing cardIds or quantities).";
+      const msg = "No valid items to add.";
       setSubmitResult({ ok: false, message: msg });
-      showToast("warning", msg); // NEW
+      showToast("warning", msg);
       return;
     }
 
@@ -1028,6 +852,7 @@ export default function CardSearchWorkbenchPage() {
 
       const payload = res?.data?.cardsearchBulkAddToCollection;
       const ok = Boolean(payload?.ok);
+
       const message =
         payload?.message ||
         (ok ? "Added to collection." : "Completed with errors.");
@@ -1042,9 +867,9 @@ export default function CardSearchWorkbenchPage() {
         setSubmitErrors(itemErrors);
       }
 
-      // NEW: Toast feedback for bulk add outcomes
       if (ok && itemErrors.length === 0) {
         showToast("success", message || "All cards added to your collection.");
+        setSelectedCards({});
       } else if (ok && itemErrors.length > 0) {
         showToast(
           "warning",
@@ -1053,28 +878,23 @@ export default function CardSearchWorkbenchPage() {
       } else {
         showToast("error", message || "Failed to add cards to your collection.");
       }
-
-      // If fully OK, clear selection. If partial errors, keep selection so user can retry.
-      if (ok && itemErrors.length === 0) {
-        setSelectedCards({});
-      }
     } catch (err) {
-      console.error(err);
-      const msg = err?.message || "Something went wrong while adding cards.";
-      setSubmitResult({ ok: false, message: msg });
+      devError(err);
 
-      // NEW: toast feedback
+      const msg = err?.message || "Something went wrong while adding cards.";
+
+      if (isAuthError(msg)) {
+        setAuthModalOpen(true);
+        return;
+      }
+
+      setSubmitResult({ ok: false, message: msg });
       showToast("error", msg);
     }
-  };
-
-  // -------------------------------------------------------------------------
-  // Layout: top search card, bottom 70/30 results vs selection
-  // -------------------------------------------------------------------------
+  }
 
   return (
     <Layout title="Batch Add to Collection">
-      {/* NEW: Toast mounted once at page level */}
       {toast && (
         <StatusMessage
           type={toast.type}
@@ -1083,200 +903,155 @@ export default function CardSearchWorkbenchPage() {
         />
       )}
 
-      <div className="bg-[#0b0d16] text-white">
-        <main className="mx-auto max-w-7xl px-4 py-6 space-y-4">
-          {/* TOP: Search + Advanced Filters */}
-          <section className="w-full rounded-2xl bg-[#131523] p-5 shadow-lg">
-            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-h-screen bg-vault-bg text-vault-text">
+        <main className="mx-auto max-w-7xl px-5 py-12 sm:px-7">
+          {/* Header */}
+          <section className="mb-8">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <h1 className="text-xl font-semibold">Batch Add to Collection</h1>
-                <p className="mt-1 text-xs text-gray-400">
-                  Power search for cards, build up a selection from multiple
-                  searches, then add everything to your collection in one go.
+                <p className="mb-4 font-vault-body text-[11px] font-semibold uppercase tracking-[0.08em] text-vault-textTertiary">
+                  Collection workbench
+                </p>
+
+                <h1 className="font-vault text-[32px] font-semibold leading-[1.15] tracking-tight text-vault-text sm:text-[36px]">
+                  Batch Add to Collection
+                </h1>
+
+                <p className="mt-3 max-w-2xl text-[15px] leading-7 text-vault-textSecondary">
+                  Search across cards, build a temporary batch, adjust
+                  quantities, then save everything to your collection in one go.
                 </p>
               </div>
 
-              <div className="flex flex-col gap-1 rounded-xl bg-[#0b0d16] px-3 py-2 text-[11px] text-gray-300 sm:flex-row sm:items-center sm:justify-end">
-                <span
-                  className="
-                    inline-flex
-                    items-center
-                    justify-center
-                    rounded-full
-                    border border-[#2b3258]
-                    bg-[#0b0d16]/80
-                    px-3
-                    text-[10px]
-                    font-semibold
-                    tracking-[0.16em]
-                    text-[#c4d0ff]
-                    h-8
-                    leading-none
-                    text-center
-                  "
-                >
-                  BULK UPDATE MODE
-                </span>
-                <span className="sm:ml-2">
-                  Use this when you&apos;re logging a new binder, a recent
-                  purchase, or a trade and want to add lots of cards across
-                  multiple sets.
-                </span>
+              <div className="grid grid-cols-3 gap-3 sm:min-w-[420px]">
+                <StatPill label="Selected" value={selectedCount} />
+                <StatPill label="Copies" value={totalQuantity} />
+                <StatPill
+                  label="Est. value"
+                  value={estimatedBatchValue > 0 ? formatGBP(estimatedBatchValue) : "--"}
+                />
               </div>
             </div>
+          </section>
 
+          {/* Search panel */}
+          <section className="mb-8 rounded-[14px] border border-vault-border bg-vault-surface p-5 sm:p-6">
             <form
               onSubmit={handleSearch}
-              className="space-y-4 text-sm"
+              className="space-y-5 text-sm"
               id="card-search-workbench-form"
             >
-              {/* Name | Set | Number | Search / primary actions */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                {/* Name */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_1fr_0.7fr_auto_auto] md:items-end">
                 <div>
-                  <label className="mb-1 block text-xs uppercase tracking-wide text-gray-400">
+                  <label className="mb-2 block font-vault-body text-[11px] font-semibold uppercase tracking-[0.06em] text-vault-textTertiary">
                     Card Name
                   </label>
+
                   <PokemonAutocomplete
                     value={name}
                     onChange={setName}
                     onSelect={setName}
                     className="w-full"
-                    inputClassName="w-full rounded-lg bg-[#0b0d16] px-3 py-2 text-sm outline-none ring-1 ring-[#232642] placeholder:text-gray-500 focus:ring-[#2963ff]"
+                    inputClassName="w-full rounded-[10px] border border-vault-border bg-vault-raised px-4 py-3 text-sm text-vault-text outline-none placeholder:text-vault-textTertiary focus:border-vault-accent"
                   />
                 </div>
 
-                {/* Set */}
                 <div>
-                  <label className="mb-1 block text-xs uppercase tracking-wide text-gray-400">
+                  <label className="mb-2 block font-vault-body text-[11px] font-semibold uppercase tracking-[0.06em] text-vault-textTertiary">
                     Set
                   </label>
+
                   <SetAutocomplete
                     value={setCode}
                     onChange={setSetCode}
                     onSelect={setSetCode}
                     className="w-full"
-                    inputClassName="w-full rounded-lg bg-[#0b0d16] px-3 py-2 text-sm outline-none ring-1 ring-[#232642] placeholder:text-gray-500 focus:ring-[#2963ff]"
+                    inputClassName="w-full rounded-[10px] border border-vault-border bg-vault-raised px-4 py-3 text-sm text-vault-text outline-none placeholder:text-vault-textTertiary focus:border-vault-accent"
                   />
                 </div>
 
-                {/* Number */}
                 <div>
-                  <label className="mb-1 block text-xs uppercase tracking-wide text-gray-400">
-                    Card Number
+                  <label className="mb-2 block font-vault-body text-[11px] font-semibold uppercase tracking-[0.06em] text-vault-textTertiary">
+                    Number
                   </label>
+
                   <input
                     type="text"
                     value={number}
                     onChange={(e) => setNumber(e.target.value)}
-                    placeholder="e.g. 012, 151"
-                    className="
-                      w-full border-[1.5px] rounded-xl px-4 py-3 text-base
-                      bg-light-alt dark:bg-dark-alt
-                      border-light-border dark:border-dark-border
-                      text-light-text dark:text-dark-text
-                      focus:border-light-accent dark:focus:border-dark-accent
-                      focus:outline-none transition
-                    "
+                    placeholder="e.g. 004"
+                    className="w-full rounded-[10px] border border-vault-border bg-vault-raised px-4 py-3 text-sm text-vault-text outline-none placeholder:text-vault-textTertiary focus:border-vault-accent"
                   />
                 </div>
 
-                {/* Search + Reset buttons */}
-                <div className="flex items-end gap-2">
-                  <button
-                    type="submit"
-                    disabled={submitting || loading}
-                    className="
-                      w-full rounded-xl bg-[#2963ff] px-4 py-3 text-base font-semibold text-white
-                      shadow-md transition hover:bg-[#548dff] disabled:opacity-60
-                    "
-                  >
-                    {submitting || loading ? "Searching..." : "Search"}
-                  </button>
+                <WorkbenchButton
+                  type="submit"
+                  disabled={submitting || loading}
+                  variant="primary"
+                >
+                  {submitting || loading ? "Searching..." : "Search"}
+                </WorkbenchButton>
 
-                  <button
-                    type="button"
-                    onClick={handleResetSearch}
-                    className="
-                      rounded-xl border border-light-border dark:border-dark-border
-                      px-4 py-3 text-base text-light-text dark:text-dark-text
-                      hover:border-light-accent dark:hover:border-dark-accent
-                      transition
-                    "
-                  >
-                    Clear
-                  </button>
-                </div>
+                <WorkbenchButton onClick={handleResetSearch}>
+                  Clear
+                </WorkbenchButton>
               </div>
 
-              {/* SMART PRESETS – only show when a set is selected */}
               {setCode && (
-                <div className="mt-3 rounded-lg bg-[#0b0f1d] px-3 py-2 text-[11px] text-gray-300">
-                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-[10px] uppercase tracking-[0.18em] text-gray-500">
-                      Smart presets for {setCode}
-                    </span>
+                <div className="rounded-[10px] border border-vault-border bg-vault-raised p-4">
+                  <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-vault-body text-[11px] font-semibold uppercase tracking-[0.06em] text-vault-textTertiary">
+                        Smart presets
+                      </p>
+
+                      <p className="mt-1 text-sm text-vault-textSecondary">
+                        Quick actions for{" "}
+                        <span className="font-semibold text-vault-text">
+                          {setCode}
+                        </span>
+                        .
+                      </p>
+                    </div>
+
                     {hasResults && (
-                      <button
-                        type="button"
-                        onClick={handlePresetAddVisibleResults}
-                        className="rounded-full border border-[#232642] bg-transparent px-3 py-1 text-[11px] text-gray-200 transition hover:border-[#2963ff] hover:text-white"
-                      >
-                        Add all current results to selection
-                      </button>
+                      <WorkbenchButton onClick={handlePresetAddVisibleResults}>
+                        Add current results
+                      </WorkbenchButton>
                     )}
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
+                    <WorkbenchButton
                       onClick={handlePresetFullSet}
                       disabled={submitting || loading}
-                      className="rounded-full bg-[#2963ff] px-3 py-1 text-[11px] font-medium text-white shadow-sm transition hover:bg-[#548dff] disabled:opacity-60"
+                      variant="primary"
                     >
-                      Add 1x of every card in {setCode}
-                    </button>
-                    <button
-                      type="button"
+                      Add 1x of every card
+                    </WorkbenchButton>
+
+                    <WorkbenchButton
                       onClick={handlePresetCommonsUncommons}
                       disabled={submitting || loading}
-                      className="rounded-full border border-[#232642] bg-[#0b0d16] px-3 py-1 text-[11px] font-medium text-gray-200 transition hover:border-[#2963ff] hover:text-white disabled:opacity-60"
                     >
-                      Add 1x of each Common / Uncommon
-                    </button>
+                      Add Commons / Uncommons
+                    </WorkbenchButton>
                   </div>
-
-                  <p className="mt-1 text-[10px] text-gray-500">
-                    These presets use live data for {setCode}. You can tweak
-                    quantities or remove cards in your batch before saving them
-                    to your collection.
-                  </p>
                 </div>
               )}
 
-              {/* Advanced filters row */}
-              <div className="mt-4 border-t border-[#232642] pt-3">
-                <AdvancedFilters
-                  filters={filters}
-                  onChange={setFilters}
-                  availableRarities={availableRarities}
-                  availableVariations={availableVariations}
-                />
-              </div>
-
               {searchError && (
-                <p className="mt-2 text-xs text-red-400" role="alert">
+                <p className="text-sm font-medium text-vault-danger" role="alert">
                   {searchError.message || "Search failed"}
                 </p>
               )}
 
-              {/* NOTE: Kept item-level submit details for debugging + retry flow */}
               {submitResult && (
                 <div
-                  className={`mt-3 rounded-lg px-3 py-2 text-[11px] ${
+                  className={`rounded-[10px] border px-4 py-3 text-sm ${
                     submitResult.ok
-                      ? "bg-[#0f1a2e] text-[#c4d0ff]"
-                      : "bg-[#2a1114] text-[#ffb4b4]"
+                      ? "border-vault-success/30 bg-vault-success/10 text-vault-success"
+                      : "border-vault-danger/30 bg-vault-danger/10 text-vault-danger"
                   }`}
                   role="status"
                 >
@@ -1285,18 +1060,21 @@ export default function CardSearchWorkbenchPage() {
                       ? "Collection updated"
                       : "Collection update failed"}
                   </div>
-                  <div className="mt-0.5 opacity-90">{submitResult.message}</div>
+
+                  <div className="mt-1 opacity-90">{submitResult.message}</div>
 
                   {submitErrors.length > 0 && (
-                    <div className="mt-2">
+                    <div className="mt-3">
                       <div className="font-semibold">Some items failed:</div>
-                      <ul className="mt-1 list-disc pl-4 space-y-1">
+
+                      <ul className="mt-1 list-disc space-y-1 pl-4 text-xs">
                         {submitErrors.slice(0, 8).map((it) => (
                           <li key={`${it.cardId}-${it.error}`}>
-                            <span className="font-semibold">{it.cardId}</span>:{" "}
+                            <span className="font-medium">{it.cardId}</span>:{" "}
                             {it.error}
                           </li>
                         ))}
+
                         {submitErrors.length > 8 && (
                           <li>…and {submitErrors.length - 8} more</li>
                         )}
@@ -1308,14 +1086,27 @@ export default function CardSearchWorkbenchPage() {
             </form>
           </section>
 
-          {/* BOTTOM: Results (70) + Selected (30) */}
-          <section className="flex flex-col gap-4 lg:flex-row">
+          {/* Workbench */}
+          <section className="grid grid-cols-1 gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+            {/* Filters sidebar */}
+            <aside className="rounded-[14px] border border-vault-border bg-vault-surface p-5 lg:sticky lg:top-28 lg:self-start">
+              <AdvancedFilters
+                filters={filters}
+                onChange={setFilters}
+                availableRarities={availableRarities}
+                availableVariations={availableVariations}
+              />
+            </aside>
+
             {/* Results */}
-            <div className="min-h-[400px] flex-1 rounded-2xl bg-[#131523] p-4">
-              <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-lg font-semibold">Results</h2>
-                  <div className="text-xs text-gray-400">
+            <div className="rounded-[14px] border border-vault-border bg-vault-surface p-4 sm:p-5">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="font-vault text-xl font-semibold text-vault-text">
+                    Results
+                  </h2>
+
+                  <p className="mt-1 text-sm text-vault-textTertiary">
                     {loading && "Searching..."}
                     {searchError && !loading && "Error loading cards"}
                     {!loading &&
@@ -1326,192 +1117,245 @@ export default function CardSearchWorkbenchPage() {
                       !searchError &&
                       hasSearched &&
                       !hasResults &&
-                      "No results"}
-                  </div>
+                      "No matching cards"}
+                    {!loading &&
+                      !hasSearched &&
+                      "Search for cards to start building your batch."}
+                  </p>
                 </div>
 
-                {/* Select-all button for visible results */}
-                <div className="flex gap-2 justify-end">
-                  <button
-                    type="button"
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={filters?.sortBy || "relevance"}
+                    onChange={(e) =>
+                      setFilters({ ...filters, sortBy: e.target.value })
+                    }
+                    className="rounded-[6px] border border-vault-border bg-vault-raised px-3 py-2 text-xs text-vault-text outline-none focus:border-vault-accent"
+                    aria-label="Sort results"
+                  >
+                    {SORT_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  <WorkbenchButton onClick={() => setBatchPanelOpen(true)}>
+                    Batch ({selectedCount})
+                  </WorkbenchButton>
+
+                  <WorkbenchButton
                     onClick={handleSelectAllVisible}
                     disabled={!hasResults}
-                    className="rounded-full border border-[#232642] bg-[#0b0d16] px-3 py-1 text-[11px] font-medium text-gray-200 transition hover:border-[#2963ff] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    Select all results
-                  </button>
+                    Select all visible
+                  </WorkbenchButton>
                 </div>
               </div>
 
-              <div className="grid max-h-[calc(100vh-320px)] flex-1 grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
-                {filteredResults.map((card, idx) => {
-                  const key =
-                    card.cardId || card.id || `${card.setCode}-${card.number}-${idx}`;
-                  const inSelection = !!selectedCards[key];
-                  const selectedQty = selectedCards[key]?.quantity ?? 0;
-                  const bestRow = getBestPriceRow(card.prices);
-                  const displayPrice = pickDisplayPrice(bestRow);
+              <div className="max-h-[calc(100vh-350px)] min-h-[460px] overflow-y-auto pr-1">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                  {filteredResults.map((card, idx) => {
+                    const key =
+                      card.cardId ||
+                      card.id ||
+                      `${card.setCode}-${card.number}-${idx}`;
 
-                  return (
-                    <article
-                      key={key}
-                      className="group flex flex-col rounded-xl bg-[#0b0d16] p-2 ring-1 ring-transparent transition hover:ring-[#2963ff]/60"
-                    >
-                      <div className="relative mb-2 aspect-[3/4] overflow-hidden rounded-lg bg-black/40">
-                        {card.tcgImageUrl || card.image ? (
-                          <Image
-                            src={card.tcgImageUrl || card.image}
-                            alt={card.name}
-                            fill
-                            className="object-cover"
-                          />
-                        ) : null}
-                      </div>
-                      <div className="flex flex-1 flex-col justify-between text-xs">
-                        <div className="mb-1">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="line-clamp-2 font-medium">
-                              {card.name}
-                            </div>
-                            <img
-                              src={getSetLogo(card.setName, card.setCode)}
-                              alt={card.setName || "Set logo"}
-                              className="h-5 w-8 rounded bg-[#1b1e33]"
-                              onError={(e) => {
-                                e.currentTarget.onerror = null;
-                                e.currentTarget.src = FALLBACK_SYMBOL_IMAGE;
-                              }}
-                              loading="lazy"
-                              decoding="async"
-                            />
-                          </div>
-                          <div className="mt-1 flex justify-between text-[11px] text-gray-400">
-                            <span className="truncate">{card.setName}</span>
-                            <span className="font-semibold">#{card.number}</span>
-                          </div>
-                          <div className="mt-1 flex items-center gap-2 text-[11px]">
-                            <span className="font-semibold">
-                              {formatGBP(displayPrice)}
-                            </span>
-                            {bestRow?.variation &&
-                              bestRow.variation !== "normal" && (
-                                <span className="text-gray-400">
-                                  ({formatVariation(bestRow.variation)})
-                                </span>
-                              )}
-                          </div>
-                        </div>
+                    const inSelection = !!selectedCards[key];
+                    const selectedQty = selectedCards[key]?.quantity ?? 0;
+                    const bestRow = getBestPriceRow(card.prices);
+                    const displayPrice = pickDisplayPrice(bestRow);
 
+                    return (
+                      <article
+                        key={key}
+                        className={`group flex flex-col rounded-[10px] border p-2 transition-colors ${
+                          inSelection
+                            ? "border-vault-accent bg-vault-accent/10"
+                            : "border-vault-border bg-vault-raised hover:border-vault-borderStrong"
+                        }`}
+                      >
                         <button
                           type="button"
-                          onClick={() => handleCardSelect(card)}
-                          className={`mt-1 w-full rounded-lg px-2 py-1 text-xs font-medium transition ${
-                            inSelection
-                              ? "bg-[#2963ff] text-white"
-                              : "bg-[#1b1e33] text-gray-200"
-                          }`}
+                          onClick={() => setExpandedCard(card)}
+                          aria-label={`Expand ${card.name || "card"} image`}
+                          className="relative mb-2 aspect-[3/4] overflow-hidden rounded-[6px] bg-black/30 cursor-zoom-in focus:outline-none focus:ring-1 focus:ring-vault-accent"
                         >
-                          {inSelection
-                            ? `Selected (${selectedQty})`
-                            : "Add to selection"}
+                          {card.tcgImageUrl || card.image ? (
+                            <Image
+                              src={card.tcgImageUrl || card.image}
+                              alt={card.name}
+                              fill
+                              className="object-contain"
+                            />
+                          ) : null}
                         </button>
-                      </div>
-                    </article>
-                  );
-                })}
+
+                        <div className="flex flex-1 flex-col justify-between text-xs">
+                          <div>
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="line-clamp-2 font-semibold text-vault-text">
+                                {card.name}
+                              </div>
+
+                              <img
+                                src={getSetLogo(card.setName, card.setCode)}
+                                alt={card.setName || "Set logo"}
+                                className="h-5 w-8 rounded bg-vault-surface"
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src = FALLBACK_SYMBOL_IMAGE;
+                                }}
+                                loading="lazy"
+                                decoding="async"
+                              />
+                            </div>
+
+                            <div className="mt-1 flex justify-between gap-2 text-[11px] text-vault-textTertiary">
+                              <span className="truncate">{card.setName}</span>
+                              <span className="font-medium">#{card.number}</span>
+                            </div>
+
+                            <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+                              <span className="font-vault font-semibold text-vault-text">
+                                {formatGBP(displayPrice)}
+                              </span>
+
+                              {bestRow?.variation &&
+                                bestRow.variation !== "normal" && (
+                                  <span className="text-vault-textTertiary">
+                                    ({formatVariation(bestRow.variation)})
+                                  </span>
+                                )}
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleCardSelect(card)}
+                            className={`mt-3 w-full rounded-[6px] px-2 py-2 text-xs font-semibold transition-colors ${
+                              inSelection
+                                ? "bg-vault-accent text-vault-text"
+                                : "bg-vault-surface text-vault-textSecondary hover:bg-vault-accent hover:text-vault-text"
+                            }`}
+                          >
+                            {inSelection
+                              ? `Selected (${selectedQty})`
+                              : "Add to batch"}
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
 
                 {!loading && !searchError && hasSearched && !hasResults && (
-                  <div className="col-span-full flex items-center justify-center text-sm text-gray-400">
+                  <div className="flex min-h-[360px] items-center justify-center rounded-[10px] border border-dashed border-vault-border text-center text-sm text-vault-textTertiary">
                     No cards match your search. Try changing the filters.
                   </div>
                 )}
 
-                {/* Pre-search empty state */}
                 {!hasSearched && !loading && (
-                  <div className="col-span-full flex flex-col items-center justify-center gap-2 text-center text-sm text-gray-400">
-                    <p className="text-base font-medium text-gray-200">
+                  <div className="flex min-h-[360px] flex-col items-center justify-center rounded-[10px] border border-dashed border-vault-border px-6 text-center">
+                    <p className="font-vault text-base font-semibold text-vault-text">
                       Ready to build a batch?
                     </p>
-                    <p className="max-w-md text-xs text-gray-400">
-                      Start by searching for a card by name, set, or number. Add
-                      cards from the results to your selection on the right.
-                      Your selection stays even as you change search terms and
-                      filters.
+
+                    <p className="mt-2 max-w-md text-sm leading-6 text-vault-textTertiary">
+                      Search by card name, set, or number. Add cards to the
+                      sidebar and keep searching — your batch stays selected.
                     </p>
                   </div>
                 )}
 
-                {/* load-more trigger node for infinite scroll */}
-                <div ref={loadMoreTriggerRef} className="col-span-full h-4" />
+                <div ref={loadMoreTriggerRef} className="h-4" />
+
+                {(hasMore || isLoadingMore) && (
+                  <div className="mt-4 flex items-center justify-center gap-3 text-sm text-vault-textTertiary">
+                    {isLoadingMore ? (
+                      <>
+                        <span className="inline-block h-4 w-4 rounded-full border-2 border-vault-accent border-r-transparent animate-spin" />
+                        Loading more cards…
+                      </>
+                    ) : (
+                      <span>Scroll down to load more cards</span>
+                    )}
+                  </div>
+                )}
               </div>
 
-              {(hasMore || isLoadingMore) && (
-                <div className="flex items-center justify-center gap-3 mt-3 text-[11px] text-gray-400">
-                  {isLoadingMore ? (
-                    <>
-                      <span className="inline-block h-4 w-4 rounded-full border-2 border-[#2963ff] border-r-transparent animate-spin" />
-                      Loading more cards…
-                    </>
-                  ) : (
-                    <span>Scroll down to load more cards</span>
-                  )}
-                </div>
-              )}
-
-              {/* Pricing copy */}
               {hasResults && !loading && !searchError && (
-                <p className="mt-3 text-[11px] text-gray-500">
+                <p className="mt-4 text-xs text-vault-textTertiary">
                   Prices shown are the latest market snapshot from SixByFive TCG
-                  and may not include every variant or price point yet. We are
-                  still collecting data.
+                  and may not include every variant or price point yet.
                 </p>
               )}
             </div>
+          </section>
 
-            {/* Selected */}
-            <aside className="w-full rounded-2xl bg-[#131523] p-4 lg:w-[32%]">
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold">Selected</h2>
+          {/* Batch drawer */}
+          {batchPanelOpen && (
+            <div
+              className="fixed inset-0 z-40 bg-black/60"
+              onClick={() => setBatchPanelOpen(false)}
+            />
+          )}
 
-                <div className="text-right text-xs text-gray-400">
-                  <div>
+          <aside
+            className={`fixed right-0 top-0 z-50 h-full w-full max-w-md transform overflow-y-auto border-l border-vault-border bg-vault-overlay p-4 shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-transform duration-300 sm:p-5 ${
+              batchPanelOpen ? "translate-x-0" : "translate-x-full"
+            }`}
+          >
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="font-vault text-xl font-semibold text-vault-text">
+                    Selected batch
+                  </h2>
+
+                  <p className="mt-1 text-sm text-vault-textTertiary">
                     {selectedCount} cards • {totalQuantity} copies
-                  </div>
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
                   {estimatedBatchValue > 0 && (
-                    <div className="mt-0.5 text-[11px] text-gray-300">
-                      Est. value: {formatGBP(estimatedBatchValue)}
+                    <div className="rounded-[10px] border border-vault-border bg-vault-raised px-3 py-2 text-right">
+                      <p className="font-vault-body text-[10px] font-semibold uppercase tracking-[0.06em] text-vault-textTertiary">
+                        Est.
+                      </p>
+                      <p className="font-vault text-sm font-semibold text-vault-text">
+                        {formatGBP(estimatedBatchValue)}
+                      </p>
                     </div>
                   )}
+
+                  <button
+                    type="button"
+                    onClick={() => setBatchPanelOpen(false)}
+                    aria-label="Close batch panel"
+                    className="rounded-[6px] p-1.5 text-vault-textTertiary transition-colors hover:bg-vault-raised hover:text-vault-text"
+                  >
+                    ✕
+                  </button>
                 </div>
               </div>
 
-              <p className="mb-3 text-[11px] text-gray-400">
-                This is your temporary batch. Adjust quantities, remove cards,
-                then click{" "}
-                <span className="font-semibold text-gray-200">
-                  “Add all to Collection”
-                </span>{" "}
-                to save them. This won&apos;t create listings or trades — it only
-                updates your personal collection.
-              </p>
+              <div className="mb-4 rounded-[10px] border border-vault-border bg-vault-raised p-3 text-xs leading-5 text-vault-textSecondary">
+                Build your temporary batch here. Adjust quantities before saving.
+                This only updates your personal collection.
+              </div>
 
-              <div className="mb-3 max-h-[calc(100vh-320px)] space-y-2 overflow-y-auto text-xs">
+              <div className="max-h-[calc(100vh-430px)] min-h-[260px] space-y-2 overflow-y-auto pr-1">
                 {selectedList.length === 0 && (
-                  <div className="rounded-lg bg-[#0b0d16] p-3 text-gray-400">
-                    <p className="text-xs">
-                      As you browse results, hit{" "}
-                      <span className="font-semibold text-gray-200">
-                        “Add to selection”
-                      </span>{" "}
-                      on any card you want to log. You can:
+                  <div className="rounded-[10px] border border-dashed border-vault-border bg-vault-raised p-4 text-sm text-vault-textSecondary">
+                    <p className="font-semibold text-vault-text">
+                      No cards selected yet.
                     </p>
-                    <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px]">
-                      <li>Add cards from different sets and searches.</li>
-                      <li>Set the quantity you own before saving.</li>
-                      <li>
-                        Clear the batch at any time without affecting your
-                        collection.
-                      </li>
+
+                    <ul className="mt-3 list-disc space-y-1 pl-4 text-xs">
+                      <li>Add cards from multiple searches.</li>
+                      <li>Set quantities before saving.</li>
+                      <li>Clear the batch without changing your collection.</li>
                     </ul>
                   </div>
                 )}
@@ -1525,32 +1369,46 @@ export default function CardSearchWorkbenchPage() {
                   return (
                     <div
                       key={key}
-                      className="flex items-center gap-2 rounded-lg bg-[#0b0d16] p-2"
+                      className="flex gap-3 rounded-[10px] border border-vault-border bg-vault-raised p-3"
                     >
-                      <div className="relative h-12 w-9 overflow-hidden rounded bg-black/30">
+                      <div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-[6px] bg-black/30">
                         {card.tcgImageUrl || card.image ? (
                           <Image
                             src={card.tcgImageUrl || card.image}
                             alt={card.name}
                             fill
-                            className="object-cover"
+                            className="object-contain"
                           />
                         ) : null}
                       </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="line-clamp-1 font-medium">
-                            {card.name}
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="line-clamp-1 text-sm font-semibold text-vault-text">
+                              {card.name}
+                            </p>
+
+                            <p className="mt-0.5 line-clamp-1 text-xs text-vault-textTertiary">
+                              {card.setName} #{card.number}
+                            </p>
                           </div>
-                          <div className="text-[11px] text-gray-400">
-                            #{card.number}
-                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemove(key)}
+                            className="text-xs font-semibold text-vault-danger hover:text-vault-danger/80"
+                          >
+                            Remove
+                          </button>
                         </div>
-                        <div className="text-[11px] text-gray-400">
-                          {card.setName} ({card.setCode})
-                        </div>
-                        <div className="mt-1 flex items-center justify-between gap-2">
+
+                        <div className="mt-3 flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
+                            <span className="text-xs text-vault-textTertiary">
+                              Qty
+                            </span>
+
                             <input
                               type="number"
                               min={0}
@@ -1558,56 +1416,73 @@ export default function CardSearchWorkbenchPage() {
                               onChange={(e) =>
                                 handleQuantityChange(key, e.target.value)
                               }
-                              className="w-16 rounded bg-[#131523] px-2 py-1 text-[11px] outline-none ring-1 ring-[#232642] focus:ring-[#2963ff]"
+                              className="w-16 rounded-[6px] border border-vault-border bg-vault-surface px-2 py-1 text-xs text-vault-text outline-none focus:border-vault-accent"
                             />
+                          </div>
+
+                          <div className="text-right">
                             {unitPrice != null && (
-                              <span className="text-[11px] text-gray-300">
+                              <p className="font-vault text-xs font-semibold text-vault-text">
                                 {formatGBP(unitPrice)} each
-                              </span>
+                              </p>
+                            )}
+
+                            {lineTotal != null && quantity > 1 && (
+                              <p className="text-[11px] text-vault-textTertiary">
+                                {formatGBP(lineTotal)}
+                              </p>
                             )}
                           </div>
-                          {lineTotal != null && quantity > 1 && (
-                            <span className="text-[11px] text-gray-400">
-                              {formatGBP(lineTotal)}
-                            </span>
-                          )}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemove(key)}
-                        className="text-[11px] text-red-400 hover:text-red-300"
-                      >
-                        Remove
-                      </button>
                     </div>
                   );
                 })}
               </div>
 
-              <div className="mt-auto space-y-2">
-                <button
-                  type="button"
+              <div className="mt-4 space-y-2 border-t border-vault-border pt-4">
+                <WorkbenchButton
                   disabled={selectedList.length === 0 || adding}
                   onClick={handleAddAllToCollection}
-                  className="flex w-full items-center justify-center rounded-lg bg-[#2963ff] px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                  variant="primary"
                 >
-                  {adding ? "Adding..." : "Add all to Collection"}
-                </button>
+                  {adding
+                    ? "Adding..."
+                    : user
+                      ? "Add all to Collection"
+                      : "Log in to add to Collection"}
+                </WorkbenchButton>
 
                 <button
                   type="button"
                   disabled={selectedList.length === 0}
                   onClick={handleClearAll}
-                  className="w-full rounded-lg bg-[#1b1e33] px-3 py-2 text-xs text-gray-200 disabled:opacity-40"
+                  className="w-full rounded-[10px] border border-vault-border bg-vault-raised px-4 py-2.5 text-sm font-semibold text-vault-textSecondary transition-colors hover:border-vault-danger/40 hover:text-vault-danger disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Clear selection
                 </button>
               </div>
             </aside>
-          </section>
         </main>
       </div>
+
+      {expandedCard && (
+        <CardDetailsModal
+          card={expandedCard}
+          owned={false}
+          dark
+          onClose={() => setExpandedCard(null)}
+        />
+      )}
+
+      {authModalOpen && (
+        <AuthModal
+          isOpen={authModalOpen}
+          onClose={() => setAuthModalOpen(false)}
+          onAuthSuccess={() => setAuthModalOpen(false)}
+          defaultMode="login"
+        />
+      )}
     </Layout>
   );
 }

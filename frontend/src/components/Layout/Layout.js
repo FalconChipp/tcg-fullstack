@@ -9,8 +9,10 @@
 
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useContext, useState, useEffect, useRef } from "react";
 import { useTheme } from "@/hooks/ThemeProvider";
+import { AuthContext } from "@/components/Auth/AuthProvider";
+import AuthModal from "@/components/Auth/AuthModal";
 
 import Header from "./Header";
 import Footer from "./Footer";
@@ -33,6 +35,7 @@ export default function Layout({
   seo = {},
 }) {
   const { dark } = useTheme();
+  const { authModalOpen, closeAuthModal } = useContext(AuthContext);
 
   const [showSettingModal, setShowSettingModal] = useState(false);
   const [showCookieBanner, setShowCookieBanner] = useState(false);
@@ -114,6 +117,12 @@ export default function Layout({
         )}
 
         {!hideBackTop && <BackToTop />}
+
+        <AuthModal
+          isOpen={authModalOpen}
+          onClose={closeAuthModal}
+          onAuthSuccess={closeAuthModal}
+        />
       </div>
     </MessengerProvider>
   );

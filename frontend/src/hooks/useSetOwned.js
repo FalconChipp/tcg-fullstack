@@ -2,8 +2,7 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 import { getCookie } from "@/utils/cookieUtils";
-
-const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+import { getGraphqlUrl } from "@/utils/apiClient";
 
 const MY_COLLECTION_QUERY = `
   query MyCollection {
@@ -38,7 +37,7 @@ export default function useSetOwned(setObj) {
     (async () => {
       try {
         setLoading(true);
-        const res = await fetch(GRAPHQL_URL, {
+        const res = await fetch(getGraphqlUrl(), {
           method: "POST",
           headers: {
             "content-type": "application/json",

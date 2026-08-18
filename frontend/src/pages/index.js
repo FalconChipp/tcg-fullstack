@@ -1,80 +1,118 @@
 // pages/index.js
-// NOTE: "use client" is App Router only. Not harmful here, but unnecessary in /pages.
-// "use client";
 
-import React, { useState } from "react";
+import React from "react";
+import Image from "next/image";
 import Layout from "@/components/Layout/Layout";
 import HeroSection from "@/components/Layout/Hero";
 import CardSearch from "@/components/Collection/CardSearch";
-import KeyFeatures from "@/components/Layout/KeyFeatures";
-import FAQ /* , { FAQ_ITEMS } */ from "@/components/Layout/FAQ";
+import FAQ from "@/components/Layout/FAQ";
 import DiscordJoinBar from "@/components/Layout/DiscordBar";
-import AuthModal from "@/components/Auth/AuthModal";
 
-// Homepage modules
-import IntroFeatureCards from "@/components/Home/IntroFeatureCards";
-import OnboardingQuickStart from "@/components/Home/OnboardingQuickStart";
 import MobileAppPromo from "@/components/Home/AppBanner";
-import LiveStats from "@/components/Home/LiveStats"; // ✅ NEW: real/fake stats section
-import EvolvedProtectionSpotlight from "@/components/Partners/EvolvedSpotlight";
+import ProductPillars from "@/components/Home/ProductPillars";
+import BinderShowcaseSection from "@/components/Home/BinderShowcaseSection";
+import MarketplaceTeaser from "@/components/Home/MarketplaceTeaser";
 
-// ❌ REMOVED UNUSED IMPORTS:
-// import ProofStrip from "@/components/Home/ProofStrip";
-// import SearchIntro from "@/components/Home/SearchIntro";
-import Landing from "@/components/Layout/Landing";
-// import EvolvedProtectionSpotlight from "@/components/Partners/EvolvedSpotlight";
+function PartnerCard({ name, tagline, blurb, imageSrc, ctaLabel, ctaHref }) {
+  return (
+    <div className="rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface overflow-hidden shadow-sm flex flex-col">
+      {/* Hero image */}
+      <div className="relative h-48 w-full shrink-0">
+        <Image
+          src={imageSrc}
+          alt={name}
+          fill
+          sizes="(max-width: 768px) 100vw, 50vw"
+          className="object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent pointer-events-none" />
+        <p className="absolute bottom-3 left-4 text-[10px] font-bold uppercase tracking-widest text-white/60">
+          In partnership with SixByFive TCG
+        </p>
+      </div>
+
+      {/* Copy */}
+      <div className="p-5 flex flex-col gap-3 flex-1">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-light-textMuted dark:text-dark-textMuted mb-1">
+            {name}
+          </p>
+          <h3 className="text-xl font-extrabold tracking-tight leading-snug">
+            {tagline}
+          </h3>
+        </div>
+        <p className="text-sm text-light-textMuted dark:text-dark-textMuted leading-relaxed">
+          {blurb}
+        </p>
+        <div className="mt-auto pt-2">
+          <a
+            href={ctaHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold bg-light-accent dark:bg-dark-accent text-white hover:opacity-90 transition"
+          >
+            {ctaLabel}
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-
   return (
-    <>
-      <Layout
-        noTopPadding
-        seo={{
-          // ✅ Tweaked to match the newer positioning we discussed
-          title: "SixByFive TCG — Track, value, and own your Pokémon collection",
-          description:
-            "All your Pokémon cards in one place — organised, valued, and ready to grow. Track your collection, build shareable binders, and see real pricing insights. Free to start — built for UK collectors.",
-          canonical: "/", // resolved to full URL by SEO component
-          // faqItems: FAQ_ITEMS, // OPTIONAL: enable FAQ rich results if you export FAQ_ITEMS
-          // ogImage: "https://tcg.sixbyfive.com/og-image.png", // OPTIONAL override
-        }}
-      >
-        <div className="pt-20 bg-transparent">
-          <HeroSection onOpenAuthModal={() => setAuthModalOpen(true)} />
+    <Layout
+      noTopPadding
+      seo={{
+        title: "SixByFive TCG — Track, value, and own your Pokémon collection",
+        description:
+          "All your Pokémon cards in one place — organised, valued, and ready to grow. Track your collection, build shareable binders, and see real pricing insights. Free to start — built for UK collectors.",
+        canonical: "/",
+      }}
+    >
+      <div className="pt-20 bg-vault-bg">
+        <HeroSection />
 
-          <MobileAppPromo />
+        <section id="card-search" className="scroll-mt-28 bg-dark-background">
+          <CardSearch variant="home" />
+        </section>
 
-          <section
-            id="card-search"
-            className="scroll-mt-28 border-b border-light-border/40 dark:border-dark-border/40 bg-light-surfaceAlt dark:bg-dark-surfaceAlt"
-          >
-            <div className="mx-auto max-w-6xl px-4 py-10 sm:py-12 lg:py-14">
-              <CardSearch />
-            </div>
-          </section>
+        <ProductPillars />
 
-          <IntroFeatureCards />
+        <BinderShowcaseSection />
 
+        <MarketplaceTeaser />
 
-          <OnboardingQuickStart />
+        <MobileAppPromo />
 
-          <KeyFeatures />
-          <DiscordJoinBar />
-          <FAQ />
+        <section className="px-4 py-10 max-w-7xl mx-auto">
+          <p className="text-xs font-bold uppercase tracking-widest text-light-textMuted dark:text-dark-textMuted mb-5">
+            Our Partners
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <PartnerCard
+              name="Evolved Protection"
+              tagline="Evolve the way you protect your cards"
+              blurb="Trusted sleeves, toploaders & shields built for serious collectors. UK-based and collector-first."
+              imageSrc="/assets/partners/evolved.png"
+              ctaLabel="Shop Evolved"
+              ctaHref="https://evolvedcardprotection.co.uk?sca_ref=9820478.MfkcaLj4ToIM"
+            />
+            <PartnerCard
+              name="Leo's Poké Vault"
+              tagline="A family-run store for Pokémon fans"
+              blurb="Sealed product, singles, accessories and supplies — built by collectors, for collectors."
+              imageSrc="/assets/partners/leos.png"
+              ctaLabel="Visit Leo's"
+              ctaHref="https://www.leospokevault.co.uk"
+            />
+          </div>
+        </section>
 
-        </div>
+        <DiscordJoinBar />
 
-        <AuthModal
-          isOpen={authModalOpen}
-          onClose={() => setAuthModalOpen(false)}
-          onAuthSuccess={() => setAuthModalOpen(false)}
-        />
-      </Layout>
-
-      {/* Maintenance landing page (for special cases) */}
-      {/* <Landing /> */}
-    </>
+        <FAQ />
+      </div>
+    </Layout>
   );
 }

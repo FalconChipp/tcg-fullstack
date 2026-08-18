@@ -7,7 +7,7 @@ import ProfileHeader from "@/components/UserProfile/ProfileHeader";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 import StatusMessage from "@/components/UI/StatusMessage";
 import { useTheme } from "@/hooks/ThemeProvider";
-import CardDetailsModal from "@/components/UserProfile/CardDetailsModal";
+import CardDetailsModal from "@/components/Cards/CardDetailsModal";
 import useProfileCollection from "@/hooks/useProfileCollection";
 import useProfileCardActions from "@/hooks/useProfileCardActions";
 import ProfileTabs from "@/components/UserProfile/ProfileTabs";
@@ -15,11 +15,9 @@ import ProfileCollectionPanel from "@/components/UserProfile/ProfileCollectionPa
 import ProfileBindersPanel from "@/components/UserProfile/ProfileBindersPanel";
 import ProfileWishlistPanel from "@/components/UserProfile/ProfileWishlistPanel";
 import ProfileAchievements from "@/components/UserProfile/ProfileAchievements";
+import ProfileListingsPanel from "@/components/UserProfile/ProfileListingsPanel";
 import useWishlistData from "@/hooks/useWishlistData";
-
-// GraphQL endpoints
-const API_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
-const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+import { getGraphqlUrl } from "@/utils/apiClient";
 
 // --- SSR user fetch from Node backend ---
 export async function getServerSideProps({ params, res }) {
@@ -35,6 +33,7 @@ export async function getServerSideProps({ params, res }) {
         bio
         favouritePokemon
         avatar
+        planName
         user {
           id
           username
@@ -48,7 +47,7 @@ export async function getServerSideProps({ params, res }) {
     }
   `;
   try {
-    const r = await fetch(API_GRAPHQL_URL, {
+    const r = await fetch(getGraphqlUrl(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query: userQuery, variables: { username } }),
@@ -106,7 +105,7 @@ export default function ProfilePage({ user, error }) {
       if (!UID) return;
       setAchievementsLoading(true);
       try {
-        const res = await fetch(WP_GRAPHQL_URL, {
+        const res = await fetch(getGraphqlUrl(), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -293,6 +292,14 @@ export default function ProfilePage({ user, error }) {
             <ProfileAchievements
               achievements={achievements}
               loading={achievementsLoading}
+            />
+          )}
+
+          {activeTab === "listings" && (
+            <ProfileListingsPanel
+              userId={UID}
+              isOwnProfile={isOwnProfile}
+              token={token}
             />
           )}
 

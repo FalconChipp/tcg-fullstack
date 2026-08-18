@@ -1,137 +1,128 @@
 /**
- * Dummy API wrapper for subscription actions.
- * Returns fake data for frontend development.
+ * Subscription API helpers — thin wrappers around Apollo Client.
+ * Previously contained dummy data; now calls the real GraphQL backend.
  */
+import { apolloClient } from '../../app/apolloClient';
+import {
+  SUBSCRIPTION_PLANS,
+  MY_SUBSCRIPTION,
+  MY_CAPABILITIES,
+  SUBSCRIPTION_PORTAL,
+  MY_TRANSACTIONS,
+  CREATE_SUBSCRIPTION,
+  CANCEL_SUBSCRIPTION,
+  RESUME_SUBSCRIPTION,
+  UPDATE_SUBSCRIPTION,
+} from '../graphql/subscriptions';
 
-// Simulated plans (now with 4 tiers)
-const dummyPlans = [
-  {
-    id: "free",
-    name: "Free",
-    description: "Core access for collectors. Basic features to get you started.",
-    price: 0,
-    interval: null,
-    features: [
-      "Limited active listings",
-      "Basic binder creator",
-      "Access marketplace/trading",
-      "Basic achievements"
-    ],
-  },
-  {
-    id: "collection",
-    name: "Collector",
-    description: "For dedicated collectors. Unlock more binders and premium features.",
-    price: "TBD",
-    interval: "month",
-    features: [
-      "Unlimited binders",
-      "Binder customization",
-      "Advanced analytics",
-      "Early access to new features"
-    ],
-  },
-  {
-    id: "elite",
-    name: "Elite Collector",
-    description: "For power collectors. Bulk tools, extra perks, and more.",
-    price: "TBD",
-    interval: "month",
-    features: [
-      "Up to 200 active listings",
-      "Lower marketplace fees",
-      "Bulk listing tools",
-      "Promoted listings",
-      "Advanced binder customization"
-    ],
-  },
-  {
-    id: "business",
-    name: "Business",
-    description: "Sell and trade at scale. Extra perks for stores and power users.",
-    price: "TBD",
-    interval: "month",
-    features: [
-      "Unlimited listings",
-      "1% flat marketplace fee",
-      "Business badge",
-      "Discounted transaction fees"
-    ],
-  },
-];
-
-// Simulated user subscription (mutable for upgrades/downgrades)
-let mutableUserSubscription = {
-  id: "sub_123456",
-  status: "active",
-  plan: {
-    id: "collection",
-    name: "Collector",
-    price: "TBD",
-  },
-  renewsAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString(), // 30 days from now
-};
-
-// Helper: Simulate network delay
-function simulateNetwork(data, ms = 600) {
-  return new Promise((resolve) => setTimeout(() => resolve(data), ms));
-}
+// ─── Queries ──────────────────────────────────────────────────────────────────
 
 export async function fetchSubscriptionPlans() {
-  return simulateNetwork(dummyPlans);
+  const { data } = await apolloClient.query({
+    query: SUBSCRIPTION_PLANS,
+    fetchPolicy: 'no-cache',
+  });
+  return data?.subscriptionPlans ?? [];
 }
 
-export async function fetchUserSubscription(token) {
-  return simulateNetwork(mutableUserSubscription);
+export async function fetchUserSubscription() {
+  const { data } = await apolloClient.query({
+    query: MY_SUBSCRIPTION,
+    fetchPolicy: 'network-only',
+  });
+  return data?.mySubscription ?? null;
 }
 
-export async function startSubscriptionCheckout(planId, token) {
-  if (planId === mutableUserSubscription.plan.id) {
-    throw new Error("Already subscribed to this plan");
-  }
-  if (Math.random() < 0.1) throw new Error("Payment failed. Try again.");
-  return simulateNetwork("https://checkout.stripe.com/pay/test-dummy-url");
+export async function fetchUserCapabilities() {
+  const { data } = await apolloClient.query({
+    query: MY_CAPABILITIES,
+    fetchPolicy: 'network-only',
+  });
+  return data?.myCapabilities ?? null;
 }
 
-export async function updateUserSubscription(planId) {
-  const foundPlan = dummyPlans.find(p => p.id === planId);
-  if (!foundPlan) throw new Error("Invalid plan");
-
-  mutableUserSubscription = {
-    ...mutableUserSubscription,
-    plan: { id: foundPlan.id, name: foundPlan.name, price: foundPlan.price },
-    renewsAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString(),
-    status: "active"
-  };
-
-  return simulateNetwork(mutableUserSubscription);
+export async function fetchSubscriptionPortal() {
+  const { data } = await apolloClient.query({
+    query: SUBSCRIPTION_PORTAL,
+    fetchPolicy: 'network-only',
+  });
+  return data?.subscriptionPortal?.url ?? null;
 }
 
+export async function fetchUserTransactions({ page = 1, pageSize = 20 } = {}) {
+  const { data } = await apolloClient.query({
+    query: MY_TRANSACTIONS,
+    variables: { page, pageSize },
+    fetchPolicy: 'network-only',
+  });
+  return data?.myTransactions ?? [];
+}
+
+// ─── Mutations ────────────────────────────────────────────────────────────────
+
+/**
+ * Kick off a Stripe Checkout session for the given plan.
+ * Returns the Stripe-hosted checkout URL — redirect the user to it.
+ */
+export async function startSubscriptionCheckout(planId) {
+  const { data } = await apolloClient.mutate({
+    mutation: CREATE_SUBSCRIPTION,
+    variables: { planId },
+  });
+  const url = data?.createSubscription?.url;
+  if (!url) throw new Error('No checkout URL returned');
+  return url;
+}
+
+/**
+ * Cancel the user's subscription at the end of the current billing period.
+ */
 export async function cancelUserSubscription() {
-  mutableUserSubscription.status = "canceled";
-  return simulateNetwork({ success: true });
+  const { data } = await apolloClient.mutate({
+    mutation: CANCEL_SUBSCRIPTION,
+    refetchQueries: [{ query: MY_SUBSCRIPTION }],
+  });
+  return data?.cancelSubscription ?? false;
 }
 
+/**
+ * Undo a pending cancellation.
+ */
 export async function reactivateUserSubscription() {
-  mutableUserSubscription.status = "active";
-  return simulateNetwork(mutableUserSubscription);
+  const { data } = await apolloClient.mutate({
+    mutation: RESUME_SUBSCRIPTION,
+    refetchQueries: [{ query: MY_SUBSCRIPTION }],
+  });
+  return data?.resumeSubscription ?? null;
 }
 
-export function resetMockSubscription() {
-  mutableUserSubscription = { ...dummyUserSubscription };
+/**
+ * Fetch the user's subscription invoices (mapped from payment transactions).
+ */
+export async function fetchUserInvoices({ page = 1, pageSize = 20 } = {}) {
+  const txns = await fetchUserTransactions({ page, pageSize });
+  return txns.map((t) => ({ ...t, date: t.createdAt }));
 }
 
-const dummyInvoices = [
-  {
-    id: "inv_1",
-    date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString(),
-    amount: 499,
-    currency: "GBP",
-    status: "paid",
-    description: "Collector Subscription - July",
-  },
-];
+/**
+ * Switch the user's active subscription to a different plan (inline Stripe update).
+ * Returns the updated subscription.
+ */
+export async function updateUserSubscription(planId) {
+  const { data } = await apolloClient.mutate({
+    mutation: UPDATE_SUBSCRIPTION,
+    variables: { planId },
+    refetchQueries: [{ query: MY_SUBSCRIPTION }],
+  });
+  return data?.updateSubscription ?? null;
+}
 
-export async function fetchUserInvoices() {
-  return simulateNetwork(dummyInvoices);
+/**
+ * Open the Stripe Customer Portal (manage payment method, download invoices, cancel).
+ * Fetches the portal URL and redirects the browser.
+ */
+export async function openBillingPortal() {
+  const url = await fetchSubscriptionPortal();
+  if (!url) throw new Error('Billing portal unavailable');
+  window.location.href = url;
 }

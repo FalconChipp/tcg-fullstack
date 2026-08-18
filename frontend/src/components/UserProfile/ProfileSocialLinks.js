@@ -33,10 +33,10 @@ export default function ProfileSocialLinks({ links = {}, profileUrl = "", editab
             target="_blank"
             rel="noopener noreferrer"
             className="
-              p-2 rounded-full 
-              bg-light-alt dark:bg-dark-alt 
-              hover:bg-light-accent dark:hover:bg-dark-accent
-              text-light-accent dark:text-dark-accent
+              p-2 rounded-[6px] 
+              bg-vault-raised 
+              hover:bg-vault-accent dark:hover:bg-vault-accent
+              text-vault-accent
               text-lg transition
             "
             aria-label={type}
@@ -49,9 +49,9 @@ export default function ProfileSocialLinks({ links = {}, profileUrl = "", editab
       <button
         onClick={handleCopy}
         className="
-          flex items-center gap-1 px-3 py-1.5 rounded-lg
-          bg-light-accent hover:bg-light-accentLight
-          dark:bg-dark-accent dark:hover:bg-dark-accentLight
+          flex items-center gap-1 px-3 py-1.5 rounded-[6px]
+          bg-vault-accent hover:bg-vault-accentHover
+          dark:bg-vault-accent dark:hover:bg-vault-accentHover
           text-white text-sm font-semibold transition
         "
         aria-label="Copy Profile Link"
@@ -64,9 +64,9 @@ export default function ProfileSocialLinks({ links = {}, profileUrl = "", editab
           onClick={onEdit}
           className="
             ml-2 px-3 py-1 rounded 
-            bg-light-alt dark:bg-dark-alt 
-            text-light-accent dark:text-dark-accent
-            text-xs hover:bg-light-accent/10 dark:hover:bg-dark-accent/10
+            bg-vault-raised 
+            text-vault-accent
+            text-xs hover:bg-vault-accent/10 dark:hover:bg-vault-accent/10
             transition
           "
         >

@@ -14,6 +14,7 @@ export default function DevBlog2Page() {
   return (
     <Layout>
       <BlogPostLayout
+        slug="dev-blog-2-data-accuracy"
         title="Dev Blog #2 — Why I’m Focusing on Data Accuracy Instead of New Features"
         subtitle="Collecting only works if you can trust the data. This post explains why I’m slowing down big launches to make sure the foundations are right."
         date="19 December 2025"
@@ -40,7 +41,7 @@ export default function DevBlog2Page() {
         <p>This post is about why.</p>
 
         {/* DATA SOURCES --------------------------------------------------- */}
-        <h2>📦 Where SixByFive&apos;s Card Data Comes From</h2>
+        <h2>Where SixByFive&apos;s Card Data Comes From</h2>
         <p>
           Like most modern collecting tools, SixByFive doesn&apos;t invent card
           data from scratch.
@@ -69,7 +70,7 @@ export default function DevBlog2Page() {
         <p>And for collectors, small inaccuracies can matter a lot.</p>
 
         {/* WHAT WRONG DATA LOOKS LIKE ------------------------------------- */}
-        <h2>🧩 What “Wrong Data” Actually Looks Like</h2>
+        <h2>What “Wrong Data” Actually Looks Like</h2>
         <p>
           This isn&apos;t about massive failures — it&apos;s about subtle issues
           that slowly erode trust if left unchecked.
@@ -99,7 +100,7 @@ export default function DevBlog2Page() {
         </p>
 
         {/* WHY NOT SHIPPING BIG FEATURES ---------------------------------- */}
-        <h2>🛑 Why I&apos;m Not Shipping Big New Features Right Now</h2>
+        <h2>Why I&apos;m Not Shipping Big New Features Right Now</h2>
         <p>
           It might seem counter-intuitive, but adding new features on top of shaky
           data doesn&apos;t help.
@@ -124,7 +125,7 @@ export default function DevBlog2Page() {
         </p>
 
         {/* WHAT I'M FOCUSING ON ------------------------------------------- */}
-        <h2>🔍 What I&apos;m Focusing on Instead</h2>
+        <h2>What I&apos;m Focusing on Instead</h2>
         <p>
           Right now, most of the effort is going into things you won&apos;t
           necessarily see immediately:
@@ -146,7 +147,7 @@ export default function DevBlog2Page() {
         </p>
 
         {/* WHY THIS MATTERS ----------------------------------------------- */}
-        <h2>🧠 Why This Matters for Collectors</h2>
+        <h2>Why This Matters for Collectors</h2>
         <p>For collectors, this means:</p>
 
         <ul>
@@ -180,7 +181,7 @@ export default function DevBlog2Page() {
         </p>
 
         {/* THANK YOU ------------------------------------------------------ */}
-        <h2>🙏 Thank You for the Patience</h2>
+        <h2>Thank You for the Patience</h2>
         <p>
           If you&apos;re using SixByFive right now — thank you.
         </p>

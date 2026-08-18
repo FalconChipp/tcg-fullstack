@@ -1,43 +1,157 @@
 "use client";
+
 import React, { useState, useEffect, useContext, useRef } from "react";
 import Link from "next/link";
-import Image from "next/image"; // ⭐ IMAGE LOGO
-import { useTheme } from "@/hooks/ThemeProvider";
-import AuthModal from "../Auth/AuthModal";
+import Image from "next/image";
+import { useRouter } from "next/router";
+
 import { setCookie } from "@/utils/cookieUtils";
 import { AuthContext } from "../Auth/AuthProvider";
-import UserSearchDropdown from "@/components/UserProfile/UserSearch";
-import { useRouter } from "next/router";
 import NotificationBell from "@/components/Notifications/NotificationBell";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useMessenger } from "@/components/Messenger/MessengerContext";
 
-const HeaderNavLink = ({ href, children, isActive, id }) => (
-  <Link
-    id={id}
-    href={href}
-    aria-current={isActive ? "page" : undefined}
-    className={`text-base font-medium px-3 py-2 border-b-2 transition
-      ${
+/* ----------------------------- Icons ----------------------------- */
+
+function MenuIcon({ className = "" }) {
+  return (
+    <svg
+      className={className}
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M4 7h16M4 12h16M4 17h16"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function CloseIcon({ className = "" }) {
+  return (
+    <svg
+      className={className}
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M6 6l12 12M18 6 6 18"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function ChevronDownIcon({ className = "" }) {
+  return (
+    <svg
+      className={className}
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M6 9l6 6 6-6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/* ----------------------------- Helpers ----------------------------- */
+
+function isExternalUrl(url) {
+  return /^https?:\/\//i.test(url || "");
+}
+
+function safeFocusClass() {
+  return (
+    "outline-none focus:outline-none active:outline-none " +
+    "focus:ring-0 active:ring-0 " +
+    "focus-visible:outline-none focus-visible:ring-0 " +
+    "select-none"
+  );
+}
+
+function HeaderNavLink({ href, children, isActive, onClick, mobile = false }) {
+  if (mobile) {
+    return (
+      <Link
+        href={href}
+        onClick={onClick}
+        aria-current={isActive ? "page" : undefined}
+        className={`header-clickable flex items-center justify-between rounded-[10px] px-4 py-3 text-base font-semibold transition-colors ${safeFocusClass()} ${
+          isActive
+            ? "bg-vault-raised text-vault-accent"
+            : "text-vault-textSecondary hover:bg-vault-raised hover:text-vault-text active:bg-vault-raised"
+        }`}
+      >
+        {children}
+      </Link>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      onClick={onClick}
+      aria-current={isActive ? "page" : undefined}
+      className={`header-clickable relative inline-flex h-20 items-center px-4 font-vault text-sm font-semibold transition-colors ${safeFocusClass()} ${
         isActive
-          ? "text-light-accent dark:text-dark-accent border-light-accent dark:border-dark-accent font-semibold"
-          : "text-light-text dark:text-dark-text border-transparent"
-      }
-      hover:text-light-accent dark:hover:text-dark-accent
-      hover:border-light-accent dark:hover:border-dark-accent
-    `}
-  >
-    {children}
-  </Link>
-);
+          ? "text-vault-text after:absolute after:bottom-0 after:left-4 after:right-4 after:h-[2px] after:bg-vault-accent"
+          : "text-vault-textSecondary hover:text-vault-text"
+      }`}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function HeaderAccountLink({ href, children, isActive }) {
+  return (
+    <Link
+      href={href}
+      aria-current={isActive ? "page" : undefined}
+      className={`header-clickable hidden h-11 items-center rounded-[6px] px-2 text-sm font-semibold transition-colors ${safeFocusClass()} xl:inline-flex ${
+        isActive
+          ? "text-vault-accent"
+          : "text-vault-textSecondary hover:text-vault-text active:text-vault-text"
+      }`}
+    >
+      {children}
+    </Link>
+  );
+}
+
+/* ----------------------------- Component ----------------------------- */
 
 export default function Header({ onStartTour }) {
-  const { dark, toggleDark } = useTheme();
-  const { user, setUser, loading, token } = useContext(AuthContext);
+  const { user, setUser, loading, token, openAuthModal: openAuthModalCtx } = useContext(AuthContext);
+
+  const router = useRouter();
+  const pathname = router.pathname;
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-  const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
+
+  const dropdownRef = useRef(null);
 
   const {
     items: notifications,
@@ -48,292 +162,420 @@ export default function Header({ onStartTour }) {
     loadMore: loadMoreNotifications,
     hasMore,
     loadingMore,
-  } = useNotifications({
-    token,
-    pollMs: 45000,
-  });
+  } = useNotifications({ token, pollMs: 45000 });
 
-  const router = useRouter();
-  const settingsTimeoutRef = useRef(null);
+  const { openSidebar: openMessenger } = useMessenger();
 
   useEffect(() => {
-    if (router.query.verify === "1") setAuthModalOpen(true);
-  }, [router.query.verify]);
+    if (router.query.verify === "1") {
+      openAuthModalCtx();
+    }
+  }, [router.query.verify]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 32);
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 24);
+    };
+
+    handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
   }, []);
 
-  const pathname = router.pathname;
+  useEffect(() => {
+    if (!userDropdownOpen) return;
 
-  const handleNotificationClick = (notification) => {
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setUserDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handler);
+
+    return () => {
+      document.removeEventListener("mousedown", handler);
+    };
+  }, [userDropdownOpen]);
+
+  function isActive(path) {
+    if (path === "/") return pathname === "/";
+    return pathname === path || pathname.startsWith(path + "/");
+  }
+
+  function handleNotificationClick(notification) {
     if (!notification) return;
-    if (notification.id) markNotificationRead(notification.id);
+
+    if (notification.id) {
+      markNotificationRead(notification.id);
+    }
+
     if (notification.linkUrl) {
-      if (/^https?:\/\//i.test(notification.linkUrl)) {
+      if (notification.linkUrl === '#messenger') {
+        openMessenger();
+      } else if (isExternalUrl(notification.linkUrl)) {
         window.open(notification.linkUrl, "_blank", "noopener,noreferrer");
       } else {
         router.push(notification.linkUrl);
       }
     }
-  };
+  }
 
-  const handleNotificationDismiss = (notification) => {
+  function handleNotificationDismiss(notification) {
     if (!notification?.id) return;
     dismissNotification(notification.id);
-  };
+  }
 
-  const handleSignOut = () => {
+  function handleSignOut() {
     setUser(null);
     setCookie("authToken", "", -1);
     setCookie("refreshToken", "", -1);
     setUserDropdownOpen(false);
     setMenuOpen(false);
-  };
+  }
 
-  const MobileOverlay = () =>
-    menuOpen ? (
-      <div
-        className="fixed inset-0 z-40 bg-black/40 transition-opacity duration-300"
-        onClick={() => setMenuOpen(false)}
-      />
-    ) : null;
+  function openAuthModal() {
+    openAuthModalCtx();
+    setMenuOpen(false);
+  }
+
+  const profileHref = user?.username ? `/profile/${user.username}` : "/profile";
+
+  const desktopNav = user
+    ? [
+        { href: "/search", label: "Search" },
+        { href: "/marketplace", label: "Marketplace" },
+        { href: "/sets", label: "All Sets" },
+        { href: "/subscriptions", label: "Subscriptions" },
+      ]
+    : [
+        { href: "/search", label: "Search" },
+        { href: "/marketplace", label: "Marketplace" },
+        { href: "/sets", label: "All Sets" },
+        { href: "/subscriptions", label: "Subscriptions" },
+      ];
+
+  const mobileNav = user
+    ? [
+        { href: "/dashboard", label: "Dashboard" },
+        { href: profileHref, label: "Profile" },
+        { href: "/search", label: "Search cards" },
+        { href: "/marketplace", label: "Marketplace" },
+        { href: "/sets", label: "All Sets" },
+        { href: "/account", label: "Account settings" },
+      ]
+    : [
+        { href: "/search", label: "Search cards" },
+        { href: "/marketplace", label: "Marketplace" },
+        { href: "/sets", label: "All Sets" },
+        { href: "/subscriptions", label: "Subscriptions" },
+        { href: "/about", label: "About" },
+      ];
 
   return (
     <>
       <header
         id="main-header"
-        className={`
-          fixed top-0 left-0 w-full z-50
-          transition-all duration-300 border-b
-          ${
-            isScrolled
-              ? "shadow-xl bg-light-surface/90 dark:bg-dark-surface/90 border-light-border dark:border-dark-border backdrop-blur"
-              : "bg-light-surface dark:bg-dark-surface border-transparent"
-          }
-        `}
+        className={`fixed left-0 top-0 z-50 w-full border-b transition-colors duration-200 ${
+          isScrolled
+            ? "border-vault-border bg-vault-surface"
+            : "border-transparent bg-vault-bg"
+        }`}
       >
-        <div className="relative">
+        <div className="mx-auto max-w-7xl px-5 sm:px-7">
+          <div className="flex h-20 items-center gap-6">
+            {/* Logo */}
+            <Link
+              href="/"
+              className={`header-clickable flex shrink-0 items-center ${safeFocusClass()}`}
+              aria-label="SixByFive TCG Home"
+            >
+              <Image
+                src="/assets/tcg-logo-white.png"
+                alt="SixByFive TCG"
+                width={175}
+                height={44}
+                className="h-11 w-auto object-contain"
+                priority
+              />
+            </Link>
 
-          {/* ⭐ IMAGE LOGO — positioned far-left */}
-          <Link
-            href="/"
-            className="
-              absolute left-3 sm:left-6 top-1/2 -translate-y-1/2
-              flex items-center
-            "
-            aria-label="SixByFive TCG Home"
-          >
-            {/* Single version (white logo always) */}
-            <Image
-              src="/assets/tcg-logo-white.png"
-              alt="SixByFive TCG"
-              width={165}
-              height={40}
-              className="object-contain"
-              priority
-            />
-          </Link>
+            {/* Left desktop nav */}
+            <nav
+              className="hidden h-full items-center lg:flex"
+              aria-label="Primary navigation"
+            >
+              {desktopNav.map((item) => (
+                <HeaderNavLink
+                  key={item.href}
+                  href={item.href}
+                  isActive={isActive(item.href)}
+                >
+                  {item.label}
+                </HeaderNavLink>
+              ))}
+            </nav>
 
-          {/* Add left padding so the nav stays aligned correctly */}
-          <div className="max-w-7xl mx-auto pl-20 pr-4 sm:pr-6">
-            <div className="flex items-center justify-between h-20">
+            <div className="flex-1" />
 
-              {/* Desktop Nav */}
-              <nav className="hidden md:flex items-center gap-1" aria-label="Primary">
-                <HeaderNavLink href="/" isActive={pathname === "/"}>Home</HeaderNavLink>
-                <HeaderNavLink href="/search" isActive={pathname === "/search"}>Search</HeaderNavLink>
-                <HeaderNavLink href="/about" isActive={pathname === "/about"}>About</HeaderNavLink>
-                <HeaderNavLink href="/sets" isActive={pathname === "/sets"}>All Sets</HeaderNavLink>
-                {/* <HeaderNavLink href="/marketplace" isActive={pathname === "/marketplace"}>Marketplace</HeaderNavLink> */}
-                <HeaderNavLink href="/blog" isActive={pathname === "/blog"}>Blog</HeaderNavLink>
-              </nav>
+            {/* Right side */}
+            <div className="ml-auto flex items-center gap-4">
+              {user && (
+                <NotificationBell
+                  notifications={notifications}
+                  onMarkAllRead={markAllNotificationsRead}
+                  onItemClick={handleNotificationClick}
+                  onDismiss={handleNotificationDismiss}
+                  onLoadMore={loadMoreNotifications}
+                  hasMore={hasMore}
+                  loadingMore={loadingMore}
+                  unreadCount={unread}
+                />
+              )}
 
-              {/* Search */}
-              <div className="hidden md:block flex-1 max-w-md mx-8">
-                <UserSearchDropdown />
-              </div>
+              {user && (
+                <div className="hidden items-center gap-4 xl:flex">
+                  <HeaderAccountLink
+                    href="/dashboard"
+                    isActive={isActive("/dashboard")}
+                  >
+                    Dashboard
+                  </HeaderAccountLink>
 
-              {/* Right side */}
-              <div className="flex items-center gap-2 md:gap-3">
-                {user && (
-                  <NotificationBell
-                    notifications={notifications}
-                    onMarkAllRead={markAllNotificationsRead}
-                    onItemClick={handleNotificationClick}
-                    onDismiss={handleNotificationDismiss}
-                    onLoadMore={loadMoreNotifications}
-                    hasMore={hasMore}
-                    loadingMore={loadingMore}
-                    unreadCount={unread}
-                  />
-                )}
+                  <HeaderAccountLink
+                    href={profileHref}
+                    isActive={isActive(profileHref)}
+                  >
+                    Profile
+                  </HeaderAccountLink>
+                </div>
+              )}
 
-                {loading ? (
-                  <div className="animate-pulse h-8 w-20 bg-light-border dark:bg-dark-border rounded" />
-                ) : user ? (
-                  <div className="relative">
-                    <div className="flex items-center gap-1 px-1 py-1 rounded-xl">
-                      <button
-                        onClick={() => setUserDropdownOpen((v) => !v)}
-                        className="flex items-center gap-2 py-1 px-3 rounded-full hover:bg-light-alt dark:hover:bg-dark-alt"
+              {loading ? (
+                <div className="hidden h-11 w-28 animate-pulse rounded-[10px] bg-vault-raised sm:block" />
+              ) : user ? (
+                <div className="relative hidden sm:block" ref={dropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setUserDropdownOpen((v) => !v)}
+                    className={`header-clickable inline-flex h-11 items-center gap-2 rounded-[10px] border border-vault-border bg-transparent px-4 text-sm font-semibold text-vault-text transition-colors hover:border-vault-borderStrong ${safeFocusClass()}`}
+                    aria-expanded={userDropdownOpen}
+                    aria-haspopup="true"
+                  >
+                    <span className="max-w-[130px] truncate">
+                      {user.username}
+                    </span>
+
+                    <ChevronDownIcon
+                      className={`transition-transform ${
+                        userDropdownOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+
+                  {userDropdownOpen && (
+                    <div className="absolute right-0 mt-3 w-60 overflow-hidden rounded-[10px] border border-vault-border bg-vault-overlay py-2 shadow-[0_8px_24px_rgba(0,0,0,0.4)] animate-fadeIn">
+                      <div className="border-b border-vault-border px-4 pb-3 pt-1">
+                        <p className="text-xs text-vault-textTertiary">
+                          Signed in as
+                        </p>
+                        <p className="truncate text-sm font-semibold text-vault-text">
+                          {user.username}
+                        </p>
+                      </div>
+
+                      <Link
+                        href="/account"
+                        onClick={() => setUserDropdownOpen(false)}
+                        className={`header-clickable block px-4 py-2.5 text-sm font-medium text-vault-textSecondary transition-colors hover:bg-vault-raised hover:text-vault-text ${safeFocusClass()}`}
                       >
-                        <span>{user.username}</span>
-                        <i className="fas fa-chevron-down text-xs ml-1" />
+                        Account settings
+                      </Link>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onStartTour?.();
+                          setUserDropdownOpen(false);
+                        }}
+                        className={`header-clickable block w-full px-4 py-2.5 text-left text-sm font-medium text-vault-textSecondary transition-colors hover:bg-vault-raised hover:text-vault-text ${safeFocusClass()}`}
+                      >
+                        Redo onboarding tour
+                      </button>
+
+                      <div className="my-1 border-t border-vault-border" />
+
+                      <button
+                        type="button"
+                        onClick={handleSignOut}
+                        className={`header-clickable block w-full px-4 py-2.5 text-left text-sm font-semibold text-vault-danger transition-colors hover:bg-vault-raised ${safeFocusClass()}`}
+                      >
+                        Sign out
                       </button>
                     </div>
-
-                    {userDropdownOpen && (
-                      <div className="absolute right-0 mt-2 w-52 rounded-xl shadow-lg bg-light-surface dark:bg-dark-surface border py-2 z-30 animate-fadeIn">
-                        <Link href={`/profile/${user.username}`} className="block px-4 py-2 hover:text-light-accent">
-                          Profile
-                        </Link>
-                        <Link href="/account" className="block px-4 py-2 hover:text-light-accent">
-                          Account Details
-                        </Link>
-                        <button onClick={onStartTour} className="block w-full text-left px-4 py-2 hover:bg-light-accent hover:text-white">
-                          Redo Onboarding Tour
-                        </button>
-                        <button onClick={handleSignOut} className="block w-full text-left px-4 py-2 hover:bg-light-error hover:text-white">
-                          Sign Out
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setAuthModalOpen(true)}
-                    className="px-4 py-2 rounded-xl bg-light-accent hover:bg-light-accentLight text-white"
-                  >
-                    Start free
-                  </button>
-                )}
-
-                {/* Settings */}
-                {/* <div
-                  className="relative"
-                  onMouseEnter={() => {
-                    if (settingsTimeoutRef.current)
-                      clearTimeout(settingsTimeoutRef.current);
-                    setSettingsDropdownOpen(true);
-                  }}
-                  onMouseLeave={() => {
-                    settingsTimeoutRef.current = setTimeout(
-                      () => setSettingsDropdownOpen(false),
-                      250
-                    );
-                  }}
-                >
-                  <button className="text-lg rounded-full p-2 hover:bg-light-alt dark:hover:bg-dark-alt">
-                    <i className="fas fa-cog" />
-                  </button>
-
-                  {settingsDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-56 rounded-xl shadow-lg bg-light-surface dark:bg-dark-surface border p-4 z-30 animate-fadeIn">
-                      <div className="flex items-center justify-between">
-                        <span>Dark Mode</span>
-                        <button
-                          onClick={toggleDark}
-                          className="relative inline-flex h-6 w-11 items-center rounded-full bg-light-border dark:bg-dark-border"
-                        >
-                          <span
-                            className={`
-                              inline-block h-4 w-4 transform rounded-full transition-transform
-                              ${dark ? "bg-dark-accent translate-x-6" : "bg-light-accent translate-x-1"}
-                            `}
-                          />
-                        </button>
-                      </div>
-                    </div>
                   )}
-                </div> */}
-
-                {/* Mobile menu button */}
+                </div>
+              ) : (
                 <button
-                  onClick={() => setMenuOpen((v) => !v)}
-                  className="md:hidden text-lg rounded-full p-2 hover:bg-light-alt dark:hover:bg-dark-alt"
+                  type="button"
+                  onClick={openAuthModal}
+                  className={`header-clickable hidden h-11 rounded-[10px] bg-vault-accent px-5 text-sm font-semibold text-vault-text transition-colors hover:bg-vault-accentHover sm:inline-flex sm:items-center ${safeFocusClass()}`}
                 >
-                  <i className="fas fa-bars" />
+                  Sign In / Sign Up
                 </button>
-              </div>
+              )}
+
+              {/* Mobile menu button */}
+              <button
+                type="button"
+                onClick={() => setMenuOpen((v) => !v)}
+                className={`header-clickable inline-flex h-11 w-11 items-center justify-center rounded-[10px] border border-vault-border bg-transparent text-vault-text transition-colors hover:border-vault-borderStrong lg:hidden ${safeFocusClass()}`}
+                aria-label={menuOpen ? "Close menu" : "Open menu"}
+                aria-expanded={menuOpen}
+              >
+                {menuOpen ? <CloseIcon /> : <MenuIcon />}
+              </button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Mobile Overlay */}
-      <MobileOverlay />
+      {/* Mobile overlay */}
+      {menuOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 lg:hidden"
+          onClick={() => setMenuOpen(false)}
+        />
+      )}
 
-      {/* Mobile Menu */}
-      <div
-        className={`
-          fixed top-0 right-0 w-80 h-full z-50
-          transform transition-transform duration-300
-          ${menuOpen ? "translate-x-0" : "translate-x-full"}
-          bg-light-surface dark:bg-dark-surface shadow-2xl border-l
-        `}
-        style={{ maxWidth: "90vw" }}
+      {/* Mobile menu */}
+      <aside
+        className={`fixed right-0 top-0 z-50 h-full w-80 max-w-[90vw] transform border-l border-vault-border bg-vault-overlay shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-transform duration-300 lg:hidden ${
+          menuOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+        aria-hidden={!menuOpen}
       >
-        <div className="p-6 flex flex-col h-full">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-xl font-bold">Menu</h2>
-            <button onClick={() => setMenuOpen(false)} className="p-2 hover:bg-light-alt dark:hover:bg-dark-alt">
-              <i className="fas fa-times" />
+        <div className="flex h-full flex-col p-5">
+          <div className="mb-6 flex items-center justify-between">
+            <Link
+              href="/"
+              onClick={() => setMenuOpen(false)}
+              className={`header-clickable flex items-center ${safeFocusClass()}`}
+              aria-label="SixByFive TCG Home"
+            >
+              <Image
+                src="/assets/tcg-logo-white.png"
+                alt="SixByFive TCG"
+                width={165}
+                height={42}
+                className="h-10 w-auto object-contain"
+                priority
+              />
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => setMenuOpen(false)}
+              className={`header-clickable inline-flex h-11 w-11 items-center justify-center rounded-[10px] text-vault-text hover:bg-vault-raised ${safeFocusClass()}`}
+              aria-label="Close menu"
+            >
+              <CloseIcon />
             </button>
           </div>
 
-          <nav className="flex flex-col space-y-4 flex-grow">
-            <HeaderNavLink href="/" isActive={pathname === "/"}>Home</HeaderNavLink>
-            <HeaderNavLink href="/about" isActive={pathname === "/about"}>About</HeaderNavLink>
-            <HeaderNavLink href="/sets" isActive={pathname === "/sets"}>All Sets</HeaderNavLink>
-            <HeaderNavLink href="/marketplace" isActive={pathname === "/marketplace"}>Marketplace</HeaderNavLink>
+          <nav className="flex flex-col gap-2" aria-label="Mobile navigation">
+            {mobileNav.map((item) => (
+              <HeaderNavLink
+                key={item.href}
+                href={item.href}
+                isActive={isActive(item.href)}
+                onClick={() => setMenuOpen(false)}
+                mobile
+              >
+                {item.label}
+              </HeaderNavLink>
+            ))}
           </nav>
 
-          <div className="mt-auto pt-8">
+          <div className="mt-auto border-t border-vault-border pt-5">
             {user ? (
-              <>
-                <p className="mb-2 text-sm">Signed in as <b>{user.username}</b></p>
+              <div className="space-y-3">
+                <div className="rounded-[10px] bg-vault-raised p-4">
+                  <p className="text-xs text-vault-textTertiary">Signed in as</p>
+                  <p className="truncate text-base font-semibold text-vault-text">
+                    {user.username}
+                  </p>
+                </div>
+
                 <button
+                  type="button"
                   onClick={handleSignOut}
-                  className="w-full px-4 py-2 rounded-lg bg-light-error text-white hover:bg-light-error/90"
+                  className={`header-clickable w-full rounded-[10px] border border-vault-danger/40 px-4 py-3 text-sm font-semibold text-vault-danger transition-colors hover:bg-vault-danger/10 ${safeFocusClass()}`}
                 >
-                  Sign Out
+                  Sign out
                 </button>
-              </>
+              </div>
             ) : (
               <button
-                onClick={() => {
-                  setAuthModalOpen(true);
-                  setMenuOpen(false);
-                }}
-                className="w-full px-4 py-2 rounded-lg bg-light-accent hover:bg-light-accentLight text-white"
+                type="button"
+                onClick={openAuthModal}
+                className={`header-clickable w-full rounded-[10px] bg-vault-accent px-4 py-3 text-sm font-semibold text-vault-text transition-colors hover:bg-vault-accentHover ${safeFocusClass()}`}
               >
-                Start free
+                Sign In / Sign Up
               </button>
             )}
           </div>
         </div>
-      </div>
+      </aside>
 
-      {/* Auth Modal */}
-      {authModalOpen && (
-        <AuthModal
-          isOpen={authModalOpen}
-          onClose={() => setAuthModalOpen(false)}
-          onAuthSuccess={() => setAuthModalOpen(false)}
-        />
-      )}
 
-      {/* Animations */}
       <style jsx global>{`
-        .animate-fadeIn {
-          animation: fadeIn 0.18s ease-out;
+        #main-header a,
+        #main-header button,
+        .header-clickable {
+          -webkit-tap-highlight-color: transparent;
+          -webkit-touch-callout: none;
+          outline: none !important;
+          box-shadow: none !important;
         }
+
+        #main-header a:focus,
+        #main-header a:active,
+        #main-header a:focus-visible,
+        #main-header button:focus,
+        #main-header button:active,
+        #main-header button:focus-visible,
+        .header-clickable:focus,
+        .header-clickable:active,
+        .header-clickable:focus-visible {
+          outline: none !important;
+          box-shadow: none !important;
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        #main-header a::selection,
+        #main-header button::selection,
+        .header-clickable::selection {
+          background: transparent;
+        }
+
+        .animate-fadeIn {
+          animation: fadeIn 0.15s ease-out;
+        }
+
         @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(12px); }
-          to   { opacity: 1; transform: translateY(0); }
+          from {
+            opacity: 0;
+            transform: translateY(8px);
+          }
+
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
       `}</style>
     </>

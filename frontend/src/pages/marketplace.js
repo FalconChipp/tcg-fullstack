@@ -1,221 +1,219 @@
 // frontend/src/pages/marketplace.js
-// Marketplace page (Pages Router) — plain JS, no JSX
-// - Layout wrapper
-// - SecondaryHeader with cart modal
-// - Toggle between Official products / Card listings
-// - FiltersBar + ListingGrid
-// - CHANGES:
-//   - Filters state tracks `status` (GraphQL enum) with default "ACTIVE".
-//   - When switching segment (PRODUCT/CARD), filters.type is kept in sync.
-//   - ListingGrid gets `type` and `status` from filters with safe fallbacks.
-//   - NEW: Card listings button visually disabled + non-interactive.
+// Marketplace page — JSX, Pages Router, SSR disabled
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/router";
+import { useQuery } from "@apollo/client";
+import { HAS_AGREED_QUERY, GET_LISTING_BY_ID } from '@/graphql/marketplace';
 
 import Layout from "@/components/Layout/Layout";
 import SecondaryHeader from "@/components/Marketplace/SecondaryHeader";
 import FiltersBar from "@/components/Marketplace/FiltersBar";
 import ListingGrid from "@/components/Marketplace/ListingGrid";
-import CartModal from "@/components/Marketplace/CartModal";
+import ListingDetailModal from "@/components/Marketplace/ListingDetailModal";
+import CreateListingModal from "@/components/Marketplace/CreateListingModal";
+import MarketplaceRulesModal from "@/components/Marketplace/MarketplaceRulesModal";
+import MyListingsDrawer from "@/components/Marketplace/MyListingsDrawer";
+import BulkListingModal from "@/components/Marketplace/BulkListingModal";
+import { AuthContext } from "@/components/Auth/AuthProvider";
 
-export default dynamic(
-  function () {
-    return Promise.resolve(function MarketplaceClient() {
-      // "PRODUCT" | "CARD"
-      var _useStateMode = useState("PRODUCT");
-      var activeType = _useStateMode[0];
-      var setActiveType = _useStateMode[1];
 
-      // Filters state:
-      // - type: "PRODUCT" | "CARD"
-      // - status: "active" by default (GraphQL ListingStatus enum)
-      // - sort / condition / priceRange / variation: optional, used by FiltersBar
-      var _useStateFilters = useState({
-        type: "PRODUCT",
-        status: "active",
-        sort: "",
-      });
-      var filters = _useStateFilters[0];
-      var setFilters = _useStateFilters[1];
+function MarketplacePage() {
+  const auth = useContext(AuthContext) || {};
+  const token = auth.token || null;
+  const isLoggedIn = !!auth.user;
 
-      // Cart modal
-      var _useStateCart = useState(false);
-      var isCartOpen = _useStateCart[0];
-      var setIsCartOpen = _useStateCart[1];
+  const router = useRouter();
 
-      // When the segmented control is clicked
-      function handleSegmentClick(nextType) {
-        setActiveType(nextType);
-        setFilters(function (prev) {
-          return {
-            // lock filters type to the segment
-            type: nextType,
-            // keep status if set, otherwise default to active
-            status: prev.status || "active",
-            sort: prev.sort || "",
-            condition: prev.condition || "",
-            priceRange: prev.priceRange || "",
-            variation: prev.variation || "",
-          };
-        });
-      }
+  const { data: agreedData, loading: agreedLoading, refetch: refetchAgreed } = useQuery(
+    HAS_AGREED_QUERY,
+    { skip: !isLoggedIn, fetchPolicy: "network-only" }
+  );
 
-      // When FiltersBar changes filters
-      function handleFiltersChange(next) {
-        // ensure we always have a type & status
-        var nextType = (next && next.type) || activeType || "PRODUCT";
-        var nextStatus = (next && next.status) || "active";
+  const hasAgreed = agreedData?.hasAgreedToMarketplaceRules === true;
 
-        setActiveType(nextType);
-        setFilters(
-          Object.assign(
-            {
-              type: nextType,
-              status: nextStatus,
-            },
-            next
-          )
-        );
-      }
+  // Rules modal: only show for logged-in users who have a real server response.
+  // agreedData stays undefined when the query is skipped (logged-out), so a stale
+  // token can never flash the modal before auth settles.
+  const showRulesModal = isLoggedIn && !agreedLoading && agreedData !== undefined && !hasAgreed;
 
-      var subtitle =
-        activeType === "CARD"
-          ? "Browse user-listed Pokémon cards."
-          : "Shop official products and SixByFive merch.";
+  const [filters, setFilters] = useState({
+    type: "CARD",
+    status: "ACTIVE",
+    search: "",
+    sort: "",
+  });
 
-      // Segmented control classes
-      var segmentWrapCls =
-        "inline-flex rounded-full border border-light-border dark:border-dark-border " +
-        "bg-light-surface dark:bg-dark-surface p-1 text-xs sm:text-sm";
-      var segBtnBase =
-        "px-3 py-1.5 rounded-full font-medium transition-colors " +
-        "text-light-text dark:text-dark-text";
-      var segBtnActive =
-        "bg-light-accent text-white dark:bg-dark-accent dark:text-white shadow-sm";
-      var segBtnInactive =
-        "bg-transparent hover:bg-light-alt dark:hover:bg-dark-alt";
+  const [detailListing, setDetailListing] = useState(null);
+  const [showCreateListing, setShowCreateListing] = useState(false);
+  const [showMyListings, setShowMyListings] = useState(false);
+  const [showBulkListing, setShowBulkListing] = useState(false);
 
-      // Derive props for ListingGrid from filters with safe defaults
-      var gridType = filters.type || activeType || "PRODUCT";
-      var gridStatus = filters.status || "active";
+  // If a notification link lands on /marketplace?listing=<id>, auto-open the modal
+  const [directListingId, setDirectListingId] = useState(null);
+  useEffect(() => {
+    const id = router.query?.listing;
+    if (id && typeof id === "string") {
+      setDirectListingId(id);
+      // Strip the param from the URL without a full reload
+      router.replace("/marketplace", undefined, { shallow: true });
+    }
+  }, [router.query?.listing]); // eslint-disable-line react-hooks/exhaustive-deps
 
-      return React.createElement(
-        Layout,
-        null,
-        React.createElement(
-          "div",
-          { className: "mx-auto max-w-7xl px-4 py-8" },
+  const { data: directListingData } = useQuery(GET_LISTING_BY_ID, {
+    skip: !directListingId,
+    variables: { id: directListingId },
+    fetchPolicy: "network-only",
+  });
 
-          // Heading + toggle
-          React.createElement(
-            "div",
-            {
-              className:
-                "mb-4 flex flex-wrap items-center justify-between gap-3",
-            },
-            React.createElement(
-              "div",
-              null,
-              React.createElement(
-                "h1",
-                {
-                  className:
-                    "text-2xl font-bold text-light-strong dark:text-dark-strong",
-                },
-                "Marketplace"
-              ),
-              React.createElement(
-                "p",
-                { className: "text-sm text-light-muted dark:text-dark-muted" },
-                subtitle
-              )
-            ),
-            React.createElement(
-              "div",
-              {
-                className: segmentWrapCls,
-                role: "tablist",
-                "aria-label": "Marketplace view",
-              },
-              // Official products — unchanged
-              React.createElement(
-                "button",
-                {
-                  type: "button",
-                  role: "tab",
-                  "aria-selected": activeType === "PRODUCT" ? "true" : "false",
-                  className:
-                    segBtnBase +
-                    " " +
-                    (activeType === "PRODUCT" ? segBtnActive : segBtnInactive),
-                  onClick: function () {
-                    handleSegmentClick("PRODUCT");
-                  },
-                },
-                "Official products"
-              ),
-              // Card listings — DISABLED
-              React.createElement(
-                "button",
-                {
-                  type: "button",
-                  role: "tab",
-                  // we keep aria-selected false and mark as disabled
-                  "aria-selected": "false",
-                  "aria-disabled": "true",
-                  disabled: true, // 🔒 actually disable the element
-                  className:
-                    segBtnBase +
-                    " " +
-                    // use inactive styling + muted/disabled visuals
-                    segBtnInactive +
-                    " opacity-50 cursor-not-allowed",
-                  // NOTE: no onClick, so it can't switch to CARD
-                  title: "Card listings coming soon",
-                },
-                "Card listings"
-              )
-            )
-          ),
+  useEffect(() => {
+    if (directListingData?.listing) {
+      setDetailListing(directListingData.listing);
+      setDirectListingId(null);
+    }
+  }, [directListingData]); // eslint-disable-line react-hooks/exhaustive-deps
 
-          // Secondary header with cart button
-          React.createElement(
-            "div",
-            { className: "mb-6" },
-            React.createElement(SecondaryHeader, {
-              onCartClick: function () {
-                setIsCartOpen(true);
-              },
-            })
-          ),
+  function handleFiltersChange(next) {
+    const nextStatus = (next && next.status) || "ACTIVE";
 
-          // Filters + grid
-          React.createElement(FiltersBar, {
-            value: filters,
-            onChange: function (next) {
-              handleFiltersChange(next);
-            },
-          }),
-          React.createElement(ListingGrid, {
-            // These are what ListingGrid uses to query the backend:
-            type: gridType,
-            status: gridStatus,
-            pageSize: 24,
-          }),
+    setFilters(
+      Object.assign(
+        {
+          type: "CARD",
+          status: nextStatus,
+          search: "",
+          sort: "",
+        },
+        next,
+        {
+          type: "CARD",
+          status: nextStatus,
+        }
+      )
+    );
+  }
 
-          // Cart modal
-          React.createElement(CartModal, {
-            isOpen: isCartOpen,
-            onClose: function () {
-              setIsCartOpen(false);
-            },
-          })
-        )
-      );
-    });
-  },
-  { ssr: false }
-);
+  const gridStatus = filters.status || "ACTIVE";
+  const gridSearch = filters.search || undefined;
+  const gridSort = filters.sort || undefined;
+
+  return (
+    <Layout>
+      <div className="min-h-screen bg-vault-bg">
+        <div className="mx-auto max-w-7xl px-5 py-12 sm:px-7">
+        {/* ── Heading ── */}
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="mb-4 font-vault-body text-[11px] font-semibold uppercase tracking-[0.08em] text-vault-textTertiary">
+              Marketplace
+            </p>
+            <h1 className="font-vault text-[32px] font-semibold leading-[1.15] tracking-tight text-vault-text sm:text-[36px]">
+              Browse listings
+            </h1>
+            <p className="mt-2 text-[15px] text-vault-textSecondary">
+              Browse community-listed Pokémon cards.
+            </p>
+          </div>
+
+          {isLoggedIn && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowMyListings(true)}
+                className="rounded-[10px] border border-vault-border px-4 py-2 text-sm font-semibold text-vault-textSecondary transition-colors hover:border-vault-borderStrong hover:text-vault-text"
+              >
+                My listings
+              </button>
+              {hasAgreed && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowBulkListing(true)}
+                    className="rounded-[10px] border border-vault-border px-4 py-2 text-sm font-semibold text-vault-textSecondary transition-colors hover:border-vault-borderStrong hover:text-vault-text"
+                  >
+                    Bulk list
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateListing(true)}
+                    className="rounded-[10px] bg-vault-accent px-5 py-2 text-sm font-semibold text-vault-text transition-colors hover:bg-vault-accentHover"
+                  >
+                    + List a card
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── Secondary header ── */}
+        <div className="mb-6">
+          <SecondaryHeader />
+        </div>
+
+        {/* ── Search/sort + grid ── */}
+        <FiltersBar value={filters} onChange={handleFiltersChange} />
+
+        <ListingGrid
+          type="CARD"
+          status={gridStatus}
+          search={gridSearch}
+          sort={gridSort}
+          pageSize={24}
+          onListingClick={(listing) => setDetailListing(listing)}
+        />
+        </div>
+      </div>
+
+      {/* ── Modals ── */}
+      {detailListing && (
+        <ListingDetailModal
+          listing={detailListing}
+          onClose={() => setDetailListing(null)}
+        />
+      )}
+
+      {showCreateListing && (
+        <CreateListingModal
+          onClose={() => setShowCreateListing(false)}
+          onCreated={() => setShowCreateListing(false)}
+          onViewListings={() => {
+            setShowCreateListing(false);
+            setShowMyListings(true);
+          }}
+        />
+      )}
+
+      <MyListingsDrawer
+        open={showMyListings}
+        onClose={() => setShowMyListings(false)}
+        token={token}
+        onCreateListing={() => {
+          setShowMyListings(false);
+          setShowCreateListing(true);
+        }}
+      />
+
+      <BulkListingModal
+        open={showBulkListing}
+        onClose={() => setShowBulkListing(false)}
+        onComplete={() => {
+          setShowBulkListing(false);
+          setShowMyListings(true);
+        }}
+      />
+
+      {showRulesModal && (
+        <MarketplaceRulesModal
+          isLoggedIn={isLoggedIn}
+          onAgreed={() => refetchAgreed()}
+        />
+      )}
+    </Layout>
+  );
+}
+
+export default dynamic(() => Promise.resolve(MarketplacePage), { ssr: false });

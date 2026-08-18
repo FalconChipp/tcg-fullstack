@@ -13,6 +13,8 @@ import React, {
 } from "react";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 import { io as socketIo } from "socket.io-client";
+import { devLog, devWarn, devError } from "@/utils/devLog";
+import { getGraphqlUrl } from "@/utils/apiClient";
 
 const MessengerContext = createContext(null);
 
@@ -26,14 +28,6 @@ function normalizeOriginUrl(raw) {
   return `https://${s}`.replace(/\/+$/, "");
 }
 
-function getGraphqlEndpoint() {
-  // Mirror apolloClient.js exactly: only trust NEXT_PUBLIC_GRAPHQL_ENDPOINT
-  // (a browser-accessible URL). Never fall back to NEXT_PUBLIC_BACKEND_URL
-  // or NEXT_PUBLIC_API_BASE_URL — those may be Docker-internal hostnames.
-  const endpoint = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
-  if (endpoint) return endpoint.replace(/\/+$/, "");
-  return "http://localhost:4010/graphql";
-}
 
 function getBackendOrigin() {
   const realtime = process.env.NEXT_PUBLIC_REALTIME_URL;
@@ -53,7 +47,7 @@ function getBackendOrigin() {
  * - Throws a rich error object so we can detect chat-denied without crashing the site.
  */
 async function gqlFetch({ token, query, variables }) {
-  const endpoint = getGraphqlEndpoint();
+  const endpoint = getGraphqlUrl();
 
   const res = await fetch(endpoint, {
     method: "POST",
@@ -251,7 +245,7 @@ export function MessengerProvider({ children }) {
         setChatDeniedMeta(null);
       } catch (e) {
         const denied = handleChatDenied(e);
-        if (!denied) console.error("[Messenger] myChats failed:", e);
+        if (!denied) devError("[Messenger] myChats failed:", e);
       } finally {
         setThreadsLoading(false);
       }
@@ -342,7 +336,7 @@ export function MessengerProvider({ children }) {
         return msgs;
       } catch (e) {
         const denied = handleChatDenied(e);
-        if (!denied) console.error("[Messenger] chatWithUser failed:", e);
+        if (!denied) devError("[Messenger] chatWithUser failed:", e);
 
         setMessagesByUserId((prev) => {
           const current = prev[userId];
@@ -400,7 +394,7 @@ export function MessengerProvider({ children }) {
         );
       } catch (e) {
         const denied = handleChatDenied(e);
-        if (!denied) console.warn("[Messenger] markChatRead failed:", e);
+        if (!denied) devWarn("[Messenger] markChatRead failed:", e);
       }
     },
     [token, handleChatDenied]
@@ -531,7 +525,7 @@ export function MessengerProvider({ children }) {
 
         return saved;
       } catch (e) {
-        console.error("[Messenger] sendMessage failed:", e);
+        devError("[Messenger] sendMessage failed:", e);
 
         setMessagesByUserId((prev) => {
           const current = prev[receiverId];
@@ -658,10 +652,10 @@ export function MessengerProvider({ children }) {
 
     socketRef.current = s;
 
-    s.on("connect", () => console.log("[Messenger] socket connected", { id: s.id }));
-    s.on("disconnect", (reason) => console.warn("[Messenger] socket disconnected", reason));
+    s.on("connect", () => devLog("[Messenger] socket connected", { id: s.id }));
+    s.on("disconnect", (reason) => devWarn("[Messenger] socket disconnected", reason));
     s.on("connect_error", (err) =>
-      console.error("[Messenger] socket connect_error", err?.message || err)
+      devError("[Messenger] socket connect_error", err?.message || err)
     );
 
     s.on("newMessage", (payload) => {

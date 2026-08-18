@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useMemo, useState, useContext, useEffect } from "react";
+import { devError } from "@/utils/devLog";
 import { VIEW_MODES } from "@/utils/constants";
 import BinderEditorHeader from "@/components/Binder/BinderModal/Header";
 import PageGrid from "@/components/Binder/BinderModal/PageGrid";
@@ -195,7 +196,7 @@ export default function BinderEditorModal(props) {
       return true;
     } catch (err) {
       setStatusMessage({ type: "error", message: err.message || "Failed to save binder." });
-      if (DEBUG) console.error("[BinderEditorModal] SAVE error:", err);
+      if (DEBUG) devError("[BinderEditorModal] SAVE error:", err);
       return false;
     }
   }

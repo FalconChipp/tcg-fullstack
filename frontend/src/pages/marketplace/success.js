@@ -4,29 +4,8 @@
 
 import React, { useEffect, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
-import { gql, useQuery } from "@apollo/client";
-
-/* =========================
-   GraphQL
-   ========================= */
-
-const ORDER_QUERY = gql`
-  query Order($id: ID!) {
-    order(id: $id) {
-      id
-      orderNumber
-      status
-      total
-      currency
-      listingId
-      paymentMethod
-      buyerEmail
-      guestCheckout
-      createdAt
-      paidAt
-    }
-  }
-`;
+import { useQuery } from "@apollo/client";
+import { ORDER_QUERY } from '@/graphql/marketplace';
 
 /* =========================
    Simple helpers 

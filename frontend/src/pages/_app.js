@@ -7,6 +7,7 @@ import { ApolloProvider } from "@apollo/client";
 import { apolloClient } from "app/apolloClient";
 import { MessengerProvider } from "@/components/Messenger/MessengerContext";
 import MessengerLayout from "@/components/Messenger/MessengerLayout";
+import ErrorBoundary from "@/components/UI/ErrorBoundary";
 import "@/styles/global.css";
 import "@/styles/condition.css";
 
@@ -24,7 +25,9 @@ export default function MyApp({ Component, pageProps }) {
               <Head>
                 <link rel="icon" href="/assets/favicon.png" sizes="any" />
               </Head>
-              <Component {...pageProps} />
+              <ErrorBoundary>
+                <Component {...pageProps} />
+              </ErrorBoundary>
               {/* MessengerLayout includes sidebar, toggle, and popups */}
               <MessengerLayout />
             </MessengerProvider>

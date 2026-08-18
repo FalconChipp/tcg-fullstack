@@ -1,12 +1,9 @@
 /frontend/node_modules
 /frontend/.next
 /frontend/.netlify/
-frontend/package-lock.json
 *.zip
-frontend/.env
 frontend/.env
 /frontend/scripts
 __tmp_card.json
 *.log
-frontend/.env
 /frontend/src/pages/dev

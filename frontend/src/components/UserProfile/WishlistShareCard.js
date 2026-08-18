@@ -59,7 +59,7 @@ function PinnedTile({ card }) {
 
   return (
     <div
-      className="h-full w-full rounded-3xl border border-white/15 bg-white/10 overflow-hidden relative"
+      className="h-full w-full rounded-[14px] border border-white/15 bg-white/10 overflow-hidden relative"
       style={{
         backdropFilter: "blur(10px)",
         boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
@@ -100,7 +100,7 @@ function PinnedTile({ card }) {
 
           {/* Label */}
           <div className="absolute left-3 right-3 bottom-3">
-            <div className="rounded-xl border border-white/15 bg-black/35 px-3 py-2">
+            <div className="rounded-[10px] border border-white/15 bg-black/35 px-3 py-2">
               <div className="text-xs font-extrabold leading-tight truncate">{title}</div>
               <div className="mt-0.5 text-[11px] font-semibold opacity-90 truncate">{meta}</div>
             </div>
@@ -156,13 +156,13 @@ const WishlistShareCard = forwardRef(function WishlistShareCard(
 
       {/* Glow blobs */}
       <div
-        className="absolute -top-40 -left-40 h-[520px] w-[520px] rounded-full opacity-35 blur-3xl"
+        className="absolute -top-40 -left-40 h-[520px] w-[520px] rounded-[6px] opacity-35 blur-3xl"
         style={{
           background: "radial-gradient(circle at 30% 30%, #2963FF 0%, transparent 60%)",
         }}
       />
       <div
-        className="absolute -bottom-52 -right-52 h-[620px] w-[620px] rounded-full opacity-30 blur-3xl"
+        className="absolute -bottom-52 -right-52 h-[620px] w-[620px] rounded-[6px] opacity-30 blur-3xl"
         style={{
           background: "radial-gradient(circle at 30% 30%, #548DFF 0%, transparent 60%)",
         }}
@@ -178,7 +178,7 @@ const WishlistShareCard = forwardRef(function WishlistShareCard(
             <div className="flex items-center gap-4">
               {safeAvatar ? (
                 <div
-                  className="h-20 w-20 rounded-2xl overflow-hidden border border-white/15"
+                  className="h-20 w-20 rounded-[10px] overflow-hidden border border-white/15"
                   style={{
                     boxShadow: "0 18px 60px rgba(0,0,0,0.35)",
                     backdropFilter: "blur(10px)",
@@ -195,7 +195,7 @@ const WishlistShareCard = forwardRef(function WishlistShareCard(
                 </div>
               ) : (
                 <div
-                  className="h-14 w-14 rounded-2xl shadow-xl"
+                  className="h-14 w-14 rounded-[10px] "
                   style={{
                     background: "linear-gradient(135deg, #2963FF 0%, #548DFF 100%)",
                     boxShadow: "0 18px 60px rgba(41,99,255,0.35)",
@@ -242,7 +242,7 @@ const WishlistShareCard = forwardRef(function WishlistShareCard(
                     return (
                       <div
                         key={idx}
-                        className="h-full rounded-2xl border border-white/15 bg-white/10 px-4 py-2.5 text-[15px] font-semibold flex items-center"
+                        className="h-full rounded-[10px] border border-white/15 bg-white/10 px-4 py-2.5 text-[15px] font-semibold flex items-center"
                         style={{ backdropFilter: "blur(10px)" }}
                       >
                         {/* CHANGED: clamp to 1 line so text never increases height */}

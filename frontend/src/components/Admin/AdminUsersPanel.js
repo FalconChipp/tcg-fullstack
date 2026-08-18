@@ -1,231 +1,157 @@
-// frontend/src/components/Admin/AdminUsersPanel.js
-// -----------------------------------------------------------------------------
-// Admin panel: list users with basic status info + simple actions.
-// Reuses ADMIN_OVERVIEW_QUERY and consumes allUsers.
-// -----------------------------------------------------------------------------
-
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useQuery } from "@apollo/client";
-import { ADMIN_OVERVIEW_QUERY } from "@/graphql/adminOverview";
+import { ADMIN_USERS_QUERY as USERS_QUERY } from '@/graphql/admin';
+
+function fmt(v) {
+  if (!v) return "—";
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function UserBadge({ label, variant }) {
+  const cls = {
+    admin:    "bg-indigo-500/10 text-indigo-300 border-indigo-500/30",
+    banned:   "bg-red-500/10 text-red-300 border-red-500/30",
+    unverified: "bg-amber-500/10 text-amber-300 border-amber-500/30",
+    user:     "bg-white/[0.04] text-neutral-500 border-white/10",
+  }[variant] ?? "bg-white/[0.04] text-neutral-500 border-white/10";
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium border ${cls}`}>{label}</span>
+  );
+}
+
+function RowSkeleton() {
+  return (
+    <tr className="border-b border-white/[0.04]">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <td key={i} className="px-3 py-3">
+          <div className="h-3 rounded bg-white/[0.06] animate-pulse" style={{ width: `${[60, 80, 40, 50, 45, 55][i]}%` }} />
+        </td>
+      ))}
+    </tr>
+  );
+}
 
 export default function AdminUsersPanel() {
-  const { data, loading, error, refetch } = useQuery(ADMIN_OVERVIEW_QUERY, {
-    variables: {
-      usersLimit: 200,
-    },
-    fetchPolicy: "cache-first",
+  const [search, setSearch] = useState("");
+  const [draft, setDraft] = useState("");
+  const [copied, setCopied] = useState(null);
+
+  const { data, loading, error, refetch } = useQuery(USERS_QUERY, {
+    variables: { limit: 200 },
+    fetchPolicy: "network-only",
   });
 
-  const users = data?.allUsers ?? [];
+  // allUsers has no server-side search — filter client-side from the fetched batch
+  const allFetchedUsers = data?.allUsers ?? [];
+  const users = search
+    ? allFetchedUsers.filter((u) =>
+        u.username?.toLowerCase().includes(search.toLowerCase()) ||
+        u.email?.toLowerCase().includes(search.toLowerCase())
+      )
+    : allFetchedUsers;
 
-  const handleCopy = async (label, value) => {
+  const copy = async (label, value) => {
     try {
       await navigator.clipboard.writeText(String(value ?? ""));
-      console.log(`[AdminUsersPanel] Copied ${label}:`, value);
-    } catch (err) {
-      console.warn(`[AdminUsersPanel] Failed to copy ${label}`, err);
-    }
+      setCopied(label);
+      setTimeout(() => setCopied(null), 1500);
+    } catch {}
   };
 
-  const formatDate = (value) => {
-    if (!value) return "—";
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return "—";
-    return d.toLocaleDateString();
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setSearch(draft.trim());
   };
-
-  if (loading) {
-    return (
-      <div className="border border-white/5 rounded-xl p-4 bg-black/40">
-        <p className="text-sm text-neutral-300 mb-2">Loading users…</p>
-        <p className="text-xs text-neutral-500">
-          Fetching up to 200 accounts from the server.
-        </p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="border border-red-500/40 rounded-xl p-4 bg-red-950/40">
-        <p className="text-sm text-red-300 font-semibold mb-1">
-          Failed to load users
-        </p>
-        <p className="text-xs text-red-200 mb-3">{error.message}</p>
-        <button
-          type="button"
-          onClick={() => refetch()}
-          className="inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium border border-red-400/60 text-red-50 hover:bg-red-500/10"
-        >
-          Try again
-        </button>
-      </div>
-    );
-  }
-
-  if (!users.length) {
-    return (
-      <div className="border border-white/5 rounded-xl p-4 bg-black/40">
-        <p className="text-sm text-neutral-300">
-          No users found.
-        </p>
-      </div>
-    );
-  }
 
   return (
-    <div className="space-y-3">
-      {/* Header row */}
-      <div className="flex items-center justify-between gap-2">
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-neutral-50">Users</h2>
-          <p className="text-xs text-neutral-500">
-            Showing {users.length} users (limited to 200).
+          <h2 className="text-base font-semibold text-neutral-50">Users</h2>
+          <p className="text-xs text-neutral-500 mt-0.5">
+            {loading ? "Loading…" : `${users.length} user${users.length !== 1 ? "s" : ""}${search ? ` matching "${search}"` : " (up to 200)"}.`}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => refetch()}
-          className="inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium border border-white/20 text-neutral-50 hover:bg-white/10"
-        >
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <form onSubmit={handleSearch} className="flex gap-2">
+            <input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="Search username or email…"
+              className="w-52 px-3 py-1.5 rounded-lg bg-black/50 border border-white/10 text-xs text-neutral-100 placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-white/20"
+            />
+            <button type="submit" className="px-3 py-1.5 rounded-lg text-xs font-medium border border-white/15 text-neutral-300 hover:bg-white/5 transition">Search</button>
+          </form>
+          <button type="button" onClick={() => refetch()} disabled={loading} className="px-3 py-1.5 rounded-lg text-xs font-medium border border-white/15 text-neutral-300 hover:bg-white/5 disabled:opacity-50 transition">Refresh</button>
+        </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto border border-white/5 rounded-xl bg-black/40">
+      {copied && (
+        <div className="border border-emerald-500/30 rounded-lg px-3 py-2 bg-emerald-500/[0.04] text-xs text-emerald-300">Copied {copied}.</div>
+      )}
+
+      {error && (
+        <div className="border border-red-500/30 rounded-xl p-3 bg-red-950/20 text-xs text-red-300">{error.message}</div>
+      )}
+
+      <div className="overflow-x-auto border border-white/[0.08] rounded-2xl bg-black/30">
         <table className="min-w-full text-xs">
-          <thead className="bg-white/5 text-neutral-300">
-            <tr>
-              <th className="px-3 py-2 text-left font-semibold">User</th>
-              <th className="px-3 py-2 text-left font-semibold">Email</th>
-              <th className="px-3 py-2 text-left font-semibold">Flags</th>
-              <th className="px-3 py-2 text-left font-semibold">Profile</th>
-              <th className="px-3 py-2 text-left font-semibold">Created</th>
-              <th className="px-3 py-2 text-left font-semibold">Last login</th>
-              <th className="px-3 py-2 text-left font-semibold">Actions</th>
+          <thead>
+            <tr className="border-b border-white/[0.06]">
+              {["User", "Email", "Status", "Profile", "Joined", "Actions"].map((h) => (
+                <th key={h} className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-neutral-500">{h}</th>
+              ))}
             </tr>
           </thead>
-          <tbody>
-            {users.map((u) => {
-              const profile = u.profile;
-              const flags = [];
-              if (u.isAdmin) flags.push("Admin");
-              if (u.isBanned) flags.push("Banned");
-              if (!flags.length) flags.push("User");
+          <tbody className="divide-y divide-white/[0.04]">
+            {loading && !data
+              ? Array.from({ length: 8 }).map((_, i) => <RowSkeleton key={i} />)
+              : users.length === 0
+              ? (
+                <tr><td colSpan={6} className="px-3 py-8 text-center text-sm text-neutral-500">No users found.</td></tr>
+              )
+              : users.map((u) => {
+                const badges = [];
+                if (u.isAdmin)               badges.push({ label: "Admin",      variant: "admin" });
+                if (u.isBanned)              badges.push({ label: "Banned",     variant: "banned" });
+                if (!u.emailVerified)        badges.push({ label: "Unverified", variant: "unverified" });
+                if (!badges.length)          badges.push({ label: "User",       variant: "user" });
 
-              return (
-                <tr
-                  key={u.id}
-                  className="border-t border-white/5 hover:bg-white/5 transition"
-                >
-                  {/* User */}
-                  <td className="px-3 py-2 align-top">
-                    <div className="flex flex-col">
-                      <span className="font-medium text-neutral-50">
-                        {u.username || "—"}
-                      </span>
-                      <span className="text-[11px] text-neutral-500">
-                        {u.id}
-                      </span>
-                    </div>
-                  </td>
-
-                  {/* Email */}
-                  <td className="px-3 py-2 align-top">
-                    <span className="text-[11px] text-neutral-300">
-                      {u.email || "—"}
-                    </span>
-                  </td>
-
-                  {/* Flags */}
-                  <td className="px-3 py-2 align-top">
-                    <div className="flex flex-wrap gap-1">
-                      {flags.map((flag) => (
-                        <span
-                          key={flag}
-                          className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-white/5 text-neutral-100"
-                        >
-                          {flag}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-
-                  {/* Profile */}
-                  <td className="px-3 py-2 align-top">
-                    {profile ? (
-                      <div className="space-y-0.5">
-                        {profile.country && (
-                          <p className="text-[11px] text-neutral-300">
-                            {profile.country}
-                          </p>
-                        )}
-                        {profile.status && (
-                          <p className="text-[11px] text-neutral-400">
-                            {profile.status}
-                          </p>
-                        )}
-                        {profile.favouritePokemon && (
-                          <p className="text-[11px] text-neutral-500">
-                            Fav: {profile.favouritePokemon}
-                          </p>
-                        )}
-                        {!profile.country &&
-                          !profile.status &&
-                          !profile.favouritePokemon && (
-                            <p className="text-[11px] text-neutral-500">
-                              Profile incomplete
-                            </p>
-                          )}
+                return (
+                  <tr key={u.id} className="hover:bg-white/[0.03] transition align-top">
+                    <td className="px-3 py-3">
+                      <p className="font-medium text-neutral-100">{u.username || "—"}</p>
+                      <p className="font-mono text-[10px] text-neutral-600 mt-0.5">{u.id}</p>
+                    </td>
+                    <td className="px-3 py-3 text-neutral-400">{u.email || "—"}</td>
+                    <td className="px-3 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {badges.map((b) => <UserBadge key={b.label} {...b} />)}
                       </div>
-                    ) : (
-                      <span className="text-[11px] text-neutral-500">
-                        No profile
-                      </span>
-                    )}
-                  </td>
-
-                  {/* Created */}
-                  <td className="px-3 py-2 align-top">
-                    <span className="text-[11px] text-neutral-400">
-                      {formatDate(u.createdAt)}
-                    </span>
-                  </td>
-
-                  {/* Last login */}
-                  <td className="px-3 py-2 align-top">
-                    <span className="text-[11px] text-neutral-400">
-                      {formatDate(u.lastLogin)}
-                    </span>
-                  </td>
-
-                  {/* Actions */}
-                  <td className="px-3 py-2 align-top">
-                    <div className="flex flex-wrap gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => handleCopy("user ID", u.id)}
-                        className="px-2 py-1 rounded-md border border-white/15 text-[10px] text-neutral-100 hover:bg-white/10"
-                      >
-                        Copy ID
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleCopy("email", u.email)}
-                        className="px-2 py-1 rounded-md border border-white/15 text-[10px] text-neutral-100 hover:bg-white/10"
-                      >
-                        Copy email
-                      </button>
-
-                      {/* Drop your original ban/unban/make-admin actions in here later */}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+                    </td>
+                    <td className="px-3 py-3 text-neutral-400">
+                      {u.profile ? (
+                        <div className="space-y-0.5">
+                          {u.profile.country         && <p className="text-[11px]">{u.profile.country}</p>}
+                          {u.profile.favouritePokemon && <p className="text-[11px] text-neutral-500">Fav: {u.profile.favouritePokemon}</p>}
+                          {!u.profile.country && !u.profile.favouritePokemon && <p className="text-[11px] text-neutral-600">Incomplete</p>}
+                        </div>
+                      ) : <span className="text-[11px] text-neutral-600">No profile</span>}
+                    </td>
+                    <td className="px-3 py-3 text-neutral-500 whitespace-nowrap">{fmt(u.createdAt)}</td>
+                    <td className="px-3 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        <button type="button" onClick={() => copy("user ID", u.id)} className="px-2 py-1 rounded text-[10px] border border-white/10 text-neutral-400 hover:bg-white/5 transition">Copy ID</button>
+                        <button type="button" onClick={() => copy("email", u.email)} className="px-2 py-1 rounded text-[10px] border border-white/10 text-neutral-400 hover:bg-white/5 transition">Copy email</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            }
           </tbody>
         </table>
       </div>

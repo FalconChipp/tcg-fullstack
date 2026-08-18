@@ -3,7 +3,7 @@
 // import { useSearchParams } from "next/navigation";
 // import { useRouter } from "next/router";
 
-// const WP_GRAPHQL_URL = "http://tcg.local/graphql";
+// const getGraphqlUrl() = "http://tcg.local/graphql";
 
 // export default function VerifyPage() {
 //   const searchParams = useSearchParams();
@@ -37,7 +37,7 @@
 //       const variables = { input: { token } };
 
 //       try {
-//         const res = await fetch(WP_GRAPHQL_URL, {
+//         const res = await fetch(getGraphqlUrl(), {
 //           method: "POST",
 //           headers: { "Content-Type": "application/json" },
 //           body: JSON.stringify({ query, variables }),
@@ -130,8 +130,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-
-const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+import { getGraphqlUrl } from "@/utils/apiClient";
 
 export default function VerifyPage() {
   const searchParams = useSearchParams();
@@ -162,7 +161,7 @@ export default function VerifyPage() {
       const variables = { token };
 
       try {
-        const res = await fetch(WP_GRAPHQL_URL, {
+        const res = await fetch(getGraphqlUrl(), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query, variables }),

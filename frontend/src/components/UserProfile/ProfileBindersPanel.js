@@ -9,8 +9,7 @@ import CardSkeleton from "@/components/UI/CardSkeleton";
 import BinderCover from "../Binder/BinderCover";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 import { executeMutation, COLLECTION_MUTATIONS } from "@/utils/graphqlUtils";
-
-const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+import { getGraphqlUrl } from "@/utils/apiClient";
 
 function getCardGbpPrice(card) {
   if (!card) return 0;
@@ -100,7 +99,7 @@ export default function ProfileBindersPanel({
     const headers = { "Content-Type": "application/json" };
     if (isOwnProfile && token) headers["Authorization"] = `Bearer ${token}`;
 
-    fetch(WP_GRAPHQL_URL, {
+    fetch(getGraphqlUrl(), {
       method: "POST",
       headers,
       body: JSON.stringify({ query, variables })
@@ -231,11 +230,11 @@ export default function ProfileBindersPanel({
       {isOwnProfile && (
         <div
           id="binder-create-btn"
-          className="bg-light-surface dark:bg-dark-surface rounded-xl shadow p-3 flex flex-col items-center justify-center min-h-[420px] hover:bg-light-accent/10 dark:hover:bg-dark-accent/10 cursor-pointer transition"
+          className="bg-vault-surface rounded-[10px]  p-3 flex flex-col items-center justify-center min-h-[420px] hover:bg-vault-accent/10 dark:hover:bg-vault-accent/10 cursor-pointer transition"
           onClick={handleCreateBinder}
         >
-          <div className="text-5xl text-light-textMuted dark:text-dark-textMuted mb-2 font-bold">+</div>
-          <span className="text-light-textSecondary dark:text-dark-textSecondary font-semibold">New Binder</span>
+          <div className="text-5xl text-vault-textTertiary mb-2 font-bold">+</div>
+          <span className="text-vault-textSecondary font-semibold">New Binder</span>
         </div>
       )}
       {Array.from({ length: isOwnProfile ? count - 1 : count }).map((_, idx) => (
@@ -248,11 +247,11 @@ export default function ProfileBindersPanel({
   function BinderCard({ binder }) {
     return (
       <div
-        className="bg-light-surface dark:bg-dark-surface rounded-xl shadow p-3 flex flex-col items-center min-h-[420px] hover:shadow-xl transition group"
+        className="bg-vault-surface rounded-[10px]  p-3 flex flex-col items-center min-h-[420px] hover: transition group"
         onClick={() => handleOpenBinder(binder)}
         style={{ cursor: "pointer" }}
       >
-        <div className="w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-lg mb-2 overflow-hidden flex items-center justify-center">
+        <div className="w-full aspect-[245/337] bg-vault-raised rounded-[6px] mb-2 overflow-hidden flex items-center justify-center">
           <BinderCover
             color={binder.coverColor || "#181822"}
             accent={binder.accentColor || "#7de95a"}
@@ -261,13 +260,13 @@ export default function ProfileBindersPanel({
           />
         </div>
         <div className="w-full flex flex-col items-start mt-1 flex-1">
-          <span className="text-base font-bold truncate mb-1 text-light-text dark:text-dark-text">{binder.name}</span>
-          <span className="text-sm text-light-textMuted dark:text-dark-textMuted">{binder.cardsCount} cards</span>
-          <span className="text-xs text-light-textSecondary dark:text-dark-textSecondary">{binder.pages?.length || 0} pages</span>
-          <span className="text-xs text-light-textSecondary dark:text-dark-textSecondary mt-1">
-            {binder.description || <span className="italic text-light-textMuted dark:text-dark-textMuted">No description</span>}
+          <span className="text-base font-bold truncate mb-1 text-vault-text">{binder.name}</span>
+          <span className="text-sm text-vault-textTertiary">{binder.cardsCount} cards</span>
+          <span className="text-xs text-vault-textSecondary">{binder.pages?.length || 0} pages</span>
+          <span className="text-xs text-vault-textSecondary mt-1">
+            {binder.description || <span className="italic text-vault-textTertiary">No description</span>}
           </span>
-          <span className="text-sm font-semibold text-light-accent dark:text-dark-accent mt-2">{formatCurrency(binder.totalValue)}</span>
+          <span className="text-sm font-semibold text-vault-accent mt-2">{formatCurrency(binder.totalValue)}</span>
         </div>
       </div>
     );
@@ -284,7 +283,7 @@ export default function ProfileBindersPanel({
   } else if (error) {
     mainContent = (
       <section className="w-full max-w-8xl mx-auto mt-6">
-        <div className="col-span-full text-light-error dark:text-dark-error py-10 text-center">
+        <div className="col-span-full text-vault-danger dark:text-vault-danger py-10 text-center">
           Error loading binders: {error}
         </div>
         <SkeletonGrid />
@@ -295,10 +294,10 @@ export default function ProfileBindersPanel({
       <section className="w-full max-w-8xl mx-auto mt-6">
         <div className="text-center py-8">
           <div className="flex flex-col items-center gap-2 mb-2">
-            <span className="text-2xl font-bold text-light-accent dark:text-dark-accent">
+            <span className="text-2xl font-bold text-vault-accent">
               {isOwnProfile ? "You haven't created any binders yet." : "No binders to display."}
             </span>
-            <span className="text-base text-light-textSecondary dark:text-dark-textSecondary">
+            <span className="text-base text-vault-textSecondary">
               {isOwnProfile ? "Start a new binder to organise your cards!" : "No binders found for this user."}
             </span>
           </div>
@@ -314,10 +313,10 @@ export default function ProfileBindersPanel({
           <div
             className={`rounded p-3 my-3 text-center font-semibold ${
               statusMessage.type === "success"
-                ? "bg-light-success dark:bg-dark-success text-white"
+                ? "bg-vault-success dark:bg-vault-success text-white"
                 : statusMessage.type === "error"
-                ? "bg-light-error dark:bg-dark-error text-white"
-                : "bg-light-accent dark:bg-dark-accent text-white"
+                ? "bg-vault-danger dark:bg-vault-danger text-white"
+                : "bg-vault-accent text-vault-text"
             }`}
           >
             {statusMessage.message}
@@ -328,11 +327,11 @@ export default function ProfileBindersPanel({
           {isOwnProfile && (
             <div
               id="binder-create-btn"
-              className="bg-light-surface dark:bg-dark-surface rounded-xl shadow p-3 flex flex-col items-center justify-center min-h-[420px] hover:bg-light-accent/10 dark:hover:bg-dark-accent/10 cursor-pointer transition"
+              className="bg-vault-surface rounded-[10px]  p-3 flex flex-col items-center justify-center min-h-[420px] hover:bg-vault-accent/10 dark:hover:bg-vault-accent/10 cursor-pointer transition"
               onClick={handleCreateBinder}
             >
-              <div className="text-5xl text-light-textMuted dark:text-dark-textMuted mb-2 font-bold">+</div>
-              <span className="text-light-textSecondary dark:text-dark-textSecondary font-semibold">New Binder</span>
+              <div className="text-5xl text-vault-textTertiary mb-2 font-bold">+</div>
+              <span className="text-vault-textSecondary font-semibold">New Binder</span>
             </div>
           )}
           {/* Actual binder cards */}
@@ -364,7 +363,7 @@ export default function ProfileBindersPanel({
       {showBinderEditor && (
         <Portal>
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-            <div className="bg-light-surface dark:bg-dark-surface rounded-lg shadow-xl w-full max-w-7xl h-full">
+            <div className="bg-vault-surface rounded-[6px]  w-full max-w-7xl h-full">
               <BinderEditorModal
                 binder={selectedBinder}
                 onSave={handleSaveBinder}

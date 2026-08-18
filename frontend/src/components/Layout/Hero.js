@@ -1,205 +1,179 @@
 "use client";
+
 import React, { useContext } from "react";
-import { Swiper, SwiperSlide } from "swiper/react";
-import { Navigation, Pagination, Autoplay } from "swiper/modules";
-import SwiperCore from "swiper";
-import "swiper/css";
-import "swiper/css/navigation";
-import "swiper/css/pagination";
-import { AuthContext } from "@/components/Auth/AuthProvider";
 import { useRouter } from "next/router";
+import { AuthContext } from "@/components/Auth/AuthProvider";
 
-SwiperCore.use([Navigation, Pagination, Autoplay]);
 
-// Hero slides: copy-focused on key flows
-const slidesData = [
-  {
-    image: "/assets/HeroSlides/start.png",
-    title: "Track, value, and own your Pokémon collection.",
-    subtitle:
-      "All your cards in one place — organised, valued, and ready to grow. Free to start, built for collectors.",
-    ctaText: "Open My Collection",
-    action: "collection",
-  },
-  {
-    image: "/assets/HeroSlides/binder.png",
-    title: "Build digital binders that feel real.",
-    subtitle:
-      "Layouts, covers, and pages you can share — just like your real binders.",
-    ctaText: "Go to Binders",
-    action: "binders",
-  },
-  {
-    image: "/assets/HeroSlides/wishlist.png",
-    title: "Never lose a chase card again.",
-    subtitle: "Wishlist & wantlist keep your next pickups front and centre.",
-    ctaText: "Open Wishlist",
-    action: "wishlist",
-  },
-  {
-    image: "/assets/HeroSlides/search.png",
-    title: "Find any English card fast.",
-    subtitle:
-      "Search by set code & number or name — instantly, no account needed just to look around.",
-    ctaText: "Search Cards",
-    action: "search",
-  },
-];
+/*
+  frontend/src/components/Layout/Hero.js
 
-const CTA_LOGGED_OUT = "Start free";
+  Changed:
+  - Removed carousel
+  - Removed right-side mockup completely
+  - Rebuilt as a clean full-width hero
+  - Keeps dark-only styling
+  - Keeps logged-in dashboard CTA
+  - Keeps logged-out auth modal CTA
+  - Keeps Search cards button behaviour
+*/
 
-export default function HeroSection({ onOpenAuthModal }) {
-  const { user } = useContext(AuthContext);
+function ArrowIcon({ className = "" }) {
+  return (
+    <svg
+      className={className}
+      width="17"
+      height="17"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M5 12h14"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path
+        d="M13 6l6 6-6 6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function SearchIcon({ className = "" }) {
+  return (
+    <svg
+      className={className}
+      width="17"
+      height="17"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M10.8 18.1a7.3 7.3 0 1 1 0-14.6 7.3 7.3 0 0 1 0 14.6z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M16.2 16.2 21 21"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function CheckIcon({ className = "" }) {
+  return (
+    <svg
+      className={className}
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M5 12.5l4.2 4.2L19 7"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function FeatureItem({ children }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[13px] font-medium text-vault-textTertiary">
+      <CheckIcon className="text-vault-textTertiary" />
+      {children}
+    </span>
+  );
+}
+
+export default function HeroSection() {
+  const { user, openAuthModal } = useContext(AuthContext);
   const router = useRouter();
 
-  const scrollToSearch = () => {
+  function scrollToSearch() {
     if (typeof document !== "undefined") {
       const el = document.getElementById("card-search");
+
       if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "start" });
         return;
       }
     }
+
     router.push("/search");
-  };
+  }
 
-  const handleCtaClick = (action) => {
-    // Search slide: logged-out → scroll to search, not auth
-    if (action === "search" && !user) {
-      scrollToSearch();
-      return;
-    }
-
-    // Other actions: logged-out → auth
+  function handlePrimaryClick() {
     if (!user) {
-      onOpenAuthModal?.();
+      openAuthModal();
       return;
     }
 
-    // Logged-in routes
-    if (action === "collection" || action === "binders" || action === "wishlist") {
-      router.push(`/profile/${user.username}?tab=${action}`);
-    } else if (action === "search") {
-      router.push("/search");
-    } else {
-      router.push(`/profile/${user.username}`);
-    }
-  };
+    router.push("/dashboard");
+  }
 
   return (
-    <section
-      className="relative w-full select-none"
-      role="region"
-      aria-roledescription="carousel"
-      aria-label="Highlights"
-    >
-      <Swiper
-        spaceBetween={0}
-        slidesPerView={1}
-        navigation
-        pagination={{ clickable: true }}
-        autoplay={{ delay: 6500, pauseOnMouseEnter: true }}
-        loop
-        // Slightly shorter, more “hero” than full banner
-        className="h-[50vh] min-h-[280px] md:h-[46vh] lg:h-[420px]"
-      >
-        {slidesData.map((slide, idx) => (
-          <SwiperSlide
-            key={idx}
-            aria-label={`Slide ${idx + 1}: ${slide.title}`}
-          >
-            <div className="relative h-full flex items-stretch justify-center">
-              {/* Background image */}
-              <img
-                src={slide.image}
-                alt={slide.title}
-                className="absolute inset-0 w-full h-full object-cover"
-                draggable={false}
-                style={{ pointerEvents: "none", userSelect: "none" }}
-              />
+    <section className="relative isolate overflow-hidden bg-vault-bg px-5 sm:px-7">
+      <div className="relative mx-auto flex max-w-7xl flex-col py-28 lg:py-36">
+        <div className="max-w-3xl">
+          <p className="mb-5 font-vault-body text-[11px] font-semibold uppercase tracking-[0.08em] text-vault-textTertiary">
+            Built for Pokémon TCG collectors
+          </p>
 
-              {/* Overlay gradient: a bit more subtle at top, stronger at bottom */}
-              <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-black/50 to-black/30 dark:from-black/90 dark:via-black/60 dark:to-black/40 z-10" />
+          <h1 className="max-w-2xl font-vault text-[44px] font-semibold leading-[1.1] tracking-tight text-vault-text sm:text-5xl lg:text-[56px]">
+            Organise your Pokémon cards like a real collection.
+          </h1>
 
-              {/* Content: left-aligned on desktop, centered on mobile */}
-              <div className="relative z-20 w-full">
-                <div className="mx-auto flex h-full max-w-6xl items-center px-4 sm:px-6 lg:px-8">
-                  <div className="max-w-xl text-left md:text-left text-white">
-                    {/* Small badge */}
-                    <div className="inline-flex items-center rounded-full border border-white/30 bg-black/30 px-3 py-1 text-xs font-medium mb-3">
-                      <span className="mr-1 text-sm" aria-hidden="true">
-                        🇬🇧
-                      </span>
-                      Built for Pokémon collectors
-                    </div>
+          <p className="mt-5 max-w-xl text-[15px] leading-7 text-vault-textSecondary sm:text-base">
+            Search cards, build digital binders, manage your wishlist, and keep
+            your collection organised in one place.
+          </p>
 
-                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold mb-2 tracking-tight drop-shadow-xl">
-                      {slide.title}
-                    </h1>
+          <div className="mt-8 flex items-center gap-5">
+            <button
+              type="button"
+              onClick={handlePrimaryClick}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-vault-accent px-5 text-sm font-semibold text-vault-text transition-colors hover:bg-vault-accentHover"
+            >
+              {user ? "Open dashboard" : "Create free account"}
+              <ArrowIcon />
+            </button>
 
-                    <p className="text-sm sm:text-base md:text-lg font-medium mb-5 text-white/90 drop-shadow">
-                      {slide.subtitle}
-                    </p>
+            <button
+              type="button"
+              onClick={scrollToSearch}
+              className="inline-flex h-10 items-center gap-1.5 text-sm font-semibold text-vault-textSecondary transition-colors hover:text-vault-text"
+            >
+              <SearchIcon />
+              Search cards
+            </button>
+          </div>
 
-                    {/* CTAs row */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                      {/* Primary CTA */}
-                      <button
-                        onClick={() => handleCtaClick(slide.action)}
-                        className="
-                          inline-flex items-center justify-center px-5 py-2.5
-                          rounded-full text-sm sm:text-base font-semibold
-                          bg-light-accent hover:bg-light-accentLight text-white shadow
-                          dark:bg-dark-accent dark:hover:bg-dark-accentLight
-                          transition
-                        "
-                        tabIndex={0}
-                        aria-label={user ? slide.ctaText : CTA_LOGGED_OUT}
-                      >
-                        {user ? slide.ctaText : CTA_LOGGED_OUT}
-                      </button>
-
-                      {/* Secondary CTA: always “Try card search” */}
-                      <button
-                        type="button"
-                        onClick={scrollToSearch}
-                        className="
-                          inline-flex items-center justify-center px-4 py-2
-                          rounded-full text-xs sm:text-sm font-medium
-                          bg-white/10 hover:bg-white/20 text-white
-                          border border-white/30
-                          transition
-                        "
-                      >
-                        Try card search
-                      </button>
-                    </div>
-
-                    {/* Quick feature chips */}
-                    <div className="mt-4 flex flex-wrap gap-2 text-[11px] sm:text-xs text-white/80">
-                      <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1">
-                        🃏 Track your collection
-                      </span>
-                      <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1">
-                        📚 Digital binders
-                      </span>
-                      <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1">
-                        ⭐ Wishlist & wantlist
-                      </span>
-                      <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1">
-                        📈 Pricing insights
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </SwiperSlide>
-        ))}
-      </Swiper>
-
-      {/* Soft gradient at bottom into page background */}
-      <div className="pointer-events-none absolute left-0 right-0 bottom-0 h-10 bg-gradient-to-t from-black/40 to-transparent dark:from-black/70 z-20" />
+          <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-vault-border pt-6">
+            <FeatureItem>Card search</FeatureItem>
+            <FeatureItem>Digital binders</FeatureItem>
+            <FeatureItem>Wishlist</FeatureItem>
+            <FeatureItem>Marketplace</FeatureItem>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }

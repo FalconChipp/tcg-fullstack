@@ -1,21 +1,10 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import { gql, useApolloClient } from "@apollo/client";
+import { useApolloClient } from "@apollo/client";
 import { useTheme } from "@/hooks/ThemeProvider";
 import { getSetLogo } from "@/utils/setLogos";
 import fallbackSetList from "@/utils/setList";
-
-const CARDSEARCH_SETS_QUERY = gql`
-  query CardsearchSetAutocomplete($limit: Int!, $offset: Int!) {
-    cardsearchSets(limit: $limit, offset: $offset) {
-      code
-      abbr
-      name
-      series
-      releasedAt
-      lang
-    }
-  }
-`;
+import { normalizeSearchText } from "@/utils/normalizeSearchText";
+import { CARDSEARCH_SETS_QUERY } from '@/graphql/collection';
 
 const CARDSEARCH_SET_PAGE_SIZE = 500;
 const CARDSEARCH_SET_MAX_PAGES = 5;
@@ -135,15 +124,15 @@ export default function SetAutocomplete({ value, onChange, onSelect }) {
   // Filtered options by code, abbr, or name
   const options = useMemo(() => {
     if (!displayValue) return [];
-    const query = displayValue.trim().toLowerCase();
+    const query = normalizeSearchText(displayValue);
     if (!query) return [];
 
     return sets
       .filter(
         (set) =>
-          (set.code && set.code.toLowerCase().includes(query)) ||
-          (set.abbr && set.abbr.toLowerCase().includes(query)) ||
-          (set.name && set.name.toLowerCase().includes(query))
+          (set.code && normalizeSearchText(set.code).includes(query)) ||
+          (set.abbr && normalizeSearchText(set.abbr).includes(query)) ||
+          (set.name && normalizeSearchText(set.name).includes(query))
       )
       .slice(0, 10);
   }, [displayValue, sets]);

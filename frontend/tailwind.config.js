@@ -21,19 +21,40 @@ module.exports = {
         'light-accentLight':'#548dff',
 
         // DARK
-        'dark-background':  '#16171c',        // Nearly black, NO blue!
-        'dark-surface':     '#191a20',        // Panels, a true dark blue/gray, but not saturated.
-        'dark-alt':         '#23243c',        // Inputs, etc.
-        'dark-text':        '#f7f8fa',        // Off-white.
-        'dark-textSecondary':'#b9bedd',
-        'dark-textMuted':   '#8f98bc',
-        'dark-border':      '#31365e',        // Blue-gray border, subtle.
-        'dark-accent':      '#2963FF',
-        'dark-accentLight': '#548dff',
+        'dark-background':  '#0b0d14',
+        'dark-surface':     '#111520',
+        'dark-alt':         '#181c28',
+        'dark-surf3':       '#1e2234',
+        'dark-text':        '#edf0fa',
+        'dark-textSecondary':'#9aa3c4',
+        'dark-textMuted':   '#5c6480',
+        'dark-border':      'rgba(255,255,255,0.07)',
+        'dark-borderMid':   'rgba(255,255,255,0.13)',
+        'dark-accent':      '#4169f4',
+        'dark-accentDim':   'rgba(65,105,244,0.14)',
+        'dark-accentLight': '#6b8ff7',
+
+        // --- Precision Vault (redesign tokens, scoped to new components) ---
+        'vault-bg':          '#0a0b0f',
+        'vault-surface':     '#13151a',
+        'vault-raised':      '#1a1d24',
+        'vault-overlay':     '#22262e',
+        'vault-border':      'rgba(255,255,255,0.08)',
+        'vault-borderStrong':'rgba(255,255,255,0.16)',
+        'vault-text':        '#f2f3f5',
+        'vault-textSecondary':'#9ca3af',
+        'vault-textTertiary': '#6b7280',
+        'vault-accent':      '#3b82f6',
+        'vault-accentHover': '#5b95f7',
+        'vault-success':     '#22c55e',
+        'vault-danger':      '#ef4444',
+        'vault-warning':     '#eab308',
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
         heading: ['Raleway', 'sans-serif'],
+        vault: ['"Space Grotesk"', 'sans-serif'],
+        'vault-body': ['Inter', 'sans-serif'],
       },
     },
   },

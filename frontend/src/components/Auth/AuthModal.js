@@ -8,6 +8,7 @@ import StatusMessage from '@/components/UI/StatusMessage';
 import { useTheme } from '@/hooks/ThemeProvider';
 
 import { useMutation } from '@apollo/client';
+import { devError } from '@/utils/devLog';
 import { LoginDocument, RegisterDocument } from '@sixbyfive/tcg-binder';
 
 // const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
@@ -228,14 +229,14 @@ const [registerMutation] = useMutation(RegisterDocument);
       } else {
         showStatus('error', msg);
       }
-      console.error('Auth error:', err);
+      devError('Auth error:', err);
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleGoogleFailure = (error) => {
-    console.error('Google login error:', error);
+    devError('Google login error:', error);
     showStatus('error', 'Google login failed. Please try again.');
   };
 

@@ -14,6 +14,7 @@ export default function DevBlog1Page() {
   return (
     <Layout>
       <BlogPostLayout
+        slug="dev-blog-1-11-months-of-building"
         title="SixByFive TCG – 11 Months of Building"
         subtitle="A behind-the-scenes look at how the platform has grown, what’s been hard, and where it’s heading next."
         date="2 December 2025"

@@ -6,8 +6,8 @@
 // - No changes to queries required (you already request `status`)
 
 import { useState, useEffect } from "react";
-
-const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+import { getGraphqlUrl } from "@/utils/apiClient";
+import { devWarn } from "@/utils/devLog";
 
 // ---------- utils ----------
 const toNumber = (value) => {
@@ -98,7 +98,7 @@ export default function useProfileCollection({ userId, token }) {
 
   useEffect(() => {
     if (!userId) {
-      console.warn("[useProfileCollection] No userId provided — collection will be empty.");
+      devWarn("[useProfileCollection] No userId provided — collection will be empty.");
     }
     let aborted = false;
 
@@ -170,7 +170,7 @@ export default function useProfileCollection({ userId, token }) {
 
       try {
         const [colResp, wishResp] = await Promise.all([
-          fetch(WP_GRAPHQL_URL, {
+          fetch(getGraphqlUrl(), {
             method: "POST",
             headers,
             // force network (avoid cached fetches that could be stale)
@@ -180,7 +180,7 @@ export default function useProfileCollection({ userId, token }) {
               variables: { userId: String(userId) },
             }),
           }),
-          fetch(WP_GRAPHQL_URL, {
+          fetch(getGraphqlUrl(), {
             method: "POST",
             headers,
             cache: "no-store",

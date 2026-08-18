@@ -11,7 +11,7 @@
   NEXT_PUBLIC_GATEWAY_URL = "https://backendtcg.sixbyfive.com"
   NEXT_PUBLIC_REALTIME_URL = "https://backendtcg.sixbyfive.com"
   NPM_CONFIG_USERCONFIG = "./.npmrc"
-  NODE_VERSION = "18"
+  NODE_VERSION = "22"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"

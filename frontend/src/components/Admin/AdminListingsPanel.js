@@ -1,194 +1,135 @@
-// frontend/src/components/Admin/AdminListingsPanel.js
-// -----------------------------------------------------------------------------
-// Admin panel: marketplace listings for CARD listings only.
-// Uses listings(type: CARD, ...) + deleteListing(id: ID!) on the backend.
-// -----------------------------------------------------------------------------
-
 "use client";
 
-import React from "react";
-import { gql, useQuery, useMutation } from "@apollo/client";
-
-// Query only CARD listings via the unified marketplace API
-const CARD_LISTINGS = gql`
-  query AdminCardListings($limit: Int, $offset: Int) {
-    listings(type: CARD, limit: $limit, offset: $offset) {
-      __typename
-      ... on CardListing {
-        id
-        cardId
-        quantity
-        price
-        status
-      }
-    }
-  }
-`;
-
-// Use the generic deleteListing mutation
-const DELETE_LISTING = gql`
-  mutation AdminDeleteListing($id: ID!) {
-    deleteListing(id: $id)
-  }
-`;
+import React, { useState } from "react";
+import { useQuery, useMutation } from "@apollo/client";
+import { ADMIN_LISTINGS_QUERY, ADMIN_DELETE_CARD_LISTING as DELETE_LISTING } from '@/graphql/admin';
 
 const PAGE_SIZE = 100;
 
+const STATUS_OPTS = ["all", "active", "sold", "cancelled", "pending_proof", "proof_rejected"];
+
+function StatusBadge({ status }) {
+  const cls = {
+    active:          "bg-emerald-500/10 text-emerald-300 border-emerald-500/30",
+    sold:            "bg-sky-500/10 text-sky-300 border-sky-500/30",
+    cancelled:       "bg-neutral-500/10 text-neutral-500 border-white/10",
+    pending_proof:   "bg-amber-500/10 text-amber-300 border-amber-500/30",
+    proof_rejected:  "bg-red-500/10 text-red-300 border-red-500/30",
+  }[status] ?? "bg-white/[0.04] text-neutral-400 border-white/10";
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium border ${cls}`}>
+      {status?.replace(/_/g, " ") ?? "—"}
+    </span>
+  );
+}
+
+function fmt(v) {
+  if (!v) return "—";
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
 export default function AdminListingsPanel() {
-  const { data, loading, error, refetch } = useQuery(CARD_LISTINGS, {
-    variables: { limit: PAGE_SIZE, offset: 0 },
-    fetchPolicy: "cache-first",
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [offset, setOffset] = useState(0);
+
+  const { data, loading, error, refetch } = useQuery(ADMIN_LISTINGS_QUERY, {
+    variables: {
+      status: statusFilter === "all" ? null : statusFilter,
+      limit: PAGE_SIZE,
+      offset,
+    },
+    fetchPolicy: "network-only",
   });
 
   const [deleteListing, { loading: deleting }] = useMutation(DELETE_LISTING, {
     onCompleted: () => refetch(),
   });
 
-  // Filter to CardListing only (defensive in case other types ever leak in)
-  const listings =
-    data?.listings?.filter((l) => l.__typename === "CardListing") ?? [];
+  const listings = data?.adminListings ?? [];
+  const page = Math.floor(offset / PAGE_SIZE) + 1;
 
   const handleDelete = (l) => {
-    if (
-      !confirm(
-        `Delete listing ${l.id} for card ${l.cardId} (${l.quantity} @ £${l.price})?`
-      )
-    ) {
-      return;
-    }
-
+    if (!confirm(`Delete listing ${l.id}?\n"${l.title || l.cardId}" × ${l.quantity} @ £${Number(l.price ?? 0).toFixed(2)}`)) return;
     deleteListing({ variables: { id: l.id } });
   };
 
-  if (loading) {
-    return (
-      <div className="border border-white/5 rounded-xl p-4 bg-black/40">
-        <p className="text-sm text-neutral-300 mb-1">
-          Loading marketplace listings…
-        </p>
-        <p className="text-xs text-neutral-500">
-          Fetching card listings from the server.
-        </p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="border border-red-500/40 rounded-xl p-4 bg-red-950/40">
-        <p className="text-sm text-red-300 font-semibold mb-1">
-          Failed to load listings
-        </p>
-        <p className="text-xs text-red-200 mb-3">{error.message}</p>
-        <button
-          type="button"
-          onClick={() => refetch()}
-          className="inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium border border-red-400/60 text-red-50 hover:bg-red-500/10"
-        >
-          Try again
-        </button>
-      </div>
-    );
-  }
-
-  if (!listings.length) {
-    return (
-      <div className="border border-white/5 rounded-xl p-4 bg-black/40">
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <h2 className="text-sm font-semibold text-neutral-50">
-            Marketplace listings
-          </h2>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium border border-white/20 text-neutral-50 hover:bg-white/10"
-          >
-            Refresh
-          </button>
-        </div>
-        <p className="text-sm text-neutral-300">
-          No card listings found.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2">
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-neutral-50">
-            Marketplace listings (cards)
-          </h2>
-          <p className="text-xs text-neutral-500">
-            Showing {listings.length} card listings (limit {PAGE_SIZE}).
+          <h2 className="text-base font-semibold text-neutral-50">Marketplace Listings</h2>
+          <p className="text-xs text-neutral-500 mt-0.5">
+            {loading ? "Loading…" : `${listings.length} listing${listings.length !== 1 ? "s" : ""} — page ${page}.`}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => refetch()}
-          disabled={deleting}
-          className="inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium border border-white/20 text-neutral-50 hover:bg-white/10 disabled:opacity-60"
-        >
-          Refresh
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex rounded-lg border border-white/10 overflow-hidden text-[11px]">
+            {STATUS_OPTS.map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => { setStatusFilter(opt); setOffset(0); }}
+                className={["px-3 py-1.5 font-medium capitalize transition", statusFilter === opt ? "bg-white/10 text-neutral-100" : "text-neutral-500 hover:text-neutral-300 hover:bg-white/5"].join(" ")}
+              >
+                {opt.replace(/_/g, " ")}
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={() => refetch()} disabled={loading || deleting} className="px-3 py-1.5 rounded-lg text-xs font-medium border border-white/15 text-neutral-300 hover:bg-white/5 disabled:opacity-50 transition">Refresh</button>
+        </div>
       </div>
 
-      <div className="overflow-x-auto border border-white/5 rounded-xl bg-black/40">
+      {error && <div className="border border-red-500/30 rounded-xl p-3 bg-red-950/20 text-xs text-red-300">{error.message}</div>}
+
+      <div className="overflow-x-auto border border-white/[0.08] rounded-2xl bg-black/30">
         <table className="min-w-full text-xs">
-          <thead className="bg-white/5 text-neutral-300">
-            <tr>
-              <th className="px-3 py-2 text-left font-semibold">ID</th>
-              <th className="px-3 py-2 text-left font-semibold">Card</th>
-              <th className="px-3 py-2 text-left font-semibold">Quantity</th>
-              <th className="px-3 py-2 text-left font-semibold">Price</th>
-              <th className="px-3 py-2 text-left font-semibold">Status</th>
-              <th className="px-3 py-2 text-left font-semibold">Actions</th>
+          <thead>
+            <tr className="border-b border-white/[0.06]">
+              {["ID", "Title / Card", "Seller", "Price", "Qty", "Condition", "Status", "Listed", "Actions"].map((h) => (
+                <th key={h} className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-neutral-500">{h}</th>
+              ))}
             </tr>
           </thead>
-          <tbody>
-            {listings.map((l) => (
-              <tr
-                key={l.id}
-                className="border-t border-white/5 hover:bg-white/5 transition"
-              >
-                <td className="px-3 py-2 align-top font-mono text-[11px] text-neutral-400">
-                  {l.id}
-                </td>
-                <td className="px-3 py-2 align-top">
-                  <span className="text-[11px] text-neutral-300">
-                    {l.cardId}
-                  </span>
-                </td>
-                <td className="px-3 py-2 align-top">
-                  <span className="text-[11px] text-neutral-300">
-                    {l.quantity}
-                  </span>
-                </td>
-                <td className="px-3 py-2 align-top">
-                  <span className="text-[11px] text-neutral-300">
-                    £{Number(l.price ?? 0).toFixed(2)}
-                  </span>
-                </td>
-                <td className="px-3 py-2 align-top">
-                  <span className="text-[11px] text-neutral-300">
-                    {l.status}
-                  </span>
-                </td>
-                <td className="px-3 py-2 align-top">
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(l)}
-                    disabled={deleting}
-                    className="px-2 py-1 rounded-md border border-red-400/60 text-[10px] text-red-200 hover:bg-red-500/20 disabled:opacity-60"
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
+          <tbody className="divide-y divide-white/[0.04]">
+            {loading && !data ? (
+              Array.from({ length: 8 }).map((_, i) => (
+                <tr key={i} className="border-b border-white/[0.04]">
+                  {Array.from({ length: 9 }).map((__, j) => (
+                    <td key={j} className="px-3 py-3"><div className="h-3 rounded bg-white/[0.06] animate-pulse" /></td>
+                  ))}
+                </tr>
+              ))
+            ) : listings.length === 0 ? (
+              <tr><td colSpan={9} className="px-3 py-8 text-center text-sm text-neutral-500">No listings found.</td></tr>
+            ) : (
+              listings.map((l) => (
+                <tr key={l.id} className="hover:bg-white/[0.03] transition align-top">
+                  <td className="px-3 py-3 font-mono text-[10px] text-neutral-600 max-w-[80px] truncate">{l.id}</td>
+                  <td className="px-3 py-3">
+                    <p className="text-neutral-200 font-medium max-w-[180px] truncate">{l.title || "—"}</p>
+                    <p className="font-mono text-[10px] text-neutral-600">{l.cardId}</p>
+                  </td>
+                  <td className="px-3 py-3 font-mono text-[10px] text-neutral-500 max-w-[100px] truncate">{l.sellerId}</td>
+                  <td className="px-3 py-3 font-medium text-neutral-100 whitespace-nowrap">£{Number(l.price ?? 0).toFixed(2)}</td>
+                  <td className="px-3 py-3 text-neutral-400">{l.quantity ?? "—"}</td>
+                  <td className="px-3 py-3 text-neutral-400 capitalize">{l.condition?.toLowerCase() || "—"}</td>
+                  <td className="px-3 py-3"><StatusBadge status={l.status} /></td>
+                  <td className="px-3 py-3 text-neutral-500 whitespace-nowrap">{fmt(l.createdAt)}</td>
+                  <td className="px-3 py-3">
+                    <button type="button" disabled={deleting} onClick={() => handleDelete(l)} className="px-2 py-1 rounded text-[10px] border border-red-400/40 text-red-300 hover:bg-red-500/10 disabled:opacity-50 transition">Delete</button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
+
+        <div className="flex items-center justify-between px-4 py-2.5 border-t border-white/[0.06]">
+          <button type="button" disabled={offset === 0} onClick={() => setOffset((o) => Math.max(0, o - PAGE_SIZE))} className="px-3 py-1.5 rounded-lg text-xs font-medium border border-white/15 text-neutral-300 hover:bg-white/5 disabled:opacity-40 transition">← Prev</button>
+          <span className="text-[11px] text-neutral-500">Page {page}</span>
+          <button type="button" disabled={listings.length < PAGE_SIZE} onClick={() => setOffset((o) => o + PAGE_SIZE)} className="px-3 py-1.5 rounded-lg text-xs font-medium border border-white/15 text-neutral-300 hover:bg-white/5 disabled:opacity-40 transition">Next →</button>
+        </div>
       </div>
     </div>
   );

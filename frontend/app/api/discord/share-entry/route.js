@@ -103,25 +103,23 @@ export async function POST(req) {
       );
     }
 
-    const target = process.env.BACKEND_DISCORD_SHARE_URL;
-    if (!target) {
-      return NextResponse.json(
-        { ok: false, error: "Missing BACKEND_DISCORD_SHARE_URL (server env)" },
-        { status: 500 }
-      );
-    }
+    // Route to collection or wishlist endpoint based on type
+    const shareType = body?.type === "wishlist" ? "wishlist" : "collection";
+    const backend = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4010";
+    const target = `${backend.replace(/\/+$/, "")}/discord/share/${shareType}`;
 
-    // bot shared secret
-    const key = process.env.DISCORD_BOT_API_KEY || "";
-    if (!key) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: "Missing DISCORD_BOT_API_KEY (server env) - required to call bot share API",
-        },
-        { status: 500 }
-      );
-    }
+    // Map dialog payload to what user-service expects
+    const card = body?.entry?.card ?? body?.entry ?? body?.card ?? {};
+    const upstreamBody = {
+      guildId:   body?.guildId   ?? null,
+      channelId: body?.channelId ?? null,
+      cardId:    card.id   ?? card.cardId   ?? body?.cardId   ?? null,
+      cardName:  card.name ?? card.tcgName  ?? body?.cardName ?? "Unknown card",
+      variation: body?.entry?.variation ?? card.variation ?? body?.variation ?? null,
+      quantity:  body?.entry?.quantity  ?? card.quantity  ?? body?.quantity  ?? 1,
+      imageUrl:  card.image ?? card.imageUrl ?? body?.imageUrl ?? null,
+      message:   body?.message ?? null,
+    };
 
     let upstream;
     try {
@@ -129,10 +127,9 @@ export async function POST(req) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-sbf-key": key, // ✅ REQUIRED for requireBackendKey
           ...(auth ? { Authorization: auth } : {}),
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify(upstreamBody),
       });
     } catch (err) {
       return NextResponse.json(
@@ -148,11 +145,11 @@ export async function POST(req) {
     }
 
     const text = await upstream.text();
-    let upstreamBody = null;
+    let upstreamResponse = null;
     try {
-      upstreamBody = text ? JSON.parse(text) : null;
+      upstreamResponse = text ? JSON.parse(text) : null;
     } catch {
-      upstreamBody = text || null;
+      upstreamResponse = text || null;
     }
 
     if (!upstream.ok) {
@@ -160,11 +157,11 @@ export async function POST(req) {
         {
           ok: false,
           error:
-            (upstreamBody && upstreamBody.error) ||
-            (upstreamBody && upstreamBody.message) ||
+            (upstreamResponse && upstreamResponse.error) ||
+            (upstreamResponse && upstreamResponse.message) ||
             `Upstream error ${upstream.status}`,
           upstreamStatus: upstream.status,
-          upstreamBody,
+          upstreamBody: upstreamResponse,
           target,
           reqId,
         },
@@ -172,7 +169,7 @@ export async function POST(req) {
       );
     }
 
-    return NextResponse.json(upstreamBody || { ok: true });
+    return NextResponse.json(upstreamResponse || { ok: true });
   } catch (err) {
     return NextResponse.json(
       { ok: false, error: err?.message || "Server error", reqId },

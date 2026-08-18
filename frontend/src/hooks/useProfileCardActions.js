@@ -1,5 +1,4 @@
-const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
-const TCG_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+import { getGraphqlUrl } from "@/utils/apiClient";
 
 /**
  * Handles profile actions for cards, including collection/wishlist edits.
@@ -96,7 +95,7 @@ export default function useProfileCardActions({
           }
         }
       `;
-      const response = await fetch(WP_GRAPHQL_URL, {
+      const response = await fetch(getGraphqlUrl(), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -207,7 +206,7 @@ export default function useProfileCardActions({
           : (cardObj?.variation === null ? null : undefined)
       };
 
-      const response = await fetch(TCG_GRAPHQL_URL, {
+      const response = await fetch(getGraphqlUrl(), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -242,7 +241,7 @@ export default function useProfileCardActions({
           removeFromWishlist(cardId: $cardId, variation: $variation)
         }
       `;
-      const response = await fetch(WP_GRAPHQL_URL, {
+      const response = await fetch(getGraphqlUrl(), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -301,7 +300,7 @@ export default function useProfileCardActions({
           }
         }
       `;
-      const response = await fetch(WP_GRAPHQL_URL, {
+      const response = await fetch(getGraphqlUrl(), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -9,6 +9,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { devWarn } from "@/utils/devLog";
 import Image from "next/image";
 import { useRouter } from "next/router";
 import { useTheme } from "@/hooks/ThemeProvider";
@@ -437,7 +438,7 @@ export default function ProfileWishlistPanel({
         setToastStatus({ type: "success", msg: `Wishlist status: ${prettyStatus(savedStatus)}` });
       }
     } catch (err) {
-      console.warn("[Wishlist] update status failed", err);
+      devWarn("[Wishlist] update status failed", err);
 
       // rollback local
       setDisplayWishlist((prev) =>
@@ -509,12 +510,12 @@ export default function ProfileWishlistPanel({
   if ((displayWishlist?.length ?? 0) === 0) {
     return (
       <section className="w-full max-w-8xl mx-auto mt-6">
-        <div className={`text-center py-8 ${dark ? "text-dark-text" : "text-light-text"}`}>
+        <div className={`text-center py-8 ${dark ? "text-vault-text" : "text-vault-text"}`}>
           <div className="flex flex-col items-center gap-2 mb-2">
-            <span className={`text-2xl font-bold ${dark ? "text-dark-accent" : "text-light-accent"}`}>
+            <span className={`text-2xl font-bold ${dark ? "text-vault-accent" : "text-vault-accent"}`}>
               {isOwnProfile ? "You haven't added any cards to your wishlist yet." : "No wishlist cards to display."}
             </span>
-            <span className={`text-base ${dark ? "text-dark-textSecondary" : "text-light-textSecondary"}`}>
+            <span className={`text-base ${dark ? "text-vault-textSecondary" : "text-vault-textSecondary"}`}>
               {isOwnProfile
                 ? "Search for cards and add them to your wishlist to keep track of what you want!"
                 : "No cards found in this user's wishlist."}
@@ -559,8 +560,8 @@ export default function ProfileWishlistPanel({
       {isOwnProfile && profileUsername ? (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
-            <h2 className={`text-xl font-extrabold ${dark ? "text-dark-text" : "text-light-text"}`}>Wishlist</h2>
-            <p className={`text-sm font-semibold ${dark ? "text-dark-textSecondary" : "text-light-textSecondary"}`}>
+            <h2 className={`text-xl font-extrabold ${dark ? "text-vault-text" : "text-vault-text"}`}>Wishlist</h2>
+            <p className={`text-sm font-semibold ${dark ? "text-vault-textSecondary" : "text-vault-textSecondary"}`}>
               Share this wishlist view (filters included).
             </p>
           </div>
@@ -575,7 +576,7 @@ export default function ProfileWishlistPanel({
         </div>
       ) : (
         <div className="mb-4">
-          <h2 className={`text-xl font-extrabold ${dark ? "text-dark-text" : "text-light-text"}`}>Wishlist</h2>
+          <h2 className={`text-xl font-extrabold ${dark ? "text-vault-text" : "text-vault-text"}`}>Wishlist</h2>
         </div>
       )}
 
@@ -586,11 +587,11 @@ export default function ProfileWishlistPanel({
             <input
               type="text"
               placeholder="Search"
-              className="w-full bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 pl-8 py-1.5 border border-light-border dark:border-dark-border focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm transition h-9 font-semibold"
+              className="w-full bg-vault-surface text-vault-text rounded-md px-3 pl-8 py-1.5 border border-vault-border focus:border-vault-accent dark:focus:border-vault-accent outline-none text-sm transition h-9 font-semibold"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-light-textSecondary dark:text-dark-textSecondary pointer-events-none">
+            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-vault-textSecondary pointer-events-none">
               <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <circle cx="11" cy="11" r="8" />
                 <path d="M21 21l-4.35-4.35" />
@@ -601,7 +602,7 @@ export default function ProfileWishlistPanel({
           <select
             value={setFilter}
             onChange={(e) => setSetFilter(e.target.value)}
-            className="w-[140px] bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 py-1.5 border border-light-border dark:border-dark-border focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm transition h-9 font-semibold"
+            className="w-[140px] bg-vault-surface text-vault-text rounded-md px-3 py-1.5 border border-vault-border focus:border-vault-accent dark:focus:border-vault-accent outline-none text-sm transition h-9 font-semibold"
           >
             <option value="">Set</option>
             {allSets.map((set) => (
@@ -614,7 +615,7 @@ export default function ProfileWishlistPanel({
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-[160px] bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 py-1.5 border border-light-border dark:border-dark-border focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm transition h-9 font-semibold"
+            className="w-[160px] bg-vault-surface text-vault-text rounded-md px-3 py-1.5 border border-vault-border focus:border-vault-accent dark:focus:border-vault-accent outline-none text-sm transition h-9 font-semibold"
           >
             {STATUS_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -626,7 +627,7 @@ export default function ProfileWishlistPanel({
           <select
             value={sortOption}
             onChange={(e) => setSortOption(e.target.value)}
-            className="w-[160px] bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text rounded-md px-3 py-1.5 border border-light-border dark:border-dark-border focus:border-light-accent dark:focus:border-dark-accent outline-none text-sm transition h-9 font-semibold"
+            className="w-[160px] bg-vault-surface text-vault-text rounded-md px-3 py-1.5 border border-vault-border focus:border-vault-accent dark:focus:border-vault-accent outline-none text-sm transition h-9 font-semibold"
           >
             {SORT_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -636,7 +637,7 @@ export default function ProfileWishlistPanel({
           </select>
         </div>
 
-        <div className="flex items-center justify-between text-xs text-light-textMuted dark:text-dark-textMuted">
+        <div className="flex items-center justify-between text-xs text-vault-textTertiary">
           <span>
             Showing <span className="font-semibold">{sortedWishlist.length}</span> of{" "}
             <span className="font-semibold">{displayWishlist.length}</span> cards
@@ -674,16 +675,16 @@ export default function ProfileWishlistPanel({
             <div
               key={entry.id}
               className={`
-                rounded-2xl shadow-lg p-3 flex flex-col items-center min-h-[420px]
-                hover:shadow-xl transition group
-                border border-light-border dark:border-dark-border
-                ${dark ? "bg-dark-surface" : "bg-light-surface"}
+                rounded-[10px]  p-3 flex flex-col items-center min-h-[420px]
+                hover: transition group
+                border border-vault-border
+                ${dark ? "bg-vault-surface" : "bg-vault-surface"}
               `}
             >
               <div
                 className={`
-                  relative w-full aspect-[245/337] rounded-lg mb-2 overflow-hidden cursor-pointer
-                  ${dark ? "bg-dark-alt" : "bg-light-alt"}
+                  relative w-full aspect-[245/337] rounded-[6px] mb-2 overflow-hidden cursor-pointer
+                  ${dark ? "bg-vault-raised" : "bg-vault-raised"}
                 `}
                 // KEEP: you can still use onViewCardDetail if parent wants it
                 onClick={() => onViewCardDetail && onViewCardDetail(entry)}
@@ -692,35 +693,35 @@ export default function ProfileWishlistPanel({
                   src={getCardImageUrl(img)}
                   alt={card.name || "Pokémon Card"}
                   fill
-                  className="object-contain rounded-lg group-hover:scale-105 transition-transform duration-300"
+                  className="object-contain rounded-[6px] group-hover:scale-105 transition-transform duration-300"
                   unoptimized
                 />
 
                 {entry.quantity > 1 && (
-                  <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded-full text-xs font-bold">
+                  <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded-[6px] text-xs font-bold">
                     x{entry.quantity}
                   </div>
                 )}
               </div>
 
               <div className="w-full flex flex-col items-start mt-1 flex-1">
-                <h3 className={`text-base font-bold truncate mb-1 ${dark ? "text-dark-text" : "text-light-text"}`}>
+                <h3 className={`text-base font-bold truncate mb-1 ${dark ? "text-vault-text" : "text-vault-text"}`}>
                   {card.name || "(Unknown)"}
                 </h3>
 
-                <div className={`text-sm truncate ${dark ? "text-dark-textSecondary" : "text-light-textSecondary"}`}>
+                <div className={`text-sm truncate ${dark ? "text-vault-textSecondary" : "text-vault-textSecondary"}`}>
                   {setLabel || "(No set)"}
                 </div>
 
                 <div className="flex items-center gap-2 text-xs">
-                  <span className={`${dark ? "text-dark-textMuted" : "text-light-textMuted"}`}>#{card.number}</span>
+                  <span className={`${dark ? "text-vault-textTertiary" : "text-vault-textTertiary"}`}>#{card.number}</span>
                 </div>
 
                 <div className="flex items-center gap-4 text-xs mt-1">
-                  <span className={`${dark ? "text-dark-textMuted" : "text-light-textMuted"}`}>
+                  <span className={`${dark ? "text-vault-textTertiary" : "text-vault-textTertiary"}`}>
                     Qty: {entry.quantity || 1}
                   </span>
-                  <span className={`${dark ? "text-dark-accent" : "text-light-accent"}`}>
+                  <span className={`${dark ? "text-vault-accent" : "text-vault-accent"}`}>
                     {entry.condition || "mint"}
                   </span>
                 </div>
@@ -740,12 +741,12 @@ export default function ProfileWishlistPanel({
                             if (!active) handleSetEntryStatus(entry, s);
                           }}
                           className={`
-                            px-2 py-1 rounded-full text-[11px] font-extrabold border transition
+                            px-2 py-1 rounded-[6px] text-[11px] font-extrabold border transition
                             ${statusSaving ? "opacity-70 cursor-not-allowed" : ""}
                             ${
                               active
-                                ? "bg-light-accent dark:bg-dark-accent text-white border-transparent"
-                                : "bg-light-alt dark:bg-dark-alt text-light-text dark:text-white border-light-border dark:border-dark-border hover:bg-light-surface dark:hover:bg-dark-surface"
+                                ? "bg-vault-accent text-vault-text border-transparent"
+                                : "bg-vault-raised text-vault-text dark:text-white border-vault-border hover:bg-vault-surface dark:hover:bg-vault-surface"
                             }
                           `}
                           title={`Set status: ${s}`}
@@ -755,7 +756,7 @@ export default function ProfileWishlistPanel({
                       );
                     })
                   ) : (
-                    <span className="text-[11px] font-semibold text-light-textMuted dark:text-dark-textMuted">
+                    <span className="text-[11px] font-semibold text-vault-textTertiary">
                       Status: {prettyStatus(currentStatus)}
                     </span>
                   )}
@@ -768,9 +769,9 @@ export default function ProfileWishlistPanel({
                     type="button"
                     onClick={() => onMoveToCollection(entry)}
                     className={`
-                      h-10 px-4 rounded-lg font-medium transition-colors flex-grow
-                      bg-light-accent hover:bg-light-accent text-white
-                      dark:bg-dark-primary dark:hover:bg-dark-accentLight
+                      h-10 px-4 rounded-[6px] font-medium transition-colors flex-grow
+                      bg-vault-accent hover:bg-vault-accent text-vault-text
+                      dark:bg-vault-accent dark:hover:bg-vault-accentHover
                     `}
                   >
                     Collect
@@ -783,13 +784,13 @@ export default function ProfileWishlistPanel({
                       openDiscordShareForEntry(entry);
                     }}
                     className={`
-                      h-10 w-10 rounded-xl flex items-center justify-center
-                      border shadow-sm transition-all
-                      hover:shadow-md active:scale-[0.98]
+                      h-10 w-10 rounded-[10px] flex items-center justify-center
+                      border  transition-all
+                      hover: active:scale-[0.98]
                       focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
                       ${dark
-                        ? "bg-dark-alt border-dark-border text-white hover:border-dark-accent focus-visible:ring-dark-accent focus-visible:ring-offset-dark-surface"
-                        : "bg-light-alt border-light-border text-light-text hover:border-light-accent focus-visible:ring-light-accent focus-visible:ring-offset-light-surface"}
+                        ? "bg-vault-raised border-vault-border text-white hover:border-vault-accent focus-visible:ring-vault-accent focus-visible:ring-offset-vault-surface"
+                        : "bg-vault-raised border-vault-border text-vault-text hover:border-vault-accent focus-visible:ring-vault-accent focus-visible:ring-offset-vault-surface"}
                     `}
                     title="Share to Discord"
                     aria-label="Share to Discord"
@@ -811,10 +812,10 @@ export default function ProfileWishlistPanel({
                       onClick={() => handleRemoveClick(entry)}
                       className={`
                         flex items-center justify-center
-                        rounded-lg transition-all duration-200 h-10
+                        rounded-[6px] transition-all duration-200 h-10
                         ${confirmRemoveId === entry.id ? "w-24" : "w-10"}
-                        bg-light-error hover:bg-light-error/90 text-white
-                        dark:bg-dark-error dark:hover:bg-dark-error/90 dark:text-white
+                        bg-vault-danger hover:bg-vault-danger/90 text-white
+                        dark:bg-vault-danger dark:hover:bg-vault-danger/90 dark:text-white
                       `}
                       title={confirmRemoveId === entry.id ? "Click to confirm removal" : "Remove from wishlist"}
                     >

@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState } from "react";
 
-// Centralised invite for reuse in copy
 const DISCORD_INVITE = "https://discord.gg/PRMbMbRE2H";
 
-const FAQ_ITEMS = [
+export const FAQ_ITEMS = [
   {
     q: "Is the site free to use?",
     a: "Yes. Core features are free during the beta, and a free tier will remain available.",
@@ -20,61 +19,95 @@ const FAQ_ITEMS = [
   },
   {
     q: "How do I add cards to my collection?",
-    a: 'Use Advanced Search to find by set code + number (e.g., "SVI 210") or by name, then add to your collection or a binder.',
+    a: 'Use search to find by set code and number, such as "SVI 210", or by card name. From there, you can add cards to your collection, wishlist, or binder.',
   },
   {
     q: "Can I organise my collection into multiple binders?",
-    a: "Yes — create as many digital binders as you like, each with its own name, cover, and layout.",
+    a: "Yes. You can create digital binders for sets, themes, trade cards, wishlist cards, or physical binder planning.",
   },
   {
     q: "When will trading and the marketplace go live?",
-    a: `We’re testing now with early users. Join Discord to get access when it opens: ${DISCORD_INVITE}`,
+    a: `They are being tested with early users. Join Discord to follow updates and get access when testing opens: ${DISCORD_INVITE}`,
   },
   {
     q: "Can I export my collection?",
-    a: "Export will arrive after trading/marketplace. For now, manage everything directly on the site.",
+    a: "Export tools are planned. For now, collections are managed directly inside SixByFive TCG.",
   },
   {
     q: "What card games are supported?",
-    a: "Pokémon TCG today. Support for MTG and Disney Lorcana is planned.",
+    a: "Pokémon TCG is supported today. MTG and Disney Lorcana support are planned later.",
   },
   {
     q: "How do I give feedback or suggest new features?",
-    a: `Join our Discord or use the contact page — we read everything: ${DISCORD_INVITE}`,
+    a: `Join the Discord or use the contact page. Feedback from collectors directly shapes what gets built next: ${DISCORD_INVITE}`,
   },
 ];
 
-// Collapsible answer with smooth measured height
-function Collapsible({ id, isOpen, children }) {
-  const innerRef = useRef(null);
-  const [height, setHeight] = useState(0);
-
-  useEffect(() => {
-    if (innerRef.current) {
-      const h = innerRef.current.scrollHeight;
-      setHeight(h);
-    }
-  }, [isOpen, children]);
-
+function FAQItem({ item, index, isOpen, onToggle }) {
   return (
     <div
-      id={id}
-      className={`
-        overflow-hidden transition-all duration-300 ease-in-out
-        ${isOpen ? "opacity-100" : "opacity-0"}
-      `}
-      style={{ maxHeight: isOpen ? height : 0 }}
-      aria-hidden={!isOpen}
+      className={[
+        "rounded-2xl border transition-colors duration-200",
+        isOpen
+          ? "border-dark-accent/70 bg-dark-surface shadow-xl shadow-black/20"
+          : "border-dark-border bg-dark-surface hover:border-dark-accent/50",
+      ].join(" ")}
     >
-      <div
-        ref={innerRef}
-        className="
-          px-6 pt-3 pb-5
-          text-sm md:text-[15px]
-          text-light-textSecondary dark:text-dark-textSecondary
-        "
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        className="flex w-full items-center justify-between gap-4 rounded-2xl px-5 py-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-dark-accent"
       >
-        {children}
+        <div className="flex items-center gap-3">
+          <span
+            className={[
+              "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-black",
+              isOpen ? "bg-dark-accent text-white" : "bg-dark-alt text-dark-textMuted",
+            ].join(" ")}
+            aria-hidden="true"
+          >
+            {index + 1}
+          </span>
+          <span
+            className={[
+              "text-sm font-black sm:text-base",
+              isOpen ? "text-dark-strong" : "text-dark-text",
+            ].join(" ")}
+          >
+            {item.q}
+          </span>
+        </div>
+
+        <span
+          className={[
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border text-lg font-black transition-colors duration-200",
+            isOpen
+              ? "border-dark-accent bg-dark-accent/15 text-dark-accentLight"
+              : "border-dark-border bg-dark-alt text-dark-textMuted",
+          ].join(" ")}
+          aria-hidden="true"
+        >
+          {isOpen ? "−" : "+"}
+        </span>
+      </button>
+
+      <div
+        aria-hidden={!isOpen}
+        style={{
+          display: "grid",
+          gridTemplateRows: isOpen ? "1fr" : "0fr",
+          overflow: "hidden",
+          transition: "grid-template-rows 280ms ease-in-out, opacity 200ms ease-in-out",
+          opacity: isOpen ? 1 : 0,
+        }}
+      >
+        <div style={{ minHeight: 0 }}>
+          <div className="mx-5 border-t border-dark-border/40" />
+          <p className="px-5 py-4 text-sm leading-7 text-dark-textMuted">
+            {item.a}
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -84,109 +117,44 @@ export default function FAQ() {
   const [open, setOpen] = useState(null);
 
   return (
-    <section className="py-16 px-4 bg-light-background dark:bg-dark-background transition-colors">
-      <div className="mx-auto max-w-6xl flex flex-col gap-10 md:flex-row">
-        {/* Left column: intro + Discord CTA */}
-        <div className="md:w-1/3">
-          <h2 className="text-3xl md:text-4xl font-bold text-light-text dark:text-dark-text drop-shadow-sm">
-            Questions?
-          </h2>
-          <p className="mt-3 text-sm md:text-base text-light-textSecondary dark:text-dark-textSecondary">
-            SixByFive is in active development, and we&apos;re constantly
-            improving it with feedback from real collectors. Here are some of
-            the most common questions — and if you&apos;re still not sure,
-            we&apos;re only a message away.
-          </p>
+    <section className="relative overflow-hidden bg-dark-background px-5 py-14 sm:px-7 lg:py-20">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute left-1/2 top-10 h-[460px] w-[460px] -translate-x-1/2 rounded-full bg-dark-accent/[0.06] blur-3xl" />
+      </div>
 
-          <div className="mt-5 space-y-2 text-sm text-light-textSecondary dark:text-dark-textSecondary">
-            <p>Need help, found a bug, or want to request a feature?</p>
-            <a
-              href={DISCORD_INVITE}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="
-                inline-flex items-center gap-2 rounded-full
-                bg-light-accent text-white
-                dark:bg-dark-accent dark:text-white
-                px-4 py-2 text-xs font-semibold
-                shadow hover:bg-light-accentLight dark:hover:bg-dark-accentLight
-                transition
-              "
-            >
-              <span>Join the Discord</span>
-              <span aria-hidden="true">↗</span>
-            </a>
-            <p className="text-[11px] text-light-textMuted dark:text-dark-textMuted">
-              Early feature testing, roadmap previews, and direct feedback
-              all happen there.
-            </p>
+      <div className="relative mx-auto grid max-w-7xl grid-cols-1 gap-10 lg:grid-cols-[0.8fr_1.2fr]">
+        {/* Left — heading */}
+        <div>
+          <div className="mb-4 inline-flex rounded-full border border-dark-border bg-dark-surface px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-dark-textMuted">
+            FAQ
           </div>
+          <h2 className="text-3xl font-black tracking-tight text-dark-strong sm:text-4xl">
+            Questions answered.
+          </h2>
+          <p className="mt-4 text-base leading-7 text-dark-textMuted">
+            Can't find what you're looking for? Come chat in the Discord.
+          </p>
+          <a
+            href={DISCORD_INVITE}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-5 inline-flex h-11 items-center justify-center rounded-2xl bg-dark-accent px-5 text-sm font-black text-white transition hover:bg-dark-accentLight"
+          >
+            Join Discord
+          </a>
         </div>
 
-        {/* Right column: accordion list */}
-        <div className="md:w-2/3">
-          <div className="space-y-4">
-            {FAQ_ITEMS.map((f, i) => {
-              const isOpen = open === i;
-              const bodyId = `faq-body-${i}`;
-
-              return (
-                <div
-                  key={i}
-                  className={`
-                    rounded-2xl border transition-all
-                    bg-light-surface dark:bg-dark-surface
-                    ${
-                      isOpen
-                        ? "border-light-accent dark:border-dark-accent shadow-xl ring-2 ring-light-accent/60 dark:ring-dark-accent/70"
-                        : "border-light-border dark:border-dark-border hover:border-light-accent/70 dark:hover:border-dark-accent/70"
-                    }
-                  `}
-                  style={{ position: isOpen ? "relative" : undefined }}
-                >
-                  <button
-                    className={`
-                      w-full text-left flex justify-between items-center px-6 py-4
-                      font-semibold text-sm md:text-base focus:outline-none rounded-2xl
-                      transition-colors
-                      ${
-                        isOpen
-                          ? "text-light-accent dark:text-dark-accent bg-light-alt dark:bg-dark-alt"
-                          : "text-light-text dark:text-dark-text bg-transparent"
-                      }
-                    `}
-                    onClick={() => setOpen(isOpen ? null : i)}
-                    aria-expanded={isOpen}
-                    aria-controls={bodyId}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`
-                          inline-flex h-6 w-6 items-center justify-center rounded-full text-xs
-                          ${
-                            isOpen
-                              ? "bg-light-accent text-white dark:bg-dark-accent"
-                              : "bg-light-surfaceAlt text-light-textSecondary dark:bg-dark-surfaceAlt dark:text-dark-textSecondary"
-                          }
-                        `}
-                        aria-hidden="true"
-                      >
-                        ?
-                      </span>
-                      <span>{f.q}</span>
-                    </div>
-                    <span className="ml-4 text-xl" aria-hidden="true">
-                      {isOpen ? "−" : "+"}
-                    </span>
-                  </button>
-
-                  <Collapsible id={bodyId} isOpen={isOpen}>
-                    {f.a}
-                  </Collapsible>
-                </div>
-              );
-            })}
-          </div>
+        {/* Right — items */}
+        <div className="space-y-3">
+          {FAQ_ITEMS.map((item, index) => (
+            <FAQItem
+              key={item.q}
+              item={item}
+              index={index}
+              isOpen={open === index}
+              onToggle={() => setOpen(open === index ? null : index)}
+            />
+          ))}
         </div>
       </div>
     </section>

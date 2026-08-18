@@ -77,7 +77,7 @@ function AchievementSkeleton() {
     <div
       className={`
         group bg-white dark:bg-[#232336]
-        rounded-2xl p-2 flex flex-col items-center shadow-lg border-2 border-dashed border-gray-400
+        rounded-[10px] p-2 flex flex-col items-center  border-2 border-dashed border-gray-400
         opacity-60 grayscale cursor-not-allowed relative
         min-h-[160px]
       `}
@@ -85,7 +85,7 @@ function AchievementSkeleton() {
       aria-disabled="true"
       style={{ pointerEvents: "none" }}
     >
-      <div className="w-28 h-28 rounded-full flex items-center justify-center mb-1 border-2 border-gray-300 bg-light-alt dark:bg-dark-alt">
+      <div className="w-28 h-28 rounded-[6px] flex items-center justify-center mb-1 border-2 border-gray-300 bg-vault-raised">
         <span className="text-4xl opacity-50">?</span>
       </div>
       <span className="text-xs font-semibold text-center w-full text-gray-400 mt-1">
@@ -131,7 +131,7 @@ export default function ProfileAchievements({ achievements = [] }) {
 
   return (
     <div className="w-full mb-8">
-      <h3 className="text-xl font-bold mb-4 text-light-accent dark:text-dark-accent">
+      <h3 className="text-xl font-bold mb-4 text-vault-accent">
         Achievements &amp; Badges
       </h3>
 
@@ -142,13 +142,13 @@ export default function ProfileAchievements({ achievements = [] }) {
           placeholder="Search achievements…"
           value={filterText}
           onChange={(e) => setFilterText(e.target.value)}
-          className="px-3 py-1 rounded border border-light-border dark:border-dark-border text-base bg-light-alt dark:bg-dark-alt focus:outline-none focus:ring-2 focus:ring-light-accent"
+          className="px-3 py-1 rounded border border-vault-border text-base bg-vault-raised focus:outline-none focus:ring-2 focus:ring-vault-accent"
           style={{ minWidth: 180 }}
         />
         <select
           value={filterTier}
           onChange={(e) => setFilterTier(e.target.value)}
-          className="px-2 py-1 rounded border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-base focus:outline-none focus:ring-2 focus:ring-light-accent"
+          className="px-2 py-1 rounded border border-vault-border bg-vault-raised text-base focus:outline-none focus:ring-2 focus:ring-vault-accent"
         >
           {tierOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -157,14 +157,14 @@ export default function ProfileAchievements({ achievements = [] }) {
         <select
           value={filterUnlocked}
           onChange={(e) => setFilterUnlocked(e.target.value)}
-          className="px-2 py-1 rounded border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-base focus:outline-none focus:ring-2 focus:ring-light-accent"
+          className="px-2 py-1 rounded border border-vault-border bg-vault-raised text-base focus:outline-none focus:ring-2 focus:ring-vault-accent"
         >
           <option value="all">All</option>
           <option value="unlocked">Unlocked</option>
           <option value="locked">Locked</option>
         </select>
         {filtered.length !== achievements.length && (
-          <span className="ml-2 text-xs text-light-textSecondary dark:text-dark-textSecondary">
+          <span className="ml-2 text-xs text-vault-textSecondary">
             Showing {filtered.length} / {achievements.length}
           </span>
         )}
@@ -178,7 +178,7 @@ export default function ProfileAchievements({ achievements = [] }) {
 
       {groups.map(([tier, achs]) => (
         <div key={tier} className="mb-6">
-          <h4 className="mb-2 text-base font-semibold uppercase tracking-widest text-light-textSecondary dark:text-dark-textSecondary">
+          <h4 className="mb-2 text-base font-semibold uppercase tracking-widest text-vault-textSecondary">
             {tier[0] + tier.slice(1).toLowerCase()}
           </h4>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -205,18 +205,18 @@ export default function ProfileAchievements({ achievements = [] }) {
                   onClick={() => setSelected(ach)}
                   className={`
                     group bg-white dark:bg-[#232336]
-                    rounded-2xl p-2 flex flex-col items-center shadow-lg border-2
+                    rounded-[10px] p-2 flex flex-col items-center  border-2
                     transition hover:scale-105 focus:scale-105 focus:z-20
                     cursor-pointer outline-none
                     ${isAchieved
                       ? `border-4 ${ringColor}`
-                      : "border-light-alt dark:border-dark-alt opacity-60 grayscale"}
+                      : "border-vault-raised dark:border-vault-raised opacity-60 grayscale"}
                   `}
                   tabIndex={0}
                   aria-label={name}
                   title={desc || name}
                 >
-                  <div className="w-28 h-28 rounded-full flex items-center justify-center mb-1 border-2 border-white dark:border-[#222234] overflow-hidden">
+                  <div className="w-28 h-28 rounded-[6px] flex items-center justify-center mb-1 border-2 border-white dark:border-[#222234] overflow-hidden">
                     {imgUrl ? (
                       <img
                         src={imgUrl}
@@ -238,14 +238,14 @@ export default function ProfileAchievements({ achievements = [] }) {
                   </div>
                   <span
                     className={`text-xs font-semibold text-center w-full ${
-                      isAchieved ? "text-light-text dark:text-dark-text" : "opacity-70"
+                      isAchieved ? "text-vault-text" : "opacity-70"
                     }`}
                   >
                     {name}
                   </span>
                   {showProgress && (
                     <div className="w-full mt-1">
-                      <div className="h-2 rounded bg-light-alt dark:bg-dark-alt">
+                      <div className="h-2 rounded bg-vault-raised">
                         <div
                           className="h-2 rounded"
                           style={{
@@ -299,7 +299,7 @@ export default function ProfileAchievements({ achievements = [] }) {
             onClick={() => setSelected(null)}
           >
             <div
-              className="bg-white dark:bg-[#1c1c28] rounded-2xl shadow-2xl p-6 max-w-xs w-full relative"
+              className="bg-white dark:bg-[#1c1c28] rounded-[10px]  p-6 max-w-xs w-full relative"
               onClick={e => e.stopPropagation()}
             >
               <button
@@ -310,7 +310,7 @@ export default function ProfileAchievements({ achievements = [] }) {
                 ×
               </button>
               <div className="flex flex-col items-center">
-                <div className="w-28 h-28 rounded-full mb-2 border-4 border-light-accent dark:border-dark-accent overflow-hidden flex items-center justify-center bg-light-surface dark:bg-dark-surface">
+                <div className="w-28 h-28 rounded-[6px] mb-2 border-4 border-vault-accent dark:border-vault-accent overflow-hidden flex items-center justify-center bg-vault-surface">
                   {imgUrl ? (
                     <img
                       src={imgUrl}
@@ -337,7 +337,7 @@ export default function ProfileAchievements({ achievements = [] }) {
                 </div>
                 {selected.goal > 1 && (
                   <div className="w-full">
-                    <div className="h-2 rounded bg-light-alt dark:bg-dark-alt mb-1">
+                    <div className="h-2 rounded bg-vault-raised mb-1">
                       <div
                         className="h-2 rounded"
                         style={{

@@ -2,23 +2,21 @@
 
 import React, { createContext, useState, useEffect, useCallback, useRef } from "react";
 import { getCookie, setCookie } from "@/utils/cookieUtils";
+import { getApiBase, getGraphqlUrl } from "@/utils/apiClient";
+import { devError } from "@/utils/devLog";
 
 // How long (ms) to wait before proactively refreshing — 13 min, giving 2 min
 // buffer before the 15-minute JWT expiry.
 const REFRESH_INTERVAL_MS = 13 * 60 * 1000;
 
-// Cookie lifetime for the JS-readable authToken (1 day in the setCookie "days" API).
-const AUTH_COOKIE_DAYS = 1;
+// Cookie lifetime for the JS-readable authToken — match the refresh token window
+// so the cookie never expires while the session is still valid.
+const AUTH_COOKIE_DAYS = 7;
 
 function deleteCookie(name) {
   document.cookie = `${name}=; Max-Age=-99999999; path=/;`;
 }
 
-const API_GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  process.env.NEXT_PUBLIC_BACKEND_URL ||
-  "http://localhost:4010";
 
 export const AuthContext = createContext();
 
@@ -26,7 +24,11 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   const refreshTimerRef = useRef(null);
+
+  const openAuthModal = useCallback(() => setAuthModalOpen(true), []);
+  const closeAuthModal = useCallback(() => setAuthModalOpen(false), []);
 
   const storeToken = useCallback((t) => {
     setToken(t);
@@ -41,7 +43,7 @@ export function AuthProvider({ children }) {
   // Returns the new access token string, or null on failure.
   const silentRefresh = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      const res = await fetch(`${getApiBase()}/auth/refresh`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -52,7 +54,7 @@ export function AuthProvider({ children }) {
     } catch {
       return null;
     }
-  }, [API_BASE_URL]);
+  }, []);
 
   // Schedule the next proactive refresh 13 minutes from now.
   const scheduleRefresh = useCallback(() => {
@@ -79,7 +81,7 @@ export function AuthProvider({ children }) {
         return;
       }
       try {
-        const res = await fetch(API_GRAPHQL_URL, {
+        const res = await fetch(getGraphqlUrl(), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -127,7 +129,7 @@ export function AuthProvider({ children }) {
           setUser(null);
         }
       } catch (error) {
-        console.error("AuthProvider: Error fetching user:", error);
+        devError("AuthProvider: Error fetching user:", error);
       }
       setLoading(false);
     },
@@ -157,22 +159,33 @@ export function AuthProvider({ children }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Poll for cookie token changes across tabs (e.g. login in another tab)
+  // Poll for cookie token changes across tabs (e.g. login in another tab).
+  // If the cookie disappears while we have an active session, try a silent
+  // refresh before giving up — avoids spurious logouts from cookie expiry.
   useEffect(() => {
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       const currentToken = getCookie("authToken");
       if (currentToken !== token) {
+        if (!currentToken && token) {
+          // Cookie gone but we think we're logged in — try refresh first
+          const refreshed = await silentRefresh();
+          if (refreshed) {
+            storeToken(refreshed);
+            scheduleRefresh();
+            return;
+          }
+        }
         storeToken(currentToken || null);
         fetchUser(currentToken || null);
       }
     }, 5000);
     return () => clearInterval(interval);
-  }, [token, fetchUser, storeToken]);
+  }, [token, fetchUser, storeToken, silentRefresh, scheduleRefresh]);
 
   // Unified login/register handler
   const authMutation = async (mutation, variables) => {
     try {
-      const res = await fetch(API_GRAPHQL_URL, {
+      const res = await fetch(getGraphqlUrl(), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -204,7 +217,7 @@ export function AuthProvider({ children }) {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     storeToken(null);
     setUser(null);
-    fetch(`${API_BASE_URL}/auth/logout`, {
+    fetch(`${getApiBase()}/auth/logout`, {
       method: "POST",
       credentials: "include",
       headers: t ? { Authorization: `Bearer ${t}` } : {},
@@ -213,15 +226,15 @@ export function AuthProvider({ children }) {
 
   const connectDiscord = async (returnPath = "/account?tab=security") => {
     try {
-      const r = await fetch(`${API_BASE_URL}/auth/discord/start-url?return=${encodeURIComponent(returnPath)}`, {
+      const r = await fetch(`${getApiBase()}/auth/discord/start-url?return=${encodeURIComponent(returnPath)}`, {
         method: "GET",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const { url } = await r.json();
       if (url) window.location.href = url;
     } catch (e) {
-      console.error("Failed to get Discord start URL:", e);
-      window.location.href = `${API_BASE_URL}/auth/discord/start?return=${encodeURIComponent(returnPath)}`;
+      devError("Failed to get Discord start URL:", e);
+      window.location.href = `${getApiBase()}/auth/discord/start?return=${encodeURIComponent(returnPath)}`;
     }
   };
 
@@ -242,6 +255,9 @@ export function AuthProvider({ children }) {
         updateToken,
         logout,
         loading,
+        authModalOpen,
+        openAuthModal,
+        closeAuthModal,
         connectDiscord, // NEW: expose this to your UI
         login: async (identifier, password, mfaToken) =>
           authMutation(

@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req) {
   const reqId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-  const backend = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
+  const backend = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4010";
   const { searchParams } = new URL(req.url);
   const guildId = String(searchParams.get("guildId") || "").trim();
 
@@ -19,7 +19,7 @@ export async function GET(req) {
     return NextResponse.json({ ok: false, error: "guildId is required", reqId }, { status: 400 });
   }
 
-  const target = `${backend.replace(/\/+$/, "")}/api/discord/share/guilds/${encodeURIComponent(guildId)}/channels`;
+  const target = `${backend.replace(/\/+$/, "")}/discord/share/guilds/${encodeURIComponent(guildId)}/channels`;
   const auth = req.headers.get("authorization") || "";
 
   let upstream;

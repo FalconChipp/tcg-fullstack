@@ -3,9 +3,11 @@
 "use client";
 
 import React, { useContext, useEffect, useMemo, useState } from "react";
+import { devError } from "@/utils/devLog";
 import StatusMessage from "@/components/UI/StatusMessage";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 import { fetchPrefs, setPrefs } from "@/graphql/notifications";
+import { enableWebPush, disableWebPush, isPushSupported, getCurrentPushSubscription } from "@/utils/webPush";
 
 const defaultPrefs = {
   inappEnabled: true,
@@ -23,6 +25,7 @@ export default function NotificationsTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null);
+  const [pushBusy, setPushBusy] = useState(false);
 
   const dirty = useMemo(() => JSON.stringify(prefs) !== JSON.stringify(initial), [prefs, initial]);
 
@@ -36,14 +39,23 @@ export default function NotificationsTab() {
           setLoading(false);
           return;
         }
-        const server = await fetchPrefs({ token });
-        const merged = { ...defaultPrefs, ...(server || {}) };
+        const [server, browserSub] = await Promise.all([
+          fetchPrefs({ token }),
+          getCurrentPushSubscription(),
+        ]);
+        // If there's no active browser subscription, override pushEnabled to false
+        // so the toggle reflects the true state regardless of stored pref
+        const merged = {
+          ...defaultPrefs,
+          ...(server || {}),
+          pushEnabled: !!(server?.pushEnabled && browserSub),
+        };
         if (!cancelled) {
           setPrefsState(merged);
           setInitial(merged);
         }
       } catch (e) {
-        console.error('Load prefs failed', e);
+        devError('Load prefs failed', e);
         setStatus({ type: 'error', message: e.message || 'Failed to load notification preferences' });
       } finally {
         if (!cancelled) setLoading(false);
@@ -54,6 +66,34 @@ export default function NotificationsTab() {
 
   function setBool(key, val) {
     setPrefsState((p) => ({ ...p, [key]: !!val }));
+  }
+
+  async function handlePushToggle(enabled) {
+    if (!isPushSupported()) {
+      setStatus({ type: 'error', message: 'Push notifications are not supported in this browser.' });
+      return;
+    }
+    setPushBusy(true);
+    setStatus(null);
+    try {
+      if (enabled) {
+        await enableWebPush(token);
+        setBool('pushEnabled', true);
+        setStatus({ type: 'success', message: 'Browser push notifications enabled.' });
+      } else {
+        await disableWebPush(token);
+        setBool('pushEnabled', false);
+        setStatus({ type: 'success', message: 'Browser push notifications disabled.' });
+      }
+    } catch (e) {
+      devError('Push toggle failed', e);
+      const msg = e.message?.includes('denied')
+        ? 'Notification permission was denied. Please allow notifications in your browser settings.'
+        : (e.message || 'Failed to update push notification settings.');
+      setStatus({ type: 'error', message: msg });
+    } finally {
+      setPushBusy(false);
+    }
   }
   function setDigest(val) {
     setPrefsState((p) => ({ ...p, digest: val }));
@@ -68,6 +108,8 @@ export default function NotificationsTab() {
     setSaving(true);
     setStatus(null);
     try {
+      // pushEnabled is managed by handlePushToggle (requires browser permission flow)
+      // but we still persist its current value along with the other prefs
       const ok = await setPrefs({ token, input: { ...prefs } });
       if (ok) {
         setInitial(prefs);
@@ -89,9 +131,9 @@ export default function NotificationsTab() {
       ) : null}
 
       {/* Channel toggles */}
-      <section className="rounded-xl border border-light-border dark:border-dark-border p-5 bg-light-surface dark:bg-dark-surface">
+      <section className="rounded-[10px] border border-vault-border p-5 bg-vault-surface">
         <h2 className="text-lg font-semibold mb-1">Channels</h2>
-        <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary mb-4">
+        <p className="text-sm text-vault-textSecondary mb-4">
           Choose how you want to receive alerts and updates.
         </p>
         <div className="space-y-3">
@@ -122,15 +164,19 @@ export default function NotificationsTab() {
             )}
           />
           <PrefRow
-            title="Push (beta)"
-            desc="Enable web push for real-time alerts (coming soon)."
+            title="Browser push"
+            desc={
+              !isPushSupported()
+                ? "Not supported in this browser."
+                : "Receive real-time alerts even when the tab is closed."
+            }
             control={(
               <input
                 type="checkbox"
                 className="toggle-checkbox"
                 checked={!!prefs.pushEnabled}
-                onChange={(e) => setBool('pushEnabled', e.target.checked)}
-                disabled={loading || saving}
+                onChange={(e) => handlePushToggle(e.target.checked)}
+                disabled={loading || saving || pushBusy || !isPushSupported()}
               />
             )}
           />
@@ -138,9 +184,9 @@ export default function NotificationsTab() {
       </section>
 
       {/* Delivery */}
-      <section className="rounded-xl border border-light-border dark:border-dark-border p-5 bg-light-surface dark:bg-dark-surface">
+      <section className="rounded-[10px] border border-vault-border p-5 bg-vault-surface">
         <h2 className="text-lg font-semibold mb-1">Delivery</h2>
-        <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary mb-4">
+        <p className="text-sm text-vault-textSecondary mb-4">
           Send alerts instantly or as a periodic digest.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -170,9 +216,9 @@ export default function NotificationsTab() {
       </section>
 
       {/* Quiet hours */}
-      <section className="rounded-xl border border-light-border dark:border-dark-border p-5 bg-light-surface dark:bg-dark-surface">
+      <section className="rounded-[10px] border border-vault-border p-5 bg-vault-surface">
         <h2 className="text-lg font-semibold mb-1">Quiet hours</h2>
-        <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary mb-4">
+        <p className="text-sm text-vault-textSecondary mb-4">
           Suppress non-critical alerts between these local times.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -183,7 +229,7 @@ export default function NotificationsTab() {
               value={prefs.quietStart || ""}
               onChange={(e) => setQuiet("quietStart", e.target.value)}
               disabled={loading || saving}
-              className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface"
+              className="w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-surface"
             />
           </div>
           <div>
@@ -193,7 +239,7 @@ export default function NotificationsTab() {
               value={prefs.quietEnd || ""}
               onChange={(e) => setQuiet("quietEnd", e.target.value)}
               disabled={loading || saving}
-              className="w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface"
+              className="w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-surface"
             />
           </div>
         </div>
@@ -204,14 +250,14 @@ export default function NotificationsTab() {
         <button
           onClick={handleSave}
           disabled={!dirty || saving || loading}
-          className="bg-light-accent dark:bg-dark-accent text-white px-4 py-2 rounded-lg font-semibold hover:bg-light-accentLight dark:hover:bg-dark-accentLight transition disabled:opacity-50"
+          className="bg-vault-accent text-white px-4 py-2 rounded-[6px] font-semibold hover:bg-vault-accentHover transition disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save preferences"}
         </button>
         <button
           onClick={() => setPrefsState(initial)}
           disabled={!dirty || saving}
-          className="px-4 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text hover:bg-light-surface dark:hover:bg-dark-surface transition disabled:opacity-50"
+          className="px-4 py-2 rounded-[6px] border border-vault-border bg-vault-raised text-vault-text hover:bg-vault-surface dark:hover:bg-vault-surface transition disabled:opacity-50"
         >
           Reset
         </button>
@@ -231,10 +277,10 @@ export default function NotificationsTab() {
 /* row layout for each preference */
 function PrefRow({ title, desc, control }) {
   return (
-    <div className="rounded-xl border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt p-4 flex items-center justify-between gap-4">
+    <div className="rounded-[10px] border border-vault-border bg-vault-raised p-4 flex items-center justify-between gap-4">
       <div className="min-w-0">
         <div className="font-semibold">{title}</div>
-        <div className="text-sm text-light-textSecondary dark:text-dark-textSecondary">
+        <div className="text-sm text-vault-textSecondary">
           {desc}
         </div>
       </div>

@@ -4,17 +4,16 @@
 import React, { useState } from "react";
 import { useRouter } from "next/router";
 import StatusMessage from "@/components/UI/StatusMessage";
-
-const GRAPHQL_ENDPOINT = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+import { getGraphqlUrl } from "@/utils/apiClient";
 
 /* Small UI primitives */
 function Card({ title, children, className = "" }) {
   return (
     <section
-      className={`rounded-2xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface p-6 md:p-7 shadow ${className}`}
+      className={`rounded-[10px] border border-vault-border bg-vault-surface p-6 md:p-7  ${className}`}
     >
       {title && (
-        <h2 className="text-xl font-bold mb-5 text-light-primary dark:text-dark-primary">
+        <h2 className="text-xl font-bold mb-5 text-vault-accent dark:text-vault-accent">
           {title}
         </h2>
       )}
@@ -26,7 +25,7 @@ function TextInput(props) {
   return (
     <input
       {...props}
-      className={`w-full px-3 py-2 rounded-lg border border-light-border dark:border-dark-border bg-light-alt dark:bg-dark-alt text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent transition ${props.className || ""}`}
+      className={`w-full px-3 py-2 rounded-[6px] border border-vault-border bg-vault-raised text-vault-text focus:outline-none focus:ring-2 focus:ring-vault-accent dark:focus:ring-vault-accent transition ${props.className || ""}`}
     />
   );
 }
@@ -45,7 +44,7 @@ function PasswordField({ id, value, onChange, placeholder, disabled, autoComplet
       />
       <button
         type="button"
-        className="absolute inset-y-0 right-2 my-auto h-8 px-2 rounded-lg text-xs text-light-textMuted dark:text-dark-textMuted hover:bg-light-alt dark:hover:bg-dark-alt"
+        className="absolute inset-y-0 right-2 my-auto h-8 px-2 rounded-[6px] text-xs text-vault-textTertiary hover:bg-vault-raised dark:hover:bg-vault-raised"
         onClick={() => setShow((s) => !s)}
         aria-label={show ? "Hide password" : "Show password"}
       >
@@ -68,7 +67,7 @@ export default function PrivacyTab({ user, token }) {
   const [deleting, setDeleting] = useState(false);
 
   async function callGraphQL(query, variables) {
-    const res = await fetch(GRAPHQL_ENDPOINT, {
+    const res = await fetch(getGraphqlUrl(), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -97,11 +96,25 @@ export default function PrivacyTab({ user, token }) {
       );
 
       const result = data?.exportUserData;
-      setExportStatus({ type: "success", msg: "Your data export is ready." });
 
-      if (typeof result === "string" && /^https?:\/\//i.test(result)) {
-        window.open(result, "_blank");
+      if (typeof result === "string") {
+        if (/^https?:\/\//i.test(result)) {
+          window.open(result, "_blank");
+        } else {
+          // Backend returns the export as a JSON string — trigger browser download
+          const blob = new Blob([result], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "my-data-export.json";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }
       }
+
+      setExportStatus({ type: "success", msg: "Your data export has been downloaded." });
       setExportPwd("");
     } catch (err) {
       setExportStatus({ type: "error", msg: err.message });
@@ -143,7 +156,7 @@ export default function PrivacyTab({ user, token }) {
     <div className="space-y-6">
       {/* Intro */}
       <Card title="Privacy & Data">
-        <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary">
+        <p className="text-sm text-vault-textSecondary">
           Download a copy of your data or permanently delete your account.
         </p>
       </Card>
@@ -152,7 +165,7 @@ export default function PrivacyTab({ user, token }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Export data */}
         <Card title="Request My Data (GDPR)">
-          <p className="text-sm text-light-textSecondary dark:text-dark-textSecondary mb-4">
+          <p className="text-sm text-vault-textSecondary mb-4">
             We’ll generate a downloadable archive (JSON/CSV where applicable) of your profile, collection, and settings.
           </p>
           <form onSubmit={handleExport} className="space-y-3" aria-live="polite">
@@ -167,7 +180,7 @@ export default function PrivacyTab({ user, token }) {
             <button
               type="submit"
               disabled={exporting}
-              className="mt-1 bg-light-accent dark:bg-dark-accent text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-light-accentLight dark:hover:bg-dark-accentLight transition disabled:opacity-50"
+              className="mt-1 bg-vault-accent text-white px-5 py-2.5 rounded-[10px] font-semibold hover:bg-vault-accentHover transition disabled:opacity-50"
             >
               {exporting ? "Preparing export…" : "Generate export"}
             </button>
@@ -183,7 +196,7 @@ export default function PrivacyTab({ user, token }) {
 
         {/* Delete account */}
         <Card title="Delete Account" className="border-red-500/40 dark:border-red-500/40">
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 text-red-500 text-sm px-4 py-3 mb-4">
+          <div className="rounded-[6px] border border-red-500/30 bg-red-500/10 text-red-500 text-sm px-4 py-3 mb-4">
             This action is permanent and cannot be undone. All personal data, collections, binders and preferences will be deleted.
           </div>
 
@@ -212,7 +225,7 @@ export default function PrivacyTab({ user, token }) {
               <button
                 type="submit"
                 disabled={deleting}
-                className="bg-light-error text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-red-600 transition disabled:opacity-50"
+                className="bg-vault-danger text-white px-5 py-2.5 rounded-[10px] font-semibold hover:bg-red-600 transition disabled:opacity-50"
               >
                 {deleting ? "Deleting…" : "Delete my account"}
               </button>

@@ -268,32 +268,32 @@ export default function ShareToDiscordDialog({
 
   if (!open) return null;
 
-  const panel = isDark ? "bg-dark-surface border-dark-border text-white" : "bg-white border-light-border text-light-primary";
-  const muted = isDark ? "text-dark-textMuted" : "text-light-textMuted";
+  const panel = isDark ? "bg-vault-surface border-vault-border text-white" : "bg-white border-vault-border text-vault-accent";
+  const muted = isDark ? "text-vault-textTertiary" : "text-vault-textTertiary";
 
   const input =
     (isDark
-      ? "bg-dark-alt border-dark-border focus:border-dark-accent focus:ring-dark-accent/60 text-white placeholder:text-dark-textMuted"
-      : "bg-light-surface border-light-border focus:border-light-accent focus:ring-light-accent/70 text-light-primary placeholder:text-light-textMuted") +
-    " w-full h-11 px-3 py-2 rounded-lg border transition focus:outline-none focus:ring-2";
+      ? "bg-vault-raised border-vault-border focus:border-vault-accent focus:ring-vault-accent/60 text-white placeholder:text-vault-textTertiary"
+      : "bg-vault-surface border-vault-border focus:border-vault-accent focus:ring-vault-accent/70 text-vault-accent placeholder:text-vault-textTertiary") +
+    " w-full h-11 px-3 py-2 rounded-[6px] border transition focus:outline-none focus:ring-2";
 
   const select =
     (isDark
-      ? "bg-dark-alt border-dark-border focus:border-dark-accent focus:ring-dark-accent/60 text-white"
-      : "bg-light-surface border-light-border focus:border-light-accent focus:ring-light-accent/70 text-light-primary") +
-    " w-full h-11 px-3 py-2 rounded-lg border transition focus:outline-none focus:ring-2 appearance-none";
+      ? "bg-vault-raised border-vault-border focus:border-vault-accent focus:ring-vault-accent/60 text-white"
+      : "bg-vault-surface border-vault-border focus:border-vault-accent focus:ring-vault-accent/70 text-vault-accent") +
+    " w-full h-11 px-3 py-2 rounded-[6px] border transition focus:outline-none focus:ring-2 appearance-none";
 
-  const btnPrimary = isDark ? "bg-dark-accent text-white hover:bg-dark-accentLight" : "bg-light-accent text-white hover:bg-light-accentLight";
+  const btnPrimary = isDark ? "bg-vault-accent text-vault-text hover:bg-vault-accentHover" : "bg-vault-accent text-vault-text hover:bg-vault-accentHover";
   const btnSecondary = isDark
-    ? "border border-dark-border/80 text-dark-textMuted hover:text-white hover:border-dark-accent"
-    : "border border-light-border/80 text-light-textMuted hover:text-light-primary hover:border-light-accent";
+    ? "border border-vault-border/80 text-vault-textTertiary hover:text-white hover:border-vault-accent"
+    : "border border-vault-border/80 text-vault-textTertiary hover:text-vault-accent hover:border-vault-accent";
 
   const cardName = payload?.card?.name || payload?.card?.tcgName || "Card";
   const listLabel = payload?.type === "wishlist" ? "wishlist" : "collection";
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
-      <div className={`w-full max-w-lg rounded-2xl border shadow-2xl ${panel}`}>
+      <div className={`w-full max-w-lg rounded-[10px] border  ${panel}`}>
         <div className="px-5 py-4 border-b border-current/10 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-base font-extrabold truncate">Share to Discord</div>
@@ -302,7 +302,7 @@ export default function ShareToDiscordDialog({
               <span className="font-semibold">{listLabel}</span>.
             </div>
           </div>
-          <button type="button" onClick={onClose} className={`rounded-full p-2 border ${btnSecondary}`} aria-label="Close share dialog">
+          <button type="button" onClick={onClose} className={`rounded-[6px] p-2 border ${btnSecondary}`} aria-label="Close share dialog">
             <svg className="w-5 h-5" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" fill="none" />
             </svg>
@@ -365,7 +365,7 @@ export default function ShareToDiscordDialog({
 
           {status && (
             <div
-              className={`text-sm rounded-lg px-3 py-2 ${
+              className={`text-sm rounded-[6px] px-3 py-2 ${
                 status.type === "success" ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-400"
               }`}
             >
@@ -374,13 +374,13 @@ export default function ShareToDiscordDialog({
           )}
 
           <div className="flex items-center justify-end gap-2 pt-1">
-            <button type="button" onClick={onClose} className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${btnSecondary}`} disabled={busy}>
+            <button type="button" onClick={onClose} className={`px-4 py-2 rounded-[6px] text-sm font-semibold transition ${btnSecondary}`} disabled={busy}>
               Close
             </button>
             <button
               type="button"
               onClick={handleShare}
-              className={["px-4 py-2 rounded-lg text-sm font-semibold transition", btnPrimary, busy ? "opacity-70 cursor-wait" : ""].join(" ")}
+              className={["px-4 py-2 rounded-[6px] text-sm font-semibold transition", btnPrimary, busy ? "opacity-70 cursor-wait" : ""].join(" ")}
               disabled={busy}
             >
               {busy ? "Posting..." : "Share"}

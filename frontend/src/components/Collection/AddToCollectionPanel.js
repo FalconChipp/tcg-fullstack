@@ -14,7 +14,7 @@ const FALLBACK_CARD_IMAGE =
   "https://cdn.pidgi.net/images/f/f6/Card_back_INTL_-_Pokemon_Trading_Card_Game.png";
 
 export default function AddToCollectionPanel({ cardDetail, onClose, initialWishlist = false }) {
-  const { token, loading: authLoading } = useContext(AuthContext);
+  const { token, loading: authLoading, openAuthModal } = useContext(AuthContext);
   const { dark } = useTheme();
 
   const [quantity, setQuantity] = useState(1);
@@ -30,11 +30,11 @@ export default function AddToCollectionPanel({ cardDetail, onClose, initialWishl
 
   // Reliable image fallback with Next/Image (control the src in state)
   const [imgSrc, setImgSrc] = useState(
-    getCardImageUrl(cardDetail?.image_large || cardDetail?.image_small || cardDetail?.tcgImageUrl || cardDetail?.tcgImage)
+    getCardImageUrl(cardDetail?.images?.large || cardDetail?.images?.small || cardDetail?.image_large || cardDetail?.image_small || cardDetail?.tcgImageUrl || cardDetail?.tcgImage)
   );
   useEffect(() => {
     setImgSrc(
-      getCardImageUrl(cardDetail?.image_large || cardDetail?.image_small || cardDetail?.tcgImageUrl || cardDetail?.tcgImage)
+      getCardImageUrl(cardDetail?.images?.large || cardDetail?.images?.small || cardDetail?.image_large || cardDetail?.image_small || cardDetail?.tcgImageUrl || cardDetail?.tcgImage)
     );
   }, [cardDetail]);
 
@@ -60,7 +60,7 @@ export default function AddToCollectionPanel({ cardDetail, onClose, initialWishl
 
   async function handleSubmit() {
     if (!token) {
-      showStatus("error", "Authentication token not found. Please log in.");
+      openAuthModal();
       return;
     }
     if (!cardDetail || !effectiveCardId) {
@@ -101,8 +101,7 @@ export default function AddToCollectionPanel({ cardDetail, onClose, initialWishl
           card {
             id
             name
-            image_small
-            image_large
+            images { small large }
             number
             rarity
           }
@@ -131,8 +130,7 @@ export default function AddToCollectionPanel({ cardDetail, onClose, initialWishl
           card {
             id
             name
-            image_small
-            image_large
+            images { small large }
             number
             rarity
           }

@@ -23,6 +23,7 @@ import Image from "next/image";
 import { X, Minus, Send, RotateCcw, Flag, ShieldAlert } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMessenger } from "./MessengerContext";
+import { devError } from "@/utils/devLog";
 
 function resolveAvatar(avatar) {
   if (!avatar) return "https://placehold.co/32/webp";
@@ -412,7 +413,7 @@ export default function MessengerPopup({
       // if we're already near bottom, keep it pinned
       endRef.current?.scrollIntoView({ behavior: "smooth" });
     } catch (err) {
-      console.error("sendMessage failed:", err);
+      devError("sendMessage failed:", err);
       setInput(text);
     }
   }

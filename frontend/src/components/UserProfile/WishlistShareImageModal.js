@@ -120,7 +120,7 @@ export default function WishlistShareImageModal({
       />
 
       <div className="absolute inset-0 flex items-center justify-center p-4">
-        <div className="w-full max-w-7xl rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl shadow-2xl overflow-hidden">
+        <div className="w-full max-w-7xl rounded-[10px] border border-white/10 bg-black/40 backdrop-blur-xl  overflow-hidden">
           <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/10">
             <div className="flex flex-col">
               <div className="text-sm font-extrabold text-white/90">Wishlist share image</div>
@@ -133,7 +133,7 @@ export default function WishlistShareImageModal({
               <button
                 type="button"
                 onClick={handleDownload}
-                className="inline-flex items-center justify-center rounded-xl bg-[#2963FF] hover:bg-[#548DFF] px-4 py-2 text-sm font-extrabold text-white transition"
+                className="inline-flex items-center justify-center rounded-[10px] bg-[#2963FF] hover:bg-[#548DFF] px-4 py-2 text-sm font-extrabold text-white transition"
               >
                 Download PNG
               </button>
@@ -141,7 +141,7 @@ export default function WishlistShareImageModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-bold text-white/80 hover:text-white hover:bg-white/10 transition"
+                className="inline-flex items-center justify-center rounded-[10px] px-3 py-2 text-sm font-bold text-white/80 hover:text-white hover:bg-white/10 transition"
               >
                 Close
               </button>

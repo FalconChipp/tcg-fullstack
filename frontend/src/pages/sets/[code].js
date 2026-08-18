@@ -1,17 +1,21 @@
 // src/pages/sets/[code].js
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
+import { useRouter } from "next/router";
+import { devWarn } from "@/utils/devLog";
 import Image from "next/image";
 import Head from "next/head";
+import Link from "next/link";
 import Layout from "@/components/Layout/Layout";
 import { getSetLogo } from "@/utils/setLogos";
 import SetChecklistHeader from "@/components/Sets/SetChecklistHeader";
+import CardDetailsModal from "@/components/Cards/CardDetailsModal";
 import useSetPrices from "@/hooks/useSetPrices";
 import useSetOwned from "@/hooks/useSetOwned";
 import inferSetEra from "@/utils/setEra";
 import executeServerGraphql from "@/utils/serverGraphql";
 
 /* -------------------- UI: Card Tile -------------------- */
-function SetCardTile({ card, owned = false, price, eager = false }) {
+function SetCardTile({ card, owned = false, price, eager = false, onExpand }) {
   const hasImg = Boolean(card?.imageUrl);
   const priceStr =
     price && typeof price.gbp === "number" && price.gbp > 0
@@ -29,7 +33,12 @@ function SetCardTile({ card, owned = false, price, eager = false }) {
       role="article"
       aria-label={card?.name || "Card"}
     >
-      <div className="relative w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-xl overflow-hidden">
+      <button
+        type="button"
+        onClick={() => onExpand?.(card)}
+        className="relative w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-xl overflow-hidden cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent"
+        aria-label={`Expand ${card?.name || "card"} image`}
+      >
         {hasImg ? (
           <Image
             src={card.imageUrl}
@@ -52,7 +61,7 @@ function SetCardTile({ card, owned = false, price, eager = false }) {
             Owned
           </span>
         )}
-      </div>
+      </button>
 
       <div className="mt-3">
         <div className="flex items-start justify-between gap-2">
@@ -77,20 +86,56 @@ function SetCardTile({ card, owned = false, price, eager = false }) {
   );
 }
 
+/* -------------------- UI: Back to Sets link -------------------- */
+function BackToSetsLink() {
+  return (
+    <Link
+      href="/sets"
+      className="inline-flex items-center gap-1.5 text-sm font-medium text-light-textMuted dark:text-dark-textMuted hover:text-light-accent dark:hover:text-dark-accent transition mb-4"
+    >
+      <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path
+          fillRule="evenodd"
+          d="M12.79 5.23a.75.75 0 0 1 0 1.06L9.06 10l3.73 3.71a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z"
+          clipRule="evenodd"
+        />
+      </svg>
+      Back to Sets
+    </Link>
+  );
+}
+
 /* -------------------- Page component -------------------- */
 function parseIntSafe(v) {
   const n = parseInt(v, 10);
   return Number.isFinite(n) ? n : 0;
 }
 
-export default function SetPage({ set }) {
+export default function SetPage() {
+  const { query } = useRouter();
+  const code = typeof query.code === "string" ? query.code.toLowerCase() : null;
+
+  const [set, setSet] = useState(null);
+  const [loadingSet, setLoadingSet] = useState(true);
   const [filter, setFilter] = useState("");
   const [sort, setSort] = useState("number-asc");
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [expandedCard, setExpandedCard] = useState(null);
 
-  // Hooks: prices + owned/completion
-  const { pricesById, totalSetPriceGbp } = useSetPrices(set);
-  const { ownedSet, completedCount } = useSetOwned(set);
+  // Fetch set data client-side so we don't depend on Netlify SSR reaching the backend
+  useEffect(() => {
+    if (!code) { setLoadingSet(false); return; }
+    setLoadingSet(true);
+    loadSetFromBackend(code)
+      .then((data) => setSet(data))
+      .catch((err) => devWarn("Failed to load set:", err))
+      .finally(() => setLoadingSet(false));
+  }, [code]);
+
+  // Hooks: prices + owned/completion — pass empty stub while set is loading
+  const setOrEmpty = set ?? { cards: [] };
+  const { pricesById, totalSetPriceGbp } = useSetPrices(setOrEmpty);
+  const { ownedSet, completedCount } = useSetOwned(setOrEmpty);
 
   // Rarity options (order: first-seen by card number)
   const rarityOptions = useMemo(() => {
@@ -98,7 +143,7 @@ export default function SetPage({ set }) {
       const m = String(c?.number ?? "").match(/\d+/);
       return m ? parseInt(m[0], 10) : Number.MAX_SAFE_INTEGER;
     };
-    const cards = Array.isArray(set.cards) ? [...set.cards].sort((a, b) => getNum(a) - getNum(b)) : [];
+    const cards = Array.isArray(set?.cards) ? [...set.cards].sort((a, b) => getNum(a) - getNum(b)) : [];
     const seen = new Set();
     const ordered = [];
     for (const c of cards) {
@@ -109,7 +154,7 @@ export default function SetPage({ set }) {
       }
     }
     return ordered;
-  }, [set.cards]);
+  }, [set?.cards]);
 
   // Selected rarities
   const [selectedRarities, setSelectedRarities] = useState(() => new Set());
@@ -125,7 +170,7 @@ export default function SetPage({ set }) {
   // Build filtered/sorted list (text + rarity + sort)
   const view = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    let list = Array.isArray(set.cards) ? set.cards.slice() : [];
+    let list = Array.isArray(set?.cards) ? set.cards.slice() : [];
 
     if (q) {
       list = list.filter((c) => {
@@ -167,7 +212,7 @@ export default function SetPage({ set }) {
     });
 
     return list;
-  }, [set.cards, filter, selectedRarities, sort, ownedSet]);
+  }, [set?.cards, filter, selectedRarities, sort, ownedSet]);
 
   // Preload first row images (top ~10)
   const preloadImages = useMemo(() => {
@@ -177,10 +222,39 @@ export default function SetPage({ set }) {
 
   const seoTitle = set?.name
     ? `${set.name} Checklist & Prices | SixByFive TCG`
-    : `${set.code?.toUpperCase()} Checklist | SixByFive TCG`;
+    : `${String(code || "").toUpperCase()} Checklist | SixByFive TCG`;
   const seoDesc = set?.name
     ? `Browse the ${set.name} checklist with card numbers, rarity, and prices. Mark owned cards and track completion.`
-    : `Checklist for set ${set.code?.toUpperCase()} with card list, rarity, and prices.`;
+    : `Checklist for set ${String(code || "").toUpperCase()} with card list, rarity, and prices.`;
+
+  if (loadingSet) {
+    return (
+      <Layout seo={{ title: seoTitle, description: seoDesc }} noTopPadding={false}>
+        <div className="mx-auto max-w-[1200px] px-5 py-8">
+          <BackToSetsLink />
+          <div className="h-10 w-64 bg-light-alt dark:bg-dark-alt rounded mb-6 animate-pulse" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
+            {Array.from({ length: 20 }).map((_, i) => (
+              <div key={i} className="bg-light-surface dark:bg-dark-surface rounded-2xl border border-light-border dark:border-dark-border h-64 animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!set) {
+    return (
+      <Layout seo={{ title: "Set Not Found | SixByFive TCG", description: "" }} noTopPadding={false}>
+        <div className="mx-auto max-w-[1200px] px-5 py-16 text-center">
+          <div className="text-left">
+            <BackToSetsLink />
+          </div>
+          <p className="text-light-textMuted dark:text-dark-textMuted text-lg">Set not found.</p>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout seo={{ title: seoTitle, description: seoDesc }} noTopPadding={false}>
@@ -191,6 +265,7 @@ export default function SetPage({ set }) {
       </Head>
 
       <div className="mx-auto max-w-[1200px] px-5 py-8">
+        <BackToSetsLink />
         <SetChecklistHeader
           name={set.name}
           code={set.code}
@@ -228,28 +303,36 @@ export default function SetPage({ set }) {
             const price = pricesById[id] || null;
             const eager = idx < 10;
             return (
-              <SetCardTile key={id} card={card} owned={owned} price={price} eager={eager} />
+              <SetCardTile
+                key={id}
+                card={card}
+                owned={owned}
+                price={price}
+                eager={eager}
+                onExpand={() => setExpandedCard({ card, alreadyOwned: owned })}
+              />
             );
           })}
         </div>
       </div>
+
+      {expandedCard && (
+        <CardDetailsModal
+          card={expandedCard.card}
+          owned={false}
+          alreadyOwned={expandedCard.alreadyOwned}
+          onClose={() => setExpandedCard(null)}
+        />
+      )}
     </Layout>
   );
 }
 
-/* -------------------- Data fetching (server) -------------------- */
-const CARDSEARCH_SETS_QUERY = /* GraphQL */ `
-  query CardsearchSetPaths($limit: Int!, $offset: Int!) {
-    cardsearchSets(limit: $limit, offset: $offset) {
-      code
-      abbr
-      series
-    }
-  }
-`;
+/* -------------------- Data fetching (client-side) -------------------- */
 
-const CARDSEARCH_SET_QUERY = /* GraphQL */ `
-  query CardsearchSetStatic($code: String!) {
+// Combined query — fetches set metadata + first page of cards in ONE round trip.
+const CARDSEARCH_SET_COMBINED_QUERY = /* GraphQL */ `
+  query CardsearchSetPage($code: String!, $input: CardSearchInput!) {
     cardsearchSetByCode(code: $code) {
       code
       name
@@ -257,9 +340,36 @@ const CARDSEARCH_SET_QUERY = /* GraphQL */ `
       series
       total
     }
+    cardsearchSearchCards(input: $input) {
+      total
+      items {
+        cardId
+        number
+        name
+        rarity
+        images {
+          large
+        }
+        latestPrices {
+          variation
+          gbp
+          market
+          mid
+          low
+          high
+          currency
+        }
+        variants {
+          key
+          label
+          default
+        }
+      }
+    }
   }
 `;
 
+// Used only for subsequent pages when a set has >250 cards.
 const CARDSEARCH_SET_CARDS_QUERY = /* GraphQL */ `
   query CardsearchSetCards($input: CardSearchInput!) {
     cardsearchSearchCards(input: $input) {
@@ -294,36 +404,6 @@ const CARDSEARCH_SET_CARDS_QUERY = /* GraphQL */ `
 const CARDSEARCH_SET_PAGE_SIZE = 250;
 const CARDSEARCH_SET_MAX_PAGES = 12;
 
-async function loadAllCodesFromBackend() {
-  const codes = [];
-  const seen = new Set();
-  let offset = 0;
-
-  for (let page = 0; page < CARDSEARCH_SET_MAX_PAGES; page += 1) {
-    const data = await executeServerGraphql(CARDSEARCH_SETS_QUERY, {
-      limit: CARDSEARCH_SET_PAGE_SIZE,
-      offset,
-    });
-
-    const chunk = Array.isArray(data?.cardsearchSets) ? data.cardsearchSets : [];
-    if (chunk.length === 0) break;
-
-    for (const set of chunk) {
-      if (!set?.code) continue;
-      const code = String(set.code).trim().toLowerCase();
-      if (!code || seen.has(code)) continue;
-      seen.add(code);
-      codes.push(code);
-    }
-
-    if (chunk.length < CARDSEARCH_SET_PAGE_SIZE) break;
-    offset += chunk.length;
-  }
-
-  return codes;
-}
-
-
 function mapLatestPrices(prices) {
   if (!Array.isArray(prices) || prices.length === 0) return null;
   const normalized = prices
@@ -345,16 +425,49 @@ async function loadSetFromBackend(code) {
   const codeParam = String(code || "").trim();
   if (!codeParam) return null;
 
-  const data = await executeServerGraphql(CARDSEARCH_SET_QUERY, { code: codeParam });
-  const setData = data?.cardsearchSetByCode;
+  // First request: set metadata + page 1 of cards in a single round trip.
+  const firstData = await executeServerGraphql(CARDSEARCH_SET_COMBINED_QUERY, {
+    code: codeParam,
+    input: { set: codeParam, limit: CARDSEARCH_SET_PAGE_SIZE, offset: 0 },
+  });
+
+  const setData = firstData?.cardsearchSetByCode;
   if (!setData) return null;
+
+  const firstPayload = firstData?.cardsearchSearchCards;
+  const firstItems = Array.isArray(firstPayload?.items) ? firstPayload.items : [];
+  let reportedTotal = typeof firstPayload?.total === "number" ? firstPayload.total : null;
 
   const cards = [];
   const seenCards = new Set();
-  let offset = 0;
-  let reportedTotal = typeof setData.total === "number" ? setData.total : null;
 
-  for (let page = 0; page < CARDSEARCH_SET_MAX_PAGES; page += 1) {
+  // Process first page
+  for (const item of firstItems) {
+    if (!item) continue;
+    const cardId = item.cardId || (item.number && `${codeParam}-${item.number}`);
+    if (cardId && seenCards.has(cardId)) continue;
+    if (cardId) seenCards.add(cardId);
+    cards.push({
+      id: cardId,
+      number: item.number || "",
+      name: item.name || "",
+      rarity: item.rarity || null,
+      imageUrl: item.images?.large || item.images?.small || null,
+      prices: mapLatestPrices(item.latestPrices),
+    });
+  }
+
+  // If all cards fit on page 1, we're done — no further requests needed.
+  if (
+    (typeof reportedTotal === "number" && cards.length >= reportedTotal) ||
+    (firstItems.length < CARDSEARCH_SET_PAGE_SIZE && reportedTotal == null)
+  ) {
+    return buildSetResult(codeParam, setData, cards, reportedTotal);
+  }
+
+  // Rare case: set has >250 cards — fetch remaining pages.
+  let offset = firstItems.length;
+  for (let page = 1; page < CARDSEARCH_SET_MAX_PAGES; page += 1) {
     const res = await executeServerGraphql(CARDSEARCH_SET_CARDS_QUERY, {
       input: {
         set: codeParam,
@@ -365,83 +478,49 @@ async function loadSetFromBackend(code) {
 
     const payload = res?.cardsearchSearchCards;
     const items = Array.isArray(payload?.items) ? payload.items : [];
-    if (typeof payload?.total === "number") {
-      reportedTotal = payload.total;
-    }
-
+    if (typeof payload?.total === "number") reportedTotal = payload.total;
     if (items.length === 0) break;
 
     for (const item of items) {
       if (!item) continue;
       const cardId = item.cardId || (item.number && `${codeParam}-${item.number}`);
-      const mappedPrices = mapLatestPrices(item.latestPrices);
-      if (cardId && seenCards.has(cardId)) {
-        continue;
-      }
-      if (cardId) {
-        seenCards.add(cardId);
-      }
-      const entry = {
+      if (cardId && seenCards.has(cardId)) continue;
+      if (cardId) seenCards.add(cardId);
+      cards.push({
         id: cardId,
         number: item.number || "",
         name: item.name || "",
         rarity: item.rarity || null,
         imageUrl: item.images?.large || item.images?.small || null,
-        prices: mappedPrices,
-      };
-      cards.push(entry);
+        prices: mapLatestPrices(item.latestPrices),
+      });
     }
 
     offset += items.length;
-
-    if (typeof reportedTotal === "number" && cards.length >= reportedTotal) {
-      break;
-    }
-
-    if (items.length < CARDSEARCH_SET_PAGE_SIZE && reportedTotal == null) {
-      break;
-    }
+    if (typeof reportedTotal === "number" && cards.length >= reportedTotal) break;
+    if (items.length < CARDSEARCH_SET_PAGE_SIZE && reportedTotal == null) break;
   }
 
-  const normalized = {
-    code: codeParam.toLowerCase(),
-    name: setData.name || codeParam.toUpperCase(),
+  return buildSetResult(codeParam, setData, cards, reportedTotal);
+}
+
+function buildSetResult(code, setData, cards, reportedTotal) {
+  const totalCards =
+    typeof setData.total === "number"
+      ? setData.total
+      : typeof reportedTotal === "number"
+        ? reportedTotal
+        : cards.length || null;
+  return {
+    code: code.toLowerCase(),
+    name: setData.name || code.toUpperCase(),
     abbr: setData.abbr ?? null,
     series: setData.series ?? null,
     era: inferSetEra(setData),
-    totalCards:
-      typeof setData.total === "number"
-        ? setData.total
-        : typeof reportedTotal === "number"
-          ? reportedTotal
-          : cards.length || null,
+    totalCards: totalCards || cards.length || null,
     cards,
   };
-
-  if (!normalized.totalCards && cards.length) {
-    normalized.totalCards = cards.length;
-  }
-
-  return normalized;
 }
 
-
-export async function getStaticPaths() {
-  return { paths: [], fallback: 'blocking' };
-}
-
-export async function getStaticProps({ params }) {
-  const code = String(params?.code || "").toLowerCase();
-  if (!code) return { notFound: true };
-
-  try {
-    const set = await loadSetFromBackend(code);
-    if (set) {
-      return { props: { set }, revalidate: 3600 };
-    }
-  } catch (err) {
-    console.warn(`Unable to load set '${code}' from GraphQL:`, err);
-  }
-
-  return { notFound: true };
-}
+// No getServerSideProps / getStaticProps needed — code comes from useRouter(),
+// and set data is fetched client-side directly from the backend catalog.

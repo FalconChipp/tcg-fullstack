@@ -13,6 +13,7 @@ export default function DevBlog4Page() {
   return (
     <Layout>
       <BlogPostLayout
+        slug="dev-blog-4-email-and-mobile-gaps"
         title="Dev Blog #4 — Here's What We've Been Building"
         subtitle="The redesign, marketplace, trading, subscriptions, real-time messaging, notifications, profiles, Discord integration, and more — a look at everything in progress."
         date="16 June 2026"

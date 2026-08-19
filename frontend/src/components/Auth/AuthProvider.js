@@ -13,10 +13,52 @@ const REFRESH_INTERVAL_MS = 13 * 60 * 1000;
 // so the cookie never expires while the session is still valid.
 const AUTH_COOKIE_DAYS = 7;
 
+// Marketing acquisition attribution is first-touch and expires if the visitor
+// does not register within 30 days. Only UTM metadata is stored locally — never
+// the full landing URL or any personal information.
+const ATTRIBUTION_STORAGE_KEY = "sbfMarketingAttribution";
+const ATTRIBUTION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
 function deleteCookie(name) {
   document.cookie = `${name}=; Max-Age=-99999999; path=/;`;
 }
 
+function readStoredAttribution() {
+  try {
+    const raw = window.localStorage.getItem(ATTRIBUTION_STORAGE_KEY);
+    if (!raw) return null;
+    const value = JSON.parse(raw);
+    const capturedAt = Number(value?.capturedAt || 0);
+    if (!capturedAt || Date.now() - capturedAt > ATTRIBUTION_WINDOW_MS) {
+      window.localStorage.removeItem(ATTRIBUTION_STORAGE_KEY);
+      return null;
+    }
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+function captureFirstTouchAttribution() {
+  try {
+    // Never replace an existing first-touch campaign with a later visit.
+    if (readStoredAttribution()) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const attribution = {
+      utmSource: params.get("utm_source"),
+      utmMedium: params.get("utm_medium"),
+      utmCampaign: params.get("utm_campaign"),
+      utmContent: params.get("utm_content"),
+      capturedAt: Date.now(),
+    };
+
+    if (!attribution.utmSource && !attribution.utmCampaign && !attribution.utmContent) return;
+    window.localStorage.setItem(ATTRIBUTION_STORAGE_KEY, JSON.stringify(attribution));
+  } catch {
+    // Marketing attribution must never interfere with normal browsing/auth.
+  }
+}
 
 export const AuthContext = createContext();
 
@@ -37,6 +79,42 @@ export function AuthProvider({ children }) {
     } else {
       deleteCookie("authToken");
     }
+  }, []);
+
+  const recordMarketingAttribution = useCallback(async (accessToken) => {
+    const attribution = readStoredAttribution();
+    if (!attribution || !accessToken) return;
+
+    try {
+      const res = await fetch(`${getApiBase()}/auth/attribution`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          utmSource: attribution.utmSource,
+          utmMedium: attribution.utmMedium,
+          utmCampaign: attribution.utmCampaign,
+          utmContent: attribution.utmContent,
+        }),
+      });
+
+      // Once the server has accepted the request (including an already-attributed
+      // account), this browser no longer needs to retain the acquisition metadata.
+      if (res.ok) window.localStorage.removeItem(ATTRIBUTION_STORAGE_KEY);
+    } catch (error) {
+      // Keep the local attribution so a later successful registration/session can
+      // retry; never fail account creation because analytics could not be stored.
+      devError("AuthProvider: Failed to record marketing attribution:", error);
+    }
+  }, []);
+
+  // Capture campaign metadata as soon as the provider mounts. This survives
+  // navigation around the site until a registration happens or the 30-day window ends.
+  useEffect(() => {
+    captureFirstTouchAttribution();
   }, []);
 
   // --- Silent refresh: hit /auth/refresh (uses sbf_refresh HttpOnly cookie) ---
@@ -182,8 +260,9 @@ export function AuthProvider({ children }) {
     return () => clearInterval(interval);
   }, [token, fetchUser, storeToken, silentRefresh, scheduleRefresh]);
 
-  // Unified login/register handler
-  const authMutation = async (mutation, variables) => {
+  // Unified login/register handler. Registration asks the attribution endpoint
+  // to persist the first-touch campaign after the account and access token exist.
+  const authMutation = async (mutation, variables, { recordAttribution = false } = {}) => {
     try {
       const res = await fetch(getGraphqlUrl(), {
         method: "POST",
@@ -198,6 +277,10 @@ export function AuthProvider({ children }) {
       if (payload.token && payload.user) {
         updateToken(payload.token);
         setUser(payload.user);
+        if (recordAttribution) {
+          // Do not delay the successful registration UI on analytics storage.
+          void recordMarketingAttribution(payload.token);
+        }
         return { success: true, user: payload.user };
       }
       throw new Error("Invalid response from server");
@@ -258,7 +341,7 @@ export function AuthProvider({ children }) {
         authModalOpen,
         openAuthModal,
         closeAuthModal,
-        connectDiscord, // NEW: expose this to your UI
+        connectDiscord,
         login: async (identifier, password, mfaToken) =>
           authMutation(
             `
@@ -307,7 +390,8 @@ export function AuthProvider({ children }) {
                 }
               }
             `,
-            { email, username, password }
+            { email, username, password },
+            { recordAttribution: true }
           ),
       }}
     >

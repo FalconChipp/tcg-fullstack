@@ -110,7 +110,11 @@ function eraFromCode(code) {
 
   const cleaned = raw.replace(/\./g, "");
 
-  if (cleaned.startsWith("me")) return "me";
+  if (cleaned.startsWith("me") || 
+    cleaned === "30th" ||
+    cleaned === "30th-c"
+  ) 
+    return "me";
   if (cleaned.startsWith("sv")) return "sv";
   if (
     cleaned.startsWith("swsh") ||

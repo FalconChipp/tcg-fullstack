@@ -129,6 +129,7 @@ export const SET_LOGOS = {
   'Perfect Order' : 'perfect-order-logo.png',
   'Chaos Rising' : 'chaos-rising-logo.png',
   'Pitch Black' : 'pitch-black-logo.png',
+  '30th Celebration' : '/assets/set-logos/30th-logo.png',
 
   // Trainer Kits, Vaults, Classic, Special, etc.
   'Detective Pikachu': 'detective-pikachu-logo.png',

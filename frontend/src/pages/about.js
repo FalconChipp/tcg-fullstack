@@ -5,14 +5,18 @@ import React from "react";
 import Link from "next/link";
 import Layout from "@/components/Layout/Layout";
 import {
+  FaBell,
+  FaBoxOpen,
+  FaCamera,
+  FaCertificate,
   FaDiscord,
   FaExchangeAlt,
-  FaRegChartBar,
   FaRegFolderOpen,
   FaRegStar,
   FaRegUserCircle,
   FaSearch,
   FaStoreAlt,
+  FaUsers,
 } from "react-icons/fa";
 
 const DISCORD_INVITE = "https://discord.gg/PRMbMbRE2H";
@@ -43,9 +47,24 @@ const liveFeatures = [
     desc: "Keep chase cards, missing cards, and future pickups visible as your collection grows.",
   },
   {
+    icon: <FaStoreAlt />,
+    title: "Marketplace",
+    desc: "List cards, browse collector listings, and buy from other collectors with wallet, orders, and seller tools built in.",
+  },
+  {
+    icon: <FaExchangeAlt />,
+    title: "Collector Trading",
+    desc: "Propose, counter, and complete safe collector-to-collector trades with clear workflows and full trade history on your profile.",
+  },
+  {
+    icon: <FaBell />,
+    title: "Price Alerts",
+    desc: "Get notified when wishlist cards hit a target price, or when something you own moves sharply up or down.",
+  },
+  {
     icon: <FaRegUserCircle />,
     title: "Public Profiles",
-    desc: "Share your collection, binders, and progress with other collectors through your profile.",
+    desc: "Share your collection, binders, trade history, and reputation with other collectors through your profile.",
   },
 ];
 
@@ -55,22 +74,28 @@ const liveFeatures = [
 
 const roadmapItems = [
   {
-    title: "Marketplace",
-    icon: <FaStoreAlt />,
+    title: "Collector Social Feed",
+    icon: <FaUsers />,
     status: "In development",
-    desc: "List cards, browse collector listings, and connect collection tools with marketplace discovery.",
+    desc: "Follow other collectors, see new pulls, listings, and completed trades, and keep up with the people whose collections you care about.",
   },
   {
-    title: "Trading Platform",
-    icon: <FaExchangeAlt />,
+    title: "Pull Tracker",
+    icon: <FaBoxOpen />,
     status: "In planning",
-    desc: "Build safer collector-to-collector trades with privacy-first profiles and clear trade workflows.",
+    desc: "Log sealed product openings, track pull rates and chase hits over time, and build a real history of your luck pack by pack.",
   },
   {
-    title: "Collection Stats",
-    icon: <FaRegChartBar />,
-    status: "Planned",
-    desc: "Track completion, collection movement, value changes, and long-term collecting progress.",
+    title: "Card Scanner",
+    icon: <FaCamera />,
+    status: "In planning",
+    desc: "Add cards to your collection by scanning them with your phone — bulk inventory without typing a single name.",
+  },
+  {
+    title: "Grading Tracker",
+    icon: <FaCertificate />,
+    status: "In planning",
+    desc: "Log graded cards, track PSA and CGC submissions end-to-end, and surface pop report data next to your collection.",
   },
   {
     title: "More TCGs",
@@ -316,8 +341,9 @@ export default function AboutPage() {
 
                 <p>
                   <span className="font-black text-dark-strong">Where it is going:</span>{" "}
-                  marketplace, trading, alerts, stats, and deeper collection
-                  tools shaped by user feedback.
+                  a collector social feed, pull-rate tracking, camera-based
+                  scanning, grading tracking, and support for more TCGs — shaped
+                  by user feedback.
                 </p>
               </div>
             </aside>
@@ -424,8 +450,8 @@ export default function AboutPage() {
 
               <TimelineStep
                 number="3"
-                title="Track progress over time"
-                text="Keep your collection organised as it grows, and use upcoming tools for trading, marketplace discovery, and alerts."
+                title="Buy, sell, and trade"
+                text="Pick up missing cards from other collectors on the marketplace, or set up safe collector-to-collector trades straight from a profile or binder."
               />
             </div>
           </div>
@@ -447,9 +473,9 @@ export default function AboutPage() {
               </h2>
 
               <p className="mt-4 text-base leading-7 text-dark-textMuted">
-                The long-term goal is a complete collector ecosystem: collection
-                management, marketplace tools, trading, alerts, milestones, and
-                support for more TCGs.
+                Collection tools, marketplace, and trading are already live. These
+                are the pieces still ahead — alerts, smarter capture, deeper
+                stats, and support for more TCGs.
               </p>
             </div>
 

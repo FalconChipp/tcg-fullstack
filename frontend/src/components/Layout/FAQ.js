@@ -26,8 +26,8 @@ export const FAQ_ITEMS = [
     a: "Yes. You can create digital binders for sets, themes, trade cards, wishlist cards, or physical binder planning.",
   },
   {
-    q: "When will trading and the marketplace go live?",
-    a: `They are being tested with early users. Join Discord to follow updates and get access when testing opens: ${DISCORD_INVITE}`,
+    q: "Can I buy, sell, or trade cards on SixByFive?",
+    a: "Yes — both the marketplace and collector-to-collector trading are live. List cards for sale, browse other collectors' listings, use the built-in wallet, or propose trades straight from someone's binder or profile.",
   },
   {
     q: "Can I export my collection?",

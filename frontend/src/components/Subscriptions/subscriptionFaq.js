@@ -1,10 +1,16 @@
 "use client";
 import React, { useState } from "react";
 
-const faqs = [
+// Changed: fee copy uses the same loaded plans as the cards, preventing stale tier names.
+const buildFaqs = (plans) => {
+  const fees = plans
+    .filter((plan) => plan.platformFeePercent != null && Number.isFinite(Number(plan.platformFeePercent)))
+    .map((plan) => `${plan.name} ${Number(plan.platformFeePercent)}%`)
+    .join(", ");
+  return [
   {
     q: "What does the marketplace fee mean?",
-    a: "When you sell a card, SixByFive takes a small percentage of the sale price as a platform fee. Free users pay 7%, Collector 5%, Elite Collector 3%, and Vendor 2%. The fee is deducted from your earnings when a buyer confirms receipt — you never pay upfront.",
+    a: `A marketplace platform fee applies to completed sales, in addition to any paid subscription. ${fees ? `Current plan rates: ${fees}.` : "See the plan cards for the current rates."} Compare the fee and subscription together when choosing a plan.`,
   },
   {
     q: "Can I try before I subscribe?",
@@ -16,7 +22,7 @@ const faqs = [
   },
   {
     q: "Is billing monthly or yearly?",
-    a: "Both. Monthly billing gives you flexibility to cancel anytime. Yearly billing saves you around 17% — you pay for 10 months and get 12.",
+    a: "Both. Select Monthly or Yearly above to see the current prices. Yearly plans show the total billed for the year and the equivalent monthly cost. Any saving is calculated from the displayed monthly and yearly prices.",
   },
   {
     q: "How do I cancel?",
@@ -24,16 +30,18 @@ const faqs = [
   },
   {
     q: "Are there fees on top of the subscription?",
-    a: "No hidden fees. The subscription covers your lower marketplace rate. Shipping label costs (if applicable) are separate and are either deducted from your sale proceeds or charged to the buyer at checkout, depending on your listing settings.",
+    a: "Yes. A paid subscription lowers your marketplace platform fee; it does not remove it. The plan's percentage still applies to completed sales. Shipping label costs, where applicable, are separate. Review the amounts shown at checkout before paying.",
   },
   {
     q: "What payment methods do you accept?",
     a: "We use Stripe for all payments, so you can pay with any major credit or debit card. Apple Pay and Google Pay are also supported where available.",
   },
 ];
+};
 
-export default function SubscriptionFAQ() {
+export default function SubscriptionFAQ({ plans = [] }) {
   const [open, setOpen] = useState(null);
+  const faqs = buildFaqs(plans);
 
   return (
     <section className="max-w-2xl mx-auto px-4 py-16">

@@ -1,6 +1,6 @@
 "use client";
-import React, { useEffect, useState, useCallback } from "react";
-import Head from "next/head";
+import React, { useEffect, useState, useCallback, useContext } from "react";
+import { AuthContext } from "@/components/Auth/AuthProvider";
 import { useRouter } from "next/router";
 import Layout from "@/components/Layout/Layout";
 import {
@@ -136,7 +136,7 @@ function FeeDot({ pct }) {
   );
 }
 
-function PlanCard({ plan, monthly, yearly, isCurrent, billing, onSelect, checkoutLoading }) {
+function PlanCard({ plan, monthly, yearly, isCurrent, billing, onSelect, onStartFree, checkoutLoading }) {
   const key = plan.name.toLowerCase();
   const meta = PLAN_META[key] ?? { highlight: "", cta: "Get started", popular: false, forSellers: false, color: "neutral", features: [] };
   const accent = ACCENT[meta.color] ?? ACCENT.neutral;
@@ -147,12 +147,14 @@ function PlanCard({ plan, monthly, yearly, isCurrent, billing, onSelect, checkou
   // Yearly savings
   const saving = monthly && yearly ? yearlySavingPct(monthly.rawPrice, yearly.rawPrice) : null;
 
-  // Use featuresJson from DB if available, fall back to static PLAN_META
+  // Changed: reviewed feature availability takes precedence over legacy marketing
+  // strings, which advertised unlimited binders and unfinished Vendor features.
+  // Unknown tiers retain the API descriptions as a compatibility fallback.
   const featuresJsonRaw = activePlan?.featuresJson ?? monthly?.featuresJson ?? yearly?.featuresJson;
   const dbFeatures = Array.isArray(featuresJsonRaw) && featuresJsonRaw.length > 0
     ? featuresJsonRaw.map((f) => ({ label: f, live: true }))
     : null;
-  const features = dbFeatures ?? meta.features;
+  const features = PLAN_META[key] ? meta.features : (dbFeatures ?? meta.features);
 
   const priceDisplay = () => {
     if (!activePlan || activePlan.rawPrice === 0) return <span className="text-4xl font-black">Free</span>;
@@ -250,13 +252,13 @@ function PlanCard({ plan, monthly, yearly, isCurrent, billing, onSelect, checkou
           Current plan
         </button>
       ) : key === "free" ? (
-        <button disabled className="w-full py-2.5 rounded-[10px] text-sm font-semibold border border-vault-border text-vault-textTertiary bg-vault-raised cursor-default">
-          Free forever
+        <button type="button" onClick={onStartFree} className="w-full py-2.5 rounded-[10px] text-sm font-semibold border border-vault-border text-vault-text bg-vault-raised hover:bg-vault-surface">
+          Get started free
         </button>
       ) : (
         <button
           onClick={() => onSelect?.(activePlan.id)}
-          disabled={!!checkoutLoading}
+          disabled={!!checkoutLoading || !activePlan}
           className={`w-full py-2.5 rounded-[10px] text-sm font-semibold text-vault-text transition disabled:opacity-60 disabled:cursor-wait
             ${meta.popular
               ? "bg-violet-600 hover:bg-violet-500"
@@ -370,6 +372,7 @@ function ComparisonTable({ plans }) {
 
 export default function SubscriptionsPage() {
   const router = useRouter();
+  const { user, openAuthModal } = useContext(AuthContext);
   const [subscription, setSubscription] = useState(null);
   const [apiPlans, setApiPlans] = useState([]);
   const [billing, setBilling] = useState("monthly");
@@ -385,16 +388,37 @@ export default function SubscriptionsPage() {
   }, [router.query]);
 
   useEffect(() => {
-    Promise.all([fetchUserSubscription(), fetchSubscriptionPlans()])
-      .then(([sub, plans]) => {
-        setSubscription(sub);
+    // Changed: a signed-out subscription lookup must not hide public prices.
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    setSubscription(null);
+    fetchSubscriptionPlans()
+      .then((plans) => {
+        if (cancelled) return;
         setApiPlans(plans || []);
       })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
+      .catch((e) => { if (!cancelled) setError(e.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    if (user) {
+      fetchUserSubscription()
+        .then((sub) => { if (!cancelled) setSubscription(sub); })
+        .catch(() => { /* Public plans remain available if account lookup fails. */ });
+    }
+    return () => { cancelled = true; };
+  }, [user]);
+
+  const handleStartFree = useCallback(() => {
+    if (!user) return openAuthModal();
+    router.push("/dashboard");
+  }, [user, openAuthModal, router]);
 
   const handleSelect = useCallback(async (planId) => {
+    // Added: open the existing account flow before attempting authenticated checkout.
+    if (!user) {
+      openAuthModal();
+      return;
+    }
     setError(null);
     setCheckoutLoading(planId);
     try {
@@ -405,7 +429,7 @@ export default function SubscriptionsPage() {
     } finally {
       setCheckoutLoading(null);
     }
-  }, []);
+  }, [user, openAuthModal]);
 
   const handleManage = useCallback(async () => {
     try { await openBillingPortal(); }
@@ -446,11 +470,11 @@ export default function SubscriptionsPage() {
 
   return (
     <>
-      <Head>
-        <title>Pricing — SixByFive TCG</title>
-        <meta name="description" content="Simple, transparent pricing. Free to start. Collector, Elite Collector and Vendor plans with lower marketplace fees and more." />
-      </Head>
-      <Layout noTopPadding>
+      <Layout noTopPadding seo={{
+        title: "Pricing — SixByFive TCG",
+        description: "Start your Pokémon collection free. Compare Collector, Trader and Vendor plans for more binders, more listings and lower marketplace fees.",
+        canonical: "/subscriptions",
+      }}>
         <div className="pt-20 pb-24">
 
           {/* ── Hero ─────────────────────────────────────────────────────── */}
@@ -542,6 +566,7 @@ export default function SubscriptionsPage() {
                       isCurrent={isCurrent}
                       billing={billing}
                       onSelect={handleSelect}
+                      onStartFree={handleStartFree}
                       checkoutLoading={checkoutLoading}
                     />
                   );
@@ -559,7 +584,7 @@ export default function SubscriptionsPage() {
           )}
 
           {/* ── FAQ ──────────────────────────────────────────────────────── */}
-          <SubscriptionFAQ />
+          <SubscriptionFAQ plans={flatPlansForTable} />
 
           {/* ── Discord ──────────────────────────────────────────────────── */}
           <SubscriptionDiscord />

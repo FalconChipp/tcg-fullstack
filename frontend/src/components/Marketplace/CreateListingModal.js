@@ -760,7 +760,18 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
                     </>
                   )}
 
-                  {err && <p className="text-xs text-red-400">{err}</p>}
+                  {err && (
+                    /listing limit/i.test(err) ? (
+                      <p className="text-xs text-red-400">
+                        {err}{" "}
+                        <a href="/subscriptions" className="text-indigo-400 hover:text-indigo-300 underline font-medium">
+                          Upgrade your plan →
+                        </a>
+                      </p>
+                    ) : (
+                      <p className="text-xs text-red-400">{err}</p>
+                    )
+                  )}
 
                   <button
                     type="submit"

@@ -131,6 +131,23 @@ export const CREATE_BULK_LISTINGS = gql`
   }
 `;
 
+// Lot sale — one listing for an entire bulk lot (tracked or random).
+// Backend accepts the shape via POST /listings with listingKind set.
+export const CREATE_BULK_LOT_MUTATION = gql`
+  mutation CreateBulkLot($input: CreateBulkLotInput!) {
+    createBulkLot(input: $input) {
+      id
+      listingKind
+      title
+      cardCount
+      status
+      proofCode
+      proofCodeExpiresAt
+      createdAt
+    }
+  }
+`;
+
 export const SUBMIT_BULK_PROOF = gql`
   mutation SubmitBulkProof($batchId: ID!, $image: String!) {
     submitBulkProof(batchId: $batchId, image: $image) {

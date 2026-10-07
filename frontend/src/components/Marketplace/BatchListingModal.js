@@ -426,6 +426,14 @@ function ReviewStep({ batch, onUpdateItem, onRemove, onBack, onSubmit, submittin
       {error && (
         <div className="rounded-[6px] border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs text-rose-400">
           {error}
+          {/listing limit/i.test(error) && (
+            <>
+              {" "}
+              <a href="/subscriptions" className="text-indigo-400 hover:text-indigo-300 underline font-medium">
+                Upgrade your plan →
+              </a>
+            </>
+          )}
         </div>
       )}
 
@@ -639,6 +647,14 @@ function ProofStep({ batchId, proofCode, count, onBack, onDone }) {
       {error && (
         <div className="rounded-[6px] border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs text-rose-400">
           {error}
+          {/listing limit/i.test(error) && (
+            <>
+              {" "}
+              <a href="/subscriptions" className="text-indigo-400 hover:text-indigo-300 underline font-medium">
+                Upgrade your plan →
+              </a>
+            </>
+          )}
         </div>
       )}
 
@@ -666,7 +682,7 @@ function ProofStep({ batchId, proofCode, count, onBack, onDone }) {
 
 // ─── Main modal ───────────────────────────────────────────────────────────────
 
-export default function BulkListingModal({ open, onClose, onComplete, capsMax = null }) {
+export default function BatchListingModal({ open, onClose, onComplete, capsMax = null }) {
   const auth = useContext(AuthContext) || {};
   const isLoggedIn = !!(auth.user || auth.token);
   const apollo = useApolloClient();

@@ -17,7 +17,8 @@ import ListingDetailModal from "@/components/Marketplace/ListingDetailModal";
 import CreateListingModal from "@/components/Marketplace/CreateListingModal";
 import MarketplaceRulesModal from "@/components/Marketplace/MarketplaceRulesModal";
 import MyListingsDrawer from "@/components/Marketplace/MyListingsDrawer";
-import BulkListingModal from "@/components/Marketplace/BulkListingModal";
+import BatchListingModal from "@/components/Marketplace/BatchListingModal";
+import BulkLotModal from "@/components/Marketplace/BulkLotModal";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 
 
@@ -50,7 +51,8 @@ function MarketplacePage() {
   const [detailListing, setDetailListing] = useState(null);
   const [showCreateListing, setShowCreateListing] = useState(false);
   const [showMyListings, setShowMyListings] = useState(false);
-  const [showBulkListing, setShowBulkListing] = useState(false);
+  const [showBatchListing, setShowBatchListing] = useState(false);
+  const [showBulkLot, setShowBulkLot] = useState(false);
 
   // If a notification link lands on /marketplace?listing=<id>, auto-open the modal
   const [directListingId, setDirectListingId] = useState(null);
@@ -131,10 +133,17 @@ function MarketplacePage() {
                 <>
                   <button
                     type="button"
-                    onClick={() => setShowBulkListing(true)}
+                    onClick={() => setShowBulkLot(true)}
                     className="rounded-[10px] border border-vault-border px-4 py-2 text-sm font-semibold text-vault-textSecondary transition-colors hover:border-vault-borderStrong hover:text-vault-text"
                   >
-                    Bulk list
+                    Sell bulk lot
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowBatchListing(true)}
+                    className="rounded-[10px] border border-vault-border px-4 py-2 text-sm font-semibold text-vault-textSecondary transition-colors hover:border-vault-borderStrong hover:text-vault-text"
+                  >
+                    List batch
                   </button>
                   <button
                     type="button"
@@ -197,14 +206,24 @@ function MarketplacePage() {
         }}
       />
 
-      <BulkListingModal
-        open={showBulkListing}
-        onClose={() => setShowBulkListing(false)}
+      <BatchListingModal
+        open={showBatchListing}
+        onClose={() => setShowBatchListing(false)}
         onComplete={() => {
-          setShowBulkListing(false);
+          setShowBatchListing(false);
           setShowMyListings(true);
         }}
       />
+
+      {showBulkLot && (
+        <BulkLotModal
+          onClose={() => setShowBulkLot(false)}
+          onCreated={() => {
+            setShowBulkLot(false);
+            setShowMyListings(true);
+          }}
+        />
+      )}
 
       {showRulesModal && (
         <MarketplaceRulesModal

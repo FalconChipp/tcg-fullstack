@@ -19,7 +19,7 @@ import { CARDSEARCH_QUERY } from '@/graphql/collection';
 import {
   pos, pickDisplayPrice, getBestPriceRow, formatGBP,
   canonicalCardKey, mergeCardLists, makeQueryKey, applyFiltersAndSort,
-  GBP_SYMBOL, FALLBACK_SYMBOL_IMAGE, CARDSEARCH_PAGE_SIZE, CARDSEARCH_EXACT_LIMIT, HOME_RESULT_LIMIT,
+  GBP_SYMBOL, FALLBACK_SYMBOL_IMAGE, CARDSEARCH_PAGE_SIZE, CARDSEARCH_EXACT_LIMIT,
 } from '@/utils/cardSearchUtils';
 
 import { getCookie } from "@/utils/cookieUtils";
@@ -198,9 +198,9 @@ export default function CardSearch({ variant = "search" }) {
     [results, filters]
   );
 
-  const visibleResults = isHomeVariant
-    ? filteredResults.slice(0, HOME_RESULT_LIMIT)
-    : filteredResults;
+  // Home variant used to cap at HOME_RESULT_LIMIT; it now shares full
+  // infinite-scroll pagination with the search variant.
+  const visibleResults = filteredResults;
 
   const showStatusMessage = useCallback((type, message) => {
     setStatusMessage({ type, message });
@@ -328,7 +328,6 @@ export default function CardSearch({ variant = "search" }) {
   );
 
   const loadMoreResults = useCallback(async () => {
-    if (isHomeVariant) return;
     if (loadingMoreRef.current || !hasMore) return;
 
     loadingMoreRef.current = true;
@@ -447,8 +446,6 @@ export default function CardSearch({ variant = "search" }) {
   ]);
 
   useEffect(() => {
-    if (isHomeVariant) return;
-
     if (!hasMore) {
       disconnectObserver();
       return;
@@ -822,12 +819,6 @@ export default function CardSearch({ variant = "search" }) {
                     Search Results
                   </h2>
 
-                  {isHomeVariant && filteredResults.length > HOME_RESULT_LIMIT ? (
-                    <p className="mt-1 text-sm text-dark-textMuted">
-                      Showing the first {HOME_RESULT_LIMIT} results. Use the
-                      workbench if you want to build a larger batch.
-                    </p>
-                  ) : null}
                 </div>
 
                 <p
@@ -1053,23 +1044,31 @@ export default function CardSearch({ variant = "search" }) {
               )}
 
 
-              {isSearchVariant && (
-                <>
-                  <div ref={loadMoreTriggerRef} aria-hidden="true" />
+              <div ref={loadMoreTriggerRef} aria-hidden="true" />
 
-                  {(hasMore || isLoadingMore) && (
-                    <div className="flex items-center justify-center gap-4 mt-12 mb-4 text-lg text-light-textMuted dark:text-dark-textMuted">
-                      {isLoadingMore ? (
-                        <>
-                          <span className="inline-block w-[22px] h-[22px] border-4 border-light-accent dark:border-dark-accent border-r-transparent rounded-full animate-spin"></span>
-                          Loading more cards...
-                        </>
-                      ) : (
-                        <span>Scroll to load more cards</span>
-                      )}
-                    </div>
+              {(hasMore || isLoadingMore) && (
+                <div
+                  className={
+                    isHomeVariant
+                      ? "flex items-center justify-center gap-4 mt-12 mb-4 text-lg text-dark-textMuted"
+                      : "flex items-center justify-center gap-4 mt-12 mb-4 text-lg text-light-textMuted dark:text-dark-textMuted"
+                  }
+                >
+                  {isLoadingMore ? (
+                    <>
+                      <span
+                        className={
+                          isHomeVariant
+                            ? "inline-block w-[22px] h-[22px] border-4 border-dark-accent border-r-transparent rounded-full animate-spin"
+                            : "inline-block w-[22px] h-[22px] border-4 border-light-accent dark:border-dark-accent border-r-transparent rounded-full animate-spin"
+                        }
+                      ></span>
+                      Loading more cards...
+                    </>
+                  ) : (
+                    <span>Scroll to load more cards</span>
                   )}
-                </>
+                </div>
               )}
             </div>
           ) : (

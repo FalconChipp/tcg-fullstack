@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useMemo, useCallback, useState, useEffect } from "react";
+import CardImage from "@/components/Cards/CardImage";
 import { getCardImageUrl } from "@/utils/imageUtils";
-import Image from "next/image";
 import { getCardKey } from "@/utils/cardUtils";
 
 const DEFAULT_IMAGE_QUALITY = 100;
@@ -250,17 +250,14 @@ const BinderCollectionView = ({
               }}
             >
               <div className="w-full h-full flex items-center justify-center relative overflow-hidden">
-                <Image
+                <CardImage
                   src={getCardImage(card)}
-                  alt={cardName}
-                  fill
-                  sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                  className="object-contain rounded-2xl group-hover:scale-105 transition-transform duration-200"
-                  priority={false}
-                  loading="lazy"
-                  onError={(e) => {
-                    e.target.src = FALLBACK_CARD_IMAGE;
-                    if (DEBUG) dlog("Image onError; using fallback for:", { key, cardName });
+                  name={cardName}
+                  cardId={card.cardId || card.card?.id || card.id}
+                  className="absolute inset-0 w-full h-full object-contain rounded-2xl group-hover:scale-105 transition-transform duration-200"
+                  imgProps={{
+                    loading: "lazy",
+                    onError: () => { if (DEBUG) dlog("Image onError; using sprite fallback for:", { key, cardName }); },
                   }}
                 />
                 <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">

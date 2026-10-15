@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useContext, useEffect, useState } from "react";
+import CardImage from "@/components/Cards/CardImage";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { AuthContext } from "@/components/Auth/AuthProvider";
@@ -449,16 +450,18 @@ export default function ListingDetailModal({ listing, onClose }) {
                 </div>
               ) : imageUrl ? (
                 <>
-                  <img src={imageUrl} alt={info.name || "Card"}
+                  <CardImage src={imageUrl} name={info.name} cardId={info.id || listing.cardId}
                     className="relative z-10 w-full rounded-[10px] "
-                    style={{ filter: "drop-(0 8px 24px rgba(0,0,0,0.6))" }}
+                    imgProps={{ style: { filter: "drop-(0 8px 24px rgba(0,0,0,0.6))" } }}
                   />
                   <div className="absolute inset-0 opacity-20 blur-2xl scale-75"
                     style={{ backgroundImage: `url(${imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}
                   />
                 </>
               ) : (
-                <div className="w-32 h-44 rounded-[10px] bg-white/10 flex items-center justify-center text-xs text-white/50">No image</div>
+                <div className="relative z-10 w-40 aspect-[5/7] rounded-[10px] bg-white/10 text-white/80 overflow-hidden">
+                  <CardImage src={null} name={info.name} cardId={info.id || listing.cardId} />
+                </div>
               )}
               {/* Toggle label */}
               {proofImgSrc && (

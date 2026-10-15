@@ -7,6 +7,7 @@ import { AuthContext } from "@/components/Auth/AuthProvider";
 import { MY_COLLECTION_QUERY } from '@/graphql/collection';
 import { PRICE_SUGGESTION_QUERY, CREATE_LISTING_MUTATION } from '@/graphql/marketplace';
 import { CARD_DETAIL_QUERY } from '@/graphql/cards';
+import CardImage from "@/components/Cards/CardImage";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -71,11 +72,7 @@ function CollectionRow({ entry, selected, onSelect }) {
       ].join(" ")}
     >
       <div className="shrink-0 w-8 h-11 rounded overflow-hidden bg-white/[0.06]">
-        {card?.images?.small ? (
-          <img src={card.images.small} alt={card.name} className="w-full h-full object-contain" />
-        ) : (
-          <div className="w-full h-full" />
-        )}
+        <CardImage src={card?.images?.small} name={card?.name} cardId={card?.id} compact className="w-full h-full object-contain" />
       </div>
       <div className="min-w-0 flex-1">
         <p className="font-medium text-neutral-100 truncate">{card?.name ?? entry.cardId}</p>
@@ -136,16 +133,16 @@ function CardPreviewPanel({ entry, priceSuggestion, priceLoading, apiPrices, api
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-[10px] overflow-hidden bg-black/40 border border-white/[0.06] flex items-center justify-center" style={{ minHeight: 260 }}>
-        {imgSrc ? (
-          <img
+        <div className="w-full max-w-[220px] mx-auto rounded-[10px] overflow-hidden text-neutral-300" style={{ aspectRatio: "2.5/3.5" }}>
+          <CardImage
             src={imgSrc}
-            alt={card.name}
-            className="w-full max-w-[220px] mx-auto object-contain rounded-[10px]"
-            style={{ aspectRatio: "2.5/3.5" }}
+            name={card.name}
+            cardId={card.id}
+            setCode={card.set?.id}
+            className="w-full h-full object-contain rounded-[10px]"
+            fallbackClassName="bg-white/[0.04]"
           />
-        ) : (
-          <div className="w-40 h-56 rounded-[10px] bg-white/[0.04] flex items-center justify-center text-neutral-700 text-xs">No image</div>
-        )}
+        </div>
       </div>
 
       <div className="rounded-[10px] border border-white/[0.06] bg-white/[0.02] px-4 py-3 space-y-1.5">
@@ -537,9 +534,9 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
                     {/* Selected card */}
                     {selectedEntry && (
                       <div className="flex items-center gap-2.5 rounded-[10px] border border-indigo-500/30 bg-indigo-500/[0.06] px-3 py-2">
-                        {selectedEntry.card?.images?.small && (
-                          <img src={selectedEntry.card.images.small} alt={selectedEntry.card.name} className="w-7 h-9 object-contain rounded shrink-0" />
-                        )}
+                        <div className="w-7 h-9 shrink-0 overflow-hidden rounded">
+                          <CardImage src={selectedEntry.card?.images?.small} name={selectedEntry.card?.name} cardId={selectedEntry.cardId} compact className="w-full h-full object-contain" />
+                        </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-medium text-neutral-100 truncate">{selectedEntry.card?.name ?? selectedEntry.cardId}</p>
                           <p className="text-[11px] text-neutral-500 truncate">
@@ -578,11 +575,7 @@ export default function CreateListingModal({ onClose, onCreated, onViewListings 
                                   title={`${name}${entry.condition ? ` · ${entry.condition}` : ""}`}
                                   className="group relative aspect-[2/3] rounded-[6px] overflow-hidden border border-white/[0.06] hover:border-indigo-500/50 transition bg-black/40"
                                 >
-                                  {imgUrl ? (
-                                    <img src={imgUrl} alt={name} className="w-full h-full object-contain group-hover:scale-105 transition duration-200" />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-[9px] text-neutral-600 p-1 text-center leading-tight">{name}</div>
-                                  )}
+                                  <CardImage src={imgUrl} name={name} cardId={entry.cardId} className="w-full h-full object-contain group-hover:scale-105 transition duration-200" fallbackClassName="text-neutral-300" />
                                   {entry.condition && (
                                     <span className="absolute top-1 left-1 text-[8px] font-bold px-1 py-0.5 rounded bg-black/70 text-neutral-300">
                                       {entry.condition}

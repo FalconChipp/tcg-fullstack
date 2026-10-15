@@ -2,11 +2,11 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import CardImage from "@/components/Cards/CardImage";
 import {
   Tag, ChevronDown, ChevronUp, Check, X, RotateCcw,
-  RefreshCw, AlertCircle, Loader2, Package,
+  RefreshCw, AlertCircle, Loader2,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 
 /* ─── GraphQL helper ─────────────────────────────────────────────────────────── */
@@ -74,17 +74,9 @@ function StatusBadge({ status }) {
 /* ─── Card thumbnail ──────────────────────────────────────────────────────────── */
 
 function CardThumb({ src, alt }) {
-  const [err, setErr] = useState(false);
-  if (!src || err) {
-    return (
-      <div className="w-10 h-14 rounded bg-vault-raised flex items-center justify-center shrink-0">
-        <Package className="w-4 h-4 text-vault-textTertiary" />
-      </div>
-    );
-  }
   return (
-    <div className="relative w-10 h-14 rounded overflow-hidden shrink-0">
-      <Image src={src} alt={alt || "card"} fill className="object-cover" sizes="40px" onError={() => setErr(true)} />
+    <div className="relative w-10 h-14 rounded overflow-hidden shrink-0 bg-vault-raised">
+      <CardImage src={src} name={alt} compact className="w-full h-full object-cover" />
     </div>
   );
 }

@@ -9,8 +9,8 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import CardImage from "@/components/Cards/CardImage";
 import { devWarn } from "@/utils/devLog";
-import Image from "next/image";
 import { useRouter } from "next/router";
 import { useTheme } from "@/hooks/ThemeProvider";
 import { getCardImageUrl } from "@/utils/imageUtils";
@@ -689,12 +689,11 @@ export default function ProfileWishlistPanel({
                 // KEEP: you can still use onViewCardDetail if parent wants it
                 onClick={() => onViewCardDetail && onViewCardDetail(entry)}
               >
-                <Image
-                  src={getCardImageUrl(img)}
-                  alt={card.name || "Pokémon Card"}
-                  fill
-                  className="object-contain rounded-[6px] group-hover:scale-105 transition-transform duration-300"
-                  unoptimized
+                <CardImage
+                  src={img ? getCardImageUrl(img) : null}
+                  name={card?.name}
+                  cardId={entry.cardId || card?.id}
+                  className="absolute inset-0 w-full h-full object-contain rounded-[6px] group-hover:scale-105 transition-transform duration-300"
                 />
 
                 {entry.quantity > 1 && (

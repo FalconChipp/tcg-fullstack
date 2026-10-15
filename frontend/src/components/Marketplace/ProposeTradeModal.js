@@ -10,6 +10,7 @@
 "use client";
 
 import React, { useContext, useEffect, useMemo, useState } from "react";
+import CardImage from "@/components/Cards/CardImage";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 import { MY_COLLECTION_QUERY } from '@/graphql/collection';
 import { MY_WALLET_QUERY, INITIATE_TRADE_MUTATION } from '@/graphql/trades';
@@ -57,11 +58,7 @@ function CollectionRow({ entry, selected, onToggle }) {
     >
       {/* Card thumbnail */}
       <div className="relative flex-shrink-0 w-8 h-11 rounded-md overflow-hidden bg-black">
-        {imgUrl ? (
-          <img src={imgUrl} alt={card.name} className="w-full h-full object-contain" />
-        ) : (
-          <div className="w-full h-full bg-vault-raised" />
-        )}
+        <CardImage src={imgUrl} name={card.name} cardId={card.id} compact className="w-full h-full object-contain" fallbackClassName="bg-vault-raised" />
       </div>
 
       {/* Info */}
@@ -360,10 +357,7 @@ export default function ProposeTradeModal({ listing, onClose }) {
                   <div className={sectionLabel}>They send you</div>
                   <div className="flex items-center gap-3">
                     <div className="flex-shrink-0 w-10 h-14 rounded-[6px] overflow-hidden bg-black">
-                      {imageUrl
-                        ? <img src={imageUrl} alt={info.name} className="w-full h-full object-contain" />
-                        : <div className="w-full h-full bg-vault-raised" />
-                      }
+                      <CardImage src={imageUrl} name={info.name} cardId={info.id || listing.cardId} compact className="w-full h-full object-contain" fallbackClassName="bg-vault-raised" />
                     </div>
                     <div className="min-w-0">
                       <div className="text-sm font-semibold text-vault-text truncate">
@@ -408,9 +402,9 @@ export default function ProposeTradeModal({ listing, onClose }) {
                     <div className="flex flex-wrap gap-1.5">
                       {[...selected.values()].map((e) => (
                         <div key={e.id} className="flex items-center gap-1 rounded-[6px] bg-vault-raised px-2 py-1">
-                          {e.card?.images?.small && (
-                            <img src={e.card.images.small} alt={e.card.name} className="w-5 h-7 object-contain rounded" />
-                          )}
+                          <div className="w-5 h-7 shrink-0 overflow-hidden rounded">
+                            <CardImage src={e.card?.images?.small} name={e.card?.name} cardId={e.cardId} compact className="w-full h-full object-contain" />
+                          </div>
                           <span className="text-[11px] font-medium text-vault-text truncate max-w-[80px]">
                             {e.card?.name || e.cardId}
                           </span>

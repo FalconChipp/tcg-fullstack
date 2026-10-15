@@ -11,6 +11,7 @@
 "use client";
 
 import React, { useContext, useEffect, useMemo, useState } from "react";
+import CardImage from "@/components/Cards/CardImage";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 import { MY_COLLECTION_QUERY } from '@/graphql/collection';
 import { CREATE_BULK_LOT_MUTATION } from '@/graphql/marketplace';
@@ -289,11 +290,7 @@ function TrackedPicker({ collection, loading, selected, onChange }) {
                   picked ? "border-emerald-500 ring-1 ring-emerald-500/50" : "border-white/[0.06] hover:border-indigo-500/50",
                 ].join(" ")}
               >
-                {img ? (
-                  <img src={img} alt={name} className="w-full h-full object-contain" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[8px] text-neutral-600 p-1 text-center leading-tight">{name}</div>
-                )}
+                <CardImage src={img} name={name} cardId={entry.cardId} className="w-full h-full object-contain" fallbackClassName="text-neutral-300" />
                 {picked && (
                   <div className="absolute inset-0 bg-emerald-500/20 flex items-center justify-center">
                     <span className="text-emerald-300 text-sm font-bold">✓</span>
@@ -309,9 +306,9 @@ function TrackedPicker({ collection, loading, selected, onChange }) {
         <div className="rounded-[10px] border border-white/[0.06] bg-black/20 p-2 space-y-1 max-h-40 overflow-y-auto">
           {selected.map((s) => (
             <div key={s.key} className="flex items-center gap-2 text-xs">
-              {s.imageSmall ? (
-                <img src={s.imageSmall} alt="" className="w-5 h-7 object-contain rounded shrink-0" />
-              ) : <div className="w-5 h-7 shrink-0" />}
+              <div className="w-5 h-7 shrink-0 overflow-hidden rounded">
+                <CardImage src={s.imageSmall} name={s.name} cardId={s.cardId} compact className="w-full h-full object-contain" />
+              </div>
               <span className="flex-1 truncate text-neutral-300">{s.name}</span>
               {s.condition && <span className="text-[10px] text-neutral-600">{s.condition}</span>}
               <input

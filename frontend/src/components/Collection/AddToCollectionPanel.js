@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useContext, useEffect } from "react";
+import CardImage from "@/components/Cards/CardImage";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 import { useTheme } from "@/hooks/ThemeProvider";
-import Image from "next/image";
 import { executeMutation } from "@/utils/graphqlUtils";
 import StatusMessage from "@/components/UI/StatusMessage";
 import { getCardImageUrl } from "@/utils/imageUtils";
@@ -203,15 +203,12 @@ export default function AddToCollectionPanel({ cardDetail, onClose, initialWishl
         {/* Card preview */}
         <div className="flex gap-4 items-center mb-7">
           <div className="relative w-24 h-36 rounded-2xl bg-light-alt dark:bg-dark-alt overflow-hidden shadow border border-light-border dark:border-dark-border">
-            <Image
-              src={imgSrc || FALLBACK_CARD_IMAGE}
-              alt={cardDetail?.name || "Card"}
-              fill
-              className="object-contain rounded-2xl"
-              sizes="120px"
-              onError={() => setImgSrc(FALLBACK_CARD_IMAGE)}
-              priority
-              unoptimized
+            <CardImage
+              src={imgSrc}
+              name={cardDetail?.name}
+              cardId={effectiveCardId}
+              compact
+              className="absolute inset-0 w-full h-full object-contain rounded-2xl"
             />
           </div>
           <div>

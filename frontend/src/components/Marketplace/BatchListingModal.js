@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
+import CardImage from "@/components/Cards/CardImage";
 import { useApolloClient } from "@apollo/client";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 import { MY_COLLECTION_QUERY } from '@/graphql/collection';
@@ -165,9 +166,7 @@ function AddCardsStep({ batch, onAdd, onRemove, onUpdateItem, onNext, capsMax })
                   }`}
                 >
                   <div className="shrink-0 w-7 h-10 rounded overflow-hidden bg-white/[0.04]">
-                    {entry.card?.images?.small
-                      ? <img src={entry.card.images.small} alt="" className="w-full h-full object-contain" />
-                      : <div className="w-full h-full" />}
+                    <CardImage src={entry.card?.images?.small} name={entry.card?.name} cardId={entry.cardId} compact className="w-full h-full object-contain" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-neutral-100 truncate">{entry.card?.name ?? entry.cardId}</p>
@@ -213,9 +212,7 @@ function AddCardsStep({ batch, onAdd, onRemove, onUpdateItem, onNext, capsMax })
               {batch.map((item, i) => (
                 <div key={i} className="rounded-[6px] border border-white/[0.08] bg-white/[0.03] px-3 py-2 flex items-center gap-2">
                   <div className="shrink-0 w-6 h-9 rounded overflow-hidden bg-white/[0.04]">
-                    {item.card?.images?.small
-                      ? <img src={item.card.images.small} alt="" className="w-full h-full object-contain" />
-                      : <div className="w-full h-full" />}
+                    <CardImage src={item.card?.images?.small} name={item.card?.name} cardId={item.cardId} compact className="w-full h-full object-contain" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-medium text-neutral-200 truncate">{item.card?.name ?? item.cardId}</p>
@@ -316,9 +313,7 @@ function ReviewStep({ batch, onUpdateItem, onRemove, onBack, onSubmit, submittin
             <div key={i} className="grid grid-cols-[1fr_80px_80px_32px] gap-3 px-4 py-2.5 items-center">
               <div className="flex items-center gap-2 min-w-0">
                 <div className="shrink-0 w-6 h-9 rounded overflow-hidden bg-white/[0.04]">
-                  {item.card?.images?.small
-                    ? <img src={item.card.images.small} alt="" className="w-full h-full object-contain" />
-                    : <div className="w-full h-full" />}
+                  <CardImage src={item.card?.images?.small} name={item.card?.name} cardId={item.cardId} compact className="w-full h-full object-contain" />
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-neutral-200 truncate">{item.card?.name ?? item.cardId}</p>

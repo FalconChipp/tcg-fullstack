@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import CardImage from "@/components/Cards/CardImage";
 import { getCardImageUrl } from '@/utils/imageUtils';
 import { getGraphqlUrl } from '@/utils/apiClient';
 
@@ -290,17 +291,12 @@ export default function BinderCardSearch({
             "
           >
             <div className="w-full h-full flex items-center justify-center relative overflow-hidden">
-              <img
+              <CardImage
                 src={getCardImage(card)}
-                alt={card.tcgName || card.name}
+                name={card.tcgName || card.name}
+                cardId={card.externalId || card.id}
                 className="object-contain w-full h-full rounded-2xl group-hover:scale-105 transition-transform duration-200"
-                draggable={false}
-                onDragStart={e => e.preventDefault()}
-                onError={e => {
-                  e.target.style.display = 'none';
-                  const fallback = e.target.nextElementSibling;
-                  if (fallback) fallback.style.display = 'flex';
-                }}
+                imgProps={{ draggable: false, onDragStart: e => e.preventDefault() }}
               />
               <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                 <p className="text-white text-xs truncate text-center" title={card.tcgName || card.name}>

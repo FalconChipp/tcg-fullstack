@@ -2,8 +2,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useState, useMemo } from "react";
+import CardImage from "@/components/Cards/CardImage";
 import Link from "next/link";
-import Image from "next/image";
 import { getCardImageUrl } from "@/utils/imageUtils";
 import { gqlFetch } from "@/utils/apiClient";
 import CardSkeleton from "@/components/UI/CardSkeleton";
@@ -343,12 +343,12 @@ function ListingTile({ listing: initial, token, isOwnProfile, onDelisted }) {
 
         {/* Image */}
         <div className="relative w-full aspect-[245/337] bg-vault-raised rounded-[6px] overflow-hidden mb-2">
-          {img ? (
-            <Image src={getCardImageUrl(img)} alt={name} fill unoptimized
-              className="object-contain rounded-[6px] group-hover:scale-105 transition-transform duration-300" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-4xl">🃏</div>
-          )}
+          <CardImage
+            src={img ? getCardImageUrl(img) : null}
+            name={name}
+            cardId={listing.cardId}
+            className="absolute inset-0 w-full h-full object-contain rounded-[6px] group-hover:scale-105 transition-transform duration-300"
+          />
 
           {/* Condition overlay */}
           {cond && (

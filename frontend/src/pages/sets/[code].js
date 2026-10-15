@@ -1,8 +1,8 @@
 // src/pages/sets/[code].js
 import React, { useMemo, useState, useEffect } from "react";
+import CardImage from "@/components/Cards/CardImage";
 import { useRouter } from "next/router";
 import { devWarn } from "@/utils/devLog";
-import Image from "next/image";
 import Head from "next/head";
 import Link from "next/link";
 import Layout from "@/components/Layout/Layout";
@@ -39,22 +39,14 @@ function SetCardTile({ card, owned = false, price, eager = false, onExpand }) {
         className="relative w-full aspect-[245/337] bg-light-alt dark:bg-dark-alt rounded-xl overflow-hidden cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent"
         aria-label={`Expand ${card?.name || "card"} image`}
       >
-        {hasImg ? (
-          <Image
-            src={card.imageUrl}
-            alt={card.name}
-            fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-            className="object-contain object-center"
-            priority={eager}
-            // @ts-ignore pass-through to <img>
-            fetchPriority={eager ? "high" : "auto"}
-          />
-        ) : (
-          <div className="h-full w-full flex items-center justify-center text-light-textMuted dark:text-dark-textMuted text-sm">
-            No Image
-          </div>
-        )}
+        <CardImage
+          src={hasImg ? card.imageUrl : null}
+          name={card.name}
+          cardId={card.cardId || card.id}
+          className="absolute inset-0 w-full h-full object-contain object-center"
+          fallbackClassName="text-light-text dark:text-dark-text"
+          imgProps={{ loading: eager ? "eager" : "lazy", fetchPriority: eager ? "high" : "auto" }}
+        />
 
         {owned && (
           <span className="absolute top-2 right-2 rounded-full bg-emerald-600 text-white text-[10px] font-semibold px-2 py-0.5 shadow">

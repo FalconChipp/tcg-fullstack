@@ -13,6 +13,7 @@
 
 "use client";
 
+import CardImage from "@/components/Cards/CardImage";
 import React, {
   useState,
   useMemo,
@@ -30,7 +31,6 @@ import {
   canonicalCardKey, mergeCardLists, makeQueryKey, applyFiltersAndSort,
   GBP_SYMBOL, FALLBACK_SYMBOL_IMAGE, CARDSEARCH_PAGE_SIZE, CARDSEARCH_EXACT_LIMIT,
 } from '@/utils/cardSearchUtils';
-import Image from "next/image";
 
 import Layout from "@/components/Layout/Layout";
 import PokemonAutocomplete from "@/components/Collection/SearchComponents/PokemonAutocomplete";
@@ -1181,14 +1181,14 @@ export default function CardSearchWorkbenchPage() {
                           aria-label={`Expand ${card.name || "card"} image`}
                           className="relative mb-2 aspect-[3/4] overflow-hidden rounded-[6px] bg-black/30 cursor-zoom-in focus:outline-none focus:ring-1 focus:ring-vault-accent"
                         >
-                          {card.tcgImageUrl || card.image ? (
-                            <Image
-                              src={card.tcgImageUrl || card.image}
-                              alt={card.name}
-                              fill
-                              className="object-contain"
-                            />
-                          ) : null}
+                          <CardImage
+                            src={card.tcgImageUrl || card.image}
+                            name={card.name}
+                            cardId={card.cardId || card.id}
+                            setCode={card.setCode}
+                            className="absolute inset-0 w-full h-full object-contain"
+                            fallbackClassName="text-vault-text"
+                          />
                         </button>
 
                         <div className="flex flex-1 flex-col justify-between text-xs">
@@ -1372,14 +1372,13 @@ export default function CardSearchWorkbenchPage() {
                       className="flex gap-3 rounded-[10px] border border-vault-border bg-vault-raised p-3"
                     >
                       <div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-[6px] bg-black/30">
-                        {card.tcgImageUrl || card.image ? (
-                          <Image
-                            src={card.tcgImageUrl || card.image}
-                            alt={card.name}
-                            fill
-                            className="object-contain"
-                          />
-                        ) : null}
+                        <CardImage
+                          src={card.tcgImageUrl || card.image}
+                          name={card.name}
+                          cardId={card.cardId || card.id}
+                          compact
+                          className="absolute inset-0 w-full h-full object-contain"
+                        />
                       </div>
 
                       <div className="min-w-0 flex-1">

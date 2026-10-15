@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import CardImage from "@/components/Cards/CardImage";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
@@ -539,9 +540,7 @@ function OrderRow({ order: initial, token, myId }) {
       >
         {/* Thumbnail */}
         <div className="flex-shrink-0 w-10 h-[58px] rounded-[6px] overflow-hidden bg-black/20 dark:bg-white/5 border border-vault-border">
-          {cardImg
-            ? <img src={cardImg} alt={cardName} className="w-full h-full object-cover" />
-            : <div className="w-full h-full flex items-center justify-center text-base">🃏</div>}
+          <CardImage src={cardImg} name={cardName} compact className="w-full h-full object-cover" />
         </div>
 
         {/* Info */}

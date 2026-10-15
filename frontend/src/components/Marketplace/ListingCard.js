@@ -7,6 +7,7 @@
 
 import React from "react";
 import Link from "next/link";
+import CardImage from "@/components/Cards/CardImage";
 
 function parseJsonList(maybeJson) {
   if (!maybeJson) return [];
@@ -65,17 +66,13 @@ function CardListingCard({ listing, onClick }) {
     >
       {/* ── Image (portrait 2:3) */}
       <div className="relative aspect-[5/7] w-full overflow-hidden bg-black">
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={info.name || "Card"}
-            className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-xs text-vault-textTertiary">
-            No image
-          </div>
-        )}
+        <CardImage
+          src={imageUrl}
+          name={info.name}
+          cardId={listing.cardId || info.id}
+          className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
+          fallbackClassName="text-vault-text"
+        />
 
         {/* Condition badge — top left only */}
         {condition && (

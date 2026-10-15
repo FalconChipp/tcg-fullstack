@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useContext, useEffect, useRef } from "react"; // CHANGED: add useRef
-import Image from "next/image";
+import CardImage from "@/components/Cards/CardImage";
 import { useSearchParams, useRouter } from "next/navigation"; // NEW: read query params + optionally clean URL
 import { getSetLogo } from "@/utils/setLogos";
 import EditCollectionCardModal from "@/components/Collection/EditCollectionCardModal";
@@ -499,12 +499,11 @@ export default function ProfileCollectionPanel({
                 className="relative w-full aspect-[245/337] bg-vault-raised rounded-[6px] mb-2 overflow-hidden cursor-pointer"
                 onClick={() => setSelectedCard(card)}
               >
-                <Image
+                <CardImage
                   src={getCardImageUrl(img)}
-                  alt={card.name}
-                  fill
-                  unoptimized
-                  className="object-contain rounded-[6px] group-hover:scale-105 transition-transform duration-300"
+                  name={card.name}
+                  cardId={card.cardId || card.id}
+                  className="absolute inset-0 w-full h-full object-contain rounded-[6px] group-hover:scale-105 transition-transform duration-300"
                 />
                 {card.quantity > 1 && (
                   <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded-[6px] text-xs font-bold">

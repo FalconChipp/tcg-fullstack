@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import Image from 'next/image';
+import CardImage from "@/components/Cards/CardImage";
 import { formatVariation } from "@/utils/formatVariation";
 
-const FALLBACK_CARD_IMAGE = "https://cdn.pidgi.net/images/f/f6/Card_back_INTL_-_Pokemon_Trading_Card_Game.png";
 
 export default function CardDetails({ card, onClose, onUpdateCard }) {
   const [full, setFull] = useState(false);
@@ -37,12 +36,11 @@ export default function CardDetails({ card, onClose, onUpdateCard }) {
           {/* Image */}
           <div className="flex-1">
             <div className="relative aspect-[2/3] w-full">
-              <Image
-                src={card.image || FALLBACK_CARD_IMAGE}
-                alt={card.name}
-                fill
-                className="object-contain rounded-xl"
-                priority
+              <CardImage
+                src={card.image}
+                name={card.name}
+                cardId={card.cardId || card.id}
+                className="absolute inset-0 w-full h-full object-contain rounded-xl"
               />
             </div>
           </div>

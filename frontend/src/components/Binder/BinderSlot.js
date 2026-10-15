@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import CardDetails from './CardDetails';
+import CardImage from '@/components/Cards/CardImage';
 import { getCardImageUrl } from '@/utils/imageUtils';
 import { VIEW_MODES } from '@/utils/constants';
 
@@ -193,15 +194,16 @@ export default function BinderSlot({
           <div className="flex items-center w-full h-full">
             <div className="flex-shrink-0 pr-2">
               <div className="relative">
-                <img
-                  src={getCardImage(hydratedCard)}
-                  alt={hydratedCard.tcgName || hydratedCard.name || 'Card image'}
-                  className="w-16 h-auto object-cover rounded"
-                  onError={e => { e.target.onerror = null; e.target.src = FALLBACK_CARD_IMAGE; }}
-                  draggable={isOwnProfile}
-                  onDragStart={handleDragStart}
-                  onDragEnd={onDragEnd}
-                />
+                <div className="w-16 aspect-[245/342]">
+                  <CardImage
+                    src={getCardImage(hydratedCard)}
+                    name={hydratedCard.tcgName || hydratedCard.name}
+                    cardId={hydratedCard.cardId || hydratedCard.id}
+                    alt={hydratedCard.tcgName || hydratedCard.name || 'Card image'}
+                    className="w-16 h-auto object-cover rounded"
+                    imgProps={{ draggable: isOwnProfile, onDragStart: handleDragStart, onDragEnd }}
+                  />
+                </div>
                 {showNotOwnedOverlay && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                     <p className="text-white text-xs font-semibold">Not Owned</p>
@@ -256,14 +258,13 @@ export default function BinderSlot({
       default:
         return (
           <div className="relative w-full h-full flex items-center justify-center">
-            <img
+            <CardImage
               src={getCardImage(hydratedCard)}
+              name={hydratedCard.tcgName || hydratedCard.name}
+              cardId={hydratedCard.cardId || hydratedCard.id}
               alt={hydratedCard.tcgName || hydratedCard.name || 'Card image'}
               className="object-contain w-full h-full"
-              onError={e => { e.target.onerror = null; e.target.src = FALLBACK_CARD_IMAGE; }}
-              draggable={isOwnProfile}
-              onDragStart={handleDragStart}
-              onDragEnd={onDragEnd}
+              imgProps={{ draggable: isOwnProfile, onDragStart: handleDragStart, onDragEnd }}
             />
             {showNotOwnedOverlay && (
               <div className="absolute inset-0 bg-black/50 flex items-center justify-center">

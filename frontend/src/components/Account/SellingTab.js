@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import CardImage from "@/components/Cards/CardImage";
 import Link from "next/link";
 import {
   Package,
@@ -644,13 +645,15 @@ export default function SellingTab({ token, myId }) {
                         <tr key={listing.id} className="group">
                           <td className="py-2.5 pr-4">
                             <div className="flex items-center gap-2">
-                              {listing.cardInfo?.imageSmall && (
-                                <img
-                                  src={listing.cardInfo.imageSmall}
-                                  alt=""
-                                  className="h-8 w-6 shrink-0 rounded object-cover"
+                              <div className="h-8 w-6 shrink-0 overflow-hidden rounded">
+                                <CardImage
+                                  src={listing.cardInfo?.imageSmall}
+                                  name={listing.cardInfo?.name || name}
+                                  cardId={listing.cardId}
+                                  compact
+                                  className="h-full w-full object-cover"
                                 />
-                              )}
+                              </div>
                               <div>
                                 <p className="max-w-[130px] truncate font-semibold text-vault-text">
                                   {name}

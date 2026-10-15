@@ -9,7 +9,7 @@
 "use client";
 
 import React from "react";
-import Image from "next/image";
+import CardImage from "@/components/Cards/CardImage";
 import { useApolloClient } from "@apollo/client";
 import { PRICE_INSIGHTS_QUERY } from '@/graphql/cards';
 import { getCardImageUrl } from "@/utils/imageUtils";
@@ -753,22 +753,20 @@ export default function CardDetailsModal({
             {/* Left: Image */}
             <div className="flex flex-col items-center gap-4 min-w-0 md:items-start md:pr-0.5">
               <div className={`relative w-full max-w-[18rem] md:max-w-sm aspect-[2.5/3.5] rounded-xl overflow-hidden ${cardBg} shadow-lg`}>
-                {imgLoading && (
+                {imgLoading && imgSrc && imgSrc !== FALLBACK_CARD_IMAGE && (
                   <div className={`absolute inset-0 flex items-center justify-center ${isDark ? "bg-dark-surface" : "bg-light-alt"}`}>
                     <div className="w-16 h-24 rounded-lg animate-pulse border border-dashed border-current opacity-40" />
                   </div>
                 )}
-                <Image
+                <CardImage
                   src={imgSrc}
+                  name={card.name || card.tcgName}
+                  cardId={card.cardId || card.id}
                   alt={card.name || card.tcgName || "Card image"}
-                  fill
-                  className="object-contain"
-                  priority
-                  unoptimized
-                  onLoadingComplete={() => setImgLoading(false)}
-                  onError={() => {
-                    if (imgSrc !== FALLBACK_CARD_IMAGE) setImgSrc(FALLBACK_CARD_IMAGE);
-                    setImgLoading(false);
+                  className="absolute inset-0 w-full h-full object-contain"
+                  imgProps={{
+                    onLoad: () => setImgLoading(false),
+                    onError: () => setImgLoading(false),
                   }}
                 />
               </div>

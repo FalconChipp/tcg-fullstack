@@ -1,6 +1,7 @@
 ﻿// src/components/Collection/CardSearch.js
 "use client";
 
+import CardImage from "@/components/Cards/CardImage";
 import React, {
   useState,
   useEffect,
@@ -12,7 +13,6 @@ import React, {
 } from "react";
 import { AuthContext } from "@/components/Auth/AuthProvider";
 import dynamic from "next/dynamic";
-import Image from "next/image";
 import Link from "next/link";
 import { useLazyQuery } from "@apollo/client";
 import { CARDSEARCH_QUERY } from '@/graphql/collection';
@@ -867,7 +867,7 @@ export default function CardSearch({ variant = "search" }) {
                         ? fallbackKey
                         : `card-${idx}`);
 
-                    const isLoaded = !!imageLoadedMap[imageKey];
+                    const isLoaded = !!imageLoadedMap[imageKey] || !(card.tcgImageUrl || card.image);
                     const isPriority = idx < 8;
 
                     return (
@@ -905,22 +905,20 @@ export default function CardSearch({ variant = "search" }) {
                             }`}
                           />
 
-                          <Image
+                          <CardImage
                             src={card.tcgImageUrl || card.image}
-                            alt={card.name}
-                            fill
-                            sizes="(max-width: 640px) 100vw,
-                                    (max-width: 1024px) 50vw,
-                                    (max-width: 1280px) 33vw,
-                                    25vw"
-                            className={`object-contain object-center rounded-xl transition-opacity duration-300 ${
+                            name={card.name}
+                            cardId={card.cardId || card.id}
+                            setCode={card.setCode}
+                            className={`absolute inset-0 w-full h-full object-contain object-center rounded-xl transition-opacity duration-300 ${
                               isLoaded ? "opacity-100" : "opacity-0"
                             }`}
-                            onLoadingComplete={() => markImageLoaded(imageKey)}
-                            onLoad={() => markImageLoaded(imageKey)}
-                            {...(isPriority
-                              ? { priority: true }
-                              : { loading: "lazy" })}
+                            fallbackClassName={isHomeVariant ? "text-dark-text" : "text-light-text dark:text-dark-text"}
+                            imgProps={{
+                              onLoad: () => markImageLoaded(imageKey),
+                              onError: () => markImageLoaded(imageKey),
+                              loading: isPriority ? "eager" : "lazy",
+                            }}
                           />
                         </div>
 

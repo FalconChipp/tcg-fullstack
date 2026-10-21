@@ -18,9 +18,10 @@ import ProfileAchievements from "@/components/UserProfile/ProfileAchievements";
 import ProfileListingsPanel from "@/components/UserProfile/ProfileListingsPanel";
 import useWishlistData from "@/hooks/useWishlistData";
 import { getGraphqlUrl } from "@/utils/apiClient";
+import { wishlistShareImageUrl } from "@/utils/shareImages";
 
 // --- SSR user fetch from Node backend ---
-export async function getServerSideProps({ params, res }) {
+export async function getServerSideProps({ params, res, query }) {
   const { username } = params;
   if (!username) return { notFound: true };
 
@@ -69,13 +70,23 @@ export async function getServerSideProps({ params, res }) {
     };
     delete mergedUser.user;
 
-    return { props: { user: mergedUser } };
+    // Links to the wishlist tab unfurl as the server-rendered wishlist share image
+    // (Discord/iMessage/etc). Everything else keeps the avatar.
+    const ogImage =
+      query?.tab === "wishlist"
+        ? wishlistShareImageUrl(
+            mergedUser.username,
+            typeof query.status === "string" ? query.status : ""
+          )
+        : null;
+
+    return { props: { user: mergedUser, ogImage } };
   } catch (err) {
     return { props: { error: "Remote server error" } };
   }
 }
 
-export default function ProfilePage({ user, error }) {
+export default function ProfilePage({ user, error, ogImage }) {
   const { user: me, token, loading: authLoading } = useContext(AuthContext);
   const { dark } = useTheme();
   const router = useRouter();
@@ -224,7 +235,7 @@ export default function ProfilePage({ user, error }) {
           property="og:url"
           content={`https://tcg.sixbyfive.com/profile/${user.username}`}
         />
-        <meta property="og:image" content={user?.avatar || "/default-avatar.png"} />
+        <meta property="og:image" content={ogImage || user?.avatar || "/default-avatar.png"} />
         <meta property="og:type" content="profile" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta
@@ -237,7 +248,7 @@ export default function ProfilePage({ user, error }) {
         />
         <meta
           name="twitter:image"
-          content={user?.avatar || "/default-avatar.png"}
+          content={ogImage || user?.avatar || "/default-avatar.png"}
         />
       </Head>
       <Layout hideBackTop={isBinderEditorOpen}>

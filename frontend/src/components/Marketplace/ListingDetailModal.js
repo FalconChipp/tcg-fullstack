@@ -21,6 +21,8 @@ function getStripe() {
 import { gqlFetch, getApiBase } from "@/utils/apiClient";
 import SellerReviewsDrawer from "./SellerReviewsDrawer";
 import SellerTierBadge from "./SellerTierBadge";
+import ShareImageModal from "@/components/UI/ShareImageModal";
+import { listingShareImageUrl, listingPageUrl } from "@/utils/shareImages";
 
 const SELLER_REPUTATION_QUERY = `
   query SellerReputationBadge($userId: ID!) {
@@ -303,6 +305,7 @@ export default function ListingDetailModal({ listing, onClose }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [showTrade, setShowTrade] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const [reputation, setReputation] = useState(null);
   const [showReviews, setShowReviews] = useState(false);
   const [marketPrice, setMarketPrice] = useState(null);
@@ -379,6 +382,13 @@ export default function ListingDetailModal({ listing, onClose }) {
           className="absolute top-3 right-4 z-10 rounded-[6px] bg-black/30 backdrop-blur-sm text-white px-3 py-1 text-xs font-medium hover:bg-black/50 transition">
           Close
         </button>
+
+        {(!listing.status || listing.status === "ACTIVE") && (
+          <button type="button" onClick={() => setShowShare(true)}
+            className="absolute top-3 right-20 z-10 rounded-[6px] bg-black/30 backdrop-blur-sm text-white px-3 py-1 text-xs font-medium hover:bg-black/50 transition">
+            Share
+          </button>
+        )}
 
         {/* ── Success banners ── */}
         {successPhase && (
@@ -677,6 +687,16 @@ export default function ListingDetailModal({ listing, onClose }) {
         )}
       </div>
     </div>
+
+    <ShareImageModal
+      open={showShare}
+      onClose={() => setShowShare(false)}
+      title="Listing share image"
+      imageUrl={listingShareImageUrl(listing.id)}
+      fileName={`listing-${listing.id}.png`}
+      link={listingPageUrl(listing.id)}
+      shareText={listing.title || info.name || "Listing on SixByFive TCG"}
+    />
 
     {showTrade && (
       <ProposeTradeModal

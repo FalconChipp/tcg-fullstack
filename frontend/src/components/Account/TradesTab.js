@@ -13,8 +13,10 @@ import { useQuery, useMutation, useApolloClient } from "@apollo/client";
 import {
   ArrowLeftRight, RefreshCw, Loader2, ChevronDown, ChevronUp,
   CheckCircle2, XCircle, RotateCcw, AlertCircle, Clock,
-  Camera, Truck, PackageCheck, Plus, Trash2,
+  Camera, Truck, PackageCheck, Plus, Trash2, Share2,
 } from "lucide-react";
+import ShareImageModal from "@/components/UI/ShareImageModal";
+import { tradeShareImageUrl } from "@/utils/shareImages";
 import {
   MY_TRADES_QUERY, RESPOND_TO_TRADE, CANCEL_TRADE, UPLOAD_TRADE_PROOF,
   SUBMIT_TRADE_TRACKING, SET_TRADE_ADDRESS, QUOTE_TRADE_SHIPPING,
@@ -64,6 +66,7 @@ function fileToBase64(file) {
 
 function TradeRow({ trade, myId, onRefresh }) {
   const [open,         setOpen]         = useState(false);
+  const [showShare,    setShowShare]    = useState(false);
   const [busy,         setBusy]         = useState(false);
   const [err,          setErr]          = useState("");
   const [done,         setDone]         = useState("");
@@ -432,10 +435,10 @@ function TradeRow({ trade, myId, onRefresh }) {
                 <Camera className="w-4 h-4 text-purple-500 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="text-xs font-semibold text-purple-700 dark:text-purple-300">
-                    {trade.status === "AGREED" ? "Upload proof photo to continue" : "Waiting for the other party's proof — submit yours if you haven't yet"}
+                    {trade.status === "AGREED" ? "Upload proof photo to continue" : "Waiting for the other party&apos;s proof — submit yours if you haven&apos;t yet"}
                   </p>
                   <p className="text-[10px] text-purple-600/70 dark:text-purple-400/70 mt-0.5">
-                    Photo should clearly show the card(s) you're sending.
+                    Photo should clearly show the card(s) you&apos;re sending.
                   </p>
                 </div>
               </div>
@@ -581,9 +584,28 @@ function TradeRow({ trade, myId, onRefresh }) {
               </div>
               <button onClick={handleConfirmReceived} disabled={busy} className={btnSky}>
                 {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <PackageCheck className="w-4 h-4" />}
-                I've received my cards
+                I&apos;ve received my cards
               </button>
             </div>
+          )}
+
+          {/* ── SHARE (initiator, still open on the trade board) ── */}
+          {isInitiator && trade.status === "INITIATED" && (
+            <>
+              <button onClick={() => setShowShare(true)}
+                className="self-start flex items-center gap-1.5 rounded-[10px] px-3 py-1.5 text-xs font-medium border border-vault-border text-vault-text hover:bg-vault-raised dark:hover:bg-vault-raised transition-colors">
+                <Share2 className="w-3 h-3" />
+                Share trade
+              </button>
+              <ShareImageModal
+                open={showShare}
+                onClose={() => setShowShare(false)}
+                title="Trade share image"
+                imageUrl={tradeShareImageUrl(trade.id)}
+                fileName="trade-offer.png"
+                shareText="Trade offer on SixByFive TCG"
+              />
+            </>
           )}
 
           {/* ── CANCEL (initiator, not terminal) ── */}

@@ -28,6 +28,11 @@ const nextConfig = {
   },
 
   headers: async () => [
+    // Android App Links verification file must be served as JSON with no redirect.
+    {
+      source: '/.well-known/assetlinks.json',
+      headers: [{ key: 'Content-Type', value: 'application/json' }],
+    },
     {
       source: '/:path*',
       headers: [
@@ -54,7 +59,7 @@ const nextConfig = {
       // 1) QA force via query (?forceMobile=1), unless bypass cookie set OR bot UA (CHANGED)
       {
         // Exclude the block page and any bypass route from being redirected
-        source: '/:path((?!mobile-block)(?!allow-desktop).*)',
+        source: '/:path((?!mobile-block)(?!allow-desktop)(?!\.well-known).*)',
         has: [{ type: 'query', key: 'forceMobile', value: '1' }],
         missing: [
           { type: 'cookie', key: 'allowMobileWeb', value: '1' },               // keep bypass
@@ -66,7 +71,7 @@ const nextConfig = {
 
       // 2) Chromium client hint says "mobile" (?1), unless bypass cookie set OR bot UA (CHANGED)
       {
-        source: '/:path((?!mobile-block)(?!allow-desktop).*)',
+        source: '/:path((?!mobile-block)(?!allow-desktop)(?!\.well-known).*)',
         has: [{ type: 'header', key: 'sec-ch-ua-mobile', value: '\\?1' }],
         missing: [
           { type: 'cookie', key: 'allowMobileWeb', value: '1' },

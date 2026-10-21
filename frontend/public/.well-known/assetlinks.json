@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.sixbyfive.sbftcgmobile",
+      "sha256_cert_fingerprints": [
+        "AE:6E:D0:9F:8F:6D:99:7A:59:46:59:06:95:32:2F:3C:F0:3E:F9:5C:97:56:AE:8C:82:F4:1B:FA:D9:A4:8C:99"
+      ]
+    }
+  }
+]

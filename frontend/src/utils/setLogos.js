@@ -131,6 +131,7 @@ export const SET_LOGOS = {
   'Pitch Black' : 'pitch-black-logo.png',
   '30th Celebration' : '30th-logo.png',
   '30th Classic Collection' : '30th-logo.png',
+  'Delta Reign' : 'delta-reign-logo.png',
 
   // Trainer Kits, Vaults, Classic, Special, etc.
   'Detective Pikachu': 'detective-pikachu-logo.png',

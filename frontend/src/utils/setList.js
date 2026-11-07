@@ -12,6 +12,7 @@ const setList = [
   { abbr: "PBL", code : "me05", name: "Pitch Black", logo: "/assets/set-logos/pitch-black-logo.png" }, 
   { abbr: "30C", code : "30th", name: "30th Celebration", logo: "/assets/set-logos/30th-logo.png" },
   { abbr: "30C", code : "30th-c", name: "30th Classic Collection", logo: "/assets/set-logos/30th-logo.png" },
+  { abbr: "DLR", code : "me06", name: "Delta Reign", logo: "/assets/set-logos/delta-reign-logo.png" },
 
   // Scarlet & Violet era
   { abbr: "SVP", code: "svp", name: "Scarlet & Violet Promos", logo: "/assets/set-logos/promo-logo.webp" },
